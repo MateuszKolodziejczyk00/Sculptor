@@ -78,6 +78,16 @@ String File::ReadDocument(const Path& path, EFileOpenFlags openFlags /*= EFileOp
 	return content;
 }
 
+void File::SaveDocument(const Path& path, const lib::String& data, EFileOpenFlags openFlags /*= lib::Flags(lib::EFileOpenFlags::ForceCreate, lib::EFileOpenFlags::DiscardContent)*/)
+{
+	std::ofstream stream = lib::File::OpenOutputStream(path, openFlags);
+	SPT_CHECK(stream.is_open());
+
+	stream << data;
+
+	stream.close();
+}
+
 Bool File::Exists(const StringView& path)
 {
 	return std::filesystem::exists(path);

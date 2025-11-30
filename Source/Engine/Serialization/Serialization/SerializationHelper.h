@@ -3,7 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "FileSystem/File.h"
 
-#include "YAMLSerializerHelper.h"
+#include "Serialization.h"
 
 
 namespace spt::srl
@@ -33,9 +33,9 @@ lib::String SerializationHelper::SerializeStruct(const TStructType& data)
 {
 	SPT_PROFILER_FUNCTION();
 
-	YAML::Emitter out;
-	out << data;
-	return out.c_str();
+	srl::Serializer serializer = srl::Serializer::CreateWriter();
+	const_cast<TStructType&>(data).Serialize(serializer);
+	return serializer.ToString();
 }
 
 template<typename TStructType>
@@ -43,15 +43,10 @@ Bool SerializationHelper::DeserializeStruct(TStructType& data, const lib::String
 {
 	SPT_PROFILER_FUNCTION();
 
-	YAML::Node node = YAML::Load(serializedData);
+	srl::Serializer serializer = srl::Serializer::CreateReader(serializedData);
+	data.Serialize(serializer);
 
-	if (node)
-	{
-		data = node.as<TStructType>();
-		return true;
-	}
-
-	return false;
+	return true;
 }
 
 template<typename TStructType>
@@ -59,12 +54,7 @@ void SerializationHelper::SaveTextStructToFile(const TStructType& data, const li
 {
 	SPT_PROFILER_FUNCTION();
 
-	std::ofstream stream = lib::File::OpenOutputStream(filePath, lib::Flags(lib::EFileOpenFlags::ForceCreate, lib::EFileOpenFlags::DiscardContent));
-	SPT_CHECK(stream.is_open());
-
-	stream << SerializeStruct(data);
-
-	stream.close();
+	lib::File::SaveDocument(filePath, SerializeStruct(data));
 }
 
 inline void SerializationHelper::SaveBinaryToFile(const Byte* data, SizeType dataSize, const lib::String& filePath)
@@ -87,20 +77,14 @@ Bool SerializationHelper::LoadTextStructFromFile(TStructType& data, const lib::S
 {
 	SPT_PROFILER_FUNCTION();
 
-	std::ifstream stream = lib::File::OpenInputStream(filePath);
-	if (!stream.fail())
+	lib::String serializedData = lib::File::ReadDocument(filePath);
+
+	if (serializedData.empty())
 	{
-		std::stringstream stringStream;
-		stringStream << stream.rdbuf();
-
-		DeserializeStruct(data, lib::String(stringStream.str()));
-
-		stream.close();
-
-		return true;
+		return false;
 	}
 
-	return false;
+	return DeserializeStruct(data, serializedData);
 }
 
 } // spt::srl

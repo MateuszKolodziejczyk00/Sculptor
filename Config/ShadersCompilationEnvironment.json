@@ -1,0 +1,10 @@
+{
+    "CacheSeparateSpvFile": false,
+    "CompileWithDebugs": false,
+    "ErrorLogsPath": "Saved/Shaders/Errors",
+    "GenerateDebugInfo": false,
+    "ShadersCachePath": "Saved/Shaders/Cache",
+    "ShadersPath": "Shaders",
+    "TargetEnvironment": 1,
+    "UseCompiledShadersCache": true
+}

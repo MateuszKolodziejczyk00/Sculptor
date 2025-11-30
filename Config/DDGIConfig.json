@@ -1,0 +1,97 @@
+{
+    "DefaultRelitHysteresis": 0.9700000286102295,
+    "LODsConfigs": [
+        {
+            "ForwardAlignment": 0.5,
+            "HeightAlignment": 0.20000000298023224,
+            "ProbesSpacing": [
+                1.5,
+                1.5,
+                1.5
+            ],
+            "RelitPriority": 2.5,
+            "RelitZoneResolution": [
+                12,
+                12,
+                12
+            ],
+            "VolumeResolution": [
+                24,
+                24,
+                12
+            ]
+        },
+        {
+            "ForwardAlignment": 0.5,
+            "HeightAlignment": 0.10000000149011612,
+            "ProbesSpacing": [
+                4.0,
+                4.0,
+                4.0
+            ],
+            "RelitPriority": 1.0,
+            "RelitZoneResolution": [
+                12,
+                12,
+                12
+            ],
+            "VolumeResolution": [
+                36,
+                36,
+                12
+            ]
+        },
+        {
+            "ForwardAlignment": 0.5,
+            "HeightAlignment": 0.10000000149011612,
+            "ProbesSpacing": [
+                8.0,
+                8.0,
+                8.0
+            ],
+            "RelitPriority": 0.5,
+            "RelitZoneResolution": [
+                12,
+                12,
+                12
+            ],
+            "VolumeResolution": [
+                36,
+                36,
+                12
+            ]
+        },
+        {
+            "ForwardAlignment": 0.0,
+            "HeightAlignment": 0.10000000149011612,
+            "ProbesSpacing": [
+                1000.0,
+                1000.0,
+                1000.0
+            ],
+            "RelitPriority": 0.5,
+            "RelitZoneResolution": [
+                12,
+                12,
+                12
+            ],
+            "VolumeResolution": [
+                36,
+                36,
+                12
+            ]
+        }
+    ],
+    "MaxHysteresis": 0.800000011920929,
+    "MinHysteresis": 0.30000001192092896,
+    "ProbeHitDistanceDataRes": [
+        14,
+        14
+    ],
+    "ProbeIlluminanceDataRes": [
+        6,
+        6
+    ],
+    "RelitRaysPerProbe": 400,
+    "RelitVolumesBudget": 2
+}

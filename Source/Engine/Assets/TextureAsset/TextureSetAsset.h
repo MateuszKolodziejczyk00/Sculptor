@@ -37,6 +37,13 @@ struct PBRTextureSetSource
 	TextureSourceDefinition baseColor;
 	TextureSourceDefinition metallicRoughness;
 	TextureSourceDefinition normals;
+
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("BaseColor",         baseColor);
+		serializer.Serialize("MetallicRoughness", metallicRoughness);
+		serializer.Serialize("Normals",           normals);
+	}
 };
 SPT_REGISTER_ASSET_DATA_TYPE(PBRTextureSetSource);
 
@@ -48,6 +55,14 @@ struct PBRCompiledTextureSetData
 	CompiledTexture normals;
 
 	DerivedDataKey derivedDataKey;
+
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("BaseColor",         baseColor);
+		serializer.Serialize("MetallicRoughness", metallicRoughness);
+		serializer.Serialize("Normals",           normals);
+		serializer.Serialize("DerivedDataKey",    derivedDataKey);
+	}
 };
 SPT_REGISTER_ASSET_DATA_TYPE(PBRCompiledTextureSetData);
 
@@ -113,38 +128,3 @@ private:
 SPT_REGISTER_ASSET_TYPE(PBRTextureSetAsset);
 
 } // spt::as
-
-
-namespace spt::srl
-{
-
-template<>
-struct TypeSerializer<as::PBRTextureSetSource>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		serializer.Serialize("BaseColor", data.baseColor);
-		serializer.Serialize("MetallicRoughness", data.metallicRoughness);
-		serializer.Serialize("Normals", data.normals);
-	}
-};
-
-template<>
-struct TypeSerializer<as::PBRCompiledTextureSetData>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		serializer.Serialize("BaseColor",         data.baseColor);
-		serializer.Serialize("MetallicRoughness", data.metallicRoughness);
-		serializer.Serialize("Normals",           data.normals);
-
-		serializer.Serialize("DerivedDataKey",    data.derivedDataKey);
-	}
-};
-
-} // spt::srl
-
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::PBRTextureSetSource);
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::PBRCompiledTextureSetData);

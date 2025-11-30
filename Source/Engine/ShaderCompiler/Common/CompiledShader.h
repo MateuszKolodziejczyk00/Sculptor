@@ -14,11 +14,13 @@ class SHADER_COMPILER_API CompiledShader
 {
 public:
 
-	using Binary = lib::DynamicArray<Uint32>;
+	using Binary = lib::DynamicArray<Byte>;
 
 	CompiledShader();
 
 	Bool IsValid() const;
+
+	void Serialize(srl::Serializer& serializer);
 
 	Binary              binary;
 	rhi::EShaderStage   stage;

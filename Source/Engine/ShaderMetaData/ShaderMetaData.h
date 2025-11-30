@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
+#include "../Serialization/Serialization/Serialization.h"
 
 namespace spt::srl
 {
@@ -32,6 +33,10 @@ public:
 	Uint32   FindDescriptorSetOfType(SizeType typeID) const;
 	
 	SizeType GetDescriptorSetStateTypeID(SizeType setIdx) const;
+
+	// Serialization =============================================
+
+	void Serialize(srl::Serializer& serializer);
 	
 private:
 
@@ -97,6 +102,11 @@ inline SizeType ShaderMetaData::GetDescriptorSetStateTypeID(SizeType setIdx) con
 	SPT_CHECK(setIdx < m_dsStateTypeIDs.size());
 
 	return m_dsStateTypeIDs[setIdx];
+}
+
+inline void ShaderMetaData::Serialize(srl::Serializer& serializer)
+{
+	serializer.Serialize("DescriptorSets", m_dsStateTypeIDs);
 }
 
 } // spt::smd

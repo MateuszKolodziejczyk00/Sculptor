@@ -6,6 +6,7 @@
 #include "FileSystem/File.h"
 #include "ResourcePath.h"
 #include "Utility/Threading/ThreadUtils.h"
+#include "Serialization.h"
 
 
 namespace spt::as
@@ -83,8 +84,13 @@ struct AssetInstanceData
 {
 	AssetType       type;
 	AssetBlackboard blackboard;
-};
 
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("Type", type);
+		serializer.Serialize("Blackboard", blackboard);
+	}
+};
 
 
 class ASSETS_SYSTEM_API AssetInstance : public lib::MTRefCounted
@@ -199,37 +205,6 @@ struct AssetTypeRegistration
 };
 
 } // spt::as
-
-namespace spt::srl
-{
-
-template<>
-struct TypeSerializer<as::AssetInstanceData>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-
-		if constexpr (Serializer::IsLoading())
-		{
-			lib::String typeName;
-			serializer.Serialize("Type", typeName);
-			data.type = typeName;
-
-			serializer.Serialize("Blackboard", static_cast<lib::Blackboard&>(data.blackboard));
-		}
-		else
-		{
-			serializer.Serialize("Blackboard", static_cast<const lib::Blackboard&>(data.blackboard));
-			serializer.Serialize("Type", data.type.GetView());
-		}
-	}
-};
-
-} // spt::srl
-
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::AssetInstanceData);
-
 
 #define SPT_REGISTER_ASSET_DATA_TYPE(DataType) \
 	SPT_REGISTER_TYPE_FOR_BLACKBOARD_SERIALIZATION(DataType)

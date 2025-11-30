@@ -4,75 +4,8 @@
 #include "FileSystem/File.h"
 #include "Utility/String/StringUtils.h"
 #include "Paths.h"
-
-#include "SculptorYAML.h"
 #include "SerializationHelper.h"
-#include "ShaderMetaDataTypesSerialization.h"
 
-#include <filesystem>
-
-namespace spt::srl
-{
-
-// spt::sc::ShaderDebugMetaData =========================================================
-
-template<>
-struct TypeSerializer<sc::ShaderDebugMetaData>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& metaData)
-	{
-		serializer.Serialize("Literals", metaData.literals);
-	}
-};
-// spt::sc::CompiledShader ==============================================================
-
-template<>
-struct TypeSerializer<sc::CompiledShader>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& shader)
-	{
-		using ShaderBinary        = typename Param::Binary;
-		using ShaderBinaryElement = typename ShaderBinary::value_type;
-
-		if constexpr (Serializer::IsSaving())
-		{
-			const srl::Binary binary(reinterpret_cast<const unsigned char*>(shader.binary.data()), shader.binary.size() * sizeof(ShaderBinaryElement));
-			serializer.Serialize("Binary", binary);
-		}
-		else
-		{
-			srl::Binary binary;
-			serializer.Serialize("Binary", binary);
-
-			SPT_CHECK(binary.size() % sizeof(ShaderBinaryElement) == 0);
-
-			ShaderBinary shaderBinary(binary.size() / sizeof(ShaderBinaryElement));
-			memcpy_s(shaderBinary.data(), binary.size(), binary.data(), binary.size());
-
-			shader.binary = std::move(shaderBinary);
-		}
-		
-		serializer.SerializeEnum("Stage", shader.stage);
-		serializer.Serialize("EntryPoint", shader.entryPoint);
-			
-		serializer.Serialize("MetaData", shader.metaData);
-		
-#if SPT_SHADERS_DEBUG_FEATURES
-		serializer.Serialize("DebugMetaData", shader.debugMetaData);
-#endif // SPT_SHADERS_DEBUG_FEATURES
-
-#if WITH_SHADERS_HOT_RELOAD
-		serializer.Serialize("FileDependencies", shader.fileDependencies);
-#endif // WITH_SHADERS_HOT_RELOAD
-	}
-};
-
-} // spt::srl
-
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::sc::ShaderDebugMetaData)
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::sc::CompiledShader)
 
 namespace spt::sc
 {

@@ -9,51 +9,27 @@ namespace spt::lib::tests
 struct BBDataType1
 {
 	Uint32 value = 0u;
+
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("value", value);
+	}
 };
 
 struct BBDataType2
 {
 	Uint32 value1 = 1u;
 	Uint32 value2 = 2u;
-};
 
-} // spt::lib::tests
-
-namespace spt::srl
-{
-
-template<>
-struct TypeSerializer<lib::tests::BBDataType1>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	void Serialize(srl::Serializer& serializer)
 	{
-		serializer.Serialize("value", data.value);
+		serializer.Serialize("value1", value1);
+		serializer.Serialize("value2", value2);
 	}
 };
-
-template<>
-struct TypeSerializer<lib::tests::BBDataType2>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		serializer.Serialize("value1", data.value1);
-		serializer.Serialize("value2", data.value2);
-	}
-};
-
-} // spt::srl
-
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::lib::tests::BBDataType1);
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::lib::tests::BBDataType2);
 
 SPT_REGISTER_TYPE_FOR_BLACKBOARD_SERIALIZATION(spt::lib::tests::BBDataType1);
 SPT_REGISTER_TYPE_FOR_BLACKBOARD_SERIALIZATION(spt::lib::tests::BBDataType2);
-
-
-namespace spt::lib::tests
-{
 
 TEST(BlackboardSerialization, BasicSerializationSingleComponent)
 {

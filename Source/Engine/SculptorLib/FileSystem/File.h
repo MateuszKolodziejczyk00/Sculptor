@@ -32,6 +32,7 @@ public:
 	static std::ofstream OpenOutputStream(const Path& path, EFileOpenFlags openFlags = EFileOpenFlags::None);
 
 	static String ReadDocument(const Path& path, EFileOpenFlags openFlags = EFileOpenFlags::None);
+	static void SaveDocument(const Path& path, const lib::String& data, EFileOpenFlags openFlags = lib::Flags(lib::EFileOpenFlags::ForceCreate, lib::EFileOpenFlags::DiscardContent));
 
 	static Bool Exists(const StringView& path);
 

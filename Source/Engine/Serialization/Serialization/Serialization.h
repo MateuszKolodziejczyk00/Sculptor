@@ -21,6 +21,9 @@ concept CSerializableIntrusive = requires(Serializer& serializer, TType& data)
 	{ data.Serialize(serializer) } -> std::same_as<void>;
 };
 
+template<typename TType>
+concept CSerializableEnum = std::is_enum_v<TType>;
+
 } // detail
 
 
@@ -52,11 +55,14 @@ public:
 	void Serialize(const char* name, Bool& value);
 	void Serialize(const char* name, Int32& value);
 	void Serialize(const char* name, Uint32& value);
+	void Serialize(const char* name, SizeType& value);
 	void Serialize(const char* name, Real32& value);
 
 	void Serialize(const char* name, lib::String& value);
 	void Serialize(const char* name, lib::HashedString& value);
 	void Serialize(const char* name, lib::Path& value);
+
+	void Serialize(const char* name, lib::RuntimeTypeInfo& value);
 
 	template<detail::CSerializableIntrusive TDataType>
 	void Serialize(const char* name, TDataType& value)
@@ -75,6 +81,12 @@ public:
 		}
 	}
 
+	template<detail::CSerializableEnum TDataType>
+	void Serialize(const char* name, TDataType& value)
+	{
+		using UnderlyingType = std::underlying_type_t<TDataType>;
+		Serialize(name, reinterpret_cast<UnderlyingType&>(value));
+	}
 
 	template<typename TType, int Rows, int Cols>
 	void Serialize(const char* name, math::Matrix<TType, Rows, Cols>& data)
@@ -111,11 +123,9 @@ public:
 		{
 			JSON jsonArray = JSON::array();
 
-			for (const TDataType& item : dataArray)
+			for (TDataType& item : dataArray)
 			{
-				Serializer itemSerializer = Serializer::CreateWriter();
-				itemSerializer.Serialize("Elem", const_cast<TDataType&>(item));
-				jsonArray.push_back(itemSerializer.GetJson());
+				jsonArray.push_back(ToJSON(item));
 			}
 
 			m_json[name] = jsonArray;
@@ -128,10 +138,7 @@ public:
 
 			for (const auto& itemJson : jsonArray)
 			{
-				TDataType item;
-				Serializer itemSerializer = Serializer::CreateReader(itemJson);
-				itemSerializer.Serialize("Elem", item);
-				dataArray.emplace_back(std::move(item));
+				dataArray.emplace_back(FromJSON<TDataType>(itemJson));
 			}
 		}
 	}
@@ -156,13 +163,14 @@ public:
 		{
 			JSON jsonArray = JSON::array();
 
-			for (const auto& [key, value] : dataMap)
+			for (auto& [key, value] : dataMap)
 			{
-				Serializer itemSerializer = Serializer::CreateWriter();
-				itemSerializer.Serialize("Key",   const_cast<TKeyType&>(key));
-				itemSerializer.Serialize("Value", const_cast<TDataType&>(value));
+				JSON elem = JSON::array();
 
-				jsonArray.push_back(itemSerializer.GetJson());
+				elem.emplace_back(ToJSON<TKeyType>(const_cast<TKeyType&>(key)));
+				elem.emplace_back(ToJSON<TDataType>(value));
+
+				jsonArray.push_back(elem);
 			}
 
 			m_json[name] = jsonArray;
@@ -176,11 +184,12 @@ public:
 
 			for (const auto& itemJson : jsonArray)
 			{
-				TKeyType key;
-				TDataType value;
-				Serializer itemSerializer = Serializer::CreateReader(itemJson);
-				itemSerializer.Serialize("Key",   key);
-				itemSerializer.Serialize("Value", value);
+				JSON keyJson   = itemJson[0];
+				JSON valueJson = itemJson[1];
+
+				TKeyType key = FromJSON<TKeyType>(keyJson);
+				TDataType value = FromJSON<TDataType>(valueJson);
+
 				dataMap.emplace(std::move(key), std::move(value));
 			}
 		}
@@ -188,7 +197,7 @@ public:
 
 	lib::String ToString() const
 	{
-		return m_json.dump();
+		return m_json.dump(4);
 	}
 
 protected:
@@ -212,6 +221,67 @@ protected:
 	JSON& GetJson()
 	{
 		return m_json;
+	}
+
+	template<typename TDataType>
+	JSON ToJSON(const TDataType& data)
+	{
+		Serializer writer = Serializer::CreateWriter();
+
+		if constexpr (detail::CSerializableIntrusive<TDataType>)
+		{
+			const_cast<TDataType&>(data).Serialize(writer);
+		}
+		else
+		{
+			writer.Serialize(nullptr, const_cast<TDataType&>(data));
+		}
+
+		return writer.GetJson();
+	}
+
+	template<typename TDataType>
+	TDataType FromJSON(const JSON& json)
+	{
+		TDataType data;
+		Serializer reader = Serializer::CreateReader(json);
+
+		if constexpr (detail::CSerializableIntrusive<TDataType>)
+		{
+			data.Serialize(reader);
+		}
+		else
+		{
+			reader.Serialize(nullptr, data);
+		}
+
+		return data;
+	}
+
+	template<typename TData>
+	void SetImpl(const char* name, const TData& data)
+	{
+		if (name)
+		{
+			m_json[name] = data;
+		}
+		else
+		{
+			m_json = data;
+		}
+	}
+
+	template<typename TData>
+	TData GetImpl(const char* name) const
+	{
+		if (name)
+		{
+			return m_json[name].get<TData>();
+		}
+		else
+		{
+			return m_json.get<TData>();
+		}
 	}
 
 	JSON m_json;

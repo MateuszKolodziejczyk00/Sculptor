@@ -266,11 +266,11 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 	ComPtr<IDxcBlob> binaryBlob;
 	compilationResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(binaryBlob.GetAddressOf()), nullptr);
 
-	const Uint32* blobPtr = static_cast<const Uint32*>(binaryBlob->GetBufferPointer());
-	const SizeType blobSize = binaryBlob->GetBufferSize() / sizeof(Uint32);
+	const Byte* blobPtr = static_cast<const Byte*>(binaryBlob->GetBufferPointer());
+	const SizeType blobSize = binaryBlob->GetBufferSize();
 
-	lib::DynamicArray<Uint32> compiledBinary(blobSize);
-	memcpy_s(compiledBinary.data(), compiledBinary.size() * sizeof(Uint32), blobPtr, blobSize * sizeof(Uint32));
+	lib::DynamicArray<Byte> compiledBinary(blobSize);
+	memcpy_s(compiledBinary.data(), compiledBinary.size(), blobPtr, blobSize);
 
 	result.binary		= std::move(compiledBinary);
 	result.stage		= stageCompilationDef.stage;

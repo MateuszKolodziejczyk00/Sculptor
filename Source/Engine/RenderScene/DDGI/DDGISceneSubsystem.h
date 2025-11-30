@@ -33,6 +33,15 @@ struct DDGILODConfig
 	Real32 forwardAlignment = 0.5f;
 	Real32 heightAlignment  = 0.2f;
 
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("VolumeResolution", volumeResolution);
+		serializer.Serialize("RelitZoneResolution", relitZoneResolution);
+		serializer.Serialize("ProbesSpacing", probesSpacing);
+		serializer.Serialize("RelitPriority", relitPriority);
+		serializer.Serialize("ForwardAlignment", forwardAlignment);
+		serializer.Serialize("HeightAlignment", heightAlignment);
+	}
 };
 
 
@@ -51,6 +60,18 @@ struct DDGIConfig
 	math::Vector2u probeHitDistanceDataRes = math::Vector2u::Constant(16u);
 
 	lib::DynamicArray<DDGILODConfig> lodsConfigs = { DDGILODConfig{} };
+
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("RelitRaysPerProbe", relitRaysPerProbe);
+		serializer.Serialize("DefaultRelitHysteresis", defaultRelitHysteresis);
+		serializer.Serialize("MinHysteresis", minHysteresis);
+		serializer.Serialize("MaxHysteresis", maxHysteresis);
+		serializer.Serialize("RelitVolumesBudget", relitVolumesBudget);
+		serializer.Serialize("ProbeIlluminanceDataRes", probeIlluminanceDataRes);
+		serializer.Serialize("ProbeHitDistanceDataRes", probeHitDistanceDataRes);
+		serializer.Serialize("LODsConfigs", lodsConfigs);
+	}
 };
 
 

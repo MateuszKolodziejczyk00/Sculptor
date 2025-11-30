@@ -21,6 +21,12 @@ struct CompiledTextureData
 	CompiledTexture texture;
 
 	DerivedDataKey derivedDataKey;
+
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("Texture",        texture);
+		serializer.Serialize("DerivedDataKey", derivedDataKey);
+	}
 };
 SPT_REGISTER_ASSET_DATA_TYPE(CompiledTextureData);
 
@@ -82,23 +88,3 @@ private:
 SPT_REGISTER_ASSET_TYPE(TextureAsset);
 
 } // spt::as
-
-
-namespace spt::srl
-{
-
-template<>
-struct TypeSerializer<as::CompiledTextureData>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		serializer.Serialize("Texture",        data.texture);
-
-		serializer.Serialize("DerivedDataKey", data.derivedDataKey);
-	}
-};
-
-} // spt::srl
-
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::CompiledTextureData);

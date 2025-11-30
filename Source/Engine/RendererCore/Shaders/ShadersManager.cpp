@@ -7,34 +7,7 @@
 #include "JobSystem/JobSystem.h"
 #include "Common/ShaderCompilationEnvironment.h"
 #include "Pipelines/PipelinesCache.h"
-#include "YAMLSerializerHelper.h"
 #include "Renderer.h"
-
-namespace spt::srl
-{
-
-// spt::sc::CompilationEnvironmentDef ===================================================
-
-template<>
-struct TypeSerializer<sc::CompilationEnvironmentDef>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		serializer.SerializeEnum("Environment", data.targetEnvironment);
-		serializer.Serialize("GenerateDebugInfo", data.generateDebugInfo);
-		serializer.Serialize("CompileWithDebugs", data.compileWithDebugs);
-		serializer.Serialize("UseCompiledShadersCache", data.useCompiledShadersCache);
-		serializer.Serialize("CacheSeparateSpvFile", data.cacheSeparateSpvFile);
-		serializer.Serialize("ShadersPath", data.shadersPath);
-		serializer.Serialize("ShadersCachePath", data.shadersCachePath);
-		serializer.Serialize("ErrorLogsPath", data.errorLogsPath);
-	}
-};
-
-} // spt::srl
-
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::sc::CompilationEnvironmentDef)
 
 
 namespace spt::rdr
@@ -67,7 +40,7 @@ void ShadersManager::Initialize()
 	SPT_PROFILER_FUNCTION();
 	
 	sc::CompilationEnvironmentDef compilationEnvironmentDef;
-	const Bool loaded = engn::ConfigUtils::LoadConfigData(compilationEnvironmentDef, "ShadersCompilationEnvironment.yaml");
+	const Bool loaded = engn::ConfigUtils::LoadConfigData(compilationEnvironmentDef, "ShadersCompilationEnvironment.json");
 	SPT_CHECK(loaded);
 	compilationEnvironmentDef.targetEnvironment = priv::SelectCompilationTargetEnvironment(); // always override loaded target environment basing on current RHI
 

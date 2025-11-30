@@ -2,6 +2,7 @@
 
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
+#include "Serialization.h"
 
 namespace spt::rdr
 {
@@ -15,6 +16,11 @@ public:
 	static const RendererSettings& Get();
 
 	Uint32 framesInFlight;
+
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("FramesInFlightNum", framesInFlight);
+	}
 };
 
 } // spt::rdr

@@ -9,50 +9,6 @@
 #include "ConfigUtils.h"
 #include "DDGIVolume.h"
 
-namespace spt::srl
-{
-
-template<>
-struct TypeSerializer<rsc::ddgi::DDGILODConfig>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		serializer.Serialize("VolumeResolution",    data.volumeResolution);
-		serializer.Serialize("RelitZoneResolution", data.relitZoneResolution);
-		serializer.Serialize("ProbesSpacing",       data.probesSpacing);
-		serializer.Serialize("RelitPriority",       data.relitPriority);
-		serializer.Serialize("ForwardAlignment",    data.forwardAlignment);
-		serializer.Serialize("HeightAlignment",     data.heightAlignment);
-	}
-};
-
-template<>
-struct TypeSerializer<rsc::ddgi::DDGIConfig>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		serializer.Serialize("RelitRaysPerProbe", data.relitRaysPerProbe);
-
-		serializer.Serialize("DefaultRelitHysteresis", data.defaultRelitHysteresis);
-
-		serializer.Serialize("MinHysteresis", data.minHysteresis);
-		serializer.Serialize("MaxHysteresis", data.maxHysteresis);
-
-		serializer.Serialize("RelitVolumesBudget", data.relitVolumesBudget);
-		serializer.Serialize("ProbeIlluminanceDataRes", data.probeIlluminanceDataRes);
-		serializer.Serialize("ProbeHitDistanceDataRes", data.probeHitDistanceDataRes);
-
-		serializer.Serialize("LodsConfigs", data.lodsConfigs);
-	}
-};
-
-} // spt::srl
-
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::rsc::ddgi::DDGILODConfig)
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::rsc::ddgi::DDGIConfig)
-
 namespace spt::rsc::ddgi
 {
 
@@ -68,7 +24,7 @@ DDGISceneSubsystem::DDGISceneSubsystem(RenderScene& owningScene)
 	, m_debugMode(EDDGIDebugMode::None)
 	, m_ddgiScene(owningScene)
 {
-	engn::ConfigUtils::LoadConfigData(m_config, "DDGIConfig.yaml");
+	engn::ConfigUtils::LoadConfigData(m_config, "DDGIConfig.json");
 
 	m_ddgiScene.Initialize(m_config);
 }

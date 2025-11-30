@@ -8,13 +8,27 @@ namespace spt::as::tests
 struct AssetData1
 {
 	Uint32 value = 0u;
+
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("Value", value);
+	}
 };
+SPT_REGISTER_ASSET_DATA_TYPE(spt::as::tests::AssetData1);
+
 
 struct AssetData2
 {
 	Uint32 value1 = 0u;
 	Uint32 value2 = 0u;
+
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("Value1", value1);
+		serializer.Serialize("Value2", value2);
+	}
 };
+SPT_REGISTER_ASSET_DATA_TYPE(spt::as::tests::AssetData2);
 
 
 class TestAssetType : public AssetInstance
@@ -25,42 +39,6 @@ public:
 };
 SPT_REGISTER_ASSET_TYPE(TestAssetType);
 
-} // spt::as::tests
-
-SPT_REGISTER_ASSET_DATA_TYPE(spt::as::tests::AssetData1);
-SPT_REGISTER_ASSET_DATA_TYPE(spt::as::tests::AssetData2);
-
-namespace spt::srl
-{
-
-template<>
-struct TypeSerializer<as::tests::AssetData1>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		serializer.Serialize("Value", data.value);
-	}
-};
-
-template<>
-struct TypeSerializer<as::tests::AssetData2>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		serializer.Serialize("Value1", data.value1);
-		serializer.Serialize("Value2", data.value2);
-	}
-};
-
-} // spt::srl
-
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::tests::AssetData1);
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::tests::AssetData2);
-
-namespace spt::as::tests
-{
 
 class AssetsSystemTests : public testing::Test
 {

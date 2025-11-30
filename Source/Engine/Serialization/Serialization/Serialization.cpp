@@ -1,5 +1,6 @@
 #include "Serialization.h"
 
+
 namespace spt::srl
 {
 
@@ -7,11 +8,11 @@ void Serializer::Serialize(const char* name, Bool& value)
 {
 	if (IsSaving())
 	{
-		m_json[name] = value;
+		SetImpl(name, value);
 	}
 	else
 	{
-		value = m_json[name].get<Bool>();
+		value = GetImpl<Bool>(name);
 	}
 }
 
@@ -19,11 +20,11 @@ void Serializer::Serialize(const char* name, Int32& value)
 {
 	if (IsSaving())
 	{
-		m_json[name] = value;
+		SetImpl(name, value);
 	}
 	else
 	{
-		value = m_json[name].get<Int32>();
+		value = GetImpl<Int32>(name);
 	}
 }
 
@@ -31,11 +32,23 @@ void Serializer::Serialize(const char* name, Uint32& value)
 {
 	if (IsSaving())
 	{
-		m_json[name] = value;
+		SetImpl(name, value);
 	}
 	else
 	{
-		value = m_json[name].get<Uint32>();
+		value = GetImpl<Uint32>(name);
+	}
+}
+
+void Serializer::Serialize(const char* name, SizeType& value)
+{
+	if (IsSaving())
+	{
+		SetImpl(name, value);
+	}
+	else
+	{
+		value = GetImpl<SizeType>(name);
 	}
 }
 
@@ -43,11 +56,11 @@ void Serializer::Serialize(const char* name, Real32& value)
 {
 	if (IsSaving())
 	{
-		m_json[name] = value;
+		SetImpl(name, value);
 	}
 	else
 	{
-		value = m_json[name].get<Real32>();
+		value = GetImpl<Real32>(name);
 	}
 }
 
@@ -55,11 +68,11 @@ void Serializer::Serialize(const char* name, lib::String& value)
 {
 	if (IsSaving())
 	{
-		m_json[name] = value;
+		SetImpl(name, value);
 	}
 	else
 	{
-		value = m_json[name].get<lib::String>();
+		value = GetImpl<lib::String>(name);
 	}
 }
 
@@ -67,11 +80,11 @@ void Serializer::Serialize(const char* name, lib::HashedString& value)
 {
 	if (IsSaving())
 	{
-		m_json[name] = value.ToString();
+		SetImpl(name, value.ToString());
 	}
 	else
 	{
-		value = lib::HashedString(m_json[name].get<lib::String>());
+		value = lib::HashedString(GetImpl<lib::String>(name));
 	}
 }
 
@@ -79,11 +92,24 @@ void Serializer::Serialize(const char* name, lib::Path& value)
 {
 	if (IsSaving())
 	{
-		m_json[name] = value.generic_string();
+		SetImpl(name, value.generic_string());
 	}
 	else
 	{
-		value = lib::Path(m_json[name].get<lib::String>());
+		value = lib::Path(GetImpl<lib::String>(name));
+	}
+}
+
+void Serializer::Serialize(const char* name, lib::RuntimeTypeInfo& value)
+{
+	if (IsSaving())
+	{
+		SetImpl(name, value.name);
+	}
+	else
+	{
+		lib::String typeName = GetImpl<lib::String>(name);
+		value = lib::RuntimeTypeInfo::CreateFromName(typeName);
 	}
 }
 

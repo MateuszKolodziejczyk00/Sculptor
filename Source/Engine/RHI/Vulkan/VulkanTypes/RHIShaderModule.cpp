@@ -29,8 +29,8 @@ void RHIShaderModule::InitializeRHI(const rhi::ShaderModuleDefinition& definitio
 	SPT_PROFILER_FUNCTION();
 
 	VkShaderModuleCreateInfo moduleInfo{ VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-    moduleInfo.codeSize	= static_cast<Uint32>(definition.binary.size() * sizeof(Uint32));
-    moduleInfo.pCode	= definition.binary.data();
+    moduleInfo.codeSize	= definition.binary.size();
+    moduleInfo.pCode	= reinterpret_cast<const Uint32*>(definition.binary.data());
 	m_stage				= definition.stage;
 	m_entryPoint		= definition.entryPoint;
 

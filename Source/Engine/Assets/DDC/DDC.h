@@ -5,7 +5,7 @@
 #include "FileSystem/File.h"
 #include "Utility/String/StringUtils.h"
 #include "Backends/DDCBackend.h"
-#include "YAMLSerializerHelper.h"
+#include "Serialization.h"
 
 
 namespace spt::as
@@ -70,6 +70,11 @@ public:
 		return name;
 	}
 
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("Key0", m_key[0]);
+		serializer.Serialize("Key1", m_key[1]);
+	}
 
 private:
 
@@ -171,37 +176,3 @@ private:
 };
 
 } // spt::as
-
-
-namespace spt::srl
-{
-
-template<>
-struct TypeSerializer<as::DerivedDataKey>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		if constexpr (Serializer::IsLoading())
-		{
-			lib::String name;
-			serializer.Serialize("Name", name);
-			SPT_CHECK(name.size() == sizeof(as::DerivedDataName) - 1u);
-
-			as::DerivedDataName derivedDataName;
-			std::memcpy(derivedDataName.data(), name.data(), std::min<SizeType>(name.size(), derivedDataName.size()));
-			derivedDataName[name.size()] = '\0';
-
-			data = derivedDataName;
-		}
-		else
-		{
-			const as::DerivedDataName name = data.GetName();
-			serializer.Serialize("Name", name.data());
-		}
-	}
-};
-
-} // spt::srl
-
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::DerivedDataKey);

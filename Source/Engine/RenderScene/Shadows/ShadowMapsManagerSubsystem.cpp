@@ -29,32 +29,14 @@ struct ShadowMapsSettings
 	Uint32 highQualityShadowMaps;
 	Uint32 mediumQualityShadowMaps;
 	Uint32 lowQualityShadowMaps;
-};
 
-} // spt::rsc
-
-namespace spt::srl
-{
-
-template<>
-struct TypeSerializer<rsc::ShadowMapsSettings>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	void Serialize(srl::Serializer& serializer)
 	{
-		serializer.Serialize("HighQualityShadowMaps", data.highQualityShadowMaps);
-		serializer.Serialize("MediumQualityShadowMaps", data.mediumQualityShadowMaps);
-		serializer.Serialize("LowQualityShadowMaps", data.lowQualityShadowMaps);
+		serializer.Serialize("HighQualityShadowMaps", highQualityShadowMaps);
+		serializer.Serialize("MediumQualityShadowMaps", mediumQualityShadowMaps);
+		serializer.Serialize("LowQualityShadowMaps", lowQualityShadowMaps);
 	}
 };
-
-} // spt::srl
-
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::rsc::ShadowMapsSettings)
-
-
-namespace spt::rsc
-{
 
 namespace params
 {
@@ -292,7 +274,7 @@ void ShadowMapsManagerSubsystem::CreateShadowMaps()
 	};
 
 	ShadowMapsSettings shadowMapsSettings;
-	const Bool loaded = engn::ConfigUtils::LoadConfigData(shadowMapsSettings, "ShadowMapsSettings.yaml");
+	const Bool loaded = engn::ConfigUtils::LoadConfigData(shadowMapsSettings, "ShadowMapsSettings.json");
 	SPT_CHECK(loaded);
 
 	CreateShadowMapsHelper(constants::highQualitySMResolution,		shadowMapsSettings.highQualityShadowMaps,	EShadowMapQuality::High);

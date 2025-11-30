@@ -2,38 +2,7 @@
 #include "MaterialsUnifiedData.h"
 #include "Common/ShaderCompilationInput.h"
 #include "ResourcesManager.h"
-#include "SculptorYAML.h"
 #include "ConfigUtils.h"
-
-namespace spt::srl
-{
-
-template<>
-struct TypeSerializer<mat::MaterialDefaultShader>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		serializer.Serialize("MaterialShaderPath", data.materialShaderPath);
-	}
-};
-
-
-template<>
-struct TypeSerializer<mat::MaterialDefaultShadersConfig>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		serializer.Serialize("MaterialDefaultShaders", data.materialDefaultShaders);
-	}
-};
-
-} // spt::srl
-
-
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::mat::MaterialDefaultShader);
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::mat::MaterialDefaultShadersConfig);
 
 
 namespace spt::mat
@@ -67,7 +36,7 @@ MaterialsSubsystem::MaterialsSubsystem()
 {
 	m_materialFactory = std::make_unique<MaterialFactory>();
 
-	engn::ConfigUtils::LoadConfigData(OUT m_defaultShadersConfig, "MaterialDefaultShaders.yaml");
+	engn::ConfigUtils::LoadConfigData(OUT m_defaultShadersConfig, "MaterialDefaultShaders.json");
 
 	for (const auto& [dataStruct, defaultShader] : m_defaultShadersConfig.materialDefaultShaders)
 	{

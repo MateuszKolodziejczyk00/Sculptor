@@ -4,7 +4,6 @@
 #include "SculptorCoreTypes.h"
 #include "AssetTypes.h"
 #include "DDC.h"
-#include "YAMLSerializerHelper.h"
 
 
 namespace spt::rdr
@@ -19,6 +18,11 @@ namespace spt::as
 struct IESProfileSourceDefinition
 {
 	lib::Path path;
+
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("Path", path);
+	}
 };
 SPT_REGISTER_ASSET_DATA_TYPE(IESProfileSourceDefinition);
 
@@ -27,6 +31,13 @@ struct CompiledIESProfile
 	math::Vector2u resolution = math::Vector2u(0u, 0u);
 	Real32         lightSourceCandela = 1.f;
 	DerivedDataKey derivedDataKey;
+
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("Resolution", resolution);
+		serializer.Serialize("LightSourceCandela", lightSourceCandela);
+		serializer.Serialize("DerivedDataKey", derivedDataKey);
+	}
 };
 SPT_REGISTER_ASSET_DATA_TYPE(CompiledIESProfile);
 
@@ -73,34 +84,3 @@ private:
 SPT_REGISTER_ASSET_TYPE(IESProfileAsset);
 
 } // spt::as
-
-
-namespace spt::srl
-{
-
-template<>
-struct TypeSerializer<as::IESProfileSourceDefinition>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		serializer.Serialize("Path", data.path);
-	}
-};
-
-template<>
-struct TypeSerializer<as::CompiledIESProfile>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		serializer.Serialize("Resolution", data.resolution);
-		serializer.Serialize("LightSourceCandela", data.lightSourceCandela);
-		serializer.Serialize("DerivedDataKey", data.derivedDataKey);
-	}
-};
-
-} // spt::srl
-
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::IESProfileSourceDefinition);
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::CompiledIESProfile);

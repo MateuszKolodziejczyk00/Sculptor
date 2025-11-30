@@ -80,7 +80,7 @@ void GPUDeferredUploadsQueue::ExecuteUploads()
 		m_requests.clear();
 	}
 
-	m_postDeferredUploadsDelegate.Broadcast();
+	m_postDeferredUploadsDelegate.ResetAndBroadcast();
 }
 
 void GPUDeferredUploadsQueue::ExecutePreUploadBarriers(const lib::SharedPtr<rdr::RenderContext>& renderContext)

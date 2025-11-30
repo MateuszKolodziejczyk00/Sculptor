@@ -3,6 +3,7 @@
 #include "ShaderCompilerMacros.h"
 #include "SculptorCoreTypes.h"
 #include "ShaderCompilerTypes.h"
+#include "Serialization.h"
 
 
 namespace spt::sc
@@ -35,6 +36,18 @@ struct CompilationEnvironmentDef
 	lib::String				shadersCachePath;
 
 	lib::String				errorLogsPath;
+
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("TargetEnvironment", targetEnvironment);
+		serializer.Serialize("GenerateDebugInfo", generateDebugInfo);
+		serializer.Serialize("CompileWithDebugs", compileWithDebugs);
+		serializer.Serialize("UseCompiledShadersCache", useCompiledShadersCache);
+		serializer.Serialize("CacheSeparateSpvFile", cacheSeparateSpvFile);
+		serializer.Serialize("ShadersPath", shadersPath);
+		serializer.Serialize("ShadersCachePath", shadersCachePath);
+		serializer.Serialize("ErrorLogsPath", errorLogsPath);
+	}
 };
 
 

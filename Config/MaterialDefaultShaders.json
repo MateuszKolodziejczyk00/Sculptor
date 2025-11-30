@@ -1,0 +1,11 @@
+{
+    "MaterialDefaultShaders": [
+        [
+            "MaterialPBRData",
+            {
+                "MacroDefinitions": [],
+                "MaterialShaderPath": "Sculptor/Materials/DefaultPBR.hlsli"
+            }
+        ]
+    ]
+}

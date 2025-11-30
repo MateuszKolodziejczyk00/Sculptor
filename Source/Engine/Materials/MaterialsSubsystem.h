@@ -8,6 +8,7 @@
 #include "Shaders/ShaderTypes.h"
 #include "Common/ShaderCompilerTypes.h"
 #include "ShaderStructs/ShaderStructs.h"
+#include "Serialization.h"
 
 #include <variant>
 
@@ -19,12 +20,23 @@ struct MaterialDefaultShader
 {
 	lib::HashedString materialShaderPath;
 	lib::DynamicArray<lib::HashedString> macroDefinitions;
+
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("MaterialShaderPath", materialShaderPath);
+		serializer.Serialize("MacroDefinitions", macroDefinitions);
+	}
 };
 
 
 struct MaterialDefaultShadersConfig
 {
 	lib::HashMap<lib::HashedString, MaterialDefaultShader> materialDefaultShaders;
+
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("MaterialDefaultShaders", materialDefaultShaders);
+	}
 };
 
 

@@ -95,7 +95,7 @@ struct ShaderModuleDefinition
 		: stage(EShaderStage::Vertex)
 	{ }
 
-	ShaderModuleDefinition(lib::DynamicArray<Uint32> inBinary, EShaderStage inStage, const lib::HashedString& inEntryPoint)
+	ShaderModuleDefinition(lib::DynamicArray<Byte> inBinary, EShaderStage inStage, const lib::HashedString& inEntryPoint)
 		: binary(std::move(inBinary))
 		, stage(inStage)
 		, entryPoint(inEntryPoint)
@@ -103,9 +103,9 @@ struct ShaderModuleDefinition
 		SPT_CHECK(!binary.empty());
 	}
 
-	lib::DynamicArray<Uint32>	binary;
-	EShaderStage				stage;
-	lib::HashedString			entryPoint;
+	lib::DynamicArray<Byte> binary;
+	EShaderStage            stage;
+	lib::HashedString       entryPoint;
 };
 
 } // spt::rhi

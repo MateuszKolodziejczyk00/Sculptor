@@ -5,6 +5,7 @@
 #include "Containers/HashMap.h"
 #include "Assertions/Assertions.h"
 #include "Utility/Memory.h"
+#include "Serialization.h"
 
 
 namespace spt::lib
@@ -150,6 +151,8 @@ public:
 			callable(type);
 		}
 	}
+
+	void Serialize(srl::Serializer& serializer);
 
 private:
 

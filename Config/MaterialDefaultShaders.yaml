@@ -1,4 +1,0 @@
-MaterialDefaultShaders:
-  ? Name: MaterialPBRData
-  : MaterialShaderPath:
-      Name: Sculptor/Materials/DefaultPBR.hlsli
