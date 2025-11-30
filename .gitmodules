@@ -21,9 +21,6 @@
 	path = Source/ThirdParty/ImGui/ImGui
 	url = https://github.com/MateuszKolodziejczyk00/imgui
 	branch = docking_Vulkan1.3
-[submodule "Source/ThirdParty/YAML/YAML"]
-	path = Source/ThirdParty/YAML/YAML
-	url = https://github.com/jbeder/yaml-cpp
 [submodule "Source/ThirdParty/Entt/Entt"]
 	path = Source/ThirdParty/Entt/Entt
 	url = https://github.com/skypjack/entt
@@ -48,3 +45,6 @@
 [submodule "Source/ThirdParty/TileableVolumeNoise/TileableVolumeNoise"]
 	path = Source/ThirdParty/TileableVolumeNoise/TileableVolumeNoise
 	url = https://github.com/MateuszKolodziejczyk00/TileableVolumeNoiseLib
+[submodule "Source/ThirdParty/JSON/JSON"]
+	path = Source/ThirdParty/JSON/JSON
+	url = https://github.com/nlohmann/json
