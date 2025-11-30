@@ -9,7 +9,6 @@
 #include "ShadowsRenderingTypes.h"
 #include "EngineTimer.h"
 #include "Engine.h"
-#include "YAMLSerializerHelper.h"
 #include "ConfigUtils.h"
 #include "RendererSettings.h"
 #include "Transfers/UploadUtils.h"

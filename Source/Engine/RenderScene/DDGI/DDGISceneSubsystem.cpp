@@ -5,7 +5,6 @@
 #include "EngineFrame.h"
 #include "RenderScene.h"
 #include "Lights/LightTypes.h"
-#include "YAMLSerializerHelper.h"
 #include "ConfigUtils.h"
 #include "DDGIVolume.h"
 
