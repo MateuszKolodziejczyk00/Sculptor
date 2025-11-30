@@ -7,7 +7,10 @@ IncludeProject("ProfilerCore")
 IncludeProject("Platform")
 IncludeProject("SculptorLib")
 IncludeProject("Tokenizer")
-IncludeProject("Serialization")
+
+SetProjectsSubgroupName("Serialization")
+IncludeProjectFromDirectory("Serialization/Serialization", "Serialization")
+IncludeProjectFromDirectory("Serialization/SerializationTests", "SerializationTests")
 
 SetProjectsSubgroupName("Core/Utils/Blackboard")
 IncludeProject("Blackboard")
