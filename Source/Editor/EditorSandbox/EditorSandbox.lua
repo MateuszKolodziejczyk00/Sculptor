@@ -11,6 +11,9 @@ function EditorSandbox:SetupConfiguration(configuration, platform)
 	
 	self:AddPublicDependency("RenderScene")
 	self:AddPublicDependency("RenderSceneTools")
+
+	self:AddPublicDependency("IESProfileAsset")
+	self:AddPublicDependency("TextureAsset")
 end
 
 EditorSandbox:SetupProject()
