@@ -9,6 +9,7 @@
 #include "Utility/Templates/Overload.h"
 #include "JobSystem.h"
 
+#pragma optimize("", off)
 namespace spt::rg::capture
 {
 
@@ -219,6 +220,64 @@ void RGNodeCaptureViewer::DrawNodeComputeProperties(const RGCapturedComputePrope
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RenderGraphCaptureViewer ======================================================================
 
+static void DownloadBufferVersion(lib::SharedRef<RGCapture> capture, CapturedBuffer& buffer, CapturedBuffer::Version& version)
+{
+	const SizeType bufferSize = version.downloadedBuffer->GetSize();
+	const SizeType copySizePerJob = 16u * 1024u * 1024u;
+
+	const SizeType jobsNum = (bufferSize + copySizePerJob - 1u) / copySizePerJob;
+
+	version.pendingDownloadsNum = static_cast<Uint32>(jobsNum);
+	version.bufferData.resize(bufferSize);
+
+	for (Uint32 jobIdx = 0u; jobIdx < jobsNum; ++jobIdx)
+	{
+		const SizeType offset = jobIdx * copySizePerJob;
+		const SizeType size = std::min(copySizePerJob, bufferSize - offset);
+		js::Launch(SPT_GENERIC_JOB_NAME, [capture, &version, offset, size]()
+				   {
+					   SPT_PROFILER_SCOPE("Download Captured Buffer");
+					   if (version.downloadedBuffer)
+					   {
+						   if (capture->wantsClose) // early out to free capture memory ASAP
+						   {
+							   return;
+						   }
+
+						   {
+							   const rhi::RHIMappedByteBuffer mappedData(version.downloadedBuffer->GetRHI());
+							   std::memcpy(version.bufferData.data() + offset, static_cast<Byte*>(mappedData.GetPtr()) + offset, size);
+						   }
+
+						   const Uint32 pendingDownloads = --version.pendingDownloadsNum;
+						   if (pendingDownloads == 0u)
+						   {
+							   version.downloadedBuffer.reset();
+						   }
+					   }
+				   },
+				   js::JobDef().SetPriority(js::EJobPriority::Low));
+	}
+}
+
+static void DownloadBufferVersions(lib::SharedRef<RGCapture> capture, CapturedBuffer& buffer)
+{
+	for (const lib::UniquePtr<CapturedBuffer::Version>& version : buffer.versions)
+	{
+		js::Launch(SPT_GENERIC_JOB_NAME, [capture, &buffer, version = version.get()]()
+				   {
+					   if (version->downloadedBuffer)
+					   {
+						   DownloadBufferVersion(capture, buffer, *version);
+					   }
+				   },
+				   js::JobDef().SetPriority(js::EJobPriority::Low));
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RenderGraphCaptureViewer ======================================================================
+
 RenderGraphCaptureViewer::RenderGraphCaptureViewer(const scui::ViewDefinition& definition, lib::SharedRef<RGCapture> capture)
 	: Super(definition)
 	, m_nodesListPanelName(CreateUniqueName("Nodes List"))
@@ -229,26 +288,14 @@ RenderGraphCaptureViewer::RenderGraphCaptureViewer(const scui::ViewDefinition& d
 			   {
 				   for (const lib::UniquePtr<CapturedBuffer>& buffer : capture->buffers)
 				   {
-					   for (const lib::UniquePtr<CapturedBuffer::Version>& version : buffer->versions)
-					   {
-						   js::Launch(SPT_GENERIC_JOB_NAME, [capture, version = version.get()]()
-									  {
-										  SPT_PROFILER_SCOPE("Download Captured Buffer");
-
-										  if (version->downloadedBuffer)
-										  {
-											  {
-												  const rhi::RHIMappedByteBuffer mappedData(version->downloadedBuffer->GetRHI());
-												  version->bufferData.resize(mappedData.GetSize());
-												  std::memcpy(version->bufferData.data(), mappedData.GetPtr(), mappedData.GetSize());
-											  }
-											  version->downloadedBuffer.reset();
-										  }
-									  },
-									  js::JobDef().SetPriority(js::EJobPriority::Low));
-					   }
+					   DownloadBufferVersions(capture, *buffer);
 				   }
 			   });
+}
+
+RenderGraphCaptureViewer::~RenderGraphCaptureViewer()
+{
+	m_capture->wantsClose = true;
 }
 
 void RenderGraphCaptureViewer::BuildDefaultLayout(ImGuiID dockspaceID)

@@ -5,6 +5,7 @@
 #include "Utils/CommandLineArguments.h"
 #include "Delegates/MulticastDelegate.h"
 #include "EngineTimer.h"
+#include "AssetsSystem.h"
 
 
 namespace spt::engn
@@ -37,6 +38,8 @@ public:
 	const EngineTimer& GetEngineTimer() const;
 	Real32 GetTime() const;
 
+	as::AssetsSystem& GetAssetsSystem() { return m_assetsSystem; }
+
 private:
 
 	Engine() = default;
@@ -47,6 +50,8 @@ private:
 
 	EngineTimer m_timer;
 	OnBeginFrameDelegate m_onBeginFrameDelegate;
+
+	as::AssetsSystem m_assetsSystem;
 };
 
 

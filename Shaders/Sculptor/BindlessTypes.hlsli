@@ -68,7 +68,7 @@ struct SRVTexture2D
 	T SampleLevel(in SamplerState s, in float2 uv, in float level = 0.f)
 	{
 		const Texture2D<T> texture = GetResource();
-		return texture.Sample(s, uv, level);
+		return texture.SampleLevel(s, uv, level);
 	}
 
 	bool IsValid()

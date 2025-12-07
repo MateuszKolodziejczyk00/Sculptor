@@ -45,14 +45,22 @@ void GaussianBlurCS(CS_INPUT input)
 	{
 		const int3 samplePixel = clamp(groupBeginPixel + (i - kernelSize) * offset, 0, maxPixel);
 
+		float4 sampleValue = 0.f;
 		if(u_constants.is3DTexture)
 		{
-			sharedData[i] = u_input3D.Load(int4(samplePixel, 0));
+			sampleValue = u_input3D.Load(int4(samplePixel, 0));
 		}
 		else
 		{
-			sharedData[i] = u_input2D.Load(int3(samplePixel.xy, 0));
+			sampleValue = u_input2D.Load(int3(samplePixel.xy, 0));
 		}
+
+		if (u_constants.useTonemappedValues)
+		{
+			sampleValue = (sampleValue / (sampleValue + 1.0f));
+		}
+
+		sharedData[i] = sampleValue;
 	}
 
 	GroupMemoryBarrierWithGroupSync();
@@ -70,7 +78,12 @@ void GaussianBlurCS(CS_INPUT input)
 			blurWeightSum += gaussianWeight;
 		}
 
-		const float4 newValue = inputSum / (blurWeightSum + 0.0001f);
+		float4 newValue = inputSum / (blurWeightSum + 0.0001f);
+
+		if (u_constants.useTonemappedValues)
+		{
+			newValue = newValue / (1.0f - newValue + 0.0001f);
+		}
 
 		if(u_constants.is3DTexture)
 		{

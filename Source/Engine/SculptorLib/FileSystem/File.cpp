@@ -65,13 +65,20 @@ std::ofstream File::OpenOutputStream(const Path& path, EFileOpenFlags openFlags 
 
 String File::ReadDocument(const Path& path, EFileOpenFlags openFlags /*= EFileOpenFlags::None*/)
 {
+	SPT_PROFILER_FUNCTION();
+
 	std::ifstream stream = lib::File::OpenInputStream(path);
 
 	lib::String content;
 
 	if (stream.is_open())
 	{
-		content.assign((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
+		stream.seekg(0, std::ios::end);
+		content.resize(stream.tellg());
+
+		stream.seekg(0, std::ios::beg);
+
+		stream.read(&content[0], content.size());
 		stream.close();
 	}
 
@@ -80,6 +87,8 @@ String File::ReadDocument(const Path& path, EFileOpenFlags openFlags /*= EFileOp
 
 void File::SaveDocument(const Path& path, const lib::String& data, EFileOpenFlags openFlags /*= lib::Flags(lib::EFileOpenFlags::ForceCreate, lib::EFileOpenFlags::DiscardContent)*/)
 {
+	SPT_PROFILER_FUNCTION();
+
 	std::ofstream stream = lib::File::OpenOutputStream(path, openFlags);
 	SPT_CHECK(stream.is_open());
 

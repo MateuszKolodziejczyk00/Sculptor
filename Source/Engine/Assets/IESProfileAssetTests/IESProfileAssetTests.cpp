@@ -3,6 +3,7 @@
 #include "IESProfileAsset.h"
 #include "Engine.h"
 #include "Renderer.h"
+#include "Graphics/Transfers/GPUDeferredUploadsQueue.h"
 
 
 namespace spt::as::tests
@@ -40,10 +41,11 @@ void IESProfileAssetsSystemTests::TearDown()
 TEST_F(IESProfileAssetsSystemTests, CreateIESProfile)
 {
 	const lib::Path assetPath = "IESProfile/CreateIESProfile/IESProfile.sptasset";
+	m_assetsSystem.DeleteAsset(assetPath); // Delete leftover asset if exists
 
 	IESProfileDataInitializer textureInitializer
 	{
-		IESProfileSourceDefinition{ .path = "IESProfile/CreateIESProfile/Source/sample0.ies" }
+		IESProfileSourceDefinition{ .path = "Source/sample0.ies" }
 	};
 
 	CreateResult result = m_assetsSystem.CreateAsset(AssetInitializer
@@ -55,6 +57,8 @@ TEST_F(IESProfileAssetsSystemTests, CreateIESProfile)
 
 	EXPECT_TRUE(result);
 
+	gfx::GPUDeferredUploadsQueue::Get().ForceFlushUploads();
+
 	result.GetValue().Reset();
 
 	EXPECT_TRUE(m_assetsSystem.GetLoadedAssetsList().size() == 0u);
@@ -63,6 +67,8 @@ TEST_F(IESProfileAssetsSystemTests, CreateIESProfile)
 
 	EXPECT_TRUE(loadResult);
 	loadResult.GetValue().Reset();
+
+	gfx::GPUDeferredUploadsQueue::Get().ForceFlushUploads();
 
 	const EDeleteResult deleteResult = m_assetsSystem.DeleteAsset(assetPath);
 

@@ -44,6 +44,11 @@ public:
 		return Serializer(data);
 	}
 
+	static Serializer CreateReader(lib::StringView data)
+	{
+		return Serializer(data);
+	}
+
 	static Serializer CreateReader(JSON j)
 	{
 		return Serializer(j);
@@ -195,6 +200,11 @@ public:
 		}
 	}
 
+	lib::String ToCompactString() const
+	{
+		return m_json.dump();
+	}
+
 	lib::String ToString() const
 	{
 		return m_json.dump(4);
@@ -208,6 +218,12 @@ protected:
 
 	explicit Serializer(const lib::String& data)
 		: m_json(JSON::parse(data))
+		, m_isSaving(false)
+	{
+	}
+
+	explicit Serializer(lib::StringView data)
+		: m_json(JSON::parse(data.cbegin(), data.cend()))
 		, m_isSaving(false)
 	{
 	}

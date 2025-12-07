@@ -6,7 +6,7 @@ namespace spt::as
 {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// DDCResourceHandle ===========================================================================================
+// DDCResourceHandle =============================================================================
 
 DDCResourceHandle::DDCResourceHandle(DDCResourceHandle&& rhs)
 {
@@ -89,19 +89,16 @@ void DDC::Initialize(const DDCParams& params)
 	}
 }
 
-DerivedDataKey DDC::CreateDerivedData(lib::Span<const Byte> data) const
+DerivedDataKey DDC::CreateDerivedData(const DerivedDataKey& key, lib::Span<const Byte> data) const
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(data.size() > 0u);
-
-	const DerivedDataKey key = GenerateNewKey();
-
 	SPT_CHECK(key.IsValid());
 
 	const lib::Path derivedDataPath = GetDerivedDataPath(key);
 
-	ddc_backend::DDCInternalHandle handle = ddc_backend::CreateInternalHandleForWriting(derivedDataPath, { .size = data.size() });
+	ddc_backend::DDCInternalHandle handle = ddc_backend::CreateInternalHandleForWriting(derivedDataPath, { .size = data.size(), .writable = true });
 
 	SPT_CHECK(ddc_backend::IsValid(handle));
 	SPT_CHECK(handle.allowsWrite);
@@ -113,17 +110,16 @@ DerivedDataKey DDC::CreateDerivedData(lib::Span<const Byte> data) const
 	return key;
 }
 
-DDCResourceHandle DDC::CreateDerivedData(Uint64 size) const
+DDCResourceHandle DDC::CreateDerivedData(const DerivedDataKey& key, Uint64 size) const
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(size > 0u);
-	const DerivedDataKey key = GenerateNewKey();
-
 	SPT_CHECK(key.IsValid());
+
 	const lib::Path derivedDataPath = GetDerivedDataPath(key);
 
-	ddc_backend::DDCInternalHandle handle = ddc_backend::CreateInternalHandleForWriting(derivedDataPath, { .size = size });
+	ddc_backend::DDCInternalHandle handle = ddc_backend::CreateInternalHandleForWriting(derivedDataPath, { .size = size, .writable = true });
 
 	SPT_CHECK(ddc_backend::IsValid(handle));
 	SPT_CHECK(handle.allowsWrite);
@@ -139,10 +135,10 @@ DDCResourceHandle DDC::GetResourceHandle(const DerivedDataKey& key, const DDCRes
 	SPT_CHECK(mapping.size > 0u);
 
 	const lib::Path derivedDataPath = GetDerivedDataPath(key);
-	const auto [handle, actualSize] = ddc_backend::OpenInternalHandle(derivedDataPath, { .offset = mapping.offset, .size = mapping.size });
+	const auto [handle, actualSize] = ddc_backend::OpenInternalHandle(derivedDataPath, { .offset = mapping.offset, .size = mapping.size, .writable = mapping.writable });
 
 	SPT_CHECK(ddc_backend::IsValid(handle));
-	SPT_CHECK(!handle.allowsWrite);
+	SPT_CHECK(handle.allowsWrite == mapping.writable);
 
 	return DDCResourceHandle(key, handle, DDCResourceMapping{ .offset = mapping.offset, .size = actualSize });
 }
@@ -164,16 +160,6 @@ Bool DDC::DoesKeyExist(const DerivedDataKey& key) const
 {
 	const lib::Path derivedDataPath = GetDerivedDataPath(key);
 	return std::filesystem::exists(derivedDataPath);
-}
-
-DerivedDataKey DDC::GenerateNewKey() const
-{
-	Uint64 rawKeys[2];
-
-	rawKeys[0] = lib::rnd::Random<Uint64>(0u, maxValue<Uint64>);
-	rawKeys[1] = lib::rnd::Random<Uint64>(0u, maxValue<Uint64>);
-
-	return DerivedDataKey(rawKeys[0], rawKeys[1]);
 }
 
 lib::Path DDC::GetDerivedDataPath(const DerivedDataKey& key) const

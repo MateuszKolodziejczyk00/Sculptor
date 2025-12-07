@@ -19,6 +19,7 @@ BEGIN_SHADER_STRUCT(GaussianBlurConstants)
 	SHADER_STRUCT_FIELD(Uint32,         kernelSize)
 	SHADER_STRUCT_FIELD(Real32,         sigma)
 	SHADER_STRUCT_FIELD(Bool,           is3DTexture)
+	SHADER_STRUCT_FIELD(Bool,           useTonemappedValues)
 END_SHADER_STRUCT();
 
 
@@ -37,7 +38,7 @@ static rdr::PipelineStateID CompileGaussianBlurPipeline()
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("Gaussian Blur Pipeline"), shader);
 }
 
-void ApplyGaussianBlurPass(rg::RenderGraphBuilder& graphBuilder, rg::RenderGraphDebugName debugName, rg::RGTextureViewHandle input, rg::RGTextureViewHandle output, Uint32 dimention, const BlurPassParams& params)
+void ApplyGaussianBlurPass(rg::RenderGraphBuilder& graphBuilder, rg::RenderGraphDebugName debugName, rg::RGTextureViewHandle input, rg::RGTextureViewHandle output, Uint32 dimention, Bool useTonemappedValues, const BlurPassParams& params)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -47,11 +48,12 @@ void ApplyGaussianBlurPass(rg::RenderGraphBuilder& graphBuilder, rg::RenderGraph
 	SPT_CHECK(dimention != 2 || is3DTexture);
 
 	GaussianBlurConstants shaderConstants;
-	shaderConstants.resolution  = input->GetResolution();
-	shaderConstants.dimention   = dimention;
-	shaderConstants.kernelSize  = params.kernelSize;
-	shaderConstants.sigma       = params.sigma;
-	shaderConstants.is3DTexture = is3DTexture;
+	shaderConstants.resolution          = input->GetResolution();
+	shaderConstants.dimention           = dimention;
+	shaderConstants.kernelSize          = params.kernelSize;
+	shaderConstants.sigma               = params.sigma;
+	shaderConstants.is3DTexture         = is3DTexture;
+	shaderConstants.useTonemappedValues = useTonemappedValues;
 
 	lib::MTHandle<GaussianBlurDS> gaussianBlurDS = graphBuilder.CreateDescriptorSet<GaussianBlurDS>(RENDERER_RESOURCE_NAME("GaussianBlurDS"));
 	if (is3DTexture)
@@ -99,8 +101,8 @@ rg::RGTextureViewHandle ApplyGaussianBlur2D(rg::RenderGraphBuilder& graphBuilder
 	const rg::RGTextureViewHandle tempTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME_FORMATTED("GaussianBlurTempTexture ({})", debugName.AsString()), textureDef);
 	const rg::RGTextureViewHandle outputTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME_FORMATTED("GaussianBlurOutputTexture ({})", debugName.AsString()), textureDef);
 
-	ApplyGaussianBlurPass(graphBuilder, debugName, input, tempTexture, 0, params.horizontalPass);
-	ApplyGaussianBlurPass(graphBuilder, debugName, tempTexture, outputTexture, 1, params.verticalPass);
+	ApplyGaussianBlurPass(graphBuilder, debugName, input, tempTexture, 0, params.useTonemappedValues, params.horizontalPass);
+	ApplyGaussianBlurPass(graphBuilder, debugName, tempTexture, outputTexture, 1, params.useTonemappedValues, params.verticalPass);
 
 	return outputTexture;
 }
@@ -114,9 +116,9 @@ rg::RGTextureViewHandle ApplyGaussianBlur3D(rg::RenderGraphBuilder& graphBuilder
 	const rg::RGTextureViewHandle tempTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME_FORMATTED("GaussianBlurTempTexture ({})", debugName.AsString()), textureDef);
 	const rg::RGTextureViewHandle outputTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME_FORMATTED("GaussianBlurOutputTexture ({})", debugName.AsString()), textureDef);
 
-	ApplyGaussianBlurPass(graphBuilder, debugName, input, outputTexture, 0, params.horizontalPass);
-	ApplyGaussianBlurPass(graphBuilder, debugName, outputTexture, tempTexture, 1, params.verticalPass);
-	ApplyGaussianBlurPass(graphBuilder, debugName, tempTexture, outputTexture, 2, params.depthPass);
+	ApplyGaussianBlurPass(graphBuilder, debugName, input, outputTexture, 0, params.useTonemappedValues, params.horizontalPass);
+	ApplyGaussianBlurPass(graphBuilder, debugName, outputTexture, tempTexture, 1, params.useTonemappedValues, params.verticalPass);
+	ApplyGaussianBlurPass(graphBuilder, debugName, tempTexture, outputTexture, 2, params.useTonemappedValues, params.depthPass);
 
 	return outputTexture;
 }

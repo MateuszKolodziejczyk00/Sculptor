@@ -75,6 +75,7 @@ protected:
 public:
 
 	RenderGraphCaptureViewer(const scui::ViewDefinition& definition, lib::SharedRef<RGCapture> capture);
+	virtual ~RenderGraphCaptureViewer();
 
 	// Begin UIView overrides
 	virtual void BuildDefaultLayout(ImGuiID dockspaceID) override;

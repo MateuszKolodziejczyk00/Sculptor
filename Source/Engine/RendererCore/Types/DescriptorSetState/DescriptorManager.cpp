@@ -264,6 +264,29 @@ void* DescriptorManager::GetCustomDescriptorInfo(ResourceDescriptorIdx idx) cons
 	return info.GetCustomPtr();
 }
 
+debug::DescrptorBufferState DescriptorManager::DumpCurrentDescriptorBufferState() const
+{
+	debug::DescrptorBufferState state;
+	state.slots.resize(m_resourceDescriptorInfos.size());
+
+	for (Uint32 idx = 0u; idx < m_resourceDescriptorInfos.size(); ++idx)
+	{
+		const DescriptorInfo& info = m_resourceDescriptorInfos[idx];
+		debug::DescriptorBufferSlotInfo& slotInfo = state.slots[idx];
+
+		if (BindableBufferView* bufferView = info.GetBufferView())
+		{
+			slotInfo.bufferView = bufferView->AsSharedPtr();
+		}
+		else if (TextureView* textureView = info.GetTextureView())
+		{
+			slotInfo.textureView = textureView->shared_from_this();
+		}
+	}
+
+	return state;
+}
+
 lib::SharedPtr<DescriptorSetLayout> DescriptorManager::CreateBindlessLayout() const
 {
 	constexpr Uint64 descriptorsNum = 1024u * 128u;

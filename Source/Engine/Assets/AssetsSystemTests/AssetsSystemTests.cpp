@@ -31,8 +31,28 @@ struct AssetData2
 SPT_REGISTER_ASSET_DATA_TYPE(spt::as::tests::AssetData2);
 
 
+struct TestAssetCompiledHeader
+{
+	Uint32 someValue = 0u;
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("SomeValue", someValue);
+	}
+};
+
+
 class TestAssetType : public AssetInstance
 {
+	ASSET_TYPE_GENERATED_BODY(TestAssetType, AssetInstance)
+
+	virtual Bool Compile() override
+	{
+		TestAssetCompiledHeader header;
+		header.someValue = 123u;
+		CreateDerivedData(*this, header, lib::Span<const Byte>());
+		return true;
+	}
+
 public:
 
 	using AssetInstance::AssetInstance;
@@ -90,6 +110,7 @@ TEST(AssetsSystemInitializationTests, Initialization)
 TEST_F(AssetsSystemTests, CreateAndDeleteAsset)
 {
 	lib::Path assetPath = "CreateAndDeleteAsset/Asset.sptasset";
+	m_assetsSystem.DeleteAsset(assetPath); // Delete leftover asset if exists
 
 	CreateResult result = m_assetsSystem.CreateAsset(AssetInitializer
 													 {
@@ -123,25 +144,6 @@ TEST_F(AssetsSystemTests, LoadAsset)
 	EXPECT_TRUE(loadResult.HasValue());
 
 	EXPECT_TRUE(m_assetsSystem.GetLoadedAssetsList().size() == 1u);
-}
-
-TEST_F(AssetsSystemTests, AssetDataUnload)
-{
-	const ResourcePath assetPath = "AssetDataUnload/Asset.sptasset";
-
-	AssetHandle asset = m_assetsSystem.LoadAssetChecked(assetPath);
-
-	asset->GetBlackboard().Unload(lib::TypeInfo<AssetData1>());
-
-	EXPECT_TRUE(asset->GetBlackboard().Contains<AssetData1>() == false);
-	EXPECT_TRUE(asset->GetBlackboard().GetUnloadedTypes().size() == 1u);
-
-	asset->SaveAsset();
-	asset.Reset();
-
-	asset = m_assetsSystem.LoadAssetChecked(assetPath);
-
-	EXPECT_TRUE(asset->GetBlackboard().Contains<AssetData1>() == true);
 }
 
 TEST_F(AssetsSystemTests, AssetsLoadingAndUnloading)
@@ -196,6 +198,7 @@ TEST_F(AssetsSystemTests, AssetsLoadingAndUnloading)
 TEST_F(AssetsSystemTests, CreateAndLoadAssetWithData)
 {
 	const lib::Path assetPath = "CreateAndLoadAssetWithData/Asset.sptasset";
+	m_assetsSystem.DeleteAsset(assetPath); // Delete leftover asset if exists
 
 	EXPECT_TRUE(!m_assetsSystem.DoesAssetExist(assetPath));
 

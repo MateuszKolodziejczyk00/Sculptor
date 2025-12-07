@@ -83,8 +83,7 @@ public:
 	
 	lib::SharedPtr<rdr::TextureView> dstTextureView;
 	const CompiledTexture*           compiledTexture = nullptr;
-	DerivedDataKey                   ddcKey;
-	const AssetsSystem*              assetsSystem = nullptr;
+	lib::Span<const Byte>            textureData;
 };
 
 } // spt::as

@@ -37,6 +37,8 @@ struct GaussianBlur2DParams
 
 	BlurPassParams horizontalPass;
 	BlurPassParams verticalPass;
+
+	Bool useTonemappedValues = false;
 };
 
 

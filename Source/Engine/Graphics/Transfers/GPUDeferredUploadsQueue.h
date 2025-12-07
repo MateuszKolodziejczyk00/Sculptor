@@ -3,6 +3,7 @@
 #include "GraphicsMacros.h"
 #include "SculptorCoreTypes.h"
 #include "Plugins/Plugin.h"
+#include "Delegates/MulticastDelegate.h"
 
 
 namespace spt::rdr

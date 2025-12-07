@@ -8,6 +8,10 @@
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"
+#include "Loaders/TextureLoader.h"
+#include "Transfers/UploadsManager.h"
+
+SPT_DEFINE_LOG_CATEGORY(PBRTextureSetCompiler, true);
 
 
 namespace spt::as
@@ -71,24 +75,59 @@ static void Copy(rg::RenderGraphBuilder& graphBuilder, const CopyToPBRTexturesPa
 
 } // copy_to_pbr_textures
 
-PBRCompiledTextureSetData PBRTextureSetCompiler::CompileTextureSet(const PBRTextureSetCompilationParams& params, const DDC& ddc)
+std::optional<PBRCompiledTextureSetData> PBRTextureSetCompiler::CompileTextureSet(const AssetHandle& owningAsset, const PBRTextureSetSource& source)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector2u texturesResolution = params.baseColor->GetResolution2D();
+	const lib::Path referencePath         = owningAsset->GetDirectoryPath();
+	const lib::Path baseColorPath         = (referencePath / source.baseColor.path);
+	const lib::Path metallicRoughnessPath = (referencePath / source.metallicRoughness.path);
+	const lib::Path normalsPath           = (referencePath / source.normals.path);
+
+	const rhi::ETextureUsage loadedTexturesUsage = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::TransferDest);
+
+	const lib::SharedPtr<rdr::Texture> loadedBaseColorTexture         = gfx::TextureLoader::LoadTexture(baseColorPath.generic_string(), loadedTexturesUsage);
+	const lib::SharedPtr<rdr::Texture> loadedMetallicRoughnessTexture = gfx::TextureLoader::LoadTexture(metallicRoughnessPath.generic_string(), loadedTexturesUsage);
+	const lib::SharedPtr<rdr::Texture> loadedNormalsTexture           = gfx::TextureLoader::LoadTexture(normalsPath.generic_string(), loadedTexturesUsage);
+
+	if (!loadedBaseColorTexture)
+	{
+		SPT_LOG_ERROR(PBRTextureSetCompiler, "Failed to load base color texture from path: {}", baseColorPath.generic_string());
+		return std::nullopt;
+	}
+
+	if (!loadedMetallicRoughnessTexture)
+	{
+		SPT_LOG_ERROR(PBRTextureSetCompiler, "Failed to load metallic&roughness texture from path: {}", metallicRoughnessPath.generic_string());
+		return std::nullopt;
+	}
+
+	if (!loadedNormalsTexture)
+	{
+		SPT_LOG_ERROR(PBRTextureSetCompiler, "Failed to load normals texture from path: {}", normalsPath.generic_string());
+		return std::nullopt;
+	}
+
+	gfx::UploadsManager::Get().FlushPendingUploads();
+
+	const lib::SharedPtr<rdr::TextureView> baseColorView         = loadedBaseColorTexture->CreateView(RENDERER_RESOURCE_NAME_FORMATTED("{}_BaseColorView", owningAsset->GetName().ToString()));
+	const lib::SharedPtr<rdr::TextureView> metallicRoughnessView = loadedMetallicRoughnessTexture->CreateView(RENDERER_RESOURCE_NAME_FORMATTED("{}_MetallicRoughnessView", owningAsset->GetName().ToString()));
+	const lib::SharedPtr<rdr::TextureView> normalsView           = loadedNormalsTexture->CreateView(RENDERER_RESOURCE_NAME_FORMATTED("{}_NormalsView", owningAsset->GetName().ToString()));
+
+	const math::Vector2u texturesResolution = baseColorView->GetResolution2D();
 
 	// For now assume that all textures have the same resolution
-	SPT_CHECK(texturesResolution == params.metallicRoughness->GetResolution2D());
-	SPT_CHECK(texturesResolution == params.normals->GetResolution2D());
+	SPT_CHECK(texturesResolution == metallicRoughnessView->GetResolution2D());
+	SPT_CHECK(texturesResolution == normalsView->GetResolution2D());
 
 	const Uint32 mipLevelsNum = math::Utils::ComputeMipLevelsNumForResolution(texturesResolution);
 
 	rg::RenderGraphResourcesPool renderResourcesPool;
 	rg::RenderGraphBuilder graphBuilder(renderResourcesPool);
 
-	const rg::RGTextureViewHandle loadedBaseColor         = graphBuilder.AcquireExternalTextureView(params.baseColor);
-	const rg::RGTextureViewHandle loadedMetallicRoughness = graphBuilder.AcquireExternalTextureView(params.metallicRoughness);
-	const rg::RGTextureViewHandle loadedNormals           = graphBuilder.AcquireExternalTextureView(params.normals);
+	const rg::RGTextureViewHandle loadedBaseColor         = graphBuilder.AcquireExternalTextureView(baseColorView);
+	const rg::RGTextureViewHandle loadedMetallicRoughness = graphBuilder.AcquireExternalTextureView(metallicRoughnessView);
+	const rg::RGTextureViewHandle loadedNormals           = graphBuilder.AcquireExternalTextureView(normalsView);
 
 	const rg::RGTextureViewHandle baseColor         = graphBuilder.CreateTextureView(RG_DEBUG_NAME("BaseColor"), rg::TextureDef(texturesResolution, rhi::EFragmentFormat::RGBA8_UN_Float).SetMipLevelsNum(mipLevelsNum));
 	const rg::RGTextureViewHandle metallicRoughness = graphBuilder.CreateTextureView(RG_DEBUG_NAME("MetallicRoughness"), rg::TextureDef(texturesResolution, rhi::EFragmentFormat::RG8_UN_Float).SetMipLevelsNum(mipLevelsNum));
@@ -147,9 +186,9 @@ PBRCompiledTextureSetData PBRTextureSetCompiler::CompileTextureSet(const PBRText
 	};
 
 	PBRCompiledTextureSetData compiledData;
-	compiledData.baseColor.definition         = cacheTextureDefinition(baseColor);
-	compiledData.metallicRoughness.definition = cacheTextureDefinition(metallicRoughness);
-	compiledData.normals.definition           = cacheTextureDefinition(normals);
+	compiledData.compiledSet.baseColor.definition         = cacheTextureDefinition(baseColor);
+	compiledData.compiledSet.metallicRoughness.definition = cacheTextureDefinition(metallicRoughness);
+	compiledData.compiledSet.normals.definition           = cacheTextureDefinition(normals);
 
 	graphBuilder.Execute();
 
@@ -174,14 +213,13 @@ PBRCompiledTextureSetData PBRTextureSetCompiler::CompileTextureSet(const PBRText
 		accumulatedDataSize = mipsOffset;
 	};
 
-	accmulateTextureOffset(compiledData.baseColor, baseColorMipsData);
-	accmulateTextureOffset(compiledData.metallicRoughness, metallicRoughnessMipsData);
-	accmulateTextureOffset(compiledData.normals, normalsMipsData); 
-	const DDCResourceHandle ddcResHandle = ddc.CreateDerivedData(accumulatedDataSize);
+	accmulateTextureOffset(compiledData.compiledSet.baseColor, baseColorMipsData);
+	accmulateTextureOffset(compiledData.compiledSet.metallicRoughness, metallicRoughnessMipsData);
+	accmulateTextureOffset(compiledData.compiledSet.normals, normalsMipsData);
 
-	lib::Span<Byte> ddcResourceData = ddcResHandle.GetMutableSpan();
+	compiledData.texturesData.resize(accumulatedDataSize);
 
-	const auto uploadMipsData = [&ddcResourceData](const CompiledTexture& texture, const lib::DynamicArray<lib::SharedPtr<rdr::Buffer>>& mipsData)
+	const auto uploadMipsData = [&compiledData](const CompiledTexture& texture, const lib::DynamicArray<lib::SharedPtr<rdr::Buffer>>& mipsData)
 	{
 		for (Uint32 mipIdx = 0u; mipIdx < mipsData.size(); ++mipIdx)
 		{
@@ -191,11 +229,9 @@ PBRCompiledTextureSetData PBRTextureSetCompiler::CompileTextureSet(const PBRText
 
 			SPT_CHECK(texture.mips[mipIdx].size == mipData.GetSize());
 
-			std::memcpy(ddcResourceData.data() + mipOffset, mipData.GetPtr(), mipData.GetSize());
+			std::memcpy(compiledData.texturesData.data() + mipOffset, mipData.GetPtr(), mipData.GetSize());
 		}
 	};
-
-	compiledData.derivedDataKey = ddcResHandle.GetKey();
 
 	return compiledData;
 }

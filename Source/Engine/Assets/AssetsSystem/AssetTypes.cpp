@@ -16,7 +16,7 @@ AssetFactory& AssetFactory::GetInstance()
 
 AssetHandle AssetFactory::CreateAsset(AssetsSystem& owningSystem, const AssetInitializer& initializer)
 {
-	const auto it = m_assetTypes.find(initializer.type);
+	const auto it = m_assetTypes.find(initializer.type.GetKey());
 	if (it == m_assetTypes.end())
 	{
 		return nullptr;
@@ -28,7 +28,7 @@ AssetHandle AssetFactory::CreateAsset(AssetsSystem& owningSystem, const AssetIni
 
 void AssetFactory::DeleteAsset(AssetType assetType, AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data)
 {
-	const auto it = m_assetTypes.find(assetType);
+	const auto it = m_assetTypes.find(assetType.GetKey());
 	if (it == m_assetTypes.end())
 	{
 		return;
@@ -36,6 +36,16 @@ void AssetFactory::DeleteAsset(AssetType assetType, AssetsSystem& assetSystem, c
 
 	const auto& deleter = it->second.deleter;
 	deleter(assetSystem, path, data);
+}
+
+AssetType AssetFactory::GetAssetTypeByKey(AssetTypeKey key) const
+{
+	const auto it = m_assetTypes.find(key);
+	if (it == m_assetTypes.end())
+	{
+		return AssetType();
+	}
+	return it->second.type;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -49,6 +59,11 @@ AssetInstance::~AssetInstance()
 void AssetInstance::SaveAsset()
 {
 	m_owningSystem.SaveAsset(AssetHandle(this));
+}
+
+const lib::Path AssetInstance::GetDirectoryPath() const
+{
+	return GetOwningSystem().GetContentPath() / GetRelativePath().parent_path();
 }
 
 } // spt::as

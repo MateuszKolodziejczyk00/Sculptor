@@ -46,6 +46,11 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 	engn::EngineInitializationParams engineInitializationParams;
 	engn::Engine::Get().Initialize(engineInitializationParams);
 
+	as::AssetsSystemInitializer asInitializer;
+	asInitializer.contentPath = engn::Paths::GetContentPath();
+	asInitializer.ddcPath     = engn::Paths::Combine(engn::Paths::GetEnginePath(), "DDC");
+	engn::Engine::Get().GetAssetsSystem().Initialize(asInitializer);
+
 	const SizeType threadsNum = static_cast<SizeType>(std::thread::hardware_concurrency());
 
 	js::JobSystemInitializationParams jobSystemParams;

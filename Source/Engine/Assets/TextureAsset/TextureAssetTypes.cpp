@@ -17,17 +17,14 @@ void TextureUploadRequest::EnqueueUploads()
 	const Uint32 mipLevelsNum = texture->GetRHI().GetDefinition().mipLevels;
 	SPT_CHECK_MSG(mipLevelsNum == compiledTexture->mips.size(), "Mismatch between texture definition and data");
 
-	DDCResourceHandle ddcHandle = assetsSystem->GetDDC().GetResourceHandle(ddcKey);
-	const lib::Span<const Byte> derivedData = ddcHandle.GetImmutableSpan();
-
 	const rhi::ETextureAspect textureAspect = dstTextureView->GetRHI().GetAspect();
 
 	for (Uint32 mipLevelIdx = 0u; mipLevelIdx < mipLevelsNum; ++mipLevelIdx)
 	{
 		const CompiledMip& mip = compiledTexture->mips[mipLevelIdx];
 
-		SPT_CHECK(mip.offset + mip.size <= derivedData.size());
-		gfx::UploadDataToTexture(derivedData.data() + mip.offset, mip.size, texture, textureAspect, texture->GetRHI().GetMipResolution(mipLevelIdx), math::Vector3u::Zero(), mipLevelIdx, 0u);
+		SPT_CHECK(mip.offset + mip.size <= textureData.size());
+		gfx::UploadDataToTexture(textureData.data() + mip.offset, mip.size, texture, textureAspect, texture->GetRHI().GetMipResolution(mipLevelIdx), math::Vector3u::Zero(), mipLevelIdx, 0u);
 	}
 }
 

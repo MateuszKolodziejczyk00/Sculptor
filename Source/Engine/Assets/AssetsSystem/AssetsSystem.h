@@ -7,22 +7,36 @@
 #include "FileSystem/File.h"
 #include "ResourcePath.h"
 #include "DDC.h"
+#include "AssetsDB.h"
 
 
 namespace spt::as
 {
 
+enum class EAssetsSystemFlags
+{
+	None = 0u,
+	// Allows loading only compiled assets from DDC. Results in faster load times, but asset must be pre-compiled. Assets cannot be saved in this mode
+	CompiledOnly = BIT(0),
+
+	Default = None
+};
+
+
 struct AssetsSystemInitializer
 {
 	lib::Path contentPath;
 	lib::Path ddcPath;
+
+	EAssetsSystemFlags flags = EAssetsSystemFlags::Default;
 };
 
 
 enum class ECreateError
 {
 	AlreadyExists,
-	FailedToCreateInstance
+	FailedToCreateInstance,
+	CompilationFailed,
 };
 
 
@@ -37,7 +51,8 @@ enum class EDeleteResult
 enum class ELoadError
 {
 	DoesNotExist,
-	FailedToCreateInstance
+	FailedToCreateInstance,
+	CompilationFailed,
 };
 
 
@@ -59,6 +74,14 @@ public:
 	LoadResult   LoadAsset(const ResourcePath& path);
 	AssetHandle  LoadAssetChecked(const ResourcePath& path);
 
+	template<typename TAssetType>
+	TypedAssetHandle<TAssetType> LoadAssetChecked(const ResourcePath& path)
+	{
+		AssetHandle asset = LoadAssetChecked(path);
+		SPT_CHECK(asset->GetInstanceData().type == CreateAssetType<TAssetType>());
+		return static_cast<TAssetType*>(asset.Get());
+	}
+
 	EDeleteResult DeleteAsset(const ResourcePath& path);
 
 	void SaveAsset(const AssetHandle& asset);
@@ -71,9 +94,11 @@ public:
 
 	lib::DynamicArray<AssetHandle> GetLoadedAssetsList() const;
 
-	lib::Path GetContentPath() const { return m_contentPath; }
+	const lib::Path& GetContentPath() const { return m_contentPath; }
 
-	const DDC& GetDDC() const { return m_ddc; }
+	DDC& GetDDC() { return m_ddc; }
+
+	Bool IsAssetCompiled(const ResourcePath& path) const;
 
 private:
 
@@ -87,11 +112,19 @@ private:
 
 	Bool IsLoaded_Locked(const ResourcePath& path) const;
 
+	Bool CompileAssetImpl(const AssetHandle& asset);
+
+	Bool IsCompiledOnlyMode() const { return lib::HasAnyFlag(m_flags, EAssetsSystemFlags::CompiledOnly); }
+
 	lib::Path m_contentPath;
+
+	EAssetsSystemFlags m_flags = EAssetsSystemFlags::Default;
 
 	lib::HashMap<ResourcePath, AssetInstance*> m_loadedAssets;
 
 	DDC m_ddc;
+
+	AssetsDB m_assetsDB;
 
 	mutable lib::ReadWriteLock m_assetsSystemLock;
 };

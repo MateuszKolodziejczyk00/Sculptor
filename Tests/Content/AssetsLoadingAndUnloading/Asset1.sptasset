@@ -1,3 +1,7 @@
-Type: pt::as::tests::TestAssetType
-Blackboard:
-  {}
+{
+    "Blackboard": {
+        "BlackboardContent": [
+        ]
+    },
+    "Type": "pt::as::tests::TestAssetType"
+}

@@ -23,8 +23,9 @@ struct DDCInternalHandle
 
 struct DDCOpenParams
 {
-	Uint64 offset;
-	Uint64 size;
+	Uint64 offset   = 0u;
+	Uint64 size     = 0u;
+	Bool   writable = false;
 };
 
 
@@ -33,6 +34,8 @@ inline Bool IsValid(const DDCInternalHandle& handle) { return handle.data != nul
 DDCInternalHandle CreateInternalHandleForWriting(const lib::Path& path, const DDCOpenParams& params);
 
 std::pair<DDCInternalHandle, SizeType> OpenInternalHandle(const lib::Path& path, const DDCOpenParams& params);
+
+void FlushWrites(DDCInternalHandle handle);
 
 void CloseInternalHandle(DDCInternalHandle handle);
 

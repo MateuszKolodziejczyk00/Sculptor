@@ -35,6 +35,7 @@ struct CapturedBuffer
 		lib::DynamicArray<Byte>     bufferData;
 		CapturedPass*               producingPass; // might be null in case of first version of external buffer
 		lib::SharedPtr<rdr::Buffer> downloadedBuffer;
+		std::atomic<Uint32> pendingDownloadsNum{ 0u };
 	};
 
 	lib::HashedString name;
@@ -133,6 +134,8 @@ struct RGCapture
 
 	lib::HashMap<Uint32, CapturedTexture*> descriptorIdxToTexture;
 	lib::HashMap<Uint32, CapturedBuffer*>  descriptorIdxToBuffer;
+
+	Bool wantsClose = false;
 };
 
 } // spt::rg::capture

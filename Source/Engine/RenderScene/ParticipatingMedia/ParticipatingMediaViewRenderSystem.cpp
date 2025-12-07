@@ -43,6 +43,7 @@ RendererBoolParameter enableDirectionalLightsVolumetricRTShadows("Enable Directi
 RendererBoolParameter enableVolumetricFogBlur("Enable Volumetric Fog Blur", { "Volumetric Fog" }, true);
 RendererFloatParameter volumetricFogBlurSigma("Volumetric Fog Blur Sigma", { "Volumetric Fog" }, 1.4f, 0.f, 10.f);
 RendererIntParameter volumetricFogBlurKernelSize("Volumetric Fog Blur Kernel Size", { "Volumetric Fog" }, 2, 1, 10);
+RendererBoolParameter fogBlurEnableTonemap("Fog Blur Enable Tonemap", { "Volumetric Fog" }, true);
 
 } // parameters
 
@@ -591,8 +592,9 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 	if (parameters::enableVolumetricFogBlur)
 	{
 		gaussian_blur_renderer::GaussianBlur2DParams gaussianBlurParams;
-		gaussianBlurParams.horizontalPass = gaussian_blur_renderer::BlurPassParams{ static_cast<Uint32>(parameters::volumetricFogBlurKernelSize), parameters::volumetricFogBlurSigma };
-		gaussianBlurParams.verticalPass   = gaussian_blur_renderer::BlurPassParams{ static_cast<Uint32>(parameters::volumetricFogBlurKernelSize), parameters::volumetricFogBlurSigma };
+		gaussianBlurParams.horizontalPass      = gaussian_blur_renderer::BlurPassParams{ static_cast<Uint32>(parameters::volumetricFogBlurKernelSize), parameters::volumetricFogBlurSigma };
+		gaussianBlurParams.verticalPass        = gaussian_blur_renderer::BlurPassParams{ static_cast<Uint32>(parameters::volumetricFogBlurKernelSize), parameters::volumetricFogBlurSigma };
+		gaussianBlurParams.useTonemappedValues = parameters::fogBlurEnableTonemap;
 
 		m_volumetricFogParams.integratedInScatteringTextureView = gaussian_blur_renderer::ApplyGaussianBlur2D(graphBuilder,
 																											  RG_DEBUG_NAME("Integrated Fog Blur"),

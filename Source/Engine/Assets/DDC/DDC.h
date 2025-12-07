@@ -13,8 +13,9 @@ namespace spt::as
 
 struct DDCResourceMapping
 {
-	Uint64 offset = 0u;
-	Uint64 size   = idxNone<Uint64>;
+	Uint64 offset   = 0u;
+	Uint64 size     = idxNone<Uint64>;
+	Bool   writable = false;
 };
 
 
@@ -102,13 +103,14 @@ public:
 
 	void Release();
 
-	Bool IsValid() const { return ddc_backend::IsValid(m_handle); }
-
-	Byte* GetMutableData() const
+	void FlushWrites()
 	{
 		SPT_CHECK(IsValid());
-		return static_cast<Byte*>(m_handle.data) + m_mapping.offset;
+		SPT_CHECK(m_handle.allowsWrite);
+		ddc_backend::FlushWrites(m_handle);
 	}
+
+	Bool IsValid() const { return ddc_backend::IsValid(m_handle); }
 
 	lib::Span<Byte> GetMutableSpan() const
 	{
@@ -123,6 +125,25 @@ public:
 		SPT_CHECK(IsValid());
 
 		return lib::Span<const Byte>(static_cast<Byte*>(m_handle.data), m_mapping.size);
+	}
+
+	Byte* GetMutablePtr() const
+	{
+		SPT_CHECK(IsValid());
+		SPT_CHECK(m_handle.allowsWrite);
+		return static_cast<Byte*>(m_handle.data);
+	}
+
+	const Byte* GetImmutablePtr() const
+	{
+		SPT_CHECK(IsValid());
+		return static_cast<const Byte*>(m_handle.data);
+	}
+
+	SizeType GetSize() const
+	{
+		SPT_CHECK(IsValid());
+		return m_mapping.size;
 	}
 
 	DerivedDataKey GetKey() const
@@ -156,9 +177,9 @@ public:
 
 	void Initialize(const DDCParams& params);
 
-	DerivedDataKey CreateDerivedData(lib::Span<const Byte> data) const;
+	DerivedDataKey CreateDerivedData(const DerivedDataKey& key, lib::Span<const Byte> data) const;
 
-	DDCResourceHandle CreateDerivedData(Uint64 size) const;
+	DDCResourceHandle CreateDerivedData(const DerivedDataKey& key, Uint64 size) const;
 
 	DDCResourceHandle GetResourceHandle(const DerivedDataKey& key, const DDCResourceMapping& mapping = DDCResourceMapping()) const;
 
@@ -166,11 +187,9 @@ public:
 
 	Bool DoesKeyExist(const DerivedDataKey& key) const;
 
-private:
-
-	DerivedDataKey GenerateNewKey() const;
-
 	lib::Path GetDerivedDataPath(const DerivedDataKey& key) const;
+
+private:
 
 	DDCParams m_params;
 };

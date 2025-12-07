@@ -105,6 +105,10 @@ IESProfileDefinition ImportIESProfileFromString(lib::StringView iesData)
 	profile.verticalAnglesNum   = static_cast<Uint32>(std::strtoul(props[3].data(), nullptr, 10));
 	profile.horizontalAnglesNum = static_cast<Uint32>(std::strtoul(props[4].data(), nullptr, 10));
 
+	profile.photometricType = static_cast<PhotometricType>(std::strtoul(props[5].data(), nullptr, 10));
+
+	SPT_CHECK(profile.photometricType == PhotometricType::TypeC);
+
 	SplitBy(remaining, '\n', currentLine, remaining);
 
 	profile.verticalAngles.reserve(profile.verticalAnglesNum);

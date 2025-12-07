@@ -6,6 +6,15 @@
 namespace spt::as
 {
 
+enum class PhotometricType : Int32
+{
+	None,
+	TypeC,
+	TypeB,
+	TypeA
+};
+
+
 struct IESProfileDefinition
 {
 	Uint32 numLamps = 0;
@@ -13,8 +22,7 @@ struct IESProfileDefinition
 	Real32 lumensPerLamp = 0.f;
 	Real32 candelaMultiplier = 1.f;
 
-	//Int32 photometricType = 0;
-	//Int32 unitsType = 1;
+	PhotometricType photometricType = PhotometricType::TypeC;
 
 	math::Vector3f sourceSize = {};
 

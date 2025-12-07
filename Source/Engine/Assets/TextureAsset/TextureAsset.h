@@ -16,27 +16,6 @@ class TextureView;
 namespace spt::as
 {
 
-struct CompiledTextureData
-{
-	CompiledTexture texture;
-
-	DerivedDataKey derivedDataKey;
-
-	void Serialize(srl::Serializer& serializer)
-	{
-		serializer.Serialize("Texture",        texture);
-		serializer.Serialize("DerivedDataKey", derivedDataKey);
-	}
-};
-SPT_REGISTER_ASSET_DATA_TYPE(CompiledTextureData);
-
-
-struct RuntimeTexture
-{
-	lib::SharedPtr<rdr::TextureView> textureInstance;
-};
-
-
 class TEXTURE_ASSET_API TextureDataInitializer : public AssetDataInitializer
 {
 public:
@@ -56,33 +35,28 @@ private:
 
 class TEXTURE_ASSET_API TextureAsset : public AssetInstance
 {
-protected:
-
-	using Super = AssetInstance;
+	ASSET_TYPE_GENERATED_BODY(TextureAsset, AssetInstance)
 
 public:
 
 	using AssetInstance::AssetInstance;
 
+	const lib::SharedPtr<rdr::TextureView>& GetTextureView() const { return m_textureInstance; }
+
+protected:
+
 	// Begin AssetInstance overrides
-	virtual void PostCreate() override;
+	virtual Bool Compile() override;
 	virtual void PostInitialize() override;
-
-	static void  OnAssetDeleted(AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data);
 	// End AssetInstance overrides
-
-	const lib::SharedPtr<rdr::TextureView>& GetTextureView() const
-	{
-		return m_cachedRuntimeTexture->textureInstance;
-	}
 
 private:
 
-	void CompileTexture();
+	Bool CompileTexture();
 
 	void CreateTextureInstance();
 
-	RuntimeTexture* m_cachedRuntimeTexture = nullptr;
+	lib::SharedPtr<rdr::TextureView> m_textureInstance;
 };
 
 SPT_REGISTER_ASSET_TYPE(TextureAsset);

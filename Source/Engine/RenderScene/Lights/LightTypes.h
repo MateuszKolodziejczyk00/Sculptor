@@ -3,6 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "RenderSceneRegistry.h"
+#include "Bindless/BindlessTypes.h"
 
 
 namespace spt::rsc
@@ -39,13 +40,14 @@ enum class ELocalLightType : Uint32
 
 
 BEGIN_SHADER_STRUCT(LocalLightGPUData)
-	SHADER_STRUCT_FIELD(Uint32,         type)
-	SHADER_STRUCT_FIELD(math::Vector3f, color)
-	SHADER_STRUCT_FIELD(Real32,         luminousPower) // Lumens
-	SHADER_STRUCT_FIELD(math::Vector3f, location)
-	SHADER_STRUCT_FIELD(Real32,         range)
-	SHADER_STRUCT_FIELD(Uint32,         entityID)
-	SHADER_STRUCT_FIELD(Uint32,         shadowMapFirstFaceIdx)
+	SHADER_STRUCT_FIELD(Uint32,                         type)
+	SHADER_STRUCT_FIELD(math::Vector3f,                 color)
+	SHADER_STRUCT_FIELD(Real32,                         luminousPower) // Lumens
+	SHADER_STRUCT_FIELD(math::Vector3f,                 location)
+	SHADER_STRUCT_FIELD(Real32,                         range)
+	SHADER_STRUCT_FIELD(Uint32,                         entityID)
+	SHADER_STRUCT_FIELD(Uint32,                         shadowMapFirstFaceIdx)
+	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<Real32>, iesProfile)
 	// Spot only begin
 	SHADER_STRUCT_FIELD(math::Vector3f, direction)
 	SHADER_STRUCT_FIELD(Real32,         halfAngleCos)
@@ -93,6 +95,8 @@ struct PointLightData
 
 	math::Vector3f location = math::Vector3f::Zero();
 	Real32         radius   = 1.f;
+
+	lib::SharedPtr<rdr::TextureView> iesProfileTexture;
 };
 SPT_REGISTER_COMPONENT_TYPE(PointLightData, RenderSceneRegistry);
 
@@ -136,6 +140,7 @@ public:
 		gpuData.luminousPower = lightData.luminousPower;
 		gpuData.location      = lightData.location;
 		gpuData.range         = lightData.radius;
+		gpuData.iesProfile    = lightData.iesProfileTexture;
 		return gpuData;
 	}
 

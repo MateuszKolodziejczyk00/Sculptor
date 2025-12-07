@@ -22,11 +22,9 @@ void TextureDataInitializer::InitializeNewAsset(AssetInstance& asset)
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // TextureAsset ==================================================================================
 
-void TextureAsset::PostCreate()
+Bool TextureAsset::Compile()
 {
-	Super::PostCreate();
-
-	CompileTexture();
+	return CompileTexture();
 }
 
 void TextureAsset::PostInitialize()
@@ -34,70 +32,55 @@ void TextureAsset::PostInitialize()
 	Super::PostInitialize();
 
 	CreateTextureInstance();
-
-	const CompiledTextureData& compiledData = GetBlackboard().Get<CompiledTextureData>();
-
-	const AssetsSystem& assetsSystem = GetOwningSystem();
-
-	gfx::GPUDeferredUploadsQueue& queue = gfx::GPUDeferredUploadsQueue::Get();
-
-	lib::UniquePtr<TextureUploadRequest> uploadRequest = lib::MakeUnique<TextureUploadRequest>();
-	uploadRequest->dstTextureView  = m_cachedRuntimeTexture->textureInstance;
-	uploadRequest->compiledTexture = &compiledData.texture;
-	uploadRequest->ddcKey          = compiledData.derivedDataKey;
-	uploadRequest->assetsSystem    = &assetsSystem;
-
-	queue.RequestUpload(std::move(uploadRequest));
-
-	queue.AddPostDeferredUploadsDelegate(gfx::PostDeferredUploadsMulticastDelegate::Delegate::CreateLambda([self = AssetHandle(this)] // Hard reference is important here
-	{
-		self->GetBlackboard().Unload<CompiledTextureData>();
-	}));
 }
 
-void TextureAsset::OnAssetDeleted(AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data)
+Bool TextureAsset::CompileTexture()
 {
-	Super::OnAssetDeleted(assetSystem, path, data);
+	SPT_PROFILER_FUNCTION();
 
-	if (const CompiledTextureData* compiledData = data.blackboard.Find<CompiledTextureData>())
-	{
-		assetSystem.GetDDC().DeleteDerivedData(compiledData->derivedDataKey);
-	}
-}
-
-void TextureAsset::CompileTexture()
-{
 	const TextureSourceDefinition& source = GetBlackboard().Get<TextureSourceDefinition>();
 
-	const DDC& ddc = GetOwningSystem().GetDDC();
-
 	TextureCompiler compiler;
-	CompiledTextureData compiledTexture = compiler.CompileTexture(source, *this, ddc);
+	std::optional<TextureCompilationResult> compilationRes = compiler.CompileTexture(*this, source);
 
-	SPT_CHECK_MSG(compiledTexture.texture.mips.size() > 0u, "Failed to compile texture");
+	if(!compilationRes.has_value())
+	{
+		return false;
+	}
 
-	GetBlackboard().Create<CompiledTextureData>(std::move(compiledTexture));
+	CreateDerivedData(*this, compilationRes->compiledTexture, lib::Span<const Byte>(compilationRes->textureData.data(), compilationRes->textureData.size()));
+
+	return true;
 }
 
 void TextureAsset::CreateTextureInstance()
 {
 	SPT_PROFILER_FUNCTION();
 
-	const CompiledTextureData& compiledTexture = GetBlackboard().Get<CompiledTextureData>();
+	const lib::MTHandle<DDCLoadedData<CompiledTexture>> dd = LoadDerivedData<CompiledTexture>(*this);
+	SPT_CHECK(dd.IsValid());
 
-	const TextureDefinition& definition = compiledTexture.texture.definition;
+	const TextureDefinition& definition = dd->header.definition;
 
 	const rhi::ETextureUsage usageFlags = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferSource, rhi::ETextureUsage::TransferDest);
 
 	rhi::TextureDefinition textureDefinition(definition.resolution, usageFlags, definition.format);
 	textureDefinition.mipLevels = definition.mipLevelsNum;
 
-	const lib::SharedPtr<rdr::TextureView> textureInstance = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME(GetName()), textureDefinition, rhi::EMemoryUsage::GPUOnly);
-	SPT_CHECK_MSG(textureInstance, "Failed to create texture instance");
+	m_textureInstance = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME(GetName()), textureDefinition, rhi::EMemoryUsage::GPUOnly);
+	SPT_CHECK_MSG(!!m_textureInstance, "Failed to create texture instance");
 
-	RuntimeTexture& runtimeTextureComponent = GetBlackboard().Create<RuntimeTexture>(RuntimeTexture{ textureInstance });
+	gfx::GPUDeferredUploadsQueue& queue = gfx::GPUDeferredUploadsQueue::Get();
 
-	m_cachedRuntimeTexture = &runtimeTextureComponent;
+	lib::UniquePtr<TextureUploadRequest> uploadRequest = lib::MakeUnique<TextureUploadRequest>();
+	uploadRequest->dstTextureView  = m_textureInstance;
+	uploadRequest->compiledTexture = &dd->header;
+	uploadRequest->textureData     = dd->bin;
+
+	queue.RequestUpload(std::move(uploadRequest));
+
+	// Keep reference to loaded derived data until upload is finished
+	queue.AddPostDeferredUploadsDelegate(gfx::PostDeferredUploadsMulticastDelegate::Delegate::CreateLambda([dd] {}));
 }
 
 } // spt::as

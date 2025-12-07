@@ -16,22 +16,6 @@ class Texture;
 namespace spt::as
 {
 
-
-class TEXTURE_ASSET_API TextureSetAsset : public AssetInstance
-{
-protected:
-
-	using Super = AssetInstance;
-
-public:
-
-	using AssetInstance::AssetInstance;
-
-	virtual void CompileTextureSet() { SPT_CHECK_NO_ENTRY() };
-};
-SPT_REGISTER_ASSET_TYPE(TextureSetAsset);
-
-
 struct PBRTextureSetSource
 {
 	TextureSourceDefinition baseColor;
@@ -48,30 +32,18 @@ struct PBRTextureSetSource
 SPT_REGISTER_ASSET_DATA_TYPE(PBRTextureSetSource);
 
 
-struct PBRCompiledTextureSetData
+struct CompiledPBRTextureSet
 {
 	CompiledTexture baseColor;
 	CompiledTexture metallicRoughness;
 	CompiledTexture normals;
-
-	DerivedDataKey derivedDataKey;
 
 	void Serialize(srl::Serializer& serializer)
 	{
 		serializer.Serialize("BaseColor",         baseColor);
 		serializer.Serialize("MetallicRoughness", metallicRoughness);
 		serializer.Serialize("Normals",           normals);
-		serializer.Serialize("DerivedDataKey",    derivedDataKey);
 	}
-};
-SPT_REGISTER_ASSET_DATA_TYPE(PBRCompiledTextureSetData);
-
-
-struct RuntimePBRTextureSetData
-{
-	lib::SharedPtr<rdr::TextureView> baseColor;
-	lib::SharedPtr<rdr::TextureView> metallicRoughness;
-	lib::SharedPtr<rdr::TextureView> normals;
 };
 
 
@@ -92,38 +64,34 @@ private:
 };
 
 
-class TEXTURE_ASSET_API PBRTextureSetAsset : public TextureSetAsset
+class TEXTURE_ASSET_API PBRTextureSetAsset : public AssetInstance
 {
-protected:
-
-	using Super = TextureSetAsset;
+	ASSET_TYPE_GENERATED_BODY(PBRTextureSetAsset, AssetInstance)
 
 public:
 
-	using TextureSetAsset::TextureSetAsset;
+	using AssetInstance::AssetInstance;
+
+	const lib::SharedPtr<rdr::TextureView>& GetBaseColorTextureView()         const { return m_baseColor; }
+	const lib::SharedPtr<rdr::TextureView>& GetMetallicRoughnessTextureView() const { return m_metallicRoughness; }
+	const lib::SharedPtr<rdr::TextureView>& GetNormalsTextureView()           const { return m_normals; }
+
+protected:
 
 	// Begin AssetInstance overrides
-	virtual void PostCreate() override;
+	virtual Bool Compile() override;
 	virtual void PostInitialize() override;
-
-	static void  OnAssetDeleted(AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data);
 	// End AssetInstance overrides
-
-	// Begin TextureSetAsset overrides
-	virtual void CompileTextureSet() override;
-	// End TextureSetAsset overrides
-
-	const lib::SharedPtr<rdr::TextureView>& GetBaseColorTextureView()         const { return m_cachedRuntimeTexture->baseColor; }
-	const lib::SharedPtr<rdr::TextureView>& GetMetallicRoughnessTextureView() const { return m_cachedRuntimeTexture->metallicRoughness; }
-	const lib::SharedPtr<rdr::TextureView>& GetNormalsTextureView()           const { return m_cachedRuntimeTexture->normals; }
 
 private:
 
-	void RequestTextureGPUUploads();
+	Bool CompileTextureSet();
 
 	void CreateTextureInstances();
 
-	RuntimePBRTextureSetData* m_cachedRuntimeTexture = nullptr;
+	lib::SharedPtr<rdr::TextureView> m_baseColor;
+	lib::SharedPtr<rdr::TextureView> m_metallicRoughness;
+	lib::SharedPtr<rdr::TextureView> m_normals;
 };
 SPT_REGISTER_ASSET_TYPE(PBRTextureSetAsset);
 

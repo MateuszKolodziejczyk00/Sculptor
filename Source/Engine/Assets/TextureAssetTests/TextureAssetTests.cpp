@@ -43,10 +43,11 @@ void TextureAssetsSystemTests::TearDown()
 TEST_F(TextureAssetsSystemTests, CreateTexture)
 {
 	const lib::Path assetPath = "CreateTextureDDS/Texture.sptasset";
+	m_assetsSystem.DeleteAsset(assetPath); // Delete leftover asset if exists
 
 	TextureDataInitializer textureInitializer
 	{
-		TextureSourceDefinition{ .path = "CreateTextureDDS/Source/test.png" }
+		TextureSourceDefinition{ .path = "Source/test.png" }
 	};
 
 	CreateResult result = m_assetsSystem.CreateAsset(AssetInitializer
@@ -79,14 +80,15 @@ TEST_F(TextureAssetsSystemTests, CreateTexture)
 TEST_F(TextureAssetsSystemTests, CreateTextureSet)
 {
 	const lib::Path assetPath = "CreateTextureSet/TextureSet.sptasset";
+	m_assetsSystem.DeleteAsset(assetPath); // Delete leftover asset if exists
 
 	PBRTextureSetInitializer textureSetInitializer
 	{
 		PBRTextureSetSource
 		{
-			.baseColor         = "CreateTextureSet/Textures/BaseColor.jpg",
-			.metallicRoughness = "CreateTextureSet/Textures/MetallicRoughness.jpg",
-			.normals           = "CreateTextureSet/Textures/Normals.jpg",
+			.baseColor         = "Textures/BaseColor.jpg",
+			.metallicRoughness = "Textures/MetallicRoughness.jpg",
+			.normals           = "Textures/Normals.jpg",
 		}
 	};
 

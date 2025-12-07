@@ -78,10 +78,10 @@ class DescriptorInfo
 
 	union
 	{
-		Uint64       m_ptrValue;
-		void*        m_ptr;
-		TextureView* m_textureView;
-		BindableBufferView*      m_buffer;
+		Uint64              m_ptrValue;
+		void*               m_ptr;
+		TextureView*        m_textureView;
+		BindableBufferView* m_buffer;
 	};
 
 public:
@@ -140,6 +140,24 @@ public:
 };
 
 
+namespace debug
+{
+
+struct DescriptorBufferSlotInfo
+{
+	lib::SharedPtr<BindableBufferView> bufferView;
+	lib::SharedPtr<TextureView>        textureView;
+};
+
+
+struct DescrptorBufferState
+{
+	lib::DynamicArray<DescriptorBufferSlotInfo> slots;
+};
+
+} // debug
+
+
 class RENDERER_CORE_API DescriptorManager
 {
 public:
@@ -167,6 +185,8 @@ public:
 	Uint32 GetHeapOffset() const { return m_descriptorRange.heapOffset; }
 
 	const lib::SharedPtr<DescriptorSetLayout>& GetBindlessLayout() const { return m_bindlessLayout; }
+
+	debug::DescrptorBufferState DumpCurrentDescriptorBufferState() const;
 
 private:
 

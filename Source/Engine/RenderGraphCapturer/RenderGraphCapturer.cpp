@@ -50,6 +50,38 @@ RGCapturerDecorator::RGCapturerDecorator(const RGCaptureSourceInfo& captureSourc
 {
 	m_capture->captureSource = captureSource;
 	m_capture->name = lib::File::Utils::CreateFileNameFromTime();
+
+	const rdr::debug::DescrptorBufferState descriptorsState = rdr::Renderer::GetDescriptorManager().DumpCurrentDescriptorBufferState();
+
+	for (SizeType slotIdx = 0u; slotIdx < descriptorsState.slots.size(); ++slotIdx)
+	{
+		const rdr::debug::DescriptorBufferSlotInfo& slot = descriptorsState.slots[slotIdx];
+
+		if (slot.textureView)
+		{
+			CapturedTexture*& capturedTexture = m_capturedTextures[slot.textureView->GetTexture().Get()];
+			if (!capturedTexture)
+			{
+				capturedTexture = m_capture->textures.emplace_back(std::make_unique<CapturedTexture>()).get();
+
+				const rhi::RHITexture& rhiTexture = slot.textureView->GetTexture()->GetRHI();
+
+				capturedTexture->name            = rhiTexture.GetName();
+				capturedTexture->definition      = rhiTexture.GetDefinition();
+				capturedTexture->definition.type = rhi::GetSelectedTextureType(capturedTexture->definition);
+
+				CapturedTexture::Version& newVersion = *capturedTexture->versions.emplace_back(std::make_unique<CapturedTexture::Version>());
+				newVersion.owningTexture = capturedTexture;
+				newVersion.versionIdx    = static_cast<Uint32>(capturedTexture->versions.size()) - 1u;
+				newVersion.texture       = slot.textureView->GetTexture();
+				newVersion.producingPass = nullptr; // external texture
+			}
+
+			SPT_CHECK(!!capturedTexture);
+
+			m_capture->descriptorIdxToTexture[static_cast<Uint32>(slotIdx)] = capturedTexture;
+		}
+	}
 }
 
 void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode& node, const RGDependeciesContainer& dependencies)

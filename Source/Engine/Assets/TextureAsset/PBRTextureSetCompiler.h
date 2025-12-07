@@ -9,11 +9,11 @@
 namespace spt::as
 {
 
-struct PBRTextureSetCompilationParams
+struct PBRCompiledTextureSetData
 {
-	lib::SharedPtr<rdr::TextureView> baseColor;
-	lib::SharedPtr<rdr::TextureView> metallicRoughness;
-	lib::SharedPtr<rdr::TextureView> normals;
+	CompiledPBRTextureSet compiledSet;
+
+	lib::DynamicArray<Byte> texturesData;
 };
 
 
@@ -23,7 +23,7 @@ public:
 
 	PBRTextureSetCompiler() = default;
 
-	PBRCompiledTextureSetData CompileTextureSet(const PBRTextureSetCompilationParams& params, const DDC& ddc);
+	std::optional<PBRCompiledTextureSetData> CompileTextureSet(const AssetHandle& owningAsset, const PBRTextureSetSource& source);
 
 };
 

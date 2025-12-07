@@ -353,13 +353,25 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 			{
 				const CapturedPass& pass = m_parentNodeViewer.GetCapturedPass();
 				// Find binding for this texture in current pass
+				Bool found = false;
 				for (const CapturedTextureBinding& binding : pass.textures)
 				{
 					if (binding.textureVersion->owningTexture == capturedTexture)
 					{
 						m_parentNodeViewer.OpenTextureCapture(binding);
+						found = true;
 						break;
 					}
+				}
+
+				if (!found)
+				{
+					TextureInspectParams inspectParams;
+					inspectParams.texture       = capturedTexture;
+					inspectParams.mipIdx        = 0u;
+					inspectParams.arrayLayerIdx = 0u;
+					inspectParams.versionIdx    = 0u;
+					m_parentNodeViewer.OpenTextureCapture(inspectParams);
 				}
 			}
 		}

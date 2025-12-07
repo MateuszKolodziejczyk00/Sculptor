@@ -3,11 +3,17 @@
 #include "TextureAssetMacros.h"
 #include "SculptorCoreTypes.h"
 #include "TextureAsset.h"
-#include "DDC.h"
 
 
 namespace spt::as
 {
+
+struct TextureCompilationResult
+{
+	CompiledTexture         compiledTexture;
+	lib::DynamicArray<Byte> textureData;
+};
+
 
 class TextureCompiler
 {
@@ -15,7 +21,7 @@ public:
 
 	TextureCompiler() = default;
 
-	CompiledTextureData CompileTexture(const TextureSourceDefinition& textureSource, const TextureAsset& owningAsset, const DDC& ddc);
+	std::optional<TextureCompilationResult> CompileTexture(const TextureAsset& owningAsset, const TextureSourceDefinition& textureSource);
 
 };
 

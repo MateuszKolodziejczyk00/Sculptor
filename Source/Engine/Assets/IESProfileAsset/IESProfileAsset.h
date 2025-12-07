@@ -26,21 +26,6 @@ struct IESProfileSourceDefinition
 };
 SPT_REGISTER_ASSET_DATA_TYPE(IESProfileSourceDefinition);
 
-struct CompiledIESProfile
-{
-	math::Vector2u resolution = math::Vector2u(0u, 0u);
-	Real32         lightSourceCandela = 1.f;
-	DerivedDataKey derivedDataKey;
-
-	void Serialize(srl::Serializer& serializer)
-	{
-		serializer.Serialize("Resolution", resolution);
-		serializer.Serialize("LightSourceCandela", lightSourceCandela);
-		serializer.Serialize("DerivedDataKey", derivedDataKey);
-	}
-};
-SPT_REGISTER_ASSET_DATA_TYPE(CompiledIESProfile);
-
 
 class IES_PROFILE_ASSET_API IESProfileDataInitializer : public AssetDataInitializer
 {
@@ -61,24 +46,29 @@ private:
 
 class IES_PROFILE_ASSET_API IESProfileAsset : public AssetInstance
 {
-protected:
-
-	using Super = AssetInstance;
+	ASSET_TYPE_GENERATED_BODY(IESProfileAsset, AssetInstance)
 
 public:
 
 	using AssetInstance::AssetInstance;
 
-	// Begin AssetInstance overrides
-	virtual void PostCreate() override;
-	virtual void PostInitialize() override;
 
-	static void  OnAssetDeleted(AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data);
+	lib::SharedPtr<rdr::TextureView> GetTextureView() const { return m_texture; }
+
+protected:
+
+	// Begin AssetInstance overrides
+	virtual Bool Compile() override;
+	virtual void PostInitialize() override;
 	// End AssetInstance overrides
 
 private:
 
-	void CompileIESProfileTexture();
+	Bool CompileIESProfileTexture();
+
+	void InitGPUTexture();
+
+	lib::SharedPtr<rdr::TextureView> m_texture;
 
 };
 SPT_REGISTER_ASSET_TYPE(IESProfileAsset);
