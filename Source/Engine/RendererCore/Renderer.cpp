@@ -48,6 +48,27 @@ lib::UniquePtr<DescriptorManager> descriptorsManager;
 
 static RendererData g_data;
 
+void InitializeSamplerDescriptors()
+{
+	SPT_PROFILER_FUNCTION();
+
+	const rhi::SamplerDefinition samplerStates[] =
+	{
+		rhi::SamplerState::LinearClampToEdge,
+		rhi::SamplerState::NearestClampToEdge,
+		rhi::SamplerState::LinearRepeat,
+		rhi::SamplerState::NearestClampToEdge,
+		rhi::SamplerState::LinearMinClampToEdge,
+		rhi::SamplerState::LinearMaxClampToEdge
+	};
+
+	for (Uint32 i = 0; i < SPT_ARRAY_SIZE(samplerStates); ++i)
+	{
+		const lib::SharedRef<rdr::Sampler> sampler = rdr::ResourcesManager::CreateSampler(samplerStates[i]);
+		priv::g_data.descriptorsManager->UploadSamplerDescriptor(i, *sampler);
+	}
+}
+
 } // priv
 
 void Renderer::Initialize()
@@ -69,6 +90,8 @@ void Renderer::Initialize()
 	GetDeviceQueuesManager().Initialize();
 
 	DescriptorSetStateLayoutsRegistry::Get().CreateRegisteredLayouts();
+
+	priv::InitializeSamplerDescriptors();
 }
 
 void Renderer::Uninitialize()

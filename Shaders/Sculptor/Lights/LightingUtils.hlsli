@@ -157,17 +157,15 @@ float3 GetLightIlluminanceAtLocation(LocalLightInterface localLight, float3 loca
 		attenuation *= ComputeLightAngularAttenuationAtLocation(localLight, location);
 	}
 
-#ifdef DS_ShadowMapsDS
 	if (localLight.iesProfile.IsValid())
 	{
 		const float3 lightDir = normalize(location - localLight.location);
 		const float cosTheta = lightDir.z * 0.5f + 0.5f;
 		const float phi = atan2(lightDir.x, lightDir.y) / (2.f * PI) + 0.5f;
 
-		const float iesAttenuation = localLight.iesProfile.SampleLevel(u_linearShadowMapSampler, float2(phi, cosTheta), 0.f);
+		const float iesAttenuation = localLight.iesProfile.SampleLevel(BindlessSamplers::LinearClampEdge(), float2(phi, cosTheta), 0.f);
 		attenuation *= iesAttenuation;
 	}
-#endif // DS_ShadowMapsDS
 	
 	return attenuation * localLight.color * luminousIntensity;
 }

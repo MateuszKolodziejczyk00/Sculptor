@@ -6,6 +6,7 @@
 #include "DescriptorSetStateTypes.h"
 #include "Types/Texture.h"
 #include "Types/Buffer.h"
+#include "Types/Sampler.h"
 
 
 namespace spt::rdr
@@ -87,6 +88,7 @@ DescriptorManager::DescriptorManager(DescriptorHeap& descriptorHeap)
 	, m_bindlessLayout(CreateBindlessLayout())
 	, m_descriptorRange(descriptorHeap.GetRHI().AllocateRange(m_bindlessLayout->GetRHI().GetDescriptorsDataSize()))
 	, m_resourceDescriptorAllocator(m_descriptorRange, *m_bindlessLayout, 0u)
+	, m_samplerDescriptorsIndexer(DescriptorSetIndexer(m_descriptorRange.data, *m_bindlessLayout)[1])
 {
 	m_resourceDescriptorInfos.resize(m_resourceDescriptorAllocator.GetDescriptorsNum());
 }
@@ -225,6 +227,15 @@ void DescriptorManager::ClearDescriptorInfo(ResourceDescriptorIdx idx)
 	m_resourceDescriptorInfos[idx].Clear();
 }
 
+void DescriptorManager::UploadSamplerDescriptor(Uint32 idx, Sampler& sampler)
+{
+	SPT_CHECK(idx < m_samplerDescriptorsIndexer.GetSize());
+
+	const rhi::RHISampler& rhiSampler = sampler.GetRHI();
+
+	rhiSampler.CopyDescriptor(m_samplerDescriptorsIndexer[idx]);
+}
+
 TextureView* DescriptorManager::GetTextureView(ResourceDescriptorIdx idx) const
 {
 	if (idx == rdr::invalidResourceDescriptorIdx)
@@ -298,16 +309,16 @@ lib::SharedPtr<DescriptorSetLayout> DescriptorManager::CreateBindlessLayout() co
 	resourcesBinding.shaderStages    = rhi::EShaderStageFlags::All;
 	resourcesBinding.flags           = rhi::EDescriptorSetBindingFlags::PartiallyBound;
 
-	//rhi::DescriptorSetBindingDefinition samplersBinding;
-	//samplersBinding.bindingIdx      = 1u,
-	//samplersBinding.descriptorType  = rhi::EDescriptorType::Sampler,
-	//samplersBinding.descriptorCount = 128u,
-	//samplersBinding.shaderStages    = rhi::EShaderStageFlags::All;
-	//samplersBinding.flags           = rhi::EDescriptorSetBindingFlags::PartiallyBound;
+	rhi::DescriptorSetBindingDefinition samplersBinding;
+	samplersBinding.bindingIdx      = 1u,
+	samplersBinding.descriptorType  = rhi::EDescriptorType::Sampler,
+	samplersBinding.descriptorCount = 16u,
+	samplersBinding.shaderStages    = rhi::EShaderStageFlags::All;
+	samplersBinding.flags           = rhi::EDescriptorSetBindingFlags::PartiallyBound;
 
 	rhi::DescriptorSetDefinition bindlessSetDef;
 	bindlessSetDef.bindings.emplace_back(resourcesBinding);
-	//bindlessSetDef.bindings.emplace_back(samplersBinding);
+	bindlessSetDef.bindings.emplace_back(samplersBinding);
 
 	return ResourcesManager::CreateDescriptorSetLayout(RENDERER_RESOURCE_NAME("Bindless Layout"), bindlessSetDef);
 }

@@ -279,4 +279,46 @@ struct GPUNamedElemsSpan
 	}
 };
 
+
+#define SPT_LINEAR_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX     0
+#define SPT_NEAREST_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX    1
+#define SPT_LINEAR_REPEAT_SAMPLER_DESCRIPTOR_IDX         2
+#define SPT_NEAREST_REPEAT_SAMPLER_DESCRIPTOR_IDX        3
+#define SPT_LINEAR_MIN_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX 4
+#define SPT_LINEAR_MAX_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX 5
+
+
+struct BindlessSamplers
+{
+	static SamplerState LinearClampEdge()
+	{
+		return SamplerDescriptorHeap[SPT_LINEAR_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX];
+	}
+	
+	static SamplerState NearestClampEdge()
+	{
+		return SamplerDescriptorHeap[SPT_NEAREST_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX];
+	}
+	
+	static SamplerState LinearRepeat()
+	{
+		return SamplerDescriptorHeap[SPT_LINEAR_REPEAT_SAMPLER_DESCRIPTOR_IDX];
+	}
+	
+	static SamplerState NearestRepeat()
+	{
+		return SamplerDescriptorHeap[SPT_NEAREST_REPEAT_SAMPLER_DESCRIPTOR_IDX];
+	}
+	
+	static SamplerState LinearMinClampEdge()
+	{
+		return SamplerDescriptorHeap[SPT_LINEAR_MIN_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX];
+	}
+	
+	static SamplerState LinearMaxClampEdge()
+	{
+		return SamplerDescriptorHeap[SPT_LINEAR_MAX_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX];
+	}
+};
+
 #endif // BINDLESS_TYPES_HLSLI

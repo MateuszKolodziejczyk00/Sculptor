@@ -51,7 +51,6 @@ void RHIDescriptorSetLayout::InitializeRHI(const rhi::DescriptorSetDefinition& d
 													 SizeType samplersInBinding = 0;
 													 if(bindingDef.descriptorType == rhi::EDescriptorType::Sampler || bindingDef.descriptorType == rhi::EDescriptorType::CombinedTextureSampler)
 													 {
-														 SPT_CHECK_MSG(bindingDef.descriptorCount == 1, "Currently only one immutable sampler per binding is supported");
 														 samplersInBinding = static_cast<SizeType>(bindingDef.descriptorCount);
 													 }
 													 return value + samplersInBinding;

@@ -16,6 +16,7 @@ class DescriptorHeap;
 class DescriptorSetLayout;
 class BindableBufferView;
 class TextureView;
+class Sampler;
 
 
 class DescriptorAllocator
@@ -178,6 +179,8 @@ public:
 
 	void ClearDescriptorInfo(ResourceDescriptorIdx idx);
 
+	void UploadSamplerDescriptor(Uint32 idx, Sampler& sampler);
+
 	TextureView*        GetTextureView(ResourceDescriptorIdx idx) const;
 	BindableBufferView* GetBufferView(ResourceDescriptorIdx idx) const;
 	void*               GetCustomDescriptorInfo(ResourceDescriptorIdx idx) const;
@@ -200,6 +203,8 @@ private:
 
 	DescriptorAllocator m_resourceDescriptorAllocator;
 	lib::DynamicArray<DescriptorInfo> m_resourceDescriptorInfos;
+
+	DescriptorArrayIndexer m_samplerDescriptorsIndexer;
 };
 
 } // spt::rdr

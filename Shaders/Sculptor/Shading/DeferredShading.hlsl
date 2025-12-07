@@ -110,4 +110,3 @@ void DeferredShadingCS(CS_INPUT input)
 
 	u_luminanceTexture[pixel.xy] = float4(luminance, 1.f);
 }
-[[meta(debug_features)]]
