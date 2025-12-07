@@ -49,6 +49,13 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 	as::AssetsSystemInitializer asInitializer;
 	asInitializer.contentPath = engn::Paths::GetContentPath();
 	asInitializer.ddcPath     = engn::Paths::Combine(engn::Paths::GetEnginePath(), "DDC");
+
+	if (engn::Engine::Get().GetCmdLineArgs().Contains("-CompiledAssetsOnly"))
+	{
+		lib::AddFlags(asInitializer.flags, as::EAssetsSystemFlags::CompiledOnly);
+	}
+
+
 	engn::Engine::Get().GetAssetsSystem().Initialize(asInitializer);
 
 	const SizeType threadsNum = static_cast<SizeType>(std::thread::hardware_concurrency());
