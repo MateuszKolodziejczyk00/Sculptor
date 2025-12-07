@@ -362,3 +362,6 @@ FodyWeavers.xsd
 Content/Private/**
 
 Shaders/Sharc/**
+
+DDC/**
+Tests/DDC/**
