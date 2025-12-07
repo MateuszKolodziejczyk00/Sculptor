@@ -2,7 +2,6 @@
 #include "Serialization.h"
 #include "Utility/Random.h"
 
-#pragma optimize("", off)
 
 namespace spt::srl::tests
 {

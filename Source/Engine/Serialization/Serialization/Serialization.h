@@ -5,7 +5,7 @@
 #include "nlohmann/json.hpp"
 #include "Utility/Base64.h"
 
-#pragma optimize("", off)
+
 namespace spt::srl
 {
 

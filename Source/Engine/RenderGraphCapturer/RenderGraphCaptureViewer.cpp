@@ -9,7 +9,7 @@
 #include "Utility/Templates/Overload.h"
 #include "JobSystem.h"
 
-#pragma optimize("", off)
+
 namespace spt::rg::capture
 {
 
