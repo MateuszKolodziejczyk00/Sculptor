@@ -44,6 +44,7 @@
 #include "View/Systems/TemporalAAViewRenderSystem.h"
 #include "Techniques/TemporalAA/DLSSRenderer.h"
 #include "Techniques/TemporalAA/StandardTAARenderer.h"
+#include "IESProfileAsset.h"
 
 #if SPT_SHADERS_DEBUG_FEATURES
 #include "Debug/ShaderDebugUtils.h"
@@ -170,7 +171,7 @@ void SandboxRenderer::UpdatePreRender(engn::FrameContext& frame)
 																	  if (dirLightType == EDirLightType::Sun)
 																	  {
 																			data.color             = math::Vector3f(1.f, 0.956f, 0.839f);
-																			data.sunDiskEC         = 10.f;
+																			data.sunDiskEC         = 13.4f;
 																			data.zenithIlluminance = 120000.f;
 																	  }
 																	  else
@@ -395,6 +396,10 @@ void SandboxRenderer::InitializeRenderScene()
 														 return gfx::DLSSRenderer::InitializeDLSS();
 													 });
 
+	as::AssetsSystem& assetsSystem = engn::Engine::Get().GetAssetsSystem();
+	as::IESProfileAssetHandle iesProfile0 = assetsSystem.LoadAssetChecked<as::IESProfileAsset>("IESProfiles/IESProfile0.sptasset");
+	as::IESProfileAssetHandle iesProfile1 = assetsSystem.LoadAssetChecked<as::IESProfileAsset>("IESProfiles/IESProfile1.sptasset");
+
 	m_renderView = lib::MakeShared<rsc::RenderView>(*m_renderScene);
 	m_renderView->AddRenderStages(rsc::ERenderStage::DeferredRendererStages);
 	if (rdr::Renderer::IsRayTracingEnabled())
@@ -452,6 +457,7 @@ void SandboxRenderer::InitializeRenderScene()
 			pointLightData.luminousPower = 3200.f;
 			pointLightData.location = math::Vector3f(8.30f, 2.6f, 1.55f);
 			pointLightData.radius = 5.f;
+			pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
 		}
 
@@ -462,6 +468,7 @@ void SandboxRenderer::InitializeRenderScene()
 			pointLightData.luminousPower = 3200.f;
 			pointLightData.location = math::Vector3f(-8.30f, 3.9f, 4.45f);
 			pointLightData.radius = 5.f;
+			pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
 		}
 
@@ -472,6 +479,7 @@ void SandboxRenderer::InitializeRenderScene()
 			pointLightData.luminousPower = 3200.f;
 			pointLightData.location = math::Vector3f(8.30f, -3.8f, 1.55f);
 			pointLightData.radius = 5.f;
+			pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
 		}
 		
@@ -483,19 +491,18 @@ void SandboxRenderer::InitializeRenderScene()
 			//pointLightData.location = math::Vector3f(-9.30f, 2.6f, 1.55f);
 			pointLightData.location = math::Vector3f(-4.24f, -14.85f, 2.05f);
 			pointLightData.radius = 8.f;
+			pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
 		}
 
 		{
-			m_renderScene->CreateEntity().emplace<rsc::SpotLightData>(rsc::SpotLightData
+			m_renderScene->CreateEntity().emplace<rsc::PointLightData>(rsc::PointLightData
 			{
 				.color = math::Vector3f(1.0f, 0.7333f, 0.451f),
-				.luminousPower = 800.f,
+				.luminousPower = 8000.f,
 				.location       = math::Vector3f(0.f, 0.f, 3.f),
-				.direction      = -math::Vector3f::UnitZ(),
-				.range          = 8.f,
-				.innerHalfAngle = 2.5f,
-				.outerHalfAngle = 22.f
+				.radius          = 10.f,
+				.iesProfileTexture = iesProfile1->GetTextureView()
 			});
 		}
 
@@ -511,7 +518,7 @@ void SandboxRenderer::InitializeRenderScene()
 			directionalLightData.direction              = math::Vector3f(-0.5f, -0.3f, -1.7f).normalized();
 			directionalLightData.lightConeAngle         = 0.0046f;
 			directionalLightData.sunDiskAngleMultiplier = 3.8f;
-			directionalLightData.sunDiskEC              = 10.f;
+			directionalLightData.sunDiskEC              = 13.4f;
 			//directionalLightData.sunDiskEC              = 0.4f;
 			m_directionalLightEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
 		}

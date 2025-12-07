@@ -1,0 +1,11 @@
+{
+    "Blackboard": {
+        "BlackboardContent": [
+            "spt::as::IESProfileSourceDefinition"
+        ],
+        "spt::as::IESProfileSourceDefinition": {
+            "Path": "sample1.ies"
+        }
+    },
+    "Type": "pt::as::IESProfileAsset"
+}
