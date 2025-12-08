@@ -51,6 +51,7 @@ float EvaluateHeightBasedTransmittanceForSegment(in HeightFogParams fogParams, i
 	if(start.z > end.z)
 	{
 		Swap(start, end);
+		segment = -segment;
 	}
 
 	if(start.z > HEIGHT_FOG_MAX_HEIGHT)
@@ -82,7 +83,7 @@ float EvaluateHeightBasedTransmittanceForSegment(in HeightFogParams fogParams, i
 		// We also divide by dz to get the average density over along vertical segment
 		// which will be then multiplied by the segment length to get final optical depth
 
-		const float integral = (exp(-max(falloff * z0, 1e-6f)) - exp(-max(falloff * z1, 1e-6f))) * rcp(falloff * dz);
+		const float integral = (exp(-falloff * z0) - exp(-falloff * z1)) * rcp(falloff * dz);
 
 		opticalDepth = integral * density * extinction * segmentLenth;
 
