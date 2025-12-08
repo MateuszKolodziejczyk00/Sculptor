@@ -4,6 +4,7 @@
 #include "windows.h"
 
 #include "WinPixEventRuntime/pix3.h"
+#include <string>
 
 
 namespace spt::prf
@@ -47,9 +48,23 @@ void PIXBackend::EndEvent()
 	PIXEndEvent();
 }
 
+static constexpr size_t threadNameBufferSize = 128;
+thread_local static wchar_t threadNameBuffer[threadNameBufferSize];
+static void SetCurrentThreadNameUTF8(const char* name)
+{
+	int wideLen = ::MultiByteToWideChar(CP_UTF8, 0, name, -1, nullptr, 0);
+	if (wideLen <= 0 || wideLen > threadNameBufferSize)
+	{
+		return;
+	}
+
+	::MultiByteToWideChar(CP_UTF8, 0, name, -1, threadNameBuffer, wideLen);
+	::SetThreadDescription(::GetCurrentThread(), threadNameBuffer);
+}
+
 void PIXBackend::BeginThread(const char* name)
 {
-	// No-op
+	SetCurrentThreadNameUTF8(name);
 }
 
 void PIXBackend::EndThread()

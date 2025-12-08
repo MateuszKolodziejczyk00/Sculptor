@@ -78,6 +78,8 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 
 void SculptorEdApplication::OnRun()
 {
+	SPT_PROFILER_THREAD("Main Thread");
+
 	Super::OnRun();
 
 	js::Job psoPrecachingJob = js::Launch(SPT_GENERIC_JOB_NAME,
