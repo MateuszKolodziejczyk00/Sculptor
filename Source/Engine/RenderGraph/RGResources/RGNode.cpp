@@ -165,8 +165,7 @@ void RGNode::AddDescriptorSetState(lib::MTHandle<rdr::DescriptorSetState> dsStat
 
 void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context)
 {
-	SPT_PROFILER_FUNCTION();
-
+	SPT_PROFILER_SCOPE(GetName().Get().GetData());
 	SPT_GPU_DEBUG_REGION(recorder, GetName().Get().GetData(), lib::Color(static_cast<Uint32>(GetName().Get().GetKey())));
 	SPT_GPU_STATISTICS_SCOPE_FLAGS(recorder, context.statisticsCollector, GetName().Get().GetData(), helpers::GetQueryFlags(GetType()));
 

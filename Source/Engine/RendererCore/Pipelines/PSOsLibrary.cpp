@@ -3,6 +3,8 @@
 #include "JobSystem.h"
 
 
+SPT_DEFINE_LOG_CATEGORY(PSOsLibrary, true);
+
 namespace spt::rdr
 {
 
@@ -32,30 +34,53 @@ private:
 	lib::DynamicArray<std::tuple<RendererResourceName, GraphicsPipelineShaders, rhi::GraphicsPipelineDefinition>> m_graphicsPSOsRequests;
 
 	lib::DynamicArray<std::tuple<RendererResourceName, RayTracingPipelineShaders, rhi::RayTracingPipelineDefinition>> m_rayTracingPSOsRequests;
+
+	lib::HashSet<ShaderID>        m_registeredShaders;
+	lib::HashSet<PipelineStateID> m_registeredPipelines;
 };
 
 ShaderID PSOsPrecachingCompiler::CompileShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings)
 {
-	m_shaderCompilationRequests.emplace_back(shaderRelativePath, shaderStageDef, compilationSettings);
-	return ResourcesManager::GenerateShaderID(shaderRelativePath, shaderStageDef, compilationSettings);
+	const ShaderID shaderID = ResourcesManager::GenerateShaderID(shaderRelativePath, shaderStageDef, compilationSettings);
+	if (!m_registeredShaders.contains(shaderID))
+	{
+		m_shaderCompilationRequests.emplace_back(shaderRelativePath, shaderStageDef, compilationSettings);
+		m_registeredShaders.insert(shaderID);
+	}
+	return shaderID;
 }
 
 PipelineStateID PSOsPrecachingCompiler::CreateComputePipeline(const RendererResourceName& name, const rdr::ShaderID& shader)
 {
-	m_computePSOsRequests.emplace_back(name, shader);
-	return ResourcesManager::GeneratePipelineID(shader);
+	const PipelineStateID pipelineID = ResourcesManager::GeneratePipelineID(shader);
+	if (!m_registeredPipelines.contains(pipelineID))
+	{
+		m_computePSOsRequests.emplace_back(name, shader);
+		m_registeredPipelines.insert(pipelineID);
+	}
+	return pipelineID;
 }
 
 PipelineStateID PSOsPrecachingCompiler::CreateGraphicsPipeline(const RendererResourceName& name, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef)
 {
-	m_graphicsPSOsRequests.emplace_back(name, shaders, pipelineDef);
-	return ResourcesManager::GeneratePipelineID(shaders, pipelineDef);
+	const PipelineStateID pipelineID = ResourcesManager::GeneratePipelineID(shaders, pipelineDef);
+	if (!m_registeredPipelines.contains(pipelineID))
+	{
+		m_graphicsPSOsRequests.emplace_back(name, shaders, pipelineDef);
+		m_registeredPipelines.insert(pipelineID);
+	}
+	return pipelineID;
 }
 
 PipelineStateID PSOsPrecachingCompiler::CreateRayTracingPipeline(const RendererResourceName& name, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef)
 {
-	m_rayTracingPSOsRequests.emplace_back(name, shaders, pipelineDef);
-	return ResourcesManager::GeneratePipelineID(shaders, pipelineDef);
+	const PipelineStateID pipelineID = ResourcesManager::GeneratePipelineID(shaders, pipelineDef);
+	if (!m_registeredPipelines.contains(pipelineID))
+	{
+		m_rayTracingPSOsRequests.emplace_back(name, shaders, pipelineDef);
+		m_registeredPipelines.insert(pipelineID);
+	}
+	return pipelineID;
 }
 
 void PSOsPrecachingCompiler::ExecutePrecaching()
@@ -108,6 +133,12 @@ void PSOsPrecachingCompiler::ExecutePrecaching()
 			});
 		}
 	});
+
+	SPT_LOG_INFO(PSOsLibrary, "Precaching complete: {} shaders, {} compute PSOs, {} graphics PSOs, {} ray tracing PSOs",
+				 m_shaderCompilationRequests.size(),
+				 m_computePSOsRequests.size(),
+				 m_graphicsPSOsRequests.size(),
+				 m_rayTracingPSOsRequests.size());
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
