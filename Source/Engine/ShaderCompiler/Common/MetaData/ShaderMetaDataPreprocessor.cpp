@@ -11,7 +11,7 @@
 
 SPT_DEFINE_LOG_CATEGORY(ShaderMetaDataPrerpocessor, true)
 
-#pragma optimize("", off)
+
 namespace spt::sc
 {
 
