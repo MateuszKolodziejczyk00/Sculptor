@@ -154,6 +154,7 @@ void RGCapturerDecorator::AddDependenciesToPass(RenderGraphBuilder& graphBuilder
 			captureTextureDef.format      = rgTexture->GetFormat();
 			captureTextureDef.arrayLayers = rgTexture->GetTextureDefinition().arrayLayers;
 			captureTextureDef.mipLevels   = rgTexture->GetMipLevelsNum();
+			captureTextureDef.type        = rhi::GetSelectedTextureType(rgTexture->GetTextureRHIDefinition());
 			const lib::SharedRef<rdr::Texture> captureTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME(rgTexture->GetName()),
 																									 captureTextureDef,
 																									 rhi::EMemoryUsage::GPUOnly);
