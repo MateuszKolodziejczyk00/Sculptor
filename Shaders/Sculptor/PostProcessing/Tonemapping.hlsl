@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(TonemappingDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
+[[descriptor_set(TonemappingDS)]]
+[[descriptor_set(RenderViewDS)]]
 
 
 #include "Utils/Exposure.hlsli"

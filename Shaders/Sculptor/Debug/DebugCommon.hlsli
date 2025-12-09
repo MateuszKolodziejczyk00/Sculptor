@@ -29,7 +29,7 @@ Literal CreateLiteral(uint2 val)
 #define SPT_LINE __LINE__
 
 
-[[descriptor_set(ShaderDebugCommandBufferDS, 15)]]
+[[descriptor_set(ShaderDebugCommandBufferDS)]]
 
 
 namespace debug

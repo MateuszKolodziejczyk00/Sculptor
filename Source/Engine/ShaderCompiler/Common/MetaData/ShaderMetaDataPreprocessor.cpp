@@ -11,7 +11,7 @@
 
 SPT_DEFINE_LOG_CATEGORY(ShaderMetaDataPrerpocessor, true)
 
-
+#pragma optimize("", off)
 namespace spt::sc
 {
 
@@ -29,21 +29,64 @@ enum class EDSIteratorFuncResult
 };
 
 
+Uint32 ComputeDescriptorSetFirstImplicitIdx(const lib::String& sourceCode)
+{
+	SPT_PROFILER_FUNCTION();
+
+	static const std::regex descriptorSetRegex(R"~(\[\[descriptor_set\((\w+)\s*,\s*(\d+)\s*\)\]\])~");
+
+	auto descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), descriptorSetRegex);
+
+	Uint32 firstFreeIdx = 0u;
+
+	// iterate over all descriptor sets WITH explicit indices
+	while (descriptorSetIt != std::sregex_iterator())
+	{
+		const std::smatch& descriptorSetMatch = *descriptorSetIt;
+		SPT_CHECK(descriptorSetMatch.size() == 3); // whole match + dsNameMatch + dsIdxMatch
+
+		const lib::String dsIdxStr = descriptorSetMatch[2].str();
+		firstFreeIdx = std::max(firstFreeIdx, static_cast<Uint32>(std::stoi(dsIdxStr)) + 1u);
+
+		++descriptorSetIt;
+	}
+
+	return firstFreeIdx;
+}
+
+
 template<typename TFunctor>
 static void IterateDescriptorSets(TFunctor&& func, const lib::String& sourceCode)
 {
-	static const std::regex descriptorSetRegex(R"~(\[\[descriptor_set\((\w+)\s*,\s*(\d+)\s*\)\]\])~");
+	SPT_PROFILER_FUNCTION();
+
+	Uint32 implicitIdxCounter = ComputeDescriptorSetFirstImplicitIdx(sourceCode);
+
+	const Uint32 bindlessOffset = 1u;
+
+	static const std::regex descriptorSetRegex(R"~(\[\[descriptor_set\((\w+)\s*(,\s*(\d+)\s*)?\)\]\])~");
 
 	auto descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), descriptorSetRegex);
 
 	while (descriptorSetIt != std::sregex_iterator())
 	{
-		const std::smatch descriptorSetMatch = *descriptorSetIt;
-		SPT_CHECK(descriptorSetMatch.size() == 3); // should be whole match + dsNameMatch + dsIdxMatch
+		const std::smatch& descriptorSetMatch = *descriptorSetIt;
+		SPT_CHECK(descriptorSetMatch.size() == 4); // whole match + dsNameMatch + second arg + dsIdxMatch
 		const lib::HashedString dsName = descriptorSetMatch[1].str();
-		const lib::String dsIdxStr = descriptorSetMatch[2].str();
-		const Uint32 bindlessOffset = 1u;
-		const Uint32 dsIdx = static_cast<Uint32>(std::stoi(dsIdxStr)) + bindlessOffset;
+		const lib::String dsIdxStr = descriptorSetMatch[3].str();
+
+		Uint32 dsIdx = idxNone<Uint32>;
+		if (descriptorSetMatch[2].matched)
+		{
+			dsIdx = static_cast<Uint32>(std::stoi(dsIdxStr));
+		}
+		else
+		{
+			dsIdx = implicitIdxCounter++;
+		}
+
+		SPT_CHECK(dsIdx != idxNone<Uint32>);
+		dsIdx += bindlessOffset;
 
 		const SizeType dsTokenPosition = descriptorSetIt->prefix().length();
 		const SizeType dsTokenLength   = descriptorSetMatch.length();
@@ -332,7 +375,7 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(lib::String& sourceCode
 
 	while (shaderStructsIt != std::sregex_iterator())
 	{
-		const std::smatch shaderStructMatch = *shaderStructsIt;
+		const std::smatch& shaderStructMatch = *shaderStructsIt;
 		SPT_CHECK(shaderStructMatch.size() == 2); // should be whole match + structNameMatch
 		const lib::HashedString structName = shaderStructMatch[1].str();
 
@@ -401,7 +444,7 @@ void ShaderMetaDataPrerpocessor::PreprocessFileDependencies(lib::String& sourceC
 			it != std::sregex_iterator();
 			++it)
 	{
-		const std::smatch includeFileMatch = *it;
+		const std::smatch& includeFileMatch = *it;
 		SPT_CHECK(includeFileMatch.size() == 2);
 
 		lib::String filePath = includeFileMatch[1].str();
@@ -425,7 +468,7 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderLiterals(lib::String& sourceCod
 
 	while (shaderLiteralsIt != std::sregex_iterator())
 	{
-		const std::smatch literalMatch = *shaderLiteralsIt;
+		const std::smatch& literalMatch = *shaderLiteralsIt;
 		SPT_CHECK(literalMatch.size() == 1);
 		const lib::String matchString = literalMatch[0].str();
 		const lib::StringView literalString(matchString.cbegin() + 2, matchString.cbegin() + matchString.length() - 1);
