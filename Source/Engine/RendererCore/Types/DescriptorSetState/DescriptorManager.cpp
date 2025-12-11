@@ -7,6 +7,7 @@
 #include "Types/Texture.h"
 #include "Types/Buffer.h"
 #include "Types/Sampler.h"
+#include "Types/AccelerationStructure.h"
 
 
 namespace spt::rdr
@@ -211,6 +212,22 @@ void DescriptorManager::UploadUAVDescriptor(ResourceDescriptorIdx idx, BindableB
 	buffer->GetRHI().CopyUAVDescriptor(bufferView.GetOffset(), bufferView.GetSize(), descriptorData.data());
 
 	m_resourceDescriptorInfos[idx].Encode(&bufferView);
+}
+
+void DescriptorManager::UploadSRVDescriptor(ResourceDescriptorIdx idx, TopLevelAS& tlas)
+{
+	SPT_CHECK(idx != rdr::invalidResourceDescriptorIdx);
+
+#if SPT_DESCRIPTOR_MANAGER_DEBUG
+	SPT_CHECK(m_resourceDescriptorAllocator.IsDescriptorOccupied(idx));
+	m_resourceDescriptorInfos[idx].resourceName = textureView.GetRHI().GetName();
+#endif // SPT_DESCRIPTOR_MANAGER_DEBUG
+
+	const lib::Span<Byte> descriptorData = m_resourceDescriptorAllocator.GetDescriptorData(idx);
+
+	tlas.GetRHI().CopySRVDescriptor(descriptorData.data());
+
+	m_resourceDescriptorInfos[idx].Encode(&tlas);
 }
 
 void DescriptorManager::SetCustomDescriptorInfo(ResourceDescriptorIdx idx, void* customDataPtr)

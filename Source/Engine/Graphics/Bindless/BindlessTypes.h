@@ -8,6 +8,7 @@
 #include "Types/Buffer.h"
 #include "RGResources/RGResourceHandles.h"
 #include "DependenciesBuilder.h"
+#include "Types/AccelerationStructure.h"
 
 
 namespace spt::rg
@@ -311,6 +312,53 @@ template<typename TType>
 using ConstTypedBufferRef = BufferDescriptor<BufferDescriptorMetadata{ false, true, false, true }, TType>;
 
 
+struct TLASDescriptorMetadata
+{
+	Bool isOptional = false;
+};
+
+
+#if DO_CHECKS
+GRAPHICS_API void ValidateTLASBinding(const lib::SharedPtr<rdr::TopLevelAS>& boundTLAS, TLASDescriptorMetadata metadata);
+#endif // DO_CHECKS
+
+
+template<TLASDescriptorMetadata metadata>
+class TLASDescriptor
+{
+public:
+
+	static constexpr TLASDescriptorMetadata GetMetadata() { return metadata; }
+
+	TLASDescriptor() = default;
+
+	TLASDescriptor& operator=(lib::SharedPtr<rdr::TopLevelAS> tlas)
+	{
+		m_tlas = std::move(tlas);
+		return *this;
+	}
+
+	Uint32 GetDescriptorIdx() const
+	{
+		SPT_CHECK_MSG(m_tlas, "Invalid TLAS in TLASDescriptor");
+		return m_tlas->GetSRVDescriptor();
+	}
+
+	Bool IsValid() const
+	{
+		return !!m_tlas;
+	}
+
+private:
+
+	lib::SharedPtr<rdr::TopLevelAS> m_tlas;
+};
+
+
+using TLASRef = TLASDescriptor<TLASDescriptorMetadata{ false }>;
+using TLAS    = TLASDescriptor<TLASDescriptorMetadata{ true }>;
+
+
 template<typename TNamedBuffer, typename TDataType>
 class GPUNamedElemPtr
 {
@@ -567,6 +615,49 @@ struct ShaderStructReferencer<gfx::BufferDescriptor<metadata, TType>>
 	static constexpr void CollectReferencedStructs(lib::DynamicArray<lib::String>& references)
 	{
 		ShaderStructReferencer<TType>::CollectReferencedStructs(references);
+	}
+};
+
+
+template<gfx::TLASDescriptorMetadata metadata>
+struct StructTranslator<gfx::TLASDescriptor<metadata>>
+{
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return "TLAS";
+	}
+};
+
+
+template<gfx::TLASDescriptorMetadata metadata>
+struct StructCPPToHLSLTranslator<gfx::TLASDescriptor<metadata>>
+{
+	static void Copy(const gfx::TLASDescriptor<metadata>& cppData, lib::Span<Byte> hlslData)
+	{
+		SPT_CHECK(hlslData.size() == 8u);
+		Uint32* hlsl = reinterpret_cast<Uint32*>(hlslData.data());
+		hlsl[0] = cppData.GetDescriptorIdx();
+		hlsl[1] = 2137;
+	}
+};
+
+
+template<gfx::TLASDescriptorMetadata metadata>
+struct StructHLSLSizeEvaluator<gfx::TLASDescriptor<metadata>>
+{
+	static constexpr Uint32 Size()
+	{
+		return 8u;
+	}
+};
+
+
+template<gfx::TLASDescriptorMetadata metadata>
+struct StructHLSLAlignmentEvaluator<gfx::TLASDescriptor<metadata>>
+{
+	static constexpr Uint32 Alignment()
+	{
+		return 4u;
 	}
 };
 

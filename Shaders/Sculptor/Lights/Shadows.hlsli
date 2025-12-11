@@ -270,6 +270,9 @@ float EvaluateShadowsDPCF(Texture2D shadowMap, SamplerState shadowSampler, float
 
 	float occluders = 0.f;
 	float occludersDistSum = 0.f;
+
+	const float bias = 0.002f;
+	linearDepth -= bias;
 	
 	[unroll]
 	for (uint i = 0; i < PCF_SHADOW_SAMPLES_NUM; ++i)

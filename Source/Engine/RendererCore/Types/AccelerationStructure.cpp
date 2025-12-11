@@ -2,6 +2,8 @@
 #include "ResourcesManager.h"
 #include "Buffer.h"
 #include "CommandsRecorder/CommandRecorder.h"
+#include "Renderer.h"
+#include "DescriptorSetState/DescriptorManager.h"
 
 namespace spt::rdr
 {
@@ -36,13 +38,44 @@ TopLevelAS::TopLevelAS(const RendererResourceName& name, const rhi::TLASDefiniti
 	SPT_CHECK(accelrationStructureBuffer.IsValid());
 	SPT_CHECK(instancesBuildDataBuffer.IsValid());
 
-	m_accelerationStructureBuffer	= ResourcesManager::CreateBuffer(name, accelrationStructureBuffer);
-	m_instancesBuildDataBuffer		= ResourcesManager::CreateBuffer(name, instancesBuildDataBuffer);
+	m_accelerationStructureBuffer = ResourcesManager::CreateBuffer(name, accelrationStructureBuffer);
+	m_instancesBuildDataBuffer    = ResourcesManager::CreateBuffer(name, instancesBuildDataBuffer);
+
+	InitializeSRVDescriptor();
+}
+
+TopLevelAS::~TopLevelAS()
+{
+	if (m_srvDescriptor.IsValid())
+	{
+		Renderer::GetDescriptorManager().ClearDescriptorInfo(m_srvDescriptor.Get());
+	}
+
+	Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda(
+	[releaseTicket = GetRHI().DeferredReleaseRHI(), srvDescriptor = std::move(m_srvDescriptor)]() mutable
+	{
+		if (srvDescriptor.IsValid())
+		{
+			Renderer::GetDescriptorManager().FreeResourceDescriptor(std::move(srvDescriptor));
+		}
+
+		releaseTicket.ExecuteReleaseRHI();
+	}));
 }
 
 void TopLevelAS::ReleaseInstancesBuildData()
 {
 	m_instancesBuildDataBuffer.reset();
+}
+
+void TopLevelAS::InitializeSRVDescriptor()
+{
+	rdr::DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+
+	m_srvDescriptor = descriptorManager.AllocateResourceDescriptor();
+	SPT_CHECK(m_srvDescriptor.IsValid());
+
+	descriptorManager.UploadSRVDescriptor(m_srvDescriptor, *this);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

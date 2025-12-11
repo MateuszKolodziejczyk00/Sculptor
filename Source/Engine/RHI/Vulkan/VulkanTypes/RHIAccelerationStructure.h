@@ -40,6 +40,10 @@ public:
 
 	VkAccelerationStructureBuildRangeInfoKHR CreateBuildRangeInfo() const;
 
+	DeviceAddress GetDeviceAddress() const;
+
+	void CopySRVDescriptor(Byte* dst) const;
+
 protected:
 
 	RHIAccelerationStructureReleaseTicket DeferredReleaseInternal();
@@ -63,8 +67,6 @@ public:
 	void ReleaseRHI();
 
 	RHIAccelerationStructureReleaseTicket DeferredReleaseRHI();
-
-	Uint64 GetDeviceAddress() const;
 
 	VkAccelerationStructureBuildGeometryInfoKHR CreateBuildGeometryInfo(OUT VkAccelerationStructureGeometryKHR& geometry) const;
 

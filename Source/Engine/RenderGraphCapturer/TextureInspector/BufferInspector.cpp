@@ -211,6 +211,8 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 {
 	const RGCapture& capture = m_parentNodeViewer.GetCapture();
 
+	ImGui::PushID(currentOffset);
+
 	ImGui::EndColumns();
 	ImGui::Separator();
 	ImGui::Columns(3);
@@ -228,6 +230,7 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 	{
 		const rdr::ShaderStructRTTI& rtti = memberStructMetaData->GetRTTI();
 		ImGui::Indent();
+		ImGui::PushID(currentOffset);
 		for (const rdr::ShaderStructMemberRTTI& member : rtti.members)
 		{
 			ImGui::NextColumn();
@@ -248,6 +251,7 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 			}
 		}
 		ImGui::Unindent();
+		ImGui::PopID();
 	}
 	else if (typeName == lib::HashedString("uint"))
 	{
@@ -384,6 +388,8 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 	{
 		ImGui::Text("Unsupported type");
 	}
+
+	ImGui::PopID();
 }
 
 } // spt::rg::capture

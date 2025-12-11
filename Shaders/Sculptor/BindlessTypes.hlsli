@@ -212,6 +212,24 @@ struct ByteBuffer
 	}
 };
 
+
+struct TLAS
+{
+	uint descriptorIdx;
+	uint metaData;
+
+	RaytracingAccelerationStructure GetResource()
+	{
+		return ResourceDescriptorHeap[descriptorIdx];
+	}
+
+	bool IsValid()
+	{
+		return descriptorIdx != IDX_NONE_32;
+	}
+};
+
+
 template<typename TDataType>
 struct GPUPtr
 {

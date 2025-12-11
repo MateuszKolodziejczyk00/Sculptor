@@ -26,7 +26,7 @@ float3 TonyMCMapface(float3 stimulus)
     const float LUT_DIMS = 48.0;
     const float3 uv = encoded * ((LUT_DIMS - 1.0) / LUT_DIMS) + 0.5 / LUT_DIMS;
 
-	return u_tonemappingConstants.tonemappingLUT.SampleLevel(u_linearSampler, uv);
+	return u_tonemappingConstants.tonemappingLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), uv);
 }
 
 
@@ -43,9 +43,9 @@ float3 ApplyLocalExposure(in float3 linearColor, in int2 pixel)
 
 	const float2 bilateralGridUV = pixel * u_tonemappingConstants.bilateralGridUVPerPixel;
 
-	const float downsampledLocalLogLuminance = u_tonemappingConstants.logLuminance.SampleLevel(u_linearSampler, bilateralGridUV, 0).x;
+	const float downsampledLocalLogLuminance = u_tonemappingConstants.logLuminance.SampleLevel(BindlessSamplers::LinearClampEdge(), bilateralGridUV, 0).x;
 
-	const float2 bilateralGridValue = u_tonemappingConstants.luminanceBilateralGrid.SampleLevel(u_linearSampler, float3(bilateralGridUV, bilateralGridDepth), 0.f);
+	const float2 bilateralGridValue = u_tonemappingConstants.luminanceBilateralGrid.SampleLevel(BindlessSamplers::LinearClampEdge(), float3(bilateralGridUV, bilateralGridDepth), 0.f);
 	const float gridLocalLogLuminance = bilateralGridValue.x / (bilateralGridValue.y + 0.0001f);
 
 	const float localLogLuminance = lerp(downsampledLocalLogLuminance, gridLocalLogLuminance, u_tonemappingConstants.bilateralGridStrength);
@@ -75,7 +75,7 @@ void TonemappingCS(CS_INPUT input)
 	if(u_tonemappingConstants.debugGeometry.IsValid())
 	{
 		const float2 uv = coords * u_tonemappingConstants.pixelSize;
-		const float4 debugGeometry = u_tonemappingConstants.debugGeometry.SampleLevel(u_linearSampler, uv);
+		const float4 debugGeometry = u_tonemappingConstants.debugGeometry.SampleLevel(BindlessSamplers::LinearClampEdge(), uv);
 		color = lerp(color, debugGeometry.rgb, debugGeometry.a);
 	}
 

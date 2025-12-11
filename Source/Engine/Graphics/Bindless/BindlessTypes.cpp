@@ -4,6 +4,7 @@
 namespace spt::gfx
 {
 
+#if DO_CHECKS
 void ValidateTextureBinding(const std::variant<lib::SharedPtr<rdr::TextureView>, rg::RGTextureViewHandle>& boundView, TextureDescriptorMetadata metadata)
 {
 	const rhi::TextureDefinition* textureDef = nullptr;
@@ -115,5 +116,14 @@ void ValidateBufferBinding(const std::variant<lib::SharedPtr<rdr::BindableBuffer
 		SPT_CHECK_MSG(lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::Storage), "BufferDescriptor ({}) is not valid for UAV buffer", resourceName.ToString());
 	}
 }
+
+void ValidateTLASBinding(const lib::SharedPtr<rdr::TopLevelAS>& boundTLAS, TLASDescriptorMetadata metadata)
+{
+	if (!metadata.isOptional)
+	{
+		SPT_CHECK_MSG(!!boundTLAS, "TLASDescriptor is not valid");
+	}
+}
+#endif // DO_CHECKS
 
 } // spt::gfx

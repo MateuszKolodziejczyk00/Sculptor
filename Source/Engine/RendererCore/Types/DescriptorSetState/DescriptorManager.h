@@ -16,6 +16,7 @@ class DescriptorHeap;
 class DescriptorSetLayout;
 class BindableBufferView;
 class TextureView;
+class TopLevelAS;
 class Sampler;
 
 
@@ -69,6 +70,7 @@ class DescriptorInfo
 	{
 		TextureView = 0,
 		Buffer,
+		TLAS,
 		CustomPtr
 	};
 
@@ -83,6 +85,7 @@ class DescriptorInfo
 		void*               m_ptr;
 		TextureView*        m_textureView;
 		BindableBufferView* m_buffer;
+		TopLevelAS*         m_tlas;
 	};
 
 public:
@@ -105,6 +108,12 @@ public:
 	{
 		m_buffer = inBuffer;
 		m_ptrValue += static_cast<Uint64>(EDescriptorInfoType::Buffer);
+	}
+
+	void Encode(TopLevelAS* inTLAS)
+	{
+		m_tlas = inTLAS;
+		m_ptrValue += static_cast<Uint64>(EDescriptorInfoType::TLAS);
 	}
 
 	void EncodeCustomPtr(void* inPtr)
@@ -132,6 +141,11 @@ public:
 	BindableBufferView* GetBufferView() const
 	{
 		return Contains(EDescriptorInfoType::Buffer) ? reinterpret_cast<BindableBufferView*>(m_ptrValue & ~0x3ull) : nullptr;
+	}
+
+	TopLevelAS* GetTLAS() const
+	{
+		return Contains(EDescriptorInfoType::TLAS) ? reinterpret_cast<TopLevelAS*>(m_ptrValue & ~0x3ull) : nullptr;
 	}
 
 	void* GetCustomPtr() const
@@ -174,6 +188,8 @@ public:
 
 	void UploadSRVDescriptor(ResourceDescriptorIdx idx, BindableBufferView& bufferView);
 	void UploadUAVDescriptor(ResourceDescriptorIdx idx, BindableBufferView& bufferView);
+
+	void UploadSRVDescriptor(ResourceDescriptorIdx idx, TopLevelAS& tlas);
 
 	void SetCustomDescriptorInfo(ResourceDescriptorIdx idx, void* customDataPtr);
 

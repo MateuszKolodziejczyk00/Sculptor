@@ -2,6 +2,7 @@
 #include "Vulkan/VulkanRHI.h"
 #include "Vulkan/VulkanRHIUtils.h"
 #include "RHIBuffer.h"
+#include "Vulkan/Device/LogicalDevice.h"
 
 namespace spt::vulkan
 {
@@ -88,6 +89,27 @@ RHIAccelerationStructureReleaseTicket RHIAccelerationStructure::DeferredReleaseI
 	return releaseTicket;
 }
 
+DeviceAddress RHIAccelerationStructure::GetDeviceAddress() const
+{
+	VkAccelerationStructureDeviceAddressInfoKHR asDeviceAddressInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR };
+	asDeviceAddressInfo.accelerationStructure = m_handle;
+
+	return vkGetAccelerationStructureDeviceAddressKHR(VulkanRHI::GetDeviceHandle(), &asDeviceAddressInfo);
+}
+
+void RHIAccelerationStructure::CopySRVDescriptor(Byte* dst) const
+{
+	SPT_CHECK(IsValid());
+
+	VkDescriptorGetInfoEXT info{ VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
+	info.type                       = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+	info.data.accelerationStructure = GetDeviceAddress();
+
+	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
+
+	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().SizeOf(rhi::EDescriptorType::AccelerationStructure), dst);
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RHIBottomLevelAS ==============================================================================
 
@@ -160,14 +182,6 @@ RHIAccelerationStructureReleaseTicket RHIBottomLevelAS::DeferredReleaseRHI()
 	m_geometryFlags				= 0;
 
 	return releaseTicket;
-}
-
-Uint64 RHIBottomLevelAS::GetDeviceAddress() const
-{
-	VkAccelerationStructureDeviceAddressInfoKHR asDeviceAddressInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR };
-	asDeviceAddressInfo.accelerationStructure = m_handle;
-
-	return vkGetAccelerationStructureDeviceAddressKHR(VulkanRHI::GetDeviceHandle(), &asDeviceAddressInfo);
 }
 
 VkAccelerationStructureBuildGeometryInfoKHR RHIBottomLevelAS::CreateBuildGeometryInfo(OUT VkAccelerationStructureGeometryKHR& geometry) const

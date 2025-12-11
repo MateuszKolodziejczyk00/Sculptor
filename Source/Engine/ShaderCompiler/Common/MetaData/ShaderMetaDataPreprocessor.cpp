@@ -176,7 +176,7 @@ static TypeOverrideMap ParseTypeOverrides(lib::String& sourceCode)
 
 			const lib::StringView originalStructName = lib::StringView(&sourceCode[originalStructNameStartPos], currentPos - originalStructNameStartPos);
 
-			SizeType structEndPos = sourceCode.find('}', currentPos);
+			SizeType structEndPos = ++currentPos;
 			Uint32 braceDepth = 1u;
 			while (structEndPos != lib::String::npos && braceDepth > 0u)
 			{
