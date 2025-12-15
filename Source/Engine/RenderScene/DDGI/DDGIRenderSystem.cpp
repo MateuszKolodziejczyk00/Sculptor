@@ -55,7 +55,6 @@ DS_BEGIN(DDGITraceRaysDS, rg::RGDescriptorSetState<DDGITraceRaysDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIRelitGPUParams>),                  u_relitParams)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIVolumeGPUParams>),                 u_volumeParams)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ChildDSBinding<SceneRayTracingDS>),                             rayTracingDS)
 DS_END();
 
 
@@ -126,15 +125,12 @@ namespace pipelines
 RT_PSO(DDGITraceRaysPSO)
 {
 	RAY_GEN_SHADER("Sculptor/DDGI/DDGITraceRays.hlsl", DDGIProbeRaysRTG);
-	MISS_SHADERS(
-		SHADER_ENTRY("Sculptor/DDGI/DDGITraceRays.hlsl", DDGIProbeRaysRTM),
-		SHADER_ENTRY("Sculptor/DDGI/DDGITraceRays.hlsl", DDGIShadowRaysRTM)
-	);
+	MISS_SHADERS(SHADER_ENTRY("Sculptor/DDGI/DDGITraceRays.hlsl",  GenericRTM));
 
 	HIT_GROUP
 	{
-		CLOSEST_HIT_SHADER("Sculptor/StaticMeshes/SMDDGI.hlsl", DDGI_RT_CHS);
-		ANY_HIT_SHADER("Sculptor/StaticMeshes/SMDDGI.hlsl", DDGI_RT_AHS);
+		CLOSEST_HIT_SHADER("Sculptor/DDGI/DDGITraceRays.hlsl", GenericCHS);
+		ANY_HIT_SHADER("Sculptor/DDGI/DDGITraceRays.hlsl", GenericAH);
 
 		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
 	};
@@ -455,8 +451,6 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 	const math::Vector2u probesResultRes = math::Vector2u(probesToUpdateNum, raysNumPerProbe);
 	const rg::RGTextureViewHandle probesTraceResultTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Probes Trace Result"), rg::TextureDef(probesResultRes, rhi::EFragmentFormat::RGBA16_S_Float));
 
-	const RayTracingRenderSceneSubsystem& rayTracingSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
-
 	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
 	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
@@ -469,7 +463,6 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 	traceRaysDS->u_traceRaysResultTexture = probesTraceResultTexture;
 	traceRaysDS->u_relitParams            = relitParams.relitParamsBuffer;
 	traceRaysDS->u_volumeParams           = relitParams.ddgiVolumeParamsBuffer;
-	traceRaysDS->rayTracingDS             = rayTracingSubsystem.GetSceneRayTracingDS();
 
 	LightsRenderSystem& lightsRenderSystem = renderScene.GetRenderSystemChecked<LightsRenderSystem>();
 
@@ -491,9 +484,6 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 						   rg::BindDescriptorSets(traceRaysDS,
 												  relitParams.ddgiSceneDS,
 												  lightsRenderSystem.GetGlobalLightsDS(),
-												  StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
-												  GeometryManager::Get().GetGeometryDSState(),
-												  mat::MaterialsUnifiedData::Get().GetMaterialsDS(),
 												  viewContext.cloudscapeProbesDS,
 												  shadowMapsDS));
 

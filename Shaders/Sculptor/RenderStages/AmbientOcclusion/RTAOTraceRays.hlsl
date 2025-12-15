@@ -1,10 +1,11 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RTAOTraceRaysDS, 2)]]
-[[descriptor_set(RenderViewDS, 3)]]
+[[descriptor_set(RenderSceneDS)]]
+[[descriptor_set(RenderViewDS)]]
+[[descriptor_set(RTAOTraceRaysDS)]]
 
+#include "RayTracing/RayTracingHelpers.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
-#include "Utils/RTVisibilityCommon.hlsli"
 #include "Utils/Packing.hlsli"
 #include "Utils/Random.hlsli"
 
@@ -24,8 +25,6 @@ void GenerateAmbientOcclusionRaysRTG()
     
     if(depth > 0.f && linearDepth < aoRange)
     {
-        RTVisibilityPayload payload = { false };
-
         const float3 ndc = float3(uv * 2.f - 1.f, depth);
         const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
 
@@ -40,27 +39,14 @@ void GenerateAmbientOcclusionRaysRTG()
         float pdf = 0.f;
         const float3 rayDirection = RandomVectorInCosineWeightedHemisphere(tangentSpace, random, OUT pdf);
 
-		const float bias = 0.0001f + linearDepth * 0.002f;
-
         RayDesc rayDesc;
         rayDesc.TMin        = u_rtaoParams.raysMinHitDistance;
         rayDesc.TMax        = u_rtaoParams.raysLength;
         rayDesc.Origin      = worldLocation + normal * 0.02f;
         rayDesc.Direction   = rayDirection;
 
-		const uint instanceMask = RT_INSTANCE_FLAG_OPAQUE;
-
-        TraceRay(u_sceneTLAS,
-                 RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
-                 instanceMask,
-                 0,
-                 1,
-                 0,
-                 rayDesc,
-                 payload);
-
-        ao = payload.isVisible ? 1.f : 0.f;
-    }
+		ao = RTScene().VisibilityTest(rayDesc) ? 1.f : 0.f;
+	}
 
     u_ambientOcclusionTexture[pixel] = ao;
 }

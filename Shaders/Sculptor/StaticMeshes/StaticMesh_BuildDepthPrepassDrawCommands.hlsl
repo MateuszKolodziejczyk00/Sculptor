@@ -1,11 +1,10 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
-[[descriptor_set(RenderSceneDS, 1)]]
-[[descriptor_set(StaticMeshBatchDS, 2)]]
-[[descriptor_set(RenderViewDS, 3)]]
+[[descriptor_set(RenderSceneDS)]]
+[[descriptor_set(RenderViewDS)]]
+[[descriptor_set(StaticMeshBatchDS)]]
 
-[[descriptor_set(SMDepthPrepassCullInstancesDS, 4)]]
+[[descriptor_set(SMDepthPrepassCullInstancesDS)]]
 
 #include "Utils/Wave.hlsli"
 #include "Utils/Culling.hlsli"

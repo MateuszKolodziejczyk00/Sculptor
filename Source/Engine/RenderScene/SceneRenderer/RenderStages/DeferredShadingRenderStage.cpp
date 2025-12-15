@@ -13,6 +13,7 @@
 #include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 #include "Pipelines/PSOsLibraryTypes.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
+#include "Utils/StochasticDIRenderer.h"
 
 
 namespace spt::rsc
@@ -23,6 +24,8 @@ REGISTER_RENDER_STAGE(ERenderStage::DeferredShading, DeferredShadingRenderStage)
 namespace renderer_params
 {
 RendererBoolParameter enableTiledShadingDebug("Enable Tiled Shading Debug", { "Deferred Shading" }, false);
+
+RendererBoolParameter enableStochasticLighting("Enable Stochastic Lighting", { "Deferred Shading" }, false);
 } // renderer_params
 
 
@@ -81,6 +84,8 @@ struct DeferredShadingParams
 {
 	ViewRenderingSpec& viewSpec;
 	const RenderScene& renderScene;
+
+	rg::RGTextureViewHandle outputLuminance;
 };
 
 
@@ -95,8 +100,6 @@ void ExecuteDeferredShading(rg::RenderGraphBuilder& graphBuilder, const Deferred
 	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 	const GBuffer& gBuffer = viewContext.gBuffer;
 
-	viewContext.luminance = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), rg::TextureDef(resolution, SceneRendererStatics::hdrFormat));
-
 	DeferredShadingContstants shaderConstants;
 	shaderConstants.resolution                = resolution;
 	shaderConstants.pixelSize                 = math::Vector2f::Ones().cwiseQuotient(resolution.cast<Real32>());
@@ -110,7 +113,7 @@ void ExecuteDeferredShading(rg::RenderGraphBuilder& graphBuilder, const Deferred
 	deferredShadingDS->u_gBuffer2Texture          = gBuffer[2];
 	deferredShadingDS->u_gBuffer3Texture          = gBuffer[3];
 	deferredShadingDS->u_gBuffer4Texture          = gBuffer[4];
-	deferredShadingDS->u_luminanceTexture         = viewContext.luminance;
+	deferredShadingDS->u_luminanceTexture         = shadingParams.outputLuminance;
 	deferredShadingDS->u_deferredShadingConstants = shaderConstants;
 
 	DeferredShadingPermutation permutation;
@@ -144,9 +147,28 @@ void DeferredShadingRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, 
 {
 	SPT_PROFILER_FUNCTION();
 
-	deferred_shading::DeferredShadingParams params{ viewSpec, renderScene };
+	const math::Vector2u resolution = viewSpec.GetRenderingRes();
+	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-	deferred_shading::ExecuteDeferredShading(graphBuilder, params);
+	const rg::RGTextureViewHandle luminance = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), rg::TextureDef(resolution, SceneRendererStatics::hdrFormat));
+
+	if (renderer_params::enableStochasticLighting)
+	{
+		const stochastic_di::StochasticDIParams diParams
+		{
+			.outputLuminance = luminance
+		};
+
+		stochastic_di::RenderDI(graphBuilder, renderScene, viewSpec, diParams);
+	}
+	else
+	{
+		const deferred_shading::DeferredShadingParams params{ viewSpec, renderScene, luminance };
+
+		deferred_shading::ExecuteDeferredShading(graphBuilder, params);
+	}
+
+	viewContext.luminance = luminance;
 }
 
 } // spt::rsc

@@ -1,6 +1,7 @@
 #ifndef SHADOWS_HLSLI
 #define SHADOWS_HLSLI
 
+#include "SceneRendering/GPUScene.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Random.hlsli"
 #include "Shading/Shading.hlsli"
@@ -273,7 +274,7 @@ float EvaluateShadowsDPCF(Texture2D shadowMap, SamplerState shadowSampler, float
 
 	const float bias = 0.002f;
 	linearDepth -= bias;
-	
+
 	[unroll]
 	for (uint i = 0; i < PCF_SHADOW_SAMPLES_NUM; ++i)
 	{
@@ -385,7 +386,8 @@ float EvaluatePointLightShadows(ShadedSurface surface, float3 pointLightLocation
 
 	if (u_shadowsSettings.shadowMappingTechnique == SPT_SHADOWS_TECHNIQUE_DPCF)
 	{
-		const float noise = Random(float2(surface.location.x - surface.location.z, surface.location.y + surface.location.z) + float2(u_gpuSceneFrameConstants.time * 0.3f, u_gpuSceneFrameConstants.time * -0.4f));
+		const float time = GPUScene().time;
+		const float noise = Random(float2(surface.location.x - surface.location.z, surface.location.y + surface.location.z) + float2(time * 0.3f, time * -0.4f));
 		const float2 penumbraSize = rcp(256.f);
 		return EvaluateShadowsDPCF(u_shadowMaps[shadowMapIdx], u_shadowMapSampler, shadowMapUV, surfaceLinearDepth, penumbraSize, p20, p23, noise);
 	}

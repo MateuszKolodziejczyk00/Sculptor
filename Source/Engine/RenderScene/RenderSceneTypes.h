@@ -8,6 +8,7 @@
 #include "Bindless/BindlessTypes.h"
 #include "StaticMeshes/StaticMeshGeometry.h"
 #include "RenderSceneRegistry.h"
+#include "GeometryManager.h"
 
 
 namespace spt::rsc
@@ -78,22 +79,7 @@ BEGIN_SHADER_STRUCT(RenderEntityGPUData)
 END_SHADER_STRUCT();
 
 
-CREATE_NAMED_BUFFER(RenderEntitiesArray);
+CREATE_NAMED_BUFFER(RenderEntitiesArray, RenderEntityGPUData);
 using RenderEntityGPUPtr = gfx::GPUNamedElemPtr<RenderEntitiesArray, RenderEntityGPUData>;
-
-
-BEGIN_SHADER_STRUCT(GPUSceneFrameData)
-	SHADER_STRUCT_FIELD(Real32,                    time)
-	SHADER_STRUCT_FIELD(Real32,                    deltaTime)
-	SHADER_STRUCT_FIELD(Uint32,                    frameIdx)
-	SHADER_STRUCT_FIELD(RenderEntitiesArray,       renderEntitiesArray)
-	SHADER_STRUCT_FIELD(StaticMeshGeometryBuffers, staticMeshGeometryBuffers)
-END_SHADER_STRUCT();
-
-
-DS_BEGIN(RenderSceneDS, rg::RGDescriptorSetState<RenderSceneDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<RenderEntityGPUData>),         u_renderEntitiesData)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<GPUSceneFrameData>), u_gpuSceneFrameConstants)
-DS_END();
 
 } // spt::rsc

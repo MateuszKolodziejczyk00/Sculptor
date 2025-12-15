@@ -2,9 +2,32 @@
 #define BINDLESS_TYPES_HLSLI
 
 
-struct NamedBufferDescriptorIdx
+template<typename TDataType>
+struct GPUPtr
+{
+	uint descriptorIdx;
+	uint dataIdx;
+
+	TDataType Load()
+	{
+		StructuredBuffer<TDataType> buffer = ResourceDescriptorHeap[descriptorIdx];
+		return buffer[dataIdx];
+	}
+};
+
+
+template<typename T>
+struct NamedBufferDescriptor
 {
 	uint idx;
+
+	GPUPtr<T> GetElemPtr(in uint dataIdx)
+	{
+		GPUPtr<T> ptr;
+		ptr.descriptorIdx = idx;
+		ptr.dataIdx       = dataIdx;
+		return ptr;
+	}
 };
 
 
@@ -69,6 +92,18 @@ struct SRVTexture2D
 	{
 		const Texture2D<T> texture = GetResource();
 		return texture.SampleLevel(s, uv, level);
+	}
+
+	T SampleGrad(in SamplerState s, in float2 uv, in float2 duv_dx, in float2 duv_dy)
+	{
+		const Texture2D<T> texture = GetResource();
+		return texture.SampleGrad(s, uv, duv_dx, duv_dy);
+	}
+
+	T Sample(in SamplerState s, in float2 uv)
+	{
+		const Texture2D<T> texture = GetResource();
+		return texture.Sample(s, uv);
 	}
 
 	bool IsValid()
@@ -161,6 +196,14 @@ struct TypedBuffer
 		return buffer[idx];
 	}
 
+	GPUPtr<T> PtrAt(in uint idx)
+	{
+		GPUPtr<T> ptr;
+		ptr.descriptorIdx = descriptorIdx;
+		ptr.dataIdx       = idx;
+		return ptr;
+	}
+
 	bool IsValid()
 	{
 		return descriptorIdx != IDX_NONE_32;
@@ -230,20 +273,6 @@ struct TLAS
 };
 
 
-template<typename TDataType>
-struct GPUPtr
-{
-	uint descriptorIdx;
-	uint dataIdx;
-
-	TDataType Load()
-	{
-		StructuredBuffer<TDataType> buffer = ResourceDescriptorHeap[descriptorIdx];
-		return buffer[dataIdx];
-	}
-};
-
-
 template<typename TNamedBuffer, typename TDataType>
 struct GPUNamedElemPtr
 {
@@ -304,6 +333,8 @@ struct GPUNamedElemsSpan
 #define SPT_NEAREST_REPEAT_SAMPLER_DESCRIPTOR_IDX        3
 #define SPT_LINEAR_MIN_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX 4
 #define SPT_LINEAR_MAX_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX 5
+#define SPT_MATERIAL_ANISO_SAMPLER_DESCRIPTOR_IDX        6
+#define SPT_MATERIAL_LINEAR_SAMPLER_DESCRIPTOR_IDX       7
 
 
 struct BindlessSamplers
@@ -336,6 +367,16 @@ struct BindlessSamplers
 	static SamplerState LinearMaxClampEdge()
 	{
 		return SamplerDescriptorHeap[SPT_LINEAR_MAX_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX];
+	}
+
+	static SamplerState MaterialAniso()
+	{
+		return SamplerDescriptorHeap[SPT_MATERIAL_ANISO_SAMPLER_DESCRIPTOR_IDX];
+	}
+
+	static SamplerState MaterialLinear()
+	{
+		return SamplerDescriptorHeap[SPT_MATERIAL_LINEAR_SAMPLER_DESCRIPTOR_IDX];
 	}
 };
 

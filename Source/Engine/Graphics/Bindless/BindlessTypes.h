@@ -810,8 +810,11 @@ struct HLSLStructDependenciesBuider<gfx::BufferDescriptor<metadata, TType>>
 				accessInfo.access = access;
 
 #if DEBUG_RENDER_GRAPH
-				accessInfo.structTypeName = rdr::shader_translator::GetTypeName<TType>();
-				accessInfo.elementsNum    = 1u;
+				if constexpr (!std::is_same_v<TType, Byte>)
+				{
+					accessInfo.structTypeName = rdr::shader_translator::GetTypeName<TType>();
+					accessInfo.elementsNum    = 1u;
+				}
 #endif // DEBUG_RENDER_GRAPH
 
 				dependenciesBuilder.AddBufferAccess(descriptoridx, accessInfo);

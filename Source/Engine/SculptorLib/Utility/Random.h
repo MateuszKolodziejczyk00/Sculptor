@@ -26,6 +26,12 @@ inline TType Random()
     return std::generate_canonical<TType, sizeof(TType)>(GetGenerator());
 }
 
+template<CBoolean TType>
+inline TType Random()
+{
+	return TType(Random<Real32>() > 0.5f);
+}
+
 template<std::floating_point TType>
 inline TType Random(TType min, TType max)
 {

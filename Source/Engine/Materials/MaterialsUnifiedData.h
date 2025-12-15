@@ -2,39 +2,16 @@
 
 #include "MaterialsMacros.h"
 #include "SculptorCoreTypes.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
-#include "DescriptorSetBindings/ArrayOfSRVTexturesBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
+#include "ShaderStructs.h"
+#include "Bindless/BindlessTypes.h"
 
 
 namespace spt::mat
 {
 
-constexpr rhi::SamplerDefinition CreateMaterialAnisoSampler()
-{
-	rhi::SamplerDefinition sampler = rhi::SamplerState::LinearRepeat;
-	sampler.mipLodBias       = -0.5f;
-	sampler.enableAnisotropy = true;
-	sampler.maxAnisotropy    = 8.f;
-	return sampler;
-}
-
-
-constexpr rhi::SamplerDefinition CreateMaterialLinearSampler()
-{
-	rhi::SamplerDefinition sampler = rhi::SamplerState::LinearRepeat;
-	sampler.mipLodBias       = -0.5f;
-	return sampler;
-}
-
-
-DS_BEGIN(MaterialsDS, rg::RGDescriptorSetState<MaterialsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ByteAddressBuffer),                                      u_materialsData)
-	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<1024>),                      u_materialsTextures)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<CreateMaterialAnisoSampler()>),  u_materialAnisoSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<CreateMaterialLinearSampler()>), u_materialLinearSampler)
-DS_END();
+BEGIN_SHADER_STRUCT(MaterialUnifiedData)
+	SHADER_STRUCT_FIELD(gfx::ByteBufferRef, materialsData)
+END_SHADER_STRUCT();
 
 
 class MATERIALS_API MaterialsUnifiedData
@@ -43,23 +20,22 @@ public:
 
 	static MaterialsUnifiedData& Get();
 
-	Uint32 AddMaterialTexture(const lib::SharedRef<rdr::TextureView>& texture);
+	void AddMaterialTexture(const lib::SharedRef<rdr::TextureView>& texture);
 
 	rhi::RHIVirtualAllocation CreateMaterialDataSuballocation(Uint64 dataSize);
 	rhi::RHIVirtualAllocation CreateMaterialDataSuballocation(const Byte* materialData, Uint64 dataSize);
 
-	lib::MTHandle<MaterialsDS> GetMaterialsDS() const;
+	MaterialUnifiedData GetMaterialUnifiedData() const;
 
 private:
 
 	MaterialsUnifiedData();
 
 	lib::SharedRef<rdr::Buffer> CreateMaterialsUnifiedBuffer() const;
-	lib::MTHandle<MaterialsDS> CreateMaterialsDS() const;
 
 	lib::SharedPtr<rdr::Buffer> m_materialsUnifiedBuffer;
 
-	lib::MTHandle<MaterialsDS> m_materialsDS;
+	lib::DynamicArray<lib::SharedPtr<rdr::TextureView>> m_materialTextures;
 };
 
 } // spt::mat

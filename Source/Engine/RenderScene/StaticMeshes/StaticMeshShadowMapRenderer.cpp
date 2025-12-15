@@ -138,10 +138,7 @@ void StaticMeshShadowMapRenderer::RenderToShadowMap(rg::RenderGraphBuilder& grap
 		graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
 								rg::BindDescriptorSets(batch.batchDS,
 													   batch.perFaceData[viewShadowMapData.faceIdx].drawDS,
-													   StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
-													   GeometryManager::Get().GetGeometryDSState(),
-													   renderView.GetRenderViewDS(),
-													   mat::MaterialsUnifiedData::Get().GetMaterialsDS()),
+													   renderView.GetRenderViewDS()),
 								std::tie(drawParams),
 								[maxDrawCallsNum = batch.batchedSubmeshesNum, faceIdx = viewShadowMapData.faceIdx, pipelineID = GetPipelineStateForBatch(batch), drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 								{
@@ -260,8 +257,7 @@ void StaticMeshShadowMapRenderer::BuildBatchDrawCommands(rg::RenderGraphBuilder&
 						  m_buildDrawCommandsPipeline,
 						  math::Vector3u(groupsCount, 1, 1),
 						  rg::BindDescriptorSets(batch.batchDS,
-												 batch.cullingDS,
-												 StaticMeshUnifiedData::Get().GetUnifiedDataDS()));
+												 batch.cullingDS));
 }
 
 } // spt::rsc

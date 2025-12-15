@@ -1,13 +1,17 @@
+#ifndef DEFAULT_PBR_HLSLI
+#define DEFAULT_PBR_HLSLI
+
+#include "SceneRendering/GPUScene.hlsli"
 
 
 CustomOpacityOutput EvaluateCustomOpacity(MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
 {
     CustomOpacityOutput output;
 
-    if(materialData.baseColorTextureIdx != IDX_NONE_32)
+    if(materialData.baseColorTexture.IsValid())
     {
         float opacity = 1.f;
-        opacity = u_materialsTextures[materialData.baseColorTextureIdx].SPT_MATERIAL_SAMPLE(u_materialLinearSampler, evalParams.uv).a;
+        opacity = materialData.baseColorTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialLinear(), evalParams.uv).a;
         output.shouldDiscard = opacity < 0.8f;
     }
     else
@@ -23,9 +27,9 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
 {
     float3 baseColor = 1.f;
     
-    if(materialData.baseColorTextureIdx != IDX_NONE_32)
+	if (materialData.baseColorTexture.IsValid())
     {
-        baseColor = u_materialsTextures[NonUniformResourceIndex(materialData.baseColorTextureIdx)].SPT_MATERIAL_SAMPLE(u_materialAnisoSampler, evalParams.uv).rgb;
+        baseColor = materialData.baseColorTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialAniso(), evalParams.uv).rgb;
         baseColor = pow(baseColor, 2.2f);
     }
 
@@ -33,19 +37,20 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
 
     float metallic = materialData.metallicFactor;
     float roughness = materialData.roughnessFactor;
-    
-    if(materialData.metallicRoughnessTextureIdx != IDX_NONE_32)
+
+    if(materialData.metallicRoughnessTexture.IsValid())
     {
-        const float2 metallicRoughness = u_materialsTextures[NonUniformResourceIndex(materialData.metallicRoughnessTextureIdx)].SPT_MATERIAL_SAMPLE(u_materialAnisoSampler, evalParams.uv).xy;
-        metallic *= metallicRoughness.x;
+		const float2 metallicRoughness = materialData.metallicRoughnessTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialAniso(), evalParams.uv);
+        metallic  *= metallicRoughness.x;
         roughness *= metallicRoughness.y;
     }
 
     float3 shadingNormal;
     const float3 geometryNormal = normalize(evalParams.normal);
-    if(evalParams.hasTangent && materialData.normalsTextureIdx != IDX_NONE_32)
+    if(evalParams.hasTangent && materialData.normalsTexture.IsValid())
     {
-        float3 textureNormal = u_materialsTextures[NonUniformResourceIndex(materialData.normalsTextureIdx)].SPT_MATERIAL_SAMPLE(u_materialAnisoSampler, evalParams.uv).xyz;
+		float3 textureNormal = materialData.normalsTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialAniso(), evalParams.uv);
+
         textureNormal = textureNormal * 2.f - 1.f;
         textureNormal.z = sqrt(1.f - saturate(Pow2(textureNormal.x) + Pow2(textureNormal.y)));
         const float3x3 TBN = transpose(float3x3(normalize(evalParams.tangent), normalize(evalParams.bitangent), geometryNormal));
@@ -57,9 +62,9 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
     }
 
     float3 emissiveColor = materialData.emissiveFactor;
-    if(materialData.emissiveTextureIdx != IDX_NONE_32)
+	if (materialData.emissiveTexture.IsValid())
     {
-        emissiveColor *= u_materialsTextures[NonUniformResourceIndex(materialData.emissiveTextureIdx)].SPT_MATERIAL_SAMPLE(u_materialAnisoSampler, evalParams.uv).rgb;
+        emissiveColor *= materialData.emissiveTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialAniso(), evalParams.uv);
     }
 
     MaterialEvaluationOutput output;
@@ -73,3 +78,5 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
 
     return output;
 }
+
+#endif // DEFAULT_PBR_HLSLI

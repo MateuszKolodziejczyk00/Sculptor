@@ -1,30 +1,24 @@
 #include "SculptorShader.hlsli"
 #include "GeometryRendering/GeometryDefines.hlsli"
 
-[[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
-[[descriptor_set(RenderSceneDS, 1)]]
-[[descriptor_set(RenderViewDS, 2)]]
-
-[[descriptor_set(GeometryBatchDS, 3)]]
-
-[[descriptor_set(VisCullingDS, 4)]]
-
-[[descriptor_set(GeometryDS, 5)]]
-
-[[descriptor_set(MaterialsDS, 6)]]
+[[descriptor_set(RenderSceneDS)]]
+[[descriptor_set(RenderViewDS)]]
+[[descriptor_set(VisCullingDS)]]
+[[descriptor_set(GeometryBatchDS)]]
 
 #if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
-[[descriptor_set(GeometryDrawMeshes_VisibleGeometryPassDS, 7)]]
+[[descriptor_set(GeometryDrawMeshes_VisibleGeometryPassDS)]]
 #elif GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
-[[descriptor_set(GeometryDrawMeshes_DisoccludedGeometryPassDS, 7)]]
+[[descriptor_set(GeometryDrawMeshes_DisoccludedGeometryPassDS)]]
 #else
-[[descriptor_set(GeometryDrawMeshes_DisoccludedMeshletsPassDS, 7)]]
+[[descriptor_set(GeometryDrawMeshes_DisoccludedMeshletsPassDS)]]
 #endif // GEOMETRY_PASS_IDX
 
 
 #include "Utils/Wave.hlsli"
 #include "Utils/Culling.hlsli"
 #include "GeometryRendering/GeometryCommon.hlsli"
+#include "SceneRendering/GPUScene.hlsli"
 
 
 #if SPT_MATERIAL_ENABLED && CUSTOM_OPACITY
@@ -489,15 +483,15 @@ void GeometryVisibility_MS(
 
 	for (uint meshletVertexIdx = WaveGetLaneIndex(); meshletVertexIdx < meshlet.vertexCount; meshletVertexIdx += MS_GROUP_SIZE)
 	{
-		const uint vertexIdx = u_geometryData.Load<uint>(meshletGlobalVertexIndicesOffset + (meshletVertexIdx * 4));
+		const uint vertexIdx = UGB().LoadVertexIndex(meshletGlobalVertexIndicesOffset, meshletVertexIdx);
 		SPT_CHECK_MSG(vertexIdx < submesh.indicesNum, L"Invalid vertex index - {}", vertexIdx);
-		const float3 vertexLocation = u_geometryData.Load<float3>(locationsOffset + vertexIdx * 12);
+		const float3 vertexLocation = UGB().LoadLocation(locationsOffset, vertexIdx);
 		const float4 vertexCS = mul(u_sceneView.viewProjectionMatrix, mul(entityData.transform, float4(vertexLocation, 1.f)));
 		outVerts[meshletVertexIdx].locationCS = vertexCS;
 		localVerticesCS[(meshletVertexIdx >= MS_GROUP_SIZE)] = vertexCS;
 
 #if MATERIAL_CAN_DISCARD
-		const float2 vertexUV = u_geometryData.Load<float2>(submesh.uvsOffset + vertexIdx * 8);
+		const float2 vertexUV = UGB().LoadUV(submesh.uvsOffset, vertexIdx);
 		outVerts[meshletVertexIdx].uv = vertexUV;
 #endif // MATERIAL_CAN_DISCARD
 	}
@@ -543,16 +537,16 @@ struct VIS_BUFFER_PS_OUT
 VIS_BUFFER_PS_OUT GeometryVisibility_FS(in OutputVertex vertexInput, in PrimitiveOutput primData)
 {
 #if MATERIAL_CAN_DISCARD
-    MaterialEvaluationParameters materialEvalParams;
-    materialEvalParams.uv = vertexInput.uv;
-    
-    const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(uint16_t(primData.materialDataID));
+	MaterialEvaluationParameters materialEvalParams;
+	materialEvalParams.uv = vertexInput.uv;
 
-    const CustomOpacityOutput opacityOutput = EvaluateCustomOpacity(materialEvalParams, materialData);
-    if(opacityOutput.shouldDiscard)
-    {
-        discard;
-    }
+	const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(uint16_t(primData.materialDataID));
+
+	const CustomOpacityOutput opacityOutput = EvaluateCustomOpacity(materialEvalParams, materialData);
+	if(opacityOutput.shouldDiscard)
+	{
+		discard;
+	}
 #endif // MATERIAL_CAN_DISCARD
 
 	VIS_BUFFER_PS_OUT output;

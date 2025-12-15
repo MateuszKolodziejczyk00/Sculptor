@@ -13,11 +13,11 @@ MaterialsUnifiedData& MaterialsUnifiedData::Get()
 	return instance;
 }
 
-Uint32 MaterialsUnifiedData::AddMaterialTexture(const lib::SharedRef<rdr::TextureView>& textureView)
+void MaterialsUnifiedData::AddMaterialTexture(const lib::SharedRef<rdr::TextureView>& textureView)
 {
 	SPT_PROFILER_FUNCTION();
 
-	return m_materialsDS->u_materialsTextures.BindTexture(textureView);
+	m_materialTextures.emplace_back(textureView);
 }
 
 rhi::RHIVirtualAllocation MaterialsUnifiedData::CreateMaterialDataSuballocation(Uint64 dataSize)
@@ -41,19 +41,20 @@ rhi::RHIVirtualAllocation MaterialsUnifiedData::CreateMaterialDataSuballocation(
 	return suballocation;
 }
 
-lib::MTHandle<MaterialsDS> MaterialsUnifiedData::GetMaterialsDS() const
+MaterialUnifiedData MaterialsUnifiedData::GetMaterialUnifiedData() const
 {
-	return m_materialsDS;
+	MaterialUnifiedData materials;
+	materials.materialsData = m_materialsUnifiedBuffer->GetFullView();
+	return materials;
 }
 
 MaterialsUnifiedData::MaterialsUnifiedData()
 	: m_materialsUnifiedBuffer(CreateMaterialsUnifiedBuffer())
-	, m_materialsDS(CreateMaterialsDS())
 {
 	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
 															{
 																m_materialsUnifiedBuffer.reset();
-																m_materialsDS.Reset();
+																m_materialTextures.clear();
 															});
 }
 
@@ -64,15 +65,6 @@ lib::SharedRef<rdr::Buffer> MaterialsUnifiedData::CreateMaterialsUnifiedBuffer()
 	const rhi::BufferDefinition bufferDefinition(1024 * 1024, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst), rhi::EBufferFlags::WithVirtualSuballocations);
 
 	return rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("MaterialsUnifiedData"), bufferDefinition, allocationInfo);
-}
-
-lib::MTHandle<MaterialsDS> MaterialsUnifiedData::CreateMaterialsDS() const
-{
-	const lib::MTHandle<MaterialsDS> ds = rdr::ResourcesManager::CreateDescriptorSetState<MaterialsDS>(RENDERER_RESOURCE_NAME("MaterialsDS"));
-
-	ds->u_materialsData = m_materialsUnifiedBuffer->GetFullView();
-
-	return ds;
 }
 
 } // spt::mat

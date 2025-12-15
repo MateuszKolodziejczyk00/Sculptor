@@ -495,7 +495,7 @@ static void DrawBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPas
 		indirectDrawParams.drawCommandsCount = batchGPUData.drawCommandsCount;
 
 		graphBuilder.AddSubpass(RG_DEBUG_NAME_FORMATTED("Batch Subpass ({})", GeometryVisPassTraits<passIdx>::GetPassName()),
-								rg::BindDescriptorSets(drawMeshesDS, batch.batchDS, GeometryManager::Get().GetGeometryDSState()),
+								rg::BindDescriptorSets(drawMeshesDS, batch.batchDS),
 								std::tie(indirectDrawParams),
 								[indirectDrawParams, pipeline, maxDrawsCount]
 								(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
@@ -541,7 +541,7 @@ static void DrawDisoccludedMeshlets(rg::RenderGraphBuilder& graphBuilder, const 
 		indirectDrawParams.drawCommands = batchGPUData.dispatchOccludedMeshletsCommand;
 
 		graphBuilder.AddSubpass(RG_DEBUG_NAME("Batch Subpass"),
-								rg::BindDescriptorSets(drawMeshesDS, batch.batchDS, GeometryManager::Get().GetGeometryDSState()),
+								rg::BindDescriptorSets(drawMeshesDS, batch.batchDS),
 								std::tie(indirectDrawParams),
 								[indirectDrawParams, pipeline]
 								(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
@@ -596,9 +596,7 @@ static void RenderGeometryVisPass(rg::RenderGraphBuilder& graphBuilder, const Vi
 	const lib::MTHandle<VisCullingDS> cullingDS = CreateCullingDS(visPassParams.hiZ, visPassParams.historyHiZ);
 
 	const rg::BindDescriptorSetsScope geometryCullingDSScope(graphBuilder,
-															 rg::BindDescriptorSets(StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
-																					mat::MaterialsUnifiedData::Get().GetMaterialsDS(),
-																					renderView.GetRenderViewDS(),
+															 rg::BindDescriptorSets(renderView.GetRenderViewDS(),
 																					cullingDS));
 
 	const lib::DynamicArray<VisBatchGPUData> gpuBatches = BuildGPUBatches(graphBuilder, visPassParams);
@@ -790,9 +788,7 @@ static void RenderGeometryVisPass(rg::RenderGraphBuilder& graphBuilder, const Ge
 	const lib::MTHandle<VisCullingDS> cullingDS = CreateCullingDS(oitPassParams.hiZ, nullptr);
 
 	const rg::BindDescriptorSetsScope geometryCullingDSScope(graphBuilder,
-															 rg::BindDescriptorSets(StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
-																					mat::MaterialsUnifiedData::Get().GetMaterialsDS(),
-																					renderView.GetRenderViewDS(),
+															 rg::BindDescriptorSets(renderView.GetRenderViewDS(),
 																					cullingDS));
 
 	SPT_CHECK(oitPassParams.geometryPassData.geometryBatches.size() == 1u);

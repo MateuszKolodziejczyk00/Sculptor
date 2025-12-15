@@ -69,14 +69,13 @@ RT_PSO(SharcUpdatePSO)
 	RAY_GEN_SHADER("Sculptor/SpecularReflections/SharcUpdate.hlsl", SharcUpdateRTG);
 
 	MISS_SHADERS(
-		SHADER_ENTRY("Sculptor/SpecularReflections/SharcUpdate.hlsl", SharcUpdateRTM),
-		SHADER_ENTRY("Sculptor/SpecularReflections/SharcUpdate.hlsl", SharcUpdateShadowRaysRTM)
+		SHADER_ENTRY("Sculptor/SpecularReflections/SharcUpdate.hlsl", GenericRTM)
 	);
 
 	HIT_GROUP
 	{
-		CLOSEST_HIT_SHADER("Sculptor/StaticMeshes/SMRTGI.hlsl", RTGI_RT_CHS);
-		ANY_HIT_SHADER("Sculptor/StaticMeshes/SMRTGI.hlsl",     RTGI_RT_AHS);
+		CLOSEST_HIT_SHADER("Sculptor/SpecularReflections/SharcUpdate.hlsl", GenericCHS);
+		ANY_HIT_SHADER("Sculptor/SpecularReflections/SharcUpdate.hlsl",     GenericAH);
 
 		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
 	};
@@ -161,8 +160,6 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 
 	const math::Vector2u resolution = renderView.GetRenderingRes();
 
-	RayTracingRenderSceneSubsystem& rayTracingSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
-
 	sharc_passes::SharcUpdateConstants shaderConstants;
 	shaderConstants.resolution       = resolution;
 	shaderConstants.invResolution    = resolution.cast<Real32>().cwiseInverse();
@@ -217,11 +214,7 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 						   sharc_passes::SharcUpdatePSO::pso,
 						   tracesNum,
 						   rg::BindDescriptorSets(std::move(updateDS),
-												  rayTracingSubsystem.GetSceneRayTracingDS(),
 												  renderView.GetRenderViewDS(),
-												  mat::MaterialsUnifiedData::Get().GetMaterialsDS(),
-												  GeometryManager::Get().GetGeometryDSState(),
-												  StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
 												  ddgiSubsystem.GetDDGISceneDS(),
 												  lightsRenderSystem.GetGlobalLightsDS(),
 												  viewContext.cloudscapeProbesDS,

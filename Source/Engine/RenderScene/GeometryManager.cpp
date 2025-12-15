@@ -3,6 +3,7 @@
 #include "ResourcesManager.h"
 #include "Renderer.h"
 
+
 namespace spt::rsc
 {
 
@@ -47,8 +48,7 @@ GeometryManager::GeometryManager()
 	const rhi::BufferDefinition ugbDef(1024ull * 1024ull * 1024ull, ugbUsage, ugbFlags);
 	m_geometryBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("UnifiedGeometryBuffer"), ugbDef, ugbAllocationInfo);
 
-	m_geometryDSState = rdr::ResourcesManager::CreateDescriptorSetState<GeometryDS>(RENDERER_RESOURCE_NAME("UGB DS"));
-	m_geometryDSState->u_geometryData = m_geometryBuffer->GetFullView();
+	m_unifiedGeometryBuffer.geometryData = m_geometryBuffer->GetFullView();
 	
 	// This is singleton object so we can capture this safely
 	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
@@ -62,15 +62,10 @@ Uint64 GeometryManager::GetGeometryBufferDeviceAddress() const
 	return m_geometryBuffer->GetRHI().GetDeviceAddress();
 }
 
-const lib::MTHandle<GeometryDS>& GeometryManager::GetGeometryDSState() const
-{
-	return m_geometryDSState;
-}
-
 void GeometryManager::DestroyResources()
 {
 	m_geometryBuffer.reset();
-	m_geometryDSState.Reset();
+	m_unifiedGeometryBuffer = UnifiedGeometryBuffer();
 }
 
 } // spt::rsc

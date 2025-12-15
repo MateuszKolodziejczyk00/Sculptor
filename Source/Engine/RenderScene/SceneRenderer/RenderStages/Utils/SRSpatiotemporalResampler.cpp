@@ -12,7 +12,6 @@
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 #include "RayTracing/RayTracingRenderSceneSubsystem.h"
 #include "RenderScene.h"
-#include "SceneRenderer/Utils/RTVisibilityUtils.h"
 #include "MaterialsUnifiedData.h"
 #include "SceneRenderer/RenderStages/Utils/TracesAllocator.h"
 #include "Pipelines/PSOsLibraryTypes.h"
@@ -409,11 +408,11 @@ DS_END();
 RT_PSO(SRFinalVisibilityTestPSO)
 {
 	RAY_GEN_SHADER("Sculptor/SpecularReflections/ResamplingFinalVisibility.hlsl", ResamplingFinalVisibilityTestRTG);
-	MISS_SHADERS(SHADER_ENTRY("Sculptor/SpecularReflections/ResamplingFinalVisibility.hlsl", RTVisibilityRTM));
+	MISS_SHADERS(SHADER_ENTRY("Sculptor/SpecularReflections/ResamplingFinalVisibility.hlsl", GenericRTM));
 
 	HIT_GROUP
 	{
-		ANY_HIT_SHADER("Sculptor/StaticMeshes/SMRTVisibility.hlsl", RTVisibility_RT_AHS);
+		ANY_HIT_SHADER("Sculptor/SpecularReflections/ResamplingFinalVisibility.hlsl", GenericAH);
 
 		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
 	};
@@ -449,8 +448,6 @@ static void ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBuilder, con
 
 	const math::Vector2u resolution = params.GetResolution();
 
-	const RayTracingRenderSceneSubsystem& rayTracingSubsystem = params.renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
-
 	lib::MTHandle<SRResamplingFinalVisibilityTestDS> ds = graphBuilder.CreateDescriptorSet<SRResamplingFinalVisibilityTestDS>(RENDERER_RESOURCE_NAME("SR Final Visibility Test DS"));
 	ds->u_depthTexture            = params.depthTexture;
 	ds->u_normalsTexture          = params.normalsTexture;
@@ -459,20 +456,13 @@ static void ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBuilder, con
 	ds->u_initialReservoirsBuffer = params.initialReservoirBuffer;
 	ds->u_resamplingConstants     = resamplingConstants;
 
-	lib::MTHandle<RTVisibilityDS> rtVisibilityDS = graphBuilder.CreateDescriptorSet<RTVisibilityDS>(RENDERER_RESOURCE_NAME("RT Visibility DS"));
-	rtVisibilityDS->u_geometryDS              = GeometryManager::Get().GetGeometryDSState();
-	rtVisibilityDS->u_staticMeshUnifiedDataDS = StaticMeshUnifiedData::Get().GetUnifiedDataDS();
-	rtVisibilityDS->u_materialsDS             = mat::MaterialsUnifiedData::Get().GetMaterialsDS();
-	rtVisibilityDS->u_sceneRayTracingDS       = rayTracingSubsystem.GetSceneRayTracingDS();
-
 	if (params.doFullFinalVisibilityCheck)
 	{
 		graphBuilder.TraceRays(RG_DEBUG_NAME("SR Final Visibility Test"),
 									   SRFinalVisibilityTestPSO::fullRate,
 									   resolution,
 									   rg::BindDescriptorSets(std::move(ds),
-															  params.renderView.GetRenderViewDS(),
-															  std::move(rtVisibilityDS)));
+															  params.renderView.GetRenderViewDS()));
 	}
 	else
 	{
@@ -480,8 +470,7 @@ static void ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBuilder, con
 									   SRFinalVisibilityTestPSO::variableRate,
 									   params.tracesAllocation.tracingIndirectArgs, 0,
 									   rg::BindDescriptorSets(std::move(ds),
-															  params.renderView.GetRenderViewDS(),
-															  std::move(rtVisibilityDS)));
+															  params.renderView.GetRenderViewDS()));
 	}
 }
 

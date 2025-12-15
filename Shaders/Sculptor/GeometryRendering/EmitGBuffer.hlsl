@@ -1,28 +1,22 @@
 #include "SculptorShader.hlsli"
 #include "GeometryRendering/GeometryDefines.hlsli"
 
-[[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
-[[descriptor_set(RenderSceneDS, 1)]]
-[[descriptor_set(RenderViewDS, 2)]]
+[[descriptor_set(RenderSceneDS)]]
+[[descriptor_set(RenderViewDS)]]
 
-[[descriptor_set(GeometryDS, 3)]]
+[[descriptor_set(EmitGBufferDS)]]
 
-[[descriptor_set(MaterialsDS, 4)]]
+[[descriptor_set(MaterialBatchDS)]]
 
-[[descriptor_set(EmitGBufferDS, 5)]]
+#define SPT_MATERIAL_SAMPLE_CUSTOM_DERIVATIVES 1
 
-[[descriptor_set(MaterialBatchDS, 6)]]
-
-
+#include "SceneRendering/GPUScene.hlsli"
 #include "Utils/Quaternion.hlsli"
 #include "Utils/Wave.hlsli"
 #include "Utils/GBuffer/GBuffer.hlsli"
 #include "GeometryRendering/GeometryCommon.hlsli"
 
-#define SPT_MATERIAL_SAMPLE_CUSTOM_DERIVATIVES 1
-
 #include "Materials/MaterialSystem.hlsli"
-#include SPT_MATERIAL_SHADER_PATH
 
 
 #define MS_GROUP_SIZE_X 8
@@ -126,10 +120,9 @@ struct VertexData
 VertexData ProcessVertex(in RenderEntityGPUData entityData, in const SubmeshGPUData submesh, in const MeshletGPUData meshlet, in uint vertexIdx, inout bool hasTangent)
 {
 	const uint meshletGlobalVertexIndicesOffset = submesh.meshletsVerticesDataOffset + meshlet.meshletVerticesOffset;
-	const uint globalVertexIdx = u_geometryData.Load<uint>(meshletGlobalVertexIndicesOffset + (vertexIdx * 4));
-	const float3 vertexLocation = u_geometryData.Load<float3>(submesh.locationsOffset + globalVertexIdx * 12);
-	const float4 vertexView = mul(u_sceneView.viewMatrix, mul(entityData.transform, float4(vertexLocation, 1.f)));
-	const float4 vertexCS = mul(u_sceneView.projectionMatrix, vertexView);
+	const uint globalVertexIdx  = UGB().LoadVertexIndex(meshletGlobalVertexIndicesOffset, vertexIdx);
+	const float3 vertexLocation = UGB().LoadLocation(submesh.locationsOffset, globalVertexIdx);
+	const float4 vertexCS = mul(u_sceneView.viewProjectionMatrix, mul(entityData.transform, float4(vertexLocation, 1.f)));
 
 	VertexData vertexData;
 	vertexData.worldLocation = vertexLocation;
@@ -137,13 +130,13 @@ VertexData ProcessVertex(in RenderEntityGPUData entityData, in const SubmeshGPUD
 
 	if (submesh.normalsOffset != IDX_NONE_32)
 	{
-		const float3 vertexNormal = u_geometryData.Load<float3>(submesh.normalsOffset + globalVertexIdx * 12);
+		const float3 vertexNormal = UGB().LoadNormal(submesh.normalsOffset, globalVertexIdx);
 		vertexData.normal = normalize(mul(entityData.transform, float4(vertexNormal, 0.f)).xyz);
 
 		hasTangent = hasTangent && submesh.tangentsOffset != IDX_NONE_32;
 		if (hasTangent)
 		{
-			const float4 vertexTangent = u_geometryData.Load<float4>(submesh.tangentsOffset + globalVertexIdx * 16);
+			const float4 vertexTangent = UGB().LoadTangent(submesh.tangentsOffset, globalVertexIdx);
 			vertexData.tangent   = normalize(mul(entityData.transform, float4(vertexTangent.xyz, 0.f)).xyz);
 			vertexData.bitangent = normalize(cross(vertexData.normal, vertexData.tangent)) * vertexTangent.w;
 		}
@@ -154,7 +147,7 @@ VertexData ProcessVertex(in RenderEntityGPUData entityData, in const SubmeshGPUD
 		}
 	}
 
-	vertexData.uv = u_geometryData.Load<float2>(submesh.uvsOffset + globalVertexIdx * 8);
+	vertexData.uv = UGB().LoadUV(submesh.uvsOffset, globalVertexIdx);
 
 	return vertexData;
 }

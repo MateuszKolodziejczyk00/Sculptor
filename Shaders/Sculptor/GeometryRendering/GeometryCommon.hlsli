@@ -1,6 +1,9 @@
 #ifndef GEOMETRY_COMMON_H
 #define GEOMETRY_COMMON_H
 
+#include "SceneRendering/GPUScene.hlsli"
+
+
 uint PackVisibilityInfo(in uint visibleMeshletIdx, in uint triangleIdx)
 {
 	SPT_CHECK_MSG(triangleIdx < (1 << 7), L"Invalid triangle index - {}", triangleIdx);
@@ -124,7 +127,7 @@ TDataType InterpolateAttribute(in TDataType a0, in TDataType a1, in TDataType a2
 }
 
 
-#ifdef DS_GeometryDS
+#ifdef DS_RenderSceneDS
 uint3 LoadTriangleVertexIndices(uint meshletPrimitivesOffset, uint meshletTriangleIdx)
 {
 	const uint triangleStride = 3;
@@ -134,7 +137,7 @@ uint3 LoadTriangleVertexIndices(uint meshletPrimitivesOffset, uint meshletTriang
 	const uint primitiveOffsetToLoad = primitiveOffset & 0xfffffffc;
 
 	// Load uint2 to be sure that we will have all 3 indices
-	const uint2 meshletPrimitivesIndices = u_geometryData.Load<uint2>(primitiveOffsetToLoad);
+	const uint2 meshletPrimitivesIndices = UGB().ugb.geometryData.Load<uint2>(primitiveOffsetToLoad);
 
 	uint primitiveIndicesByteOffset = primitiveOffset - primitiveOffsetToLoad;
 
@@ -161,7 +164,6 @@ uint3 LoadTriangleVertexIndices(uint meshletPrimitivesOffset, uint meshletTriang
 
 	return traingleIndices;
 }
-#endif // DS_GeometryDS
-
+#endif // DS_RenderSceneDS
 
 #endif // GEOMETRY_COMMON_H

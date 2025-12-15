@@ -1,6 +1,7 @@
 #ifndef RTGI_RAYS_GENERATION_HLSLI
 #define RTGI_RAYS_GENERATION_HLSLI
 
+#include "RayTracing/RayTracingHelpers.hlsli"
 #include "SpecularReflections/RTGICommon.hlsli"
 
 #include "Shading/Shading.hlsli"
@@ -8,7 +9,6 @@
 
 #include "SpecularReflections/RTGBuffer.hlsli"
 
-#include "SpecularReflections/RTGIRayPayload.hlsli"
 
 #define SPT_RAY_TYPE_SPECULAR 0
 #define SPT_RAY_TYPE_DIFFUSE  1
@@ -160,8 +160,8 @@ RayDirectionInfo GenerateReflectionRayDir(in float4 baseColorMetallic, in float3
 	return GenerateReflectionRayDir(diffuseColor, specularColor, normal, roughness, toView, rng);
 }
 
-
-RayHitResult RTGITraceRay(RaytracingAccelerationStructure tlas, in float3 rayOrigin, in float3 rayDirection)
+#ifdef DS_RenderSceneDS
+RayHitResult RTGITraceRay(in float3 rayOrigin, in float3 rayDirection)
 {
 	const float maxHitDistance = 200.f;
 
@@ -171,37 +171,23 @@ RayHitResult RTGITraceRay(RaytracingAccelerationStructure tlas, in float3 rayOri
 	rayDesc.Origin    = rayOrigin;
 	rayDesc.Direction = rayDirection;
 
-	RTGIRayPayload payload;
-
-	const uint instanceMask = RT_INSTANCE_FLAG_OPAQUE;
-
-	TraceRay(tlas,
-			 0,
-			 instanceMask,
-			 0,
-			 1,
-			 0,
-			 rayDesc,
-			 payload);
-
-	const bool isBackface = payload.distance < 0.f;
-	const bool isValidHit = !isBackface && payload.distance < maxHitDistance;
+	const RayPayloadData traceResult = RTScene().TraceMaterialRay(rayDesc);
 
 	RayHitResult hitResult = RayHitResult::CreateEmpty();
 
-	if (isValidHit)
+	if (traceResult.visibility.isValidHit)
 	{
-		const float4 baseColorMetallic = UnpackFloat4x8(payload.baseColorMetallic);
+		const float4 baseColorMetallic = UnpackFloat4x8(traceResult.material.baseColorMetallic);
 
-		hitResult.normal      = normalize(payload.normal);
-		hitResult.roughness   = payload.roughness;
+		hitResult.normal      = normalize(traceResult.material.normal);
+		hitResult.roughness   = traceResult.material.roughness;
 		hitResult.baseColor   = baseColorMetallic.rgb;
 		hitResult.metallic    = baseColorMetallic.w;
 		hitResult.hitType     = RTGBUFFER_HIT_TYPE_VALID_HIT;
-		hitResult.hitDistance = payload.distance;
-		hitResult.emissive    = payload.emissive;
+		hitResult.hitDistance = traceResult.material.distance;
+		hitResult.emissive    = traceResult.material.emissive;
 	}
-	else if (!isBackface)
+	else if (traceResult.visibility.isMiss)
 	{
 		hitResult.hitType = RTGBUFFER_HIT_TYPE_NO_HIT;
 	}
@@ -212,5 +198,6 @@ RayHitResult RTGITraceRay(RaytracingAccelerationStructure tlas, in float3 rayOri
 
 	return hitResult;
 }
+#endif // DS_RenderSceneDS
 
 #endif // RTGI_RAYS_GENERATION_HLSLI

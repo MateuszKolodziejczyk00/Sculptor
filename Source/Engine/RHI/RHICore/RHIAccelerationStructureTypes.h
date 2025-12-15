@@ -58,11 +58,12 @@ struct BLASDefinition
 
 enum class ETLASInstanceFlags
 {
-	None			= 0,
-	ForceOpaque		= BIT(0),
-	ForceNoOpaque	= BIT(1),
+	None              = 0,
+	ForceOpaque       = BIT(0),
+	ForceNoOpaque     = BIT(1),
+	FacingCullDisable = BIT(2),
 
-	Default			= None
+	Default = None
 };
 
 

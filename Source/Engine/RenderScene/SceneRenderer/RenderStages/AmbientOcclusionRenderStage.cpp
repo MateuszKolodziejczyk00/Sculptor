@@ -14,7 +14,6 @@
 #include "StaticMeshes/StaticMeshGeometry.h"
 #include "GeometryManager.h"
 #include "MaterialsUnifiedData.h"
-#include "SceneRenderer/Utils/RTVisibilityUtils.h"
 #include "SceneRenderer/Utils/DepthBasedUpsampler.h"
 
 namespace spt::rsc
@@ -61,11 +60,11 @@ DS_END();
 RT_PSO(AOTraceRaysPSO)
 {
 	RAY_GEN_SHADER("Sculptor/RenderStages/AmbientOcclusion/RTAOTraceRays.hlsl", GenerateAmbientOcclusionRaysRTG);
-	MISS_SHADERS(SHADER_ENTRY("Sculptor/RenderStages/AmbientOcclusion/RTAOTraceRays.hlsl", RTVisibilityRTM));
+	MISS_SHADERS(SHADER_ENTRY("Sculptor/RenderStages/AmbientOcclusion/RTAOTraceRays.hlsl", GenericRTM));
 
 	HIT_GROUP
 	{
-		ANY_HIT_SHADER("Sculptor/StaticMeshes/SMRTVisibility.hlsl", RTVisibility_RT_AHS);
+		ANY_HIT_SHADER("Sculptor/RenderStages/AmbientOcclusion/RTAOTraceRays.hlsl", GenericAH);
 
 		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
 	};
@@ -97,8 +96,6 @@ static rg::RGTextureViewHandle TraceAmbientOcclusionRays(rg::RenderGraphBuilder&
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RayTracingRenderSceneSubsystem& rayTracingSceneSubsystem = context.renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
-
 	const rg::RGTextureViewHandle traceRaysResultTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("AO Trace Rays Result"), rg::TextureDef(traceRaysResolution, rhi::EFragmentFormat::R8_UN_Float));
 
 	RTAOTraceRaysParams params;
@@ -113,17 +110,10 @@ static rg::RGTextureViewHandle TraceAmbientOcclusionRays(rg::RenderGraphBuilder&
 	traceRaysDS->u_ambientOcclusionTexture    = traceRaysResultTexture;
 	traceRaysDS->u_rtaoParams                 = params;
 
-	lib::MTHandle<RTVisibilityDS> visibilityDS = graphBuilder.CreateDescriptorSet<RTVisibilityDS>(RENDERER_RESOURCE_NAME("RT Visibility DS"));
-	visibilityDS->u_geometryDS              = GeometryManager::Get().GetGeometryDSState();
-	visibilityDS->u_staticMeshUnifiedDataDS = StaticMeshUnifiedData::Get().GetUnifiedDataDS();
-	visibilityDS->u_materialsDS             = mat::MaterialsUnifiedData::Get().GetMaterialsDS();
-	visibilityDS->u_sceneRayTracingDS       = rayTracingSceneSubsystem.GetSceneRayTracingDS();
-
 	graphBuilder.TraceRays(RG_DEBUG_NAME("RTAO Trace Rays"),
 						   AOTraceRaysPSO::pso,
 						   traceRaysResolution,
 						   rg::BindDescriptorSets(std::move(traceRaysDS),
-												  std::move(visibilityDS),
 												  context.renderView.GetRenderViewDS()));
 
 	return traceRaysResultTexture;

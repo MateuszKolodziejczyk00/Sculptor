@@ -34,4 +34,7 @@ concept CContainer = requires(ContainerType a, const ContainerType b)
     { a.empty() } -> std::same_as<bool>;
 };
 
+template<typename TType>
+concept CBoolean = std::is_same_v<TType, Bool>;
+
 } // spt::lib

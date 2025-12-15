@@ -103,5 +103,4 @@ GBufferOutput EncodeGBuffer(in GBufferData data)
 	return output;
 }
 
-
 #endif // GBUFFER_HLSLI

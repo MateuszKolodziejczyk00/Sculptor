@@ -1,9 +1,16 @@
 #include "SculptorShader.hlsli"
 
-#define SPT_LIGHTING_SHADOW_RAY_MISS_SHADER_IDX 1
+#define RT_MATERIAL_TRACING
 
-#include "DDGI/DDGITraceRaysCommon.hlsli"
+[[descriptor_set(RenderSceneDS)]]
+[[descriptor_set(GlobalLightsDS)]]
+[[descriptor_set(ShadowMapsDS)]]
+[[descriptor_set(DDGISceneDS)]]
+[[descriptor_set(CloudscapeProbesDS)]]
+[[descriptor_set(DDGITraceRaysDS)]]
 
+
+#include "RayTracing/RayTracingHelpers.hlsli"
 #include "Atmosphere/Atmosphere.hlsli"
 #include "Atmosphere/VolumetricClouds/Cloudscape.hlsli"
 #include "DDGI/DDGITypes.hlsli"
@@ -24,57 +31,46 @@ void DDGIProbeRaysRTG()
 
 	const float3 probeWorldLocation = GetProbeWorldLocation(u_volumeParams, probeCoords);
 
-	DDGIRayPayload payload;
-
 	RayDesc rayDesc;
 	rayDesc.TMin        = u_relitParams.probeRaysMinT;
 	rayDesc.TMax        = u_relitParams.probeRaysMaxT;
 	rayDesc.Origin      = probeWorldLocation;
 	rayDesc.Direction   = rayDirection;
 
-	const uint instanceMask = RT_INSTANCE_FLAG_OPAQUE;
-
-	TraceRay(u_sceneTLAS,
-			 0,
-			 instanceMask,
-			 0,
-			 1,
-			 0,
-			 rayDesc,
-			 payload);
+	const RayPayloadData traceResult = RTScene().TraceMaterialRay(rayDesc);
 
 	float3 luminance = 0.f;
 
-	const bool isValidHit = payload.hitDistance > 0.f && payload.hitDistance <= u_relitParams.probeRaysMaxT;
-
 	float3 traceEndLocation = 0.f;
+	float distanceTraveled = 0.f;
 
-	if(isValidHit)
+	if(traceResult.visibility.isValidHit)
 	{
-		float4 baseColorMetallic = UnpackFloat4x8(payload.baseColorMetallic);
+		float4 baseColorMetallic = UnpackFloat4x8(traceResult.material.baseColorMetallic);
 
-		const float3 hitNormal = payload.normal;
+		const float3 hitNormal = traceResult.material.normal;
 
 		// Introduce additional bias as using just distance can have too low precision (which results in artifacts f.e. when using shadow maps)
 		const float locationBias = 0.03f;
-		const float3 worldLocation = probeWorldLocation + rayDirection * payload.hitDistance + hitNormal * locationBias;
+		const float3 worldLocation = probeWorldLocation + rayDirection * traceResult.material.distance + hitNormal * locationBias;
 
 		ShadedSurface surface;
 		surface.location        = worldLocation;
 		surface.shadingNormal   = hitNormal;
 		surface.geometryNormal  = hitNormal;
-		surface.roughness       = payload.roughness;
+		surface.roughness       = traceResult.material.roughness;
 		ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, surface.diffuseColor, surface.specularColor);
 
 		const float recursionMultiplier = 0.9f;
 		
 		luminance = CalcReflectedLuminance(surface, -rayDirection, DDGISampleContext::Create(), recursionMultiplier);
 
-		luminance += payload.emissive;
+		luminance += traceResult.material.emissive;
 
 		traceEndLocation = worldLocation;
+		distanceTraveled = traceResult.material.distance;
 	}
-	else if (payload.hitDistance > u_relitParams.probeRaysMaxT)
+	else if (traceResult.visibility.isMiss)
 	{
 		const float3 probeAtmosphereLocation = GetLocationInAtmosphere(u_atmosphereParams, probeWorldLocation);
 		luminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, probeAtmosphereLocation, rayDirection);
@@ -82,28 +78,22 @@ void DDGIProbeRaysRTG()
 		const CloudscapeSample cloudscapeSample = SampleCloudscape(probeWorldLocation, rayDirection);
 		luminance = cloudscapeSample.inScattering + luminance * cloudscapeSample.transmittance;
 
-		traceEndLocation = probeWorldLocation + rayDirection * 1500.f;
+		distanceTraveled = 1500.f;
+		traceEndLocation = probeWorldLocation + rayDirection * distanceTraveled;
+	}
+	else // backface
+	{
+		traceEndLocation = probeWorldLocation + rayDirection * traceResult.material.distance;
+		distanceTraveled = -traceResult.material.distance;
 	}
 
-	const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(u_lightsParams.heightFog, probeWorldLocation, traceEndLocation);
-	luminance *= fogTransmittance;
+	const bool isBackface = distanceTraveled > 0.f;
 
-	u_traceRaysResultTexture[dispatchIdx] = float4(luminance, payload.hitDistance);
-}
+	if (!isBackface)
+	{
+		const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(u_lightsParams.heightFog, probeWorldLocation, traceEndLocation);
+		luminance *= fogTransmittance;
+	}
 
-
-[shader("miss")]
-void DDGIProbeRaysRTM(inout DDGIRayPayload payload)
-{
-	payload.normal              = 0.f;
-	payload.roughness           = 0.f;
-	payload.baseColorMetallic   = PackFloat4x8(float4(0.f, 0.5f, 1.f, 0.f));
-	payload.hitDistance         = u_relitParams.probeRaysMaxT + 1000.f;
-}
-
-
-[shader("miss")]
-void DDGIShadowRaysRTM(inout ShadowRayPayload payload)
-{
-	payload.isShadowed = false;
+	u_traceRaysResultTexture[dispatchIdx] = float4(luminance, distanceTraveled);
 }

@@ -21,7 +21,6 @@
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 #include "SceneRenderer/RenderStages/Utils/RayBinner.h"
-#include "SceneRenderer/Utils/RTVisibilityUtils.h"
 #include "SceneRenderer/RenderStages/Utils/TracesAllocator.h"
 #include "SceneRenderer/RenderStages/Utils/VariableRateTexture.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
@@ -294,11 +293,11 @@ RT_PSO(HitRayShadingPSO)
 {
 	RAY_GEN_SHADER("Sculptor/SpecularReflections/HitRaysShading.hlsl", HitRaysShadingRTG);
 
-	MISS_SHADERS(SHADER_ENTRY("Sculptor/SpecularReflections/HitRaysShading.hlsl", ShadowRayRTM));
+	MISS_SHADERS(SHADER_ENTRY("Sculptor/SpecularReflections/HitRaysShading.hlsl", GenericRTM));
 
 	HIT_GROUP
 	{
-		ANY_HIT_SHADER("Sculptor/StaticMeshes/SMRTVisibility.hlsl", RTVisibility_RT_AHS);
+		ANY_HIT_SHADER("Sculptor/SpecularReflections/HitRaysShading.hlsl", GenericAH);
 
 		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
 	};
@@ -342,14 +341,6 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene
 	const ddgi::DDGISceneSubsystem& ddgiSceneSubsystem = renderScene.GetSceneSubsystemChecked<ddgi::DDGISceneSubsystem>();
 	lib::MTHandle<ddgi::DDGISceneDS> ddgiDS = ddgiSceneSubsystem.GetDDGISceneDS();
 
-	const RayTracingRenderSceneSubsystem& rayTracingSceneSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
-
-	lib::MTHandle<RTVisibilityDS> visibilityDS = graphBuilder.CreateDescriptorSet<RTVisibilityDS>(RENDERER_RESOURCE_NAME("RT Visibility DS"));
-	visibilityDS->u_geometryDS              = GeometryManager::Get().GetGeometryDSState();
-	visibilityDS->u_staticMeshUnifiedDataDS = StaticMeshUnifiedData::Get().GetUnifiedDataDS();
-	visibilityDS->u_materialsDS             = mat::MaterialsUnifiedData::Get().GetMaterialsDS();
-	visibilityDS->u_sceneRayTracingDS       = rayTracingSceneSubsystem.GetSceneRayTracingDS();
-
 	const Bool useSharc = renderer_params::useSharcAsRadianceCache && SharcGICache::IsSharcSupported();
 
 	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("Hit Rays Shading"),
@@ -360,8 +351,7 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene
 														  std::move(ddgiDS),
 														  shadingViewContext.sharcCacheDS,
 														  lightsRenderSystem.GetGlobalLightsDS(),
-														  shadowMapsManager.GetShadowMapsDS(),
-														  visibilityDS));
+														  shadowMapsManager.GetShadowMapsDS()));
 }
 
 } // hit_rays
@@ -446,12 +436,12 @@ DS_END();
 RT_PSO(SpecularReflectionsTracePSO)
 {
 	RAY_GEN_SHADER("Sculptor/SpecularReflections/RTGITrace.hlsl", GenerateRTGIRaysRTG);
-	MISS_SHADERS(SHADER_ENTRY("Sculptor/SpecularReflections/RTGITrace.hlsl", RTGIRTM));
+	MISS_SHADERS(SHADER_ENTRY("Sculptor/SpecularReflections/RTGITrace.hlsl", GenericRTM));
 
 	HIT_GROUP
 	{
-		CLOSEST_HIT_SHADER("Sculptor/StaticMeshes/SMRTGI.hlsl", RTGI_RT_CHS);
-		ANY_HIT_SHADER("Sculptor/StaticMeshes/SMRTGI.hlsl", RTGI_RT_AHS);
+		CLOSEST_HIT_SHADER("Sculptor/SpecularReflections/RTGITrace.hlsl", GenericCHS);
+		ANY_HIT_SHADER("Sculptor/SpecularReflections/RTGITrace.hlsl", GenericAH);
 
 		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
 	};
@@ -502,8 +492,6 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, rg::RenderG
 
 	// Phase (2) Trace Rays
 
-	RayTracingRenderSceneSubsystem& rayTracingSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
-
 	const Uint32 maxTracesNum = params.resolution.x() * params.resolution.y();
 	const Uint64 hitMaterialInfosBufferSize = maxTracesNum * sizeof(shading::RTHitMaterialInfo);
 
@@ -549,11 +537,7 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, rg::RenderG
 								   SpecularReflectionsTracePSO::pso,
 								   traceParams.tracesAllocation.tracingIndirectArgs, 0u,
 								   rg::BindDescriptorSets(std::move(traceRaysDS),
-														  rayTracingSubsystem.GetSceneRayTracingDS(),
-														  renderView.GetRenderViewDS(),
-														  mat::MaterialsUnifiedData::Get().GetMaterialsDS(),
-														  GeometryManager::Get().GetGeometryDSState(),
-														  StaticMeshUnifiedData::Get().GetUnifiedDataDS()));
+														  renderView.GetRenderViewDS()));
 
 	// Phase (3) Shade Rays
 

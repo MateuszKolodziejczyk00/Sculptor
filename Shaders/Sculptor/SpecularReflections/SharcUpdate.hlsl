@@ -1,17 +1,15 @@
 #include "SculptorShader.hlsli"
 
-#define SPT_LIGHTING_SHADOW_RAY_MISS_SHADER_IDX 1
 #define SHARC_UPDATE 1
+#define RT_MATERIAL_TRACING
 
-[[descriptor_set(SharcUpdateDS, 6)]]
+[[descriptor_set(RenderSceneDS)]]
+[[descriptor_set(RenderViewDS)]]
+[[descriptor_set(SharcUpdateDS)]]
+[[descriptor_set(GlobalLightsDS)]]
+[[descriptor_set(ShadowMapsDS)]]
+[[descriptor_set(CloudscapeProbesDS)]]
 
-[[descriptor_set(GlobalLightsDS, 7)]]
-
-[[descriptor_set(ShadowMapsDS, 8)]]
-
-[[descriptor_set(CloudscapeProbesDS, 9)]]
-
-#include "SpecularReflections/RTGITracingDescriptors.hlsli"
 #include "SpecularReflections/RTGITracing.hlsli"
 
 #include "SpecularReflections/SculptorSharc.hlsli"
@@ -172,7 +170,7 @@ void SharcUpdateRTG()
 		hitsNum++;
 		const RayDirectionInfo rayInfo = GenerateReflectionRayDir(diffuseColor, specularColor, normal, roughness, fromDir, rng);
 
-		RayHitResult hitRes = RTGITraceRay(u_sceneTLAS, worldLocation, rayInfo.direction);
+		RayHitResult hitRes = RTGITraceRay(worldLocation, rayInfo.direction);
 
 		if (hitRes.hitType == RTGBUFFER_HIT_TYPE_BACKFACE)
 		{
@@ -242,18 +240,4 @@ void SharcUpdateRTG()
 			break;
 		}
 	}
-}
-
-
-[shader("miss")]
-void SharcUpdateRTM(inout RTGIRayPayload payload)
-{
-	payload.distance = 999999.f;
-}
-
-
-[shader("miss")]
-void SharcUpdateShadowRaysRTM(inout ShadowRayPayload payload)
-{
-	payload.isShadowed = false;
 }

@@ -1,25 +1,24 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderViewDS, 2)]]
+[[descriptor_set(RenderSceneDS)]]
+[[descriptor_set(RenderViewDS)]]
 
-[[descriptor_set(RTShadingDS, 3)]]
-[[descriptor_set(GlobalLightsDS, 4)]]
-[[descriptor_set(ShadowMapsDS, 5)]]
+[[descriptor_set(RTShadingDS)]]
+[[descriptor_set(GlobalLightsDS)]]
+[[descriptor_set(ShadowMapsDS)]]
 
 #ifndef USE_DDGI
 #error "USE_DDGI must be defined"
 #endif // USE_DDGI
 
 #if USE_DDGI
-[[descriptor_set(DDGISceneDS, 6)]]
+[[descriptor_set(DDGISceneDS)]]
 #else
-[[descriptor_set(SharcCacheDS, 6)]]
+[[descriptor_set(SharcCacheDS)]]
 #endif // USE_DDGI
 
 
-#include "Utils/RTVisibilityCommon.hlsli"
-
-#define SPT_LIGHTING_SHADOW_RAY_MISS_SHADER_IDX 0
+#include "RayTracing/RayTracingHelpers.hlsli"
 
 
 #if !USE_DDGI

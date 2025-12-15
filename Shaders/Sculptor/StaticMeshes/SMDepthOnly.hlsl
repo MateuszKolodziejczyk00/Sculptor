@@ -1,23 +1,18 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
-[[descriptor_set(RenderSceneDS, 1)]]
-[[descriptor_set(GeometryDS, 2)]]
+[[descriptor_set(RenderSceneDS)]]
+[[descriptor_set(RenderViewDS)]]
 
-[[descriptor_set(MaterialsDS, 3)]]
-
-[[descriptor_set(RenderViewDS, 4)]]
-
-[[descriptor_set(StaticMeshBatchDS, 5)]]
-[[descriptor_set(SMDepthOnlyDrawInstancesDS, 6)]]
+[[descriptor_set(StaticMeshBatchDS)]]
+[[descriptor_set(SMDepthOnlyDrawInstancesDS)]]
 
 #include "RenderStages/DepthPrepass/DepthPrepass.hlsli"
+#include "SceneRendering/GPUScene.hlsli"
 
 
 #if CUSTOM_OPACITY
 #define FRAGMENT_SHADER_NEEDS_MATERIAL 1
 #include "Materials/MaterialSystem.hlsli"
-#include SPT_MATERIAL_SHADER_PATH
 #else
 #define FRAGMENT_SHADER_NEEDS_MATERIAL 0
 #endif // CUSTOM_OPACITY
@@ -55,15 +50,15 @@ VS_OUTPUT SMDepthOnly_VS(VS_INPUT input)
 
 	const SubmeshGPUData submesh = batchElem.submeshPtr.Load();
     
-    const uint vertexIdx = u_geometryData.Load<uint>(submesh.indicesOffset + input.index * 4);
+	const uint vertexIdx = UGB().LoadVertexIndex(submesh.indicesOffset, input.index);
 
-    const float3 vertexLocation = u_geometryData.Load<float3>(submesh.locationsOffset + vertexIdx * 12);
+	const float3 vertexLocation = UGB().LoadLocation(submesh.locationsOffset, vertexIdx);
     const float3 vertexWorldLocation = mul(instanceTransform, float4(vertexLocation, 1.f)).xyz;
 
 #if FRAGMENT_SHADER_NEEDS_MATERIAL
     output.materialDataID = uint(u_batchElements[drawCall.batchElementIdx].materialDataID);
 
-    const float2 vertexUV = u_geometryData.Load<float2>(submesh.uvsOffset + vertexIdx * 8);
+    const float2 vertexUV = UGB().LoadUV(submesh.uvsOffset, vertexIdx);
     output.uv = vertexUV;
 #endif // FRAGMENT_SHADER_NEEDS_MATERIAL
 

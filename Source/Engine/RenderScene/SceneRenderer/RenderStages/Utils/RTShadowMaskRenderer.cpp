@@ -15,7 +15,6 @@
 #include "StaticMeshes/StaticMeshGeometry.h"
 #include "GeometryManager.h"
 #include "MaterialsUnifiedData.h"
-#include "SceneRenderer/Utils/RTVisibilityUtils.h"
 #include "SceneRenderer/Utils/DepthBasedUpsampler.h"
 #include "Lights/ViewShadingInput.h"
 #include "SceneRenderer/RenderStages/Utils/VariableRateTexture.h"
@@ -248,11 +247,11 @@ RT_PSO(ShadowsRayTracingPSO)
 {
 	RAY_GEN_SHADER("Sculptor/Lights/DirLightsRTShadowsTraceRays.hlsl", GenerateShadowRaysRTG);
 
-	MISS_SHADERS(SHADER_ENTRY("Sculptor/Lights/DirLightsRTShadowsTraceRays.hlsl", RTVisibilityRTM));
+	MISS_SHADERS(SHADER_ENTRY("Sculptor/Lights/DirLightsRTShadowsTraceRays.hlsl", GenericRTM));
 
 	HIT_GROUP
 	{
-		ANY_HIT_SHADER("Sculptor/StaticMeshes/SMRTVisibility.hlsl", RTVisibility_RT_AHS);
+		ANY_HIT_SHADER("Sculptor/Lights/DirLightsRTShadowsTraceRays.hlsl", GenericAH);
 
 		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
 	};
@@ -292,8 +291,6 @@ static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuil
 	tracesAllocationDefinition.outputTracesAndDispatchGroupsNum = params::enableScreenSpaceShadows;
 	vrt::TracesAllocation tracesAllocation = AllocateTraces(graphBuilder, tracesAllocationDefinition);
 
-	const RayTracingRenderSceneSubsystem& rayTracingSceneSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
-
 	const rg::RGTextureViewHandle shadowMaskTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Directional Light Shadow Mask"), rg::TextureDef(tracingContext.resolution, rhi::EFragmentFormat::R16_UN_Float));
 
 	if (params::enableScreenSpaceShadows)
@@ -321,19 +318,12 @@ static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuil
 	directionalLightShadowMaskDS->u_shadowMask = shadowMaskTexture;
 	directionalLightShadowMaskDS->u_params     = updateParams;
 
-	lib::MTHandle<RTVisibilityDS> visibilityDS = graphBuilder.CreateDescriptorSet<RTVisibilityDS>(RENDERER_RESOURCE_NAME("RT Visibility DS"));
-	visibilityDS->u_geometryDS              = GeometryManager::Get().GetGeometryDSState();
-	visibilityDS->u_staticMeshUnifiedDataDS = StaticMeshUnifiedData::Get().GetUnifiedDataDS();
-	visibilityDS->u_materialsDS             = mat::MaterialsUnifiedData::Get().GetMaterialsDS();
-	visibilityDS->u_sceneRayTracingDS       = rayTracingSceneSubsystem.GetSceneRayTracingDS();
-
 	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("Directional Light Trace Shadow Rays"),
 								   ShadowsRayTracingPSO::pso,
 								   tracesAllocation.tracingIndirectArgs, 0,
 								   rg::BindDescriptorSets(traceShadowRaysDS,
 														  directionalLightShadowMaskDS,
-														  renderView.GetRenderViewDS(),
-														  std::move(visibilityDS)));
+														  renderView.GetRenderViewDS()));
 
 	const rg::RGTextureViewHandle resolvedShadowMaskTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Directional Light Shadow Mask (Post VRT Resolve)"), rg::TextureDef(tracingContext.resolution, rhi::EFragmentFormat::R16_UN_Float));
 

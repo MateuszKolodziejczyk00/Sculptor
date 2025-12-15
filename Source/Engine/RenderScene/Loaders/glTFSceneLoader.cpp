@@ -347,7 +347,7 @@ static lib::SharedRef<rdr::Texture> CreateImage(const tinygltf::Image& image)
 	return rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME(image.name), textureDef, allocationInfo);
 }
 
-static lib::DynamicArray<Uint32> LoadImages(const tinygltf::Model& model)
+static lib::DynamicArray<lib::SharedPtr<rdr::TextureView>> LoadImages(const tinygltf::Model& model)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -415,31 +415,30 @@ static lib::DynamicArray<Uint32> LoadImages(const tinygltf::Model& model)
 		rdr::Renderer::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
 	}
 
-	lib::DynamicArray<Uint32> textureIndicesInMaterialDS;
-	textureIndicesInMaterialDS.reserve(textures.size());
+	lib::DynamicArray<lib::SharedPtr<rdr::TextureView>> textureViews;
+	textureViews.reserve(textures.size());
 
 	for (const auto& texture : textures)
 	{
-		rhi::TextureViewDefinition viewDef;
-		viewDef.subresourceRange.aspect = rhi::ETextureAspect::Color;
-		lib::SharedRef<rdr::TextureView> textureView = texture->CreateView(RENDERER_RESOURCE_NAME(texture->GetRHI().GetName().ToString() + "View"), viewDef);
-		textureIndicesInMaterialDS.emplace_back(mat::MaterialsUnifiedData::Get().AddMaterialTexture(std::move(textureView)));
+		lib::SharedPtr<rdr::TextureView>& textureView = textureViews.emplace_back();
+		textureView = texture->CreateView(RENDERER_RESOURCE_NAME(texture->GetRHI().GetName().ToString() + "View"));
+		mat::MaterialsUnifiedData::Get().AddMaterialTexture(lib::Ref(textureView));
 	}
 
-	return textureIndicesInMaterialDS;
+	return textureViews;
 }
 
-static lib::DynamicArray<ecs::EntityHandle> CreateMaterials(const tinygltf::Model& model, const lib::DynamicArray<Uint32>& textureIndicesInMaterialDS)
+static lib::DynamicArray<ecs::EntityHandle> CreateMaterials(const tinygltf::Model& model, const lib::DynamicArray<lib::SharedPtr<rdr::TextureView>>& loadedTextures)
 {
-	const auto getLoadedTextureIndex = [&model, &textureIndicesInMaterialDS](int modelTextureIdx)
+	const auto getLoadedTexture = [&model, &loadedTextures](int modelTextureIdx)
 	{
-		Uint32 loadedTextureIdx = idxNone<Uint32>;
+		lib::SharedPtr<rdr::TextureView> loadedTexture;
 		if (modelTextureIdx != -1)
 		{
 			const SizeType imageIdx = model.textures[modelTextureIdx].source;
-			loadedTextureIdx = static_cast<Uint32>(textureIndicesInMaterialDS[imageIdx]);
+			loadedTexture = loadedTextures[imageIdx];
 		}
-		return loadedTextureIdx;
+		return loadedTexture;
 	};
 
 	lib::DynamicArray<ecs::EntityHandle> materials;
@@ -460,11 +459,11 @@ static lib::DynamicArray<ecs::EntityHandle> CreateMaterials(const tinygltf::Mode
 		pbrData.baseColorFactor             = math::Map<const math::Vector3d>(pbrDef.baseColorFactor.data()).cast<Real32>();
 		pbrData.metallicFactor              = static_cast<Real32>(pbrDef.metallicFactor);
 		pbrData.roughnessFactor             = static_cast<Real32>(pbrDef.roughnessFactor);
-		pbrData.baseColorTextureIdx         = getLoadedTextureIndex(pbrDef.baseColorTexture.index);
-		pbrData.metallicRoughnessTextureIdx = getLoadedTextureIndex(pbrDef.metallicRoughnessTexture.index);
-		pbrData.normalsTextureIdx           = getLoadedTextureIndex(materialSourceDef.normalTexture.index);
+		pbrData.baseColorTexture            = getLoadedTexture(pbrDef.baseColorTexture.index);
+		pbrData.metallicRoughnessTexture    = getLoadedTexture(pbrDef.metallicRoughnessTexture.index);
+		pbrData.normalsTexture              = getLoadedTexture(materialSourceDef.normalTexture.index);
 		pbrData.emissiveFactor              = math::Map<const math::Vector3d>(materialSourceDef.emissiveFactor.data()).cast<Real32>() * emissiveStrength;
-		pbrData.emissiveTextureIdx          = getLoadedTextureIndex(materialSourceDef.emissiveTexture.index);
+		pbrData.emissiveTexture             =getLoadedTexture(materialSourceDef.emissiveTexture.index);
 
 		const Bool isTransparent = materialSourceDef.alphaMode == "BLEND";
 		const Bool isMasked      = materialSourceDef.alphaMode == "MASK";
@@ -543,8 +542,8 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 	{
 		const Bool withRayTracing = rdr::Renderer::IsRayTracingEnabled();
 
-		const lib::DynamicArray<Uint32> textureIndicesInMaterialDS = LoadImages(model);
-		const lib::DynamicArray<ecs::EntityHandle> materials = CreateMaterials(model, textureIndicesInMaterialDS);
+		const lib::DynamicArray<lib::SharedPtr<rdr::TextureView>> loadedTextures = LoadImages(model);
+		const lib::DynamicArray<ecs::EntityHandle> materials = CreateMaterials(model, loadedTextures);
 
 		lib::HashMap<int, ecs::EntityHandle> loadedMeshes;
 		loadedMeshes.reserve(model.meshes.size());

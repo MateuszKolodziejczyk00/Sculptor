@@ -1,10 +1,11 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(SRResamplingFinalVisibilityTestDS, 2)]]
-[[descriptor_set(RenderViewDS, 3)]]
+[[descriptor_set(RenderSceneDS)]]
+[[descriptor_set(SRResamplingFinalVisibilityTestDS)]]
+[[descriptor_set(RenderViewDS)]]
 
+#include "RayTracing/RayTracingHelpers.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
-#include "Utils/RTVisibilityCommon.hlsli"
 #include "Utils/Packing.hlsli"
 #include "Utils/MortonCode.hlsli"
 #include "SpecularReflections/SRReservoir.hlsli"
@@ -43,8 +44,6 @@ void ResamplingFinalVisibilityTestRTG()
 
 	if(depth > 0.f)
 	{
-		RTVisibilityPayload payload = { false };
-
 		const float3 ndc = float3(uv * 2.f - 1.f, depth);
 		const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
 
@@ -54,6 +53,8 @@ void ResamplingFinalVisibilityTestRTG()
 		const SRReservoir reservoir = UnpackReservoir(u_inOutReservoirsBuffer[reservoirIdx]);
 		if (!reservoir.HasFlag(SR_RESERVOIR_FLAGS_VALIDATED))
 		{
+			bool isVisible = false;
+
 			const float distance = length(reservoir.hitLocation - worldLocation);
 
 			if(distance > 2.5f * bias)
@@ -66,17 +67,10 @@ void ResamplingFinalVisibilityTestRTG()
 				rayDesc.Origin      = worldLocation;
 				rayDesc.Direction   = rayDirection;
 
-				TraceRay(u_sceneTLAS,
-						 RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
-						 0xFF,
-						 0,
-						 1,
-						 0,
-						 rayDesc,
-						 payload);
+				isVisible = RTScene().VisibilityTest(rayDesc);
 			}
 
-			if(!payload.isVisible)
+			if(!isVisible)
 			{
 				SRPackedReservoir initialReservoir = u_initialReservoirsBuffer[reservoirIdx];
 				uint packedProps = initialReservoir.MAndProps;

@@ -1,8 +1,10 @@
 #include "SculptorShader.hlsli"
 
-#include "SpecularReflections/RTGITracingDescriptors.hlsli"
+#define RT_MATERIAL_TRACING
 
-[[descriptor_set(SpecularReflectionsTraceDS, 6)]]
+[[descriptor_set(RenderSceneDS)]]
+[[descriptor_set(RenderViewDS)]]
+[[descriptor_set(SpecularReflectionsTraceDS)]]
 
 #include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/RTGBuffer.hlsli"
@@ -42,7 +44,7 @@ void GenerateRTGIRaysRTG()
 
 		const float3 rayDirection = OctahedronDecodeNormal(UnpackHalf2x16Norm(encodedRayDirection));
 
-		const RayHitResult hitResult = RTGITraceRay(u_sceneTLAS, worldLocation, rayDirection);
+		const RayHitResult hitResult = RTGITraceRay(worldLocation, rayDirection);
 
 		uint hitResultIdx = IDX_NONE_32;
 
@@ -85,11 +87,4 @@ void GenerateRTGIRaysRTG()
 			u_hitMaterialInfos[traceCommandIndex] = PackRTGBuffer(hitResult);
 		}
 	}
-}
-
-
-[shader("miss")]
-void RTGIRTM(inout RTGIRayPayload payload)
-{
-	payload.distance = 999999.f;
 }

@@ -41,7 +41,7 @@ BEGIN_SHADER_STRUCT(MeshletGPUData)
 END_SHADER_STRUCT();
 
 
-CREATE_NAMED_BUFFER(MeshletsArray);
+CREATE_NAMED_BUFFER(MeshletsArray, MeshletGPUData);
 using MeshletGPUPtr = gfx::GPUNamedElemPtr<MeshletsArray, MeshletGPUData>;
 using MeshletsGPUSpan = gfx::GPUNamedElemsSpan<MeshletsArray, MeshletGPUData>;
 
@@ -61,7 +61,7 @@ BEGIN_SHADER_STRUCT(SubmeshGPUData)
 END_SHADER_STRUCT();
 
 
-CREATE_NAMED_BUFFER(SubmeshesArray);
+CREATE_NAMED_BUFFER(SubmeshesArray, SubmeshGPUData);
 using SubmeshGPUPtr   = gfx::GPUNamedElemPtr<SubmeshesArray, SubmeshGPUData>;
 using SubmeshsGPUSpan = gfx::GPUNamedElemsSpan<SubmeshesArray, SubmeshGPUData>;
 
@@ -91,12 +91,6 @@ BEGIN_SHADER_STRUCT(StaticMeshGeometryBuffers)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(StaticMeshUnifiedDataDS, rg::RGDescriptorSetState<StaticMeshUnifiedDataDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SubmeshGPUData>),		u_submeshes)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<MeshletGPUData>),		u_meshlets)
-DS_END();
-
-
 class StaticMeshUnifiedData
 {
 public:
@@ -104,8 +98,6 @@ public:
 	static StaticMeshUnifiedData& Get();
 
 	StaticMeshGeometryData BuildStaticMeshData(lib::DynamicArray<SubmeshGPUData>& submeshes, lib::DynamicArray<MeshletGPUData>& meshlets, rhi::RHIVirtualAllocation geometryDataSuballocation);
-
-	const lib::MTHandle<StaticMeshUnifiedDataDS>& GetUnifiedDataDS() const;
 
 	StaticMeshGeometryBuffers GetGeometryBuffers() const;
 
@@ -116,8 +108,6 @@ private:
 
 	lib::SharedPtr<rdr::Buffer> m_submeshesBuffer;
 	lib::SharedPtr<rdr::Buffer> m_meshletsBuffer;
-
-	lib::MTHandle<StaticMeshUnifiedDataDS> m_unifiedDataDS;
 };
 
 } // spt::rsc

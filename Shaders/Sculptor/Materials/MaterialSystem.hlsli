@@ -1,31 +1,8 @@
 #ifndef MATERIAL_SYSTEM_HLSLI
 #define MATERIAL_SYSTEM_HLSLI
 
-
-struct MaterialEvaluationParameters
-{
-	float3  normal;
-
-	float3  tangent;
-	float3  bitangent;
-	bool    hasTangent;
-
-#ifdef SPT_MATERIAL_SAMPLE_CUSTOM_DERIVATIVES
-	TextureCoord uv;
-#else
-	float2  uv;
-#endif // SPT_MATERIAL_SAMPLE_CUSTOM_DERIVATIVES
-
-	float3  worldLocation;
-	
-	float4  clipSpace;
-};
-
-
-struct CustomOpacityOutput
-{
-	bool shouldDiscard;
-};
+#include "Materials/MaterialTypes.hlsli"
+#include "SceneRendering/GPUMaterials.hlsli"
 
 
 /* 
@@ -33,19 +10,6 @@ struct CustomOpacityOutput
  * CustomOpacityOutput EvaluateCustomOpacity(MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData);
  */
 
-
-struct MaterialEvaluationOutput
-{
-	float3  shadingNormal;
-	float3  geometryNormal;
-
-	float   roughness;
-
-	float3  baseColor;
-	float   metallic;
-
-	float3 emissiveColor;
-};
 
 
 /* 
@@ -72,25 +36,31 @@ struct MaterialEvaluationOutput
 #endif
 
 
+#ifdef SPT_MATERIAL_DATA_TYPE
 [[shader_struct(SPT_MATERIAL_DATA_TYPE)]]
+#endif // SPT_MATERIAL_DATA_TYPE
 
-
-#ifdef DS_MaterialsDS
+#ifdef SPT_MATERIAL_SHADER_PATH
+#include SPT_MATERIAL_SHADER_PATH
+#endif // SPT_MATERIAL_SHADER_PATH
 
 #define SPT_MATERIAL_DATA_ALIGNMENT 32
+
+#ifdef DS_RenderSceneDS
 
 template<typename TMaterialData>
 TMaterialData LoadMaterialDataInternal(in uint16_t materialDataID)
 {
 	const uint materialDataOffset = uint(materialDataID) * SPT_MATERIAL_DATA_ALIGNMENT;
-	return u_materialsData.Load<TMaterialData>(materialDataOffset);
+	return GPUMaterials().data.materialsData.Load<TMaterialData>(materialDataOffset);
 }
 
+#ifdef SPT_MATERIAL_DATA_TYPE
 SPT_MATERIAL_DATA_TYPE LoadMaterialData(in uint16_t materialDataID)
 {
 	return LoadMaterialDataInternal<SPT_MATERIAL_DATA_TYPE>(materialDataID);
 }
-
-#endif // DS_MaterialsDS
+#endif // SPT_MATERIAL_DATA_TYPE
+#endif // DS_RenderSceneDS
 
 #endif // MATERIAL_SYSTEM_HLSLI

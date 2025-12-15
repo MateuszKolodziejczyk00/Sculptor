@@ -3,6 +3,7 @@
 #include "Lights/Shadows.hlsli"
 #include "Atmosphere/Atmosphere.hlsli"
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
+#include "RayTracing/RTScene.hlsli"
 
 #ifdef DS_DDGISceneDS
 #include "DDGI/DDGITypes.hlsli"
@@ -238,11 +239,6 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 
 #ifdef DS_GlobalLightsDS
 
-#ifndef SPT_LIGHTING_SHADOW_RAY_MISS_SHADER_IDX
-#define SPT_LIGHTING_SHADOW_RAY_MISS_SHADER_IDX 0
-#endif // SPT_LIGHTING_SHADOW_RAY_MISS_SHADER_IDX
-
-
 struct ShadowRayPayload
 {
 	bool isShadowed;
@@ -279,26 +275,13 @@ float3 CalcReflectedLuminance_Direct(in ShadedSurface surface, in float3 viewDir
 
 		if (any(lightIlluminance > 0.f) && dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
 		{
-			ShadowRayPayload payload = { true };
-
 			RayDesc rayDesc;
 			rayDesc.TMin        = 0.00f;
 			rayDesc.TMax        = 50.f;
 			rayDesc.Origin      = surface.location + surface.geometryNormal * 0.03f;
 			rayDesc.Direction   = -directionalLight.direction;
 
-			const uint instanceMask = RT_INSTANCE_FLAG_OPAQUE;
-
-			TraceRay(u_sceneTLAS,
-					 RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
-					 instanceMask,
-					 0,
-					 1,
-					 SPT_LIGHTING_SHADOW_RAY_MISS_SHADER_IDX,
-					 rayDesc,
-					 payload);
-			
-			if (!payload.isShadowed)
+			if (RTScene().VisibilityTest(rayDesc))
 			{
 				luminance += CalcLighting(surface, -directionalLight.direction, viewDir, lightIlluminance).sceneLuminance;
 			}

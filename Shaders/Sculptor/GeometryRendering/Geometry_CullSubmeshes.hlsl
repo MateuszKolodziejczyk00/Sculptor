@@ -5,18 +5,17 @@
 	#error "Invalid geometry pass index"
 #endif
 
-[[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
-[[descriptor_set(RenderSceneDS, 1)]]
-[[descriptor_set(RenderViewDS, 2)]]
+[[descriptor_set(RenderSceneDS)]]
+[[descriptor_set(RenderViewDS)]]
 
-[[descriptor_set(GeometryBatchDS, 3)]]
+[[descriptor_set(GeometryBatchDS)]]
 
-[[descriptor_set(VisCullingDS, 4)]]
+[[descriptor_set(VisCullingDS)]]
 
 #if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
-[[descriptor_set(GeometryCullSubmeshes_VisibleGeometryPassDS, 5)]]
+[[descriptor_set(GeometryCullSubmeshes_VisibleGeometryPassDS)]]
 #elif GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
-[[descriptor_set(GeometryCullSubmeshes_DisoccludedGeometryPassDS, 5)]]
+[[descriptor_set(GeometryCullSubmeshes_DisoccludedGeometryPassDS)]]
 #endif // GEOMETRY_PASS_IDX
 
 #include "Utils/Wave.hlsli"

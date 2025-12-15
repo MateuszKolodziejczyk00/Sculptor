@@ -58,7 +58,6 @@ ecs::EntityHandle MeshBuilder::EmitMeshGeometry()
 	const StaticMeshGeometryData staticMeshGeometryData = StaticMeshUnifiedData::Get().BuildStaticMeshData(submeshesData, m_meshlets, geometrySuballocation);
 
 	const Uint32 submeshesOffset = static_cast<Uint32>(staticMeshGeometryData.submeshesSuballocation.GetOffset());
-	const Uint32 submeshesBeginIdx = submeshesOffset / sizeof(rdr::HLSLStorage<SubmeshGPUData>);
 
 	StaticMeshRenderingDefinition staticMeshRenderingDef;
 	staticMeshRenderingDef.geometryDataOffset   = static_cast<Uint32>(staticMeshGeometryData.geometrySuballocation.GetOffset());
@@ -101,8 +100,11 @@ ecs::EntityHandle MeshBuilder::EmitMeshGeometry()
 			submeshBLAS.trianglesGeometry.indicesNum				= submeshesData[submeshIdx].indicesNum;
 
 			RayTracingGeometryDefinition& rtGeoDef = rtGeoComponent.geometries.emplace_back();
-			rtGeoDef.blas			= GetParameters().blasBuilder->CreateBLAS(RENDERER_RESOURCE_NAME("Temp BLAS Name"), submeshBLAS);
-			rtGeoDef.geometryDataID	= submeshesBeginIdx + static_cast<Uint32>(submeshIdx);
+			rtGeoDef.blas                   = GetParameters().blasBuilder->CreateBLAS(RENDERER_RESOURCE_NAME("Temp BLAS Name"), submeshBLAS);
+			rtGeoDef.indicesDataUGBOffset   = submeshesData[submeshIdx].indicesOffset;
+			rtGeoDef.locationsDataUGBOffset = submeshesData[submeshIdx].locationsOffset;
+			rtGeoDef.uvsDataUGBOffset       = submeshesData[submeshIdx].uvsOffset;
+			rtGeoDef.normalsDataUGBOffset   = submeshesData[submeshIdx].normalsOffset;
 		}
 
 		staticMeshDataHandle.emplace<RayTracingGeometryComponent>(std::move(rtGeoComponent));

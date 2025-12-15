@@ -6,7 +6,7 @@
 #include "SceneRenderSystem.h"
 #include "RenderSceneSubsystem.h"
 #include "RenderSystemsRegistry.h"
-#include "RenderSceneTypes.h"
+#include "RenderSceneConstants.h"
 
 
 namespace spt::engn

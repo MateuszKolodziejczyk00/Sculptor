@@ -9,6 +9,7 @@
 #include "DescriptorSetBindings/AccelerationStructureBinding.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "Pipelines/PipelineState.h"
+#include "RayTracingSceneTypes.h"
 
 namespace spt::rdr
 {
@@ -19,20 +20,6 @@ class Buffer;
 
 namespace spt::rsc
 {
-
-BEGIN_SHADER_STRUCT(RTInstanceData)
-	SHADER_STRUCT_FIELD(Uint32, entityIdx)
-	SHADER_STRUCT_FIELD(Uint32, geometryDataID)
-	SHADER_STRUCT_FIELD(Uint16, materialDataID)
-	SHADER_STRUCT_FIELD(Uint32, padding)
-END_SHADER_STRUCT();
-
-
-DS_BEGIN(SceneRayTracingDS, rg::RGDescriptorSetState<SceneRayTracingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::AccelerationStructureBinding),            u_sceneTLAS)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<RTInstanceData>), u_rtInstances)
-DS_END();
-
 
 enum class ETLASGeometryMask : Uint32
 {
@@ -54,13 +41,12 @@ public:
 
 	// Begin RenderSceneSubsystem overrides
 	virtual void Update() override;
+	virtual void UpdateGPUSceneData(RenderSceneConstants& sceneData) override;
 	// End RenderSceneSubsystem overrides
 
 	const lib::SharedPtr<rdr::TopLevelAS>& GetSceneTLAS() const { return m_tlas; }
 
 	const lib::SharedPtr<rdr::Buffer>& GetRTInstancesDataBuffer() const;
-
-	const lib::MTHandle<SceneRayTracingDS>& GetSceneRayTracingDS() const;
 
 	Bool IsTLASDirty() const;
 
@@ -73,8 +59,6 @@ private:
 	lib::SharedPtr<rdr::TopLevelAS> m_tlas;
 
 	lib::SharedPtr<rdr::Buffer> m_rtInstancesDataBuffer;
-
-	lib::MTHandle<SceneRayTracingDS> m_sceneRayTracingDS;
 
 	Bool m_isTLASDirty;
 	Bool m_areSBTRecordsDirty;

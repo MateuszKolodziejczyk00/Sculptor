@@ -55,13 +55,30 @@ void RenderScene::Update()
 
 	const engn::FrameContext& frame = GetCurrentFrameRef();
 
-	GPUSceneFrameData frameData;
-	frameData.deltaTime                 = frame.GetDeltaTime();
-	frameData.time                      = frame.GetTime();
-	frameData.frameIdx                  = static_cast<Uint32>(frame.GetFrameIdx());
-	frameData.renderEntitiesArray       = m_renderEntitiesBuffer->GetFullViewRef();
-	frameData.staticMeshGeometryBuffers = StaticMeshUnifiedData::Get().GetGeometryBuffers();
-	m_renderSceneDS->u_gpuSceneFrameConstants = frameData;
+	GPUSceneData sceneData;
+	sceneData.deltaTime                 = frame.GetDeltaTime();
+	sceneData.time                      = frame.GetTime();
+	sceneData.frameIdx                  = static_cast<Uint32>(frame.GetFrameIdx());
+	sceneData.renderEntitiesArray       = m_renderEntitiesBuffer->GetFullViewRef();
+
+	SceneGeometryData geometryData;
+	geometryData.staticMeshGeometryBuffers = StaticMeshUnifiedData::Get().GetGeometryBuffers();
+	geometryData.ugb                       = GeometryManager::Get().GetUnifiedGeometryBuffer();
+
+	GPUMaterialsData gpuMaterials;
+	gpuMaterials.data = mat::MaterialsUnifiedData::Get().GetMaterialUnifiedData();
+
+	RenderSceneConstants sceneConstants;
+	sceneConstants.gpuScene  = sceneData;
+	sceneConstants.geometry  = geometryData;
+	sceneConstants.materials = gpuMaterials;
+
+	for (const lib::SharedPtr<RenderSceneSubsystem>& subsystem : sceneSubsystems)
+	{
+		subsystem->UpdateGPUSceneData(sceneConstants);
+	}
+
+	m_renderSceneDS->u_renderSceneConstants = sceneConstants;
 }
 
 const engn::FrameContext& RenderScene::GetCurrentFrameRef() const
@@ -139,9 +156,7 @@ lib::SharedRef<rdr::Buffer> RenderScene::CreateInstancesBuffer() const
 
 lib::MTHandle<RenderSceneDS> RenderScene::CreateRenderSceneDS() const
 {
-	const lib::MTHandle<RenderSceneDS> sceneDS = rdr::ResourcesManager::CreateDescriptorSetState<RenderSceneDS>(RENDERER_RESOURCE_NAME("RenderSceneDS"));
-	sceneDS->u_renderEntitiesData = m_renderEntitiesBuffer->GetFullView();
-	return sceneDS;
+	return rdr::ResourcesManager::CreateDescriptorSetState<RenderSceneDS>(RENDERER_RESOURCE_NAME("RenderSceneDS"));
 }
 
 void RenderScene::InitializeRenderSystem(SceneRenderSystem& system)

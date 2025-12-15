@@ -8,6 +8,7 @@ namespace spt::rsc
 {
 
 class RenderScene;
+struct RenderSceneConstants;
 
 
 class RENDER_SCENE_API RenderSceneSubsystem
@@ -18,6 +19,8 @@ public:
 	virtual ~RenderSceneSubsystem() = default;
 
 	virtual void Update() {};
+
+	virtual void UpdateGPUSceneData(RenderSceneConstants& sceneData) {}
 
 protected:
 

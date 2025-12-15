@@ -206,10 +206,7 @@ void ExecuteMaterialRenderCommands(rg::RenderGraphBuilder& graphBuilder, const M
 
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Materials Pass"),
 							renderPassDef,
-							rg::BindDescriptorSets(mat::MaterialsUnifiedData::Get().GetMaterialsDS(),
-												   StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
-												   renderView.GetRenderViewDS(),
-												   GeometryManager::Get().GetGeometryDSState(),
+							rg::BindDescriptorSets(renderView.GetRenderViewDS(),
 												   emitGBufferDS),
 							[resolution, groupsPerMaterial, commands = std::move(renderCommands)](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{

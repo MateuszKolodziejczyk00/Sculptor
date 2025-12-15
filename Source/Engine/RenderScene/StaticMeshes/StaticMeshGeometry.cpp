@@ -84,11 +84,6 @@ StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicAr
 	return geometryData;
 }
 
-const lib::MTHandle<StaticMeshUnifiedDataDS>& StaticMeshUnifiedData::GetUnifiedDataDS() const
-{
-	return m_unifiedDataDS;
-}
-
 StaticMeshGeometryBuffers StaticMeshUnifiedData::GetGeometryBuffers() const
 {
 	StaticMeshGeometryBuffers buffers;
@@ -112,10 +107,6 @@ StaticMeshUnifiedData::StaticMeshUnifiedData()
 	m_submeshesBuffer		= createBufferImpl(RENDERER_RESOURCE_NAME("Static Meshes Submeshes Buffer"), 1024 * 32 * sizeof(SubmeshGPUData));
 	m_meshletsBuffer		= createBufferImpl(RENDERER_RESOURCE_NAME("Static Meshes Meshlets Buffer"), 1024 * 512 * sizeof(MeshletGPUData));
 
-	m_unifiedDataDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshUnifiedDataDS>(RENDERER_RESOURCE_NAME("Static Mesh Unified Data DS"));
-	m_unifiedDataDS->u_submeshes	= m_submeshesBuffer->GetFullView();
-	m_unifiedDataDS->u_meshlets		= m_meshletsBuffer->GetFullView();
-
 	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
 															{
 																DestroyResources();
@@ -126,7 +117,6 @@ void StaticMeshUnifiedData::DestroyResources()
 {
 	m_submeshesBuffer.reset();
 	m_meshletsBuffer.reset();
-	m_unifiedDataDS.Reset();
 }
 
 } // spt::rsc

@@ -597,6 +597,10 @@ VkGeometryInstanceFlagsKHR RHIToVulkan::GetGeometryInstanceFlags(rhi::ETLASInsta
 	{
 		lib::AddFlag(flags, VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR);
 	}
+	if (lib::HasAnyFlag(instanceFlags, rhi::ETLASInstanceFlags::FacingCullDisable))
+	{
+		lib::AddFlag(flags, VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR);
+	}
 
 	return flags;
 }

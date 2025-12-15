@@ -16,10 +16,10 @@ namespace utils
 {
 
 template<typename TStruct, typename TValue> requires std::is_constructible_v<TStruct, const TValue&>
-lib::SharedRef<Buffer> CreateConstantBuffer(const RendererResourceName& name, const TValue& value)
+lib::SharedRef<Buffer> CreateDataBuffer(const RendererResourceName& name, const TValue& value, rhi::EBufferUsage usage)
 {
 	rhi::BufferDefinition bufferDef;
-	bufferDef.usage = rhi::EBufferUsage::Uniform;
+	bufferDef.usage = usage;
 	bufferDef.size  = sizeof(rdr::HLSLStorage<TStruct>);
 	const lib::SharedRef<Buffer> buffer = rdr::ResourcesManager::CreateBuffer(name, bufferDef, rhi::EMemoryUsage::CPUToGPU);
 
@@ -33,8 +33,15 @@ lib::SharedRef<Buffer> CreateConstantBuffer(const RendererResourceName& name, co
 template<typename TStruct, typename TValue> requires std::is_constructible_v<TStruct, const TValue&>
 lib::SharedPtr<rdr::BindableBufferView> CreateConstantBufferView(const RendererResourceName& name, const TValue& value)
 {
-	return CreateConstantBuffer<TStruct>(name, value)->GetFullView();
+	return CreateDataBuffer<TStruct>(name, value, rhi::EBufferUsage::Uniform)->GetFullView();
 }
+
+template<typename TStruct, typename TValue> requires std::is_constructible_v<TStruct, const TValue&>
+lib::SharedPtr<rdr::BindableBufferView> CreateStorageBufferView(const RendererResourceName& name, const TValue& value)
+{
+	return CreateDataBuffer<TStruct>(name, value, rhi::EBufferUsage::Storage)->GetFullView();
+}
+
 
 } // utils
 

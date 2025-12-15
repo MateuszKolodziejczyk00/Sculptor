@@ -8,6 +8,7 @@
 #include "Types/RenderContext.h"
 #include "Materials/MaterialsRenderingCommon.h"
 #include "MaterialsSubsystem.h"
+#include "RenderSceneConstants.h"
 
 
 namespace spt::rsc
@@ -33,14 +34,18 @@ void RayTracingRenderSceneSubsystem::Update()
 	}
 }
 
+void RayTracingRenderSceneSubsystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
+{
+	RTSceneData rtSceneData;
+	rtSceneData.tlas        = m_tlas;
+	rtSceneData.rtInstances = m_rtInstancesDataBuffer->GetFullView();
+
+	sceneData.rtScene = rtSceneData;
+}
+
 const lib::SharedPtr<rdr::Buffer>& RayTracingRenderSceneSubsystem::GetRTInstancesDataBuffer() const
 {
 	return m_rtInstancesDataBuffer;
-}
-
-const lib::MTHandle<SceneRayTracingDS>& RayTracingRenderSceneSubsystem::GetSceneRayTracingDS() const
-{
-	return m_sceneRayTracingDS;
 }
 
 Bool RayTracingRenderSceneSubsystem::IsTLASDirty() const
@@ -73,16 +78,26 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 
 		for(SizeType idx = 0; idx < rayTracingGeoComp.geometries.size(); ++idx)
 		{
-			const RayTracingGeometryDefinition& rtGeometry		= rayTracingGeoComp.geometries[idx];
-			const ecs::EntityHandle material					= materialsSlots.slots[idx];
-			const mat::MaterialProxyComponent& materialProxy	= material.get<const mat::MaterialProxyComponent>();
+			const RayTracingGeometryDefinition& rtGeometry   = rayTracingGeoComp.geometries[idx];
+			const ecs::EntityHandle material                 = materialsSlots.slots[idx];
+			const mat::MaterialProxyComponent& materialProxy = material.get<const mat::MaterialProxyComponent>();
 
 			if(materialProxy.SupportsRayTracing())
 			{
+				EMaterialRTFlags materialRTFlags = EMaterialRTFlags::None;
+				if (materialProxy.params.doubleSided)
+				{
+					lib::AddFlag(materialRTFlags, EMaterialRTFlags::DoubleSided);
+				}
+
 				RTInstanceData& rtInstance = rtInstances.emplace_back();
-				rtInstance.entityIdx      = gpuEntity.GetGPUDataPtr().GetBufferElementIdx();
-				rtInstance.materialDataID = materialProxy.GetMaterialDataID();
-				rtInstance.geometryDataID = rtGeometry.geometryDataID;
+				rtInstance.entity                 = gpuEntity.GetGPUDataPtr();
+				rtInstance.materialDataID         = materialProxy.GetMaterialDataID();
+				rtInstance.metarialRTFlags        = static_cast<Uint16>(materialRTFlags);
+				rtInstance.indicesDataUGBOffset   = rtGeometry.indicesDataUGBOffset;
+				rtInstance.locationsDataUGBOffset = rtGeometry.locationsDataUGBOffset;
+				rtInstance.uvsDataUGBOffset       = rtGeometry.uvsDataUGBOffset;
+				rtInstance.normalsDataUGBOffset   = rtGeometry.normalsDataUGBOffset;
 
 				mat::RTHitGroupPermutation hitGroupPermutation;
 				hitGroupPermutation.SHADER = materialProxy.params.shader;
@@ -104,6 +119,11 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 				if (!materialProxy.params.customOpacity)
 				{
 					lib::AddFlag(tlasInstance.flags, rhi::ETLASInstanceFlags::ForceOpaque);
+				}
+
+				if (materialProxy.params.doubleSided)
+				{
+					lib::AddFlag(tlasInstance.flags, rhi::ETLASInstanceFlags::FacingCullDisable);
 				}
 			}
 		}
@@ -133,10 +153,6 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 		rdr::Renderer::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
 
 		m_tlas->ReleaseInstancesBuildData();
-
-		m_sceneRayTracingDS = rdr::ResourcesManager::CreateDescriptorSetState<SceneRayTracingDS>(RENDERER_RESOURCE_NAME("Scene Ray Tracing DS"));
-		m_sceneRayTracingDS->u_sceneTLAS   = lib::Ref(m_tlas);
-		m_sceneRayTracingDS->u_rtInstances = m_rtInstancesDataBuffer->GetFullView();
 	}
 
 	m_isTLASDirty = true;

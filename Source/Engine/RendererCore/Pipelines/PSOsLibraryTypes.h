@@ -499,7 +499,7 @@ constexpr auto CreateShaderEntriesArray(TShaderEntries&&... entries)
 
 #define RT_PSO(PSOName) struct PSOName : public spt::rdr::RayTracingPSO<PSOName, #PSOName>
 
-#define SHADER_ENTRY(path, entryPoint) spt::rdr::ShaderEntry{path, #entryPoint}
+#define SHADER_ENTRY(path, entryPoint) spt::rdr::ShaderEntry{ path, #entryPoint}
 
 #define COMPUTE_SHADER(path, entryPoint)  static constexpr spt::rdr::ShaderEntry   computeShader{ path, #entryPoint };
 

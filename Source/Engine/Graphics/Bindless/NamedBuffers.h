@@ -31,10 +31,12 @@ private:
 };
 
 
-template<lib::Literal name>
+template<typename TType, lib::Literal name>
 class NamedBuffer : public NamedBufferBase
 {
 public:
+
+	using Type = TType;
 
 	NamedBuffer() = default;
 
@@ -48,8 +50,8 @@ public:
 };
 
 
-#define CREATE_NAMED_BUFFER(name) \
-using name = gfx::NamedBuffer<lib::Literal(#name)>
+#define CREATE_NAMED_BUFFER(name, type) \
+using name = gfx::NamedBuffer<type, lib::Literal(#name)>
 
 template<typename TType>
 concept CNamedBuffer = std::is_base_of_v<NamedBufferBase, TType>;
@@ -59,20 +61,27 @@ concept CNamedBuffer = std::is_base_of_v<NamedBufferBase, TType>;
 namespace spt::rdr::shader_translator
 {
 
-template<lib::Literal name>
-struct StructTranslator<gfx::NamedBuffer<name>>
+template<typename TType, lib::Literal name>
+struct StructTranslator<gfx::NamedBuffer<TType, name>>
 {
 	static constexpr lib::String GetHLSLStructName()
 	{
-		return "NamedBufferDescriptorIdx";
+		if constexpr (CShaderStruct<TType>)
+		{
+			return lib::String("NamedBufferDescriptor<") + TType::GetStructName() + ">";
+		}
+		else
+		{
+			return lib::String("NamedBufferDescriptor<") + StructTranslator<TType>::GetHLSLStructName() + ">";
+		}
 	}
 };
 
 
-template<lib::Literal name>
-struct StructCPPToHLSLTranslator<gfx::NamedBuffer<name>>
+template<typename TType, lib::Literal name>
+struct StructCPPToHLSLTranslator<gfx::NamedBuffer<TType, name>>
 {
-	static void Copy(const gfx::NamedBuffer<name>& cppData, lib::Span<Byte> hlslData)
+	static void Copy(const gfx::NamedBuffer<TType, name>& cppData, lib::Span<Byte> hlslData)
 	{
 		SPT_CHECK(hlslData.size() == 4u);
 		Uint32* hlsl = reinterpret_cast<Uint32*>(hlslData.data());
@@ -81,8 +90,8 @@ struct StructCPPToHLSLTranslator<gfx::NamedBuffer<name>>
 };
 
 
-template<lib::Literal name>
-struct StructHLSLSizeEvaluator<gfx::NamedBuffer<name>>
+template<typename TType, lib::Literal name>
+struct StructHLSLSizeEvaluator<gfx::NamedBuffer<TType, name>>
 {
 	static constexpr Uint32 Size()
 	{
@@ -91,12 +100,25 @@ struct StructHLSLSizeEvaluator<gfx::NamedBuffer<name>>
 };
 
 
-template<lib::Literal name>
-struct StructHLSLAlignmentEvaluator<gfx::NamedBuffer<name>>
+template<typename TType, lib::Literal name>
+struct StructHLSLAlignmentEvaluator<gfx::NamedBuffer<TType, name>>
 {
 	static constexpr Uint32 Alignment()
 	{
 		return 4u;
+	}
+};
+
+
+template<typename TType, lib::Literal name>
+struct ShaderStructReferencer<gfx::NamedBuffer<TType, name>>
+{
+	static constexpr void CollectReferencedStructs(lib::DynamicArray<lib::String>& references)
+	{
+		if constexpr (CShaderStruct<TType>)
+		{
+			references.emplace_back(GetTypeName<TType>());
+		}
 	}
 };
 
@@ -185,8 +207,8 @@ constexpr lib::String DefineNamedBufferHLSLAccessors(const lib::String& currentA
 namespace spt::rg
 {
 
-template<lib::Literal name>
-struct HLSLStructDependenciesBuider<gfx::NamedBuffer<name>>
+template<typename TType, lib::Literal name>
+struct HLSLStructDependenciesBuider<gfx::NamedBuffer<TType, name>>
 {
 	static void CollectDependencies(lib::Span<const Byte> hlsl, RGDependenciesBuilder& dependenciesBuilder)
 	{

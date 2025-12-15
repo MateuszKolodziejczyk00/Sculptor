@@ -3,16 +3,16 @@
 #include "SculptorCoreTypes.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "Types/Buffer.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
+#include "ShaderStructs.h"
+#include "Bindless/BindlessTypes.h"
 
 
 namespace spt::rsc
 {
 
-DS_BEGIN(GeometryDS, rg::RGDescriptorSetState<GeometryDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ByteAddressBuffer),	u_geometryData)
-DS_END();
+BEGIN_SHADER_STRUCT(UnifiedGeometryBuffer)
+	SHADER_STRUCT_FIELD(gfx::ByteBufferRef, geometryData)
+END_SHADER_STRUCT();
 
 
 class GeometryManager
@@ -24,7 +24,7 @@ public:
 	rhi::RHIVirtualAllocation CreateGeometry(const Byte* geometryData, Uint64 dataSize);
 	rhi::RHIVirtualAllocation CreateGeometry(Uint64 dataSize);
 
-	const lib::MTHandle<GeometryDS>& GetGeometryDSState() const;
+	const UnifiedGeometryBuffer& GetUnifiedGeometryBuffer() const { return m_unifiedGeometryBuffer; }
 
 	Uint64 GetGeometryBufferDeviceAddress() const;
 
@@ -34,7 +34,8 @@ private:
 	void DestroyResources();
 
 	lib::SharedPtr<rdr::Buffer> m_geometryBuffer;
-	lib::MTHandle<GeometryDS>	m_geometryDSState;
+
+	UnifiedGeometryBuffer m_unifiedGeometryBuffer;
 };
 
 } // spt::rsc

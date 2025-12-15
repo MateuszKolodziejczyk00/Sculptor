@@ -16,14 +16,14 @@ SPT_REGISTER_COMPONENT_TYPE(MaterialSlotsComponent, RenderSceneRegistry);
 
 
 BEGIN_SHADER_STRUCT(MaterialPBRData)
-	SHADER_STRUCT_FIELD(Uint32,         baseColorTextureIdx)
-	SHADER_STRUCT_FIELD(Uint32,         metallicRoughnessTextureIdx)
-	SHADER_STRUCT_FIELD(Uint32,         normalsTextureIdx)
-	SHADER_STRUCT_FIELD(Real32,         metallicFactor)
-	SHADER_STRUCT_FIELD(math::Vector3f, baseColorFactor)
-	SHADER_STRUCT_FIELD(Real32,         roughnessFactor)
-	SHADER_STRUCT_FIELD(math::Vector3f, emissiveFactor)
-	SHADER_STRUCT_FIELD(Uint32,         emissiveTextureIdx)
+	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<math::Vector4f>, baseColorTexture)
+	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<math::Vector2f>, metallicRoughnessTexture)
+	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<math::Vector3f>, normalsTexture)
+	SHADER_STRUCT_FIELD(Real32,                                 metallicFactor)
+	SHADER_STRUCT_FIELD(math::Vector3f,                         baseColorFactor)
+	SHADER_STRUCT_FIELD(Real32,                                 roughnessFactor)
+	SHADER_STRUCT_FIELD(math::Vector3f,                         emissiveFactor)
+	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<math::Vector3f>, emissiveTexture)
 END_SHADER_STRUCT();
 
 } // spt::rsc

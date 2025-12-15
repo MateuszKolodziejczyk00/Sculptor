@@ -52,6 +52,14 @@ void InitializeSamplerDescriptors()
 {
 	SPT_PROFILER_FUNCTION();
 
+	rhi::SamplerDefinition materialAnisoSampler = rhi::SamplerState::LinearRepeat;
+	materialAnisoSampler.mipLodBias       = -0.5f;
+	materialAnisoSampler.enableAnisotropy = true;
+	materialAnisoSampler.maxAnisotropy    = 8.f;
+
+	rhi::SamplerDefinition materialLinearSampler = rhi::SamplerState::LinearRepeat;
+	materialLinearSampler.mipLodBias       = -0.5f;
+
 	const rhi::SamplerDefinition samplerStates[] =
 	{
 		rhi::SamplerState::LinearClampToEdge,
@@ -59,7 +67,9 @@ void InitializeSamplerDescriptors()
 		rhi::SamplerState::LinearRepeat,
 		rhi::SamplerState::NearestClampToEdge,
 		rhi::SamplerState::LinearMinClampToEdge,
-		rhi::SamplerState::LinearMaxClampToEdge
+		rhi::SamplerState::LinearMaxClampToEdge,
+		materialAnisoSampler,
+		materialLinearSampler
 	};
 
 	for (Uint32 i = 0; i < SPT_ARRAY_SIZE(samplerStates); ++i)
