@@ -32,6 +32,11 @@ Uint32 MaterialsSubsystem::GetRTHitGroupIdx(const RTHitGroupPermutation& hitGrou
 	return m_hitGroupToIdx.at(hitGroupPermutation);
 }
 
+const lib::DynamicArray<lib::HashedString>& MaterialsSubsystem::GetMaterialDataStructNames() const
+{
+	return m_materialDataStructNames;
+}
+
 MaterialsSubsystem::MaterialsSubsystem()
 {
 	m_materialFactory = std::make_unique<MaterialFactory>();
@@ -51,6 +56,12 @@ MaterialsSubsystem::MaterialsSubsystem()
 
 		m_hitGroups.emplace_back(rtHitGroup);
 		m_hitGroupToIdx[rtHitGroup] = static_cast<Uint32>(m_hitGroups.size() - 1u);
+	}
+
+	m_materialDataStructNames.reserve(m_defaultShadersConfig.materialDefaultShaders.size());
+	for (const auto& [dataStruct, defaultShader] : m_defaultShadersConfig.materialDefaultShaders)
+	{
+		m_materialDataStructNames.emplace_back(dataStruct);
 	}
 }
 

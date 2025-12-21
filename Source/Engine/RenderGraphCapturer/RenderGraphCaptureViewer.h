@@ -6,6 +6,7 @@
 #include "ImGui/DockStack.h"
 #include "Utils/FilterText.h"
 #include "TextureInspector/TextureInspector.h"
+#include "TextureInspector/BufferInspector.h"
 
 
 namespace spt::rdr
@@ -46,6 +47,7 @@ public:
 	void OpenTextureCapture(const CapturedTextureBinding& textureBinding);
 	void OpenTextureCapture(const TextureInspectParams& inspectParams);
 	void OpenBufferCapture(const CapturedBufferBinding& bufferBinding);
+	void OpenBufferCapture(const BufferInspectParams& inspectParams);
 
 private:
 

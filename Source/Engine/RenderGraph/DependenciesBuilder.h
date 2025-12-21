@@ -31,6 +31,7 @@ struct RGBufferAccessDef
 #if DEBUG_RENDER_GRAPH
 	lib::HashedString structTypeName;
 	Uint32            elementsNum = 1u;
+	lib::HashedString namedBuffer;
 #endif // DEBUG_RENDER_GRAPH
 };
 
@@ -107,6 +108,8 @@ struct RGBufferAccessInfo
 #if DEBUG_RENDER_GRAPH
 	lib::HashedString structTypeName;
 	Uint32            elementsNum = 1u;
+
+	lib::HashedString namedBuffer;
 #endif // DEBUG_RENDER_GRAPH
 };
 

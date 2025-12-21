@@ -49,6 +49,21 @@ void GBuffer::Create(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolu
 	}
 }
 
+VisibleGeometryData GBuffer::GetVisibleGeometryData(rg::RGTextureViewHandle depth) const
+{
+	VisibleGeometryData visibleGeometryData;
+	visibleGeometryData.resolution = m_textures[0]->GetResolution2D();
+	visibleGeometryData.pixelSize  = math::Vector2f::Ones().cwiseQuotient(visibleGeometryData.resolution.cast<Real32>());
+	visibleGeometryData.depth      = depth;
+	visibleGeometryData.gBuffer0   = m_textures[0];
+	visibleGeometryData.gBuffer1   = m_textures[1];
+	visibleGeometryData.gBuffer2   = m_textures[2];
+	visibleGeometryData.gBuffer3   = m_textures[3];
+	visibleGeometryData.gBuffer4   = m_textures[4];
+
+	return visibleGeometryData;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // TextureWithHistory ============================================================================
 

@@ -92,7 +92,7 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 
 				RTInstanceData& rtInstance = rtInstances.emplace_back();
 				rtInstance.entity                 = gpuEntity.GetGPUDataPtr();
-				rtInstance.materialDataID         = materialProxy.GetMaterialDataID();
+				rtInstance.materialDataHandle     = materialProxy.GetMaterialDataHandle();
 				rtInstance.metarialRTFlags        = static_cast<Uint16>(materialRTFlags);
 				rtInstance.indicesDataUGBOffset   = rtGeometry.indicesDataUGBOffset;
 				rtInstance.locationsDataUGBOffset = rtGeometry.locationsDataUGBOffset;

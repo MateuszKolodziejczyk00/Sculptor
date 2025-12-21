@@ -284,7 +284,19 @@ void RGCapturerDecorator::AddDependenciesToPass(RenderGraphBuilder& graphBuilder
 #if DEBUG_RENDER_GRAPH
 		bufferBinding.structTypeName = bufferAccess.structTypeName;
 		bufferBinding.elementsNum    = bufferAccess.elementsNum;
+
+		if (bufferAccess.namedBuffer.IsValid())
+		{
+			pass.namedBuffersCaptures[bufferAccess.namedBuffer] = static_cast<Uint32>(pass.buffers.size() - 1u);
+		}
 #endif // DEBUG_RENDER_GRAPH
+
+		const rdr::ResourceDescriptorIdx uavDescriptorIdx = boundBufferView->GetUAVDescriptor();
+
+		if (uavDescriptorIdx != rdr::invalidResourceDescriptorIdx)
+		{
+			m_capture->descriptorIdxToBuffer[uavDescriptorIdx] = capturedBuffer;
+		}
 	}
 }
 

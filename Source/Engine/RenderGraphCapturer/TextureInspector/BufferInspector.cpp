@@ -4,6 +4,8 @@
 #include "ShaderStructsRegistry.h"
 #include "ImGui/DockBuilder.h"
 #include "RenderGraphCaptureViewer.h"
+#include "MaterialTypes.h"
+#include "MaterialsSubsystem.h"
 
 
 namespace spt::rg::capture
@@ -75,6 +77,10 @@ Uint32 GetTypeSize(lib::HashedString typeName)
 	{
 		return sizeof(Uint32);
 	}
+	else if (typeName == lib::HashedString("uint16_t"))
+	{
+		return sizeof(Uint16);
+	}
 	else if (typeName == lib::HashedString("NamedBufferDescriptorIdx"))
 	{
 		return sizeof(Uint32);
@@ -91,9 +97,9 @@ Uint32 GetTypeSize(lib::HashedString typeName)
 
 } // priv
 
-BufferInspector::BufferInspector(const scui::ViewDefinition& definition, RGNodeCaptureViewer& parentNodeViewer, const CapturedBufferBinding& buffer)
+BufferInspector::BufferInspector(const scui::ViewDefinition& definition, RGNodeCaptureViewer& parentNodeViewer, const BufferInspectParams& inspectParams)
 	: Super(definition)
-	, m_capturedBufferBinding(buffer)
+	, m_inspectParams(inspectParams)
 	, m_parentNodeViewer(parentNodeViewer)
 	, m_boundDataPanelName(CreateUniqueName("Bound Data"))
 	, m_bufferDataPanelName(CreateUniqueName("Buffer Data"))
@@ -119,34 +125,50 @@ void BufferInspector::DrawUI()
 
 	ImGui::Begin(m_boundDataPanelName.GetData());
 
-	if (m_capturedBufferBinding.bufferVersion->downloadedBuffer)
+	if (m_inspectParams.bufferVersion->downloadedBuffer)
 	{
 		ImGui::Text("Downloading buffer...");
 	}
 	else
 	{
-		const lib::Span<const Byte> bufferData = m_capturedBufferBinding.bufferVersion->bufferData;
+		const lib::Span<const Byte> bufferData = m_inspectParams.bufferVersion->bufferData;
 
-		if (m_capturedBufferBinding.structTypeName.IsValid() && !bufferData.empty())
+		if (m_inspectParams.structTypeName.IsValid() && !bufferData.empty())
 		{
 			ImGui::Columns(3);
 
-			const Uint32 typeSize = priv::GetTypeSize(m_capturedBufferBinding.structTypeName);
+			const Uint32 typeSize = priv::GetTypeSize(m_inspectParams.structTypeName);
 			if(typeSize != 0u)
 			{
-				ImGui::SliderInt("Begin Idx", &m_dataViewerBeginidx, 0, std::max<Int32>(m_capturedBufferBinding.elementsNum - 100, 0));
-				const Uint32 beginIdx = static_cast<Uint32>(m_dataViewerBeginidx);
-				const Uint32 endIdx = std::min(beginIdx + 100u, m_capturedBufferBinding.elementsNum);
+				Uint32 beginIdx = 0u;
+				Uint32 endIdx   = 0u;
+
+				if (m_inspectParams.elementsRange.has_value())
+				{
+					beginIdx = m_inspectParams.elementsRange->first;
+					endIdx   = m_inspectParams.elementsRange->second;
+				}
+				else
+				{
+					const Uint64 viewSize = m_inspectParams.size > 0u ? m_inspectParams.size : m_inspectParams.bufferVersion->bufferData.size() - m_inspectParams.offset;
+					const Uint32 elementsNum = static_cast<Uint32>(viewSize / typeSize);
+
+					ImGui::SliderInt("Begin Idx", &m_dataViewerBeginidx, 0, std::max<Int32>(elementsNum - 100, 0));
+
+					beginIdx = static_cast<Uint32>(m_dataViewerBeginidx);
+					endIdx = std::min(beginIdx + 100u, elementsNum);
+				}
+
 				for (Uint32 idx = beginIdx; idx < endIdx; ++idx)
 				{
 					const Uint32 elemOffset = idx * typeSize;
 					const lib::String elemName = lib::String("[") + std::to_string(idx) + "]";
-					DrawStruct(elemName, m_capturedBufferBinding.structTypeName, bufferData.subspan(m_capturedBufferBinding.offset + elemOffset, typeSize), elemOffset);
+					DrawStruct(elemName, m_inspectParams.structTypeName, bufferData.subspan(m_inspectParams.offset + elemOffset, typeSize), elemOffset);
 				}
 			}
 			else
 			{
-				ImGui::Text("No size data for type: %s", m_capturedBufferBinding.structTypeName.GetData());
+				ImGui::Text("No size data for type: %s", m_inspectParams.structTypeName.GetData());
 			}
 
 			ImGui::EndColumns();
@@ -195,7 +217,7 @@ void BufferInspector::DrawUI()
 				}
 			}
 
-			if (m_capturedBufferBinding.offset >= i && m_capturedBufferBinding.offset < i + 16)
+			if (m_inspectParams.offset >= i && m_inspectParams.offset < i + 16)
 			{
 				ImGui::SameLine();
 				ImGui::Text("<- Bound Data");
@@ -225,8 +247,56 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 
 	ImGui::NextColumn();
 
+	const lib::String typeNameStr = typeName.ToString();
+
 	const rdr::ShaderStructMetaData* memberStructMetaData = rdr::ShaderStructsRegistry::GetStructMetaData(typeName);
-	if (memberStructMetaData)
+	if (typeName == lib::HashedString("MaterialDataHandle"))
+	{
+		if (ImGui::BeginPopup("Material Data Selection"))
+		{
+			ImGui::Text("Select Material Data:");
+
+			const lib::DynamicArray<lib::HashedString> materialDataStructNames = mat::MaterialsSubsystem::Get().GetMaterialDataStructNames();
+
+			for (const lib::HashedString& materialDataStructName : materialDataStructNames)
+			{
+				if (ImGui::Button(materialDataStructName.GetData()))
+				{
+					const CapturedPass& pass = m_parentNodeViewer.GetCapturedPass();
+					for (const CapturedBufferBinding& bufferBinding : pass.buffers)
+					{
+						if (bufferBinding.bufferVersion->owningBuffer->name == lib::HashedString("MaterialsUnifiedData"))
+						{
+							BufferInspectParams inspectParams;
+							inspectParams.bufferVersion  = bufferBinding.bufferVersion;
+							inspectParams.structTypeName = materialDataStructName;
+							inspectParams.offset         = *reinterpret_cast<const Uint16*>(data.data()) * mat::constants::materialDataAlignment;
+							inspectParams.elementsRange  = std::make_pair(0u, 1u);
+							m_parentNodeViewer.OpenBufferCapture(inspectParams);
+
+							break;
+						}
+					}
+					ImGui::CloseCurrentPopup();
+				}
+			}
+			ImGui::EndPopup();
+		}
+
+		if(ImGui::Button(name.data()))
+		{
+			const CapturedPass& pass = m_parentNodeViewer.GetCapturedPass();
+
+			for (const CapturedBufferBinding& bufferBinding : pass.buffers)
+			{
+				if (bufferBinding.bufferVersion->owningBuffer->name == lib::HashedString("MaterialsUnifiedData"))
+				{
+					ImGui::OpenPopup("Material Data Selection");
+				}
+			}
+		}
+	}
+	else if (memberStructMetaData)
 	{
 		const rdr::ShaderStructRTTI& rtti = memberStructMetaData->GetRTTI();
 		ImGui::Indent();
@@ -321,6 +391,11 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 		ImGui::Text("%f, %f, %f, %f", typedData[8], typedData[0 * 16 + 9], typedData[0 * 16 + 10], typedData[0 * 16 + 11]);
 		ImGui::Text("%f, %f, %f, %f", typedData[12], typedData[0 * 16 + 13], typedData[0 * 16 + 14], typedData[0 * 16 + 15]);
 	}
+	else if (typeName == lib::HashedString("uint16_t"))
+	{
+		const Uint16* typedData = reinterpret_cast<const Uint16*>(data.data());
+		ImGui::Text("[ %u ]", Uint32(typedData[0]));
+	}
 	else if (typeName == lib::HashedString("bool"))
 	{
 		const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());
@@ -330,6 +405,9 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 	{
 		const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());
 		const Uint32 descriptorIdx = typedData[0];
+
+		if (descriptorIdx != idxNone<Uint32>)
+		{
 		const auto bufferIt = capture.descriptorIdxToBuffer.find(descriptorIdx);
 		const CapturedBuffer* capturedBuffer = bufferIt != capture.descriptorIdxToBuffer.cend() ? bufferIt->second : nullptr;
 		if (capturedBuffer)
@@ -343,45 +421,146 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 		{
 			ImGui::Text("Unknown buffer");
 		}
-
+		}
+		else
+		{
+			ImGui::Text("Null Descriptor");
+		}
 	}
-	else if (typeName.ToString().starts_with("UAVTexture") || typeName.ToString().starts_with("SRVTexture"))
+	else if (typeNameStr.starts_with("UAVTexture") || typeNameStr.starts_with("SRVTexture"))
 	{
 		const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());
 		const Uint32 descriptorIdx = typedData[0];
-		const auto textureIt = capture.descriptorIdxToTexture.find(descriptorIdx);
-		const CapturedTexture* capturedTexture = textureIt != capture.descriptorIdxToTexture.cend() ? textureIt->second : nullptr;
-		if (capturedTexture)
+
+		if (descriptorIdx != idxNone<Uint32>)
 		{
-			if (ImGui::Button(capturedTexture->name.GetData()))
+			const auto textureIt = capture.descriptorIdxToTexture.find(descriptorIdx);
+			const CapturedTexture* capturedTexture = textureIt != capture.descriptorIdxToTexture.cend() ? textureIt->second : nullptr;
+			if (capturedTexture)
 			{
-				const CapturedPass& pass = m_parentNodeViewer.GetCapturedPass();
-				// Find binding for this texture in current pass
-				Bool found = false;
-				for (const CapturedTextureBinding& binding : pass.textures)
+				if (ImGui::Button(capturedTexture->name.GetData()))
 				{
-					if (binding.textureVersion->owningTexture == capturedTexture)
+					const CapturedPass& pass = m_parentNodeViewer.GetCapturedPass();
+					// Find binding for this texture in current pass
+					Bool found = false;
+					for (const CapturedTextureBinding& binding : pass.textures)
 					{
-						m_parentNodeViewer.OpenTextureCapture(binding);
-						found = true;
-						break;
+						if (binding.textureVersion->owningTexture == capturedTexture)
+						{
+							m_parentNodeViewer.OpenTextureCapture(binding);
+							found = true;
+							break;
+						}
+					}
+
+					if (!found)
+					{
+						TextureInspectParams inspectParams;
+						inspectParams.texture       = capturedTexture;
+						inspectParams.mipIdx        = 0u;
+						inspectParams.arrayLayerIdx = 0u;
+						inspectParams.versionIdx    = 0u;
+						m_parentNodeViewer.OpenTextureCapture(inspectParams);
 					}
 				}
-
-				if (!found)
-				{
-					TextureInspectParams inspectParams;
-					inspectParams.texture       = capturedTexture;
-					inspectParams.mipIdx        = 0u;
-					inspectParams.arrayLayerIdx = 0u;
-					inspectParams.versionIdx    = 0u;
-					m_parentNodeViewer.OpenTextureCapture(inspectParams);
-				}
+			}
+			else
+			{
+				ImGui::Text("Unknown texture");
 			}
 		}
 		else
 		{
-			ImGui::Text("Unknown texture");
+			ImGui::Text("Null Descriptor");
+		}
+	}
+	else if (typeNameStr.starts_with("GPUNamedElemPtr"))
+	{
+		SizeType namedBufferBegin = typeNameStr.find('_');
+		SPT_CHECK(namedBufferBegin != lib::String::npos);
+		namedBufferBegin += 1u;
+
+		const SizeType namedBufferEnd = typeNameStr.find(',');
+		SPT_CHECK(namedBufferEnd != lib::String::npos);
+		SPT_CHECK(namedBufferEnd > namedBufferBegin);
+
+		const lib::HashedString namedBuffer = typeNameStr.substr(namedBufferBegin, namedBufferEnd - namedBufferBegin);
+
+		const CapturedPass& pass = m_parentNodeViewer.GetCapturedPass();
+		const auto foundNamedBuffer = pass.namedBuffersCaptures.find(namedBuffer);
+		if (foundNamedBuffer != pass.namedBuffersCaptures.cend())
+		{
+			const CapturedBufferBinding& buffer = pass.buffers[foundNamedBuffer->second];
+
+			if (ImGui::Button(name.data()))
+			{
+				const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());
+
+				BufferInspectParams inspectParams;
+				inspectParams.bufferVersion  = buffer.bufferVersion;
+				inspectParams.elementsRange  = std::make_pair(typedData[0], typedData[0] + 1u);
+				inspectParams.structTypeName = buffer.structTypeName;
+				m_parentNodeViewer.OpenBufferCapture(inspectParams);
+			}
+		}
+	}
+	else if (typeNameStr.starts_with("GPUNamedElemsSpan"))
+	{
+		SizeType namedBufferBegin = typeNameStr.find('_');
+		SPT_CHECK(namedBufferBegin != lib::String::npos);
+		namedBufferBegin += 1u;
+
+		const SizeType namedBufferEnd = typeNameStr.find(',');
+		SPT_CHECK(namedBufferEnd != lib::String::npos);
+		SPT_CHECK(namedBufferEnd > namedBufferBegin);
+
+		const lib::HashedString namedBuffer = typeNameStr.substr(namedBufferBegin, namedBufferEnd - namedBufferBegin);
+
+		const CapturedPass& pass = m_parentNodeViewer.GetCapturedPass();
+		const auto foundNamedBuffer = pass.namedBuffersCaptures.find(namedBuffer);
+		if (foundNamedBuffer != pass.namedBuffersCaptures.cend())
+		{
+			const CapturedBufferBinding& buffer = pass.buffers[foundNamedBuffer->second];
+
+			if (ImGui::Button(name.data()))
+			{
+				const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());
+
+				BufferInspectParams inspectParams;
+				inspectParams.bufferVersion  = buffer.bufferVersion;
+				inspectParams.elementsRange  = std::make_pair(typedData[0], typedData[0] + typedData[1]);
+				inspectParams.structTypeName = buffer.structTypeName;
+				m_parentNodeViewer.OpenBufferCapture(inspectParams);
+			}
+		}
+	}
+	else if (typeNameStr.starts_with("NamedBufferDescriptor") || typeNameStr.starts_with("TypedBuffer"))
+	{
+		if (ImGui::Button(name.data()))
+		{
+			SizeType typeBegin = typeNameStr.find('<');
+			SPT_CHECK(typeBegin != lib::String::npos);
+			typeBegin += 1u;
+
+			const SizeType typeEnd = typeNameStr.find('>');
+			SPT_CHECK(typeEnd != lib::String::npos);
+			SPT_CHECK(typeEnd > typeBegin);
+
+			const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());
+			const Uint32 descriptorIdx = typedData[0];
+
+			const auto foundBuffer = capture.descriptorIdxToBuffer.find(descriptorIdx);
+			if (foundBuffer != capture.descriptorIdxToBuffer.cend())
+			{
+				const CapturedBuffer& capturedBuffer = *foundBuffer->second;
+
+				lib::HashedString structTypeName = typeNameStr.substr(typeBegin, typeEnd - typeBegin);
+
+				BufferInspectParams inspectParams;
+				inspectParams.bufferVersion  = capturedBuffer.versions.front().get();
+				inspectParams.structTypeName = structTypeName;
+				m_parentNodeViewer.OpenBufferCapture(inspectParams);
+			}
 		}
 	}
 	else

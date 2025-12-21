@@ -47,6 +47,11 @@ struct MaterialStaticParameters
 };
 
 
+BEGIN_SHADER_STRUCT(MaterialDataHandle)
+	SHADER_STRUCT_FIELD(Uint16, id)
+END_SHADER_STRUCT()
+
+
 struct MaterialProxyComponent
 {
 	MaterialProxyComponent()
@@ -57,13 +62,13 @@ struct MaterialProxyComponent
 		return true;
 	}
 
-	Uint16 GetMaterialDataID() const
+	MaterialDataHandle GetMaterialDataHandle() const
 	{
 		const Uint64 materialDataOffset = materialDataSuballocation.GetOffset();
 		SPT_CHECK((materialDataOffset & constants::materialDataAlignmentMask) == 0u);
 		const Uint16 materialDataID = static_cast<Uint16>(materialDataOffset >> constants::materialDataAlignmentBits);
 		SPT_CHECK((Uint64(materialDataID) << constants::materialDataAlignmentBits) == materialDataOffset);
-		return materialDataID;
+		return MaterialDataHandle{ materialDataID };
 	}
 
 	rhi::RHIVirtualAllocation materialDataSuballocation;

@@ -6,6 +6,7 @@
 #include "Types/Pipeline/ComputePipeline.h"
 #include "Types/Pipeline/RayTracingPipeline.h"
 #include "PipelineState.h"
+#include "JobSystem.h"
 
 
 namespace spt::rdr

@@ -24,7 +24,6 @@
 #if SPT_MATERIAL_ENABLED && CUSTOM_OPACITY
 #define MATERIAL_CAN_DISCARD 1
 #include "Materials/MaterialSystem.hlsli"
-#include SPT_MATERIAL_SHADER_PATH
 #else 
 #define MATERIAL_CAN_DISCARD 0
 #define FRAGMENT_SHADER_NEEDS_MATERIAL 0
@@ -302,20 +301,20 @@ void GeometryVisibility_TS(in TSInput input)
 			visibleMeshletIdx = WaveReadLaneFirst(visibleMeshletIdx) + compactedVisibilityIdx;
 
 			GPUVisibleMeshlet visibleMeshletInfo;
-			visibleMeshletInfo.entityPtr        = batchElement.entityPtr;
-			visibleMeshletInfo.submeshPtr       = batchElement.submeshPtr;
-			visibleMeshletInfo.meshletPtr       = submesh.meshlets.GetElemPtr(localMeshletIdx);
-			visibleMeshletInfo.materialDataID   = batchElement.materialDataID;
-			visibleMeshletInfo.materialBatchIdx = batchElement.materialBatchIdx;
+			visibleMeshletInfo.entityPtr          = batchElement.entityPtr;
+			visibleMeshletInfo.submeshPtr         = batchElement.submeshPtr;
+			visibleMeshletInfo.meshletPtr         = submesh.meshlets.GetElemPtr(localMeshletIdx);
+			visibleMeshletInfo.materialDataHandle = batchElement.materialDataHandle;
+			visibleMeshletInfo.materialBatchIdx  = batchElement.materialBatchIdx;
 
 			u_visibleMeshlets[visibleMeshletIdx] = visibleMeshletInfo;
 #else
 			GPUVisibleMeshlet visibleMeshletInfo;
-			visibleMeshletInfo.entityPtr        = batchElement.entityPtr;
-			visibleMeshletInfo.submeshPtr       = batchElement.submeshPtr;
-			visibleMeshletInfo.meshletPtr       = submesh.meshlets.GetElemPtr(localMeshletIdx);
-			visibleMeshletInfo.materialDataID   = batchElement.materialDataID;
-			visibleMeshletInfo.materialBatchIdx = batchElement.materialBatchIdx;
+			visibleMeshletInfo.entityPtr          = batchElement.entityPtr;
+			visibleMeshletInfo.submeshPtr         = batchElement.submeshPtr;
+			visibleMeshletInfo.meshletPtr         = submesh.meshlets.GetElemPtr(localMeshletIdx);
+			visibleMeshletInfo.materialDataHandle = batchElement.materialDataHandle;
+			visibleMeshletInfo.materialBatchIdx   = batchElement.materialBatchIdx;
 			AppendMeshletRenderCommand(visibleMeshletInfo, batchElementIdx, localMeshletIdx);
 #endif // MESHLETS_SHARE_ENTITY
 		}
@@ -522,7 +521,7 @@ void GeometryVisibility_MS(
 		outPrims[meshletTriangleIdx].culled = groupTriangleIdx + localID >= meshlet.triangleCount || !IsTriangleVisible(tri, cullingParams);
 #endif // SPT_MESH_SHADER
 #if MATERIAL_CAN_DISCARD
-		outPrims[meshletTriangleIdx].materialDataID = uint(batchElement.materialDataID);
+		outPrims[meshletTriangleIdx].materialDataID = uint(batchElement.materialDataHandle.id);
 #endif // MATERIAL_CAN_DISCARD
 	}
 }
@@ -540,7 +539,7 @@ VIS_BUFFER_PS_OUT GeometryVisibility_FS(in OutputVertex vertexInput, in Primitiv
 	MaterialEvaluationParameters materialEvalParams;
 	materialEvalParams.uv = vertexInput.uv;
 
-	const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(uint16_t(primData.materialDataID));
+	const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(MaterialDataHandle(primData.materialDataID));
 
 	const CustomOpacityOutput opacityOutput = EvaluateCustomOpacity(materialEvalParams, materialData);
 	if(opacityOutput.shouldDiscard)

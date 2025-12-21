@@ -44,9 +44,9 @@ void SMBatchesBuilder::AppendMeshToBatch(RenderEntityGPUPtr entityPtr, const Sta
 		const SubmeshGPUPtr submeshPtr = meshRenderingDef.submeshesPtr + idx;
 
 		StaticMeshBatchElement batchElement;
-		batchElement.entityPtr      = entityPtr;
-		batchElement.submeshPtr     = submeshPtr;
-		batchElement.materialDataID = materialProxy.GetMaterialDataID();
+		batchElement.entityPtr          = entityPtr;
+		batchElement.submeshPtr         = submeshPtr;
+		batchElement.materialDataHandle = materialProxy.GetMaterialDataHandle();
 		batch.batchElements.emplace_back(batchElement);
 
 		batch.maxMeshletsNum  += submeshDef.meshletsNum;

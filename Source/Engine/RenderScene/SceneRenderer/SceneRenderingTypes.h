@@ -8,6 +8,7 @@
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "RGResources/RGResourceHandles.h"
+#include "Bindless/BindlessTypes.h"
 
 
 namespace spt::gfx
@@ -115,6 +116,18 @@ private:
 };
 
 
+BEGIN_SHADER_STRUCT(VisibleGeometryData)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,                    pixelSize)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         depth)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, gBuffer0)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, gBuffer1)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         gBuffer2)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, gBuffer3)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Uint32>,         gBuffer4)
+END_SHADER_STRUCT();
+
+
 // GBuffer layout:
 // 0 - 4 bytes [baseColor - 24bits] [metallic - 8bits]
 // 1 - 4 bytes [tangent frame - 32bits]
@@ -164,6 +177,8 @@ public:
 	GBuffer();
 
 	void Create(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolution, const GBufferExternalTextures& externalTextures = GBufferExternalTextures());
+
+	VisibleGeometryData GetVisibleGeometryData(rg::RGTextureViewHandle depth) const;
 
 	rg::RGTextureViewHandle operator[](Texture textureType) const
 	{

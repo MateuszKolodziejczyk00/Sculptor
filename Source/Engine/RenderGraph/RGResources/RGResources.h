@@ -651,7 +651,6 @@ public:
 
 	rdr::ResourceDescriptorIdx GetUAVDescriptor() const
 	{
-		SPT_CHECK(lib::HasAnyFlag(GetUsageFlags(), rhi::EBufferUsage::Storage));
 		return IsExternal() || IsAcquired() ? m_bufferInstance->GetFullView()->GetUAVDescriptor() : m_descriptorsAllocation.uavDescriptor;
 	}
 
@@ -878,7 +877,6 @@ public:
 
 	rdr::ResourceDescriptorIdx GetUAVDescriptor() const
 	{
-		SPT_CHECK(lib::HasAnyFlag(GetUsageFlags(), rhi::EBufferUsage::Storage));
 		if (IsFullView())
 		{
 			return m_buffer->GetUAVDescriptor();

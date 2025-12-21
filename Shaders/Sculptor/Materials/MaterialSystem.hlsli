@@ -36,6 +36,9 @@
 #endif
 
 
+[[shader_struct(MaterialDataHandle)]]
+
+
 #ifdef SPT_MATERIAL_DATA_TYPE
 [[shader_struct(SPT_MATERIAL_DATA_TYPE)]]
 #endif // SPT_MATERIAL_DATA_TYPE
@@ -49,16 +52,16 @@
 #ifdef DS_RenderSceneDS
 
 template<typename TMaterialData>
-TMaterialData LoadMaterialDataInternal(in uint16_t materialDataID)
+TMaterialData LoadMaterialDataInternal(in MaterialDataHandle materialDataHandle)
 {
-	const uint materialDataOffset = uint(materialDataID) * SPT_MATERIAL_DATA_ALIGNMENT;
+	const uint materialDataOffset = uint(materialDataHandle.id) * SPT_MATERIAL_DATA_ALIGNMENT;
 	return GPUMaterials().data.materialsData.Load<TMaterialData>(materialDataOffset);
 }
 
 #ifdef SPT_MATERIAL_DATA_TYPE
-SPT_MATERIAL_DATA_TYPE LoadMaterialData(in uint16_t materialDataID)
+SPT_MATERIAL_DATA_TYPE LoadMaterialData(in MaterialDataHandle materialDataHandle)
 {
-	return LoadMaterialDataInternal<SPT_MATERIAL_DATA_TYPE>(materialDataID);
+	return LoadMaterialDataInternal<SPT_MATERIAL_DATA_TYPE>(materialDataHandle);
 }
 #endif // SPT_MATERIAL_DATA_TYPE
 #endif // DS_RenderSceneDS

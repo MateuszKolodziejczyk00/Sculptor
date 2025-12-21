@@ -4,6 +4,7 @@
 #include "TextureInspectorTypes.h"
 #include "UITypes.h"
 #include "Delegates/MulticastDelegate.h"
+#include "RenderGraphCaptureTypes.h"
 
 
 namespace spt::rdr
@@ -20,6 +21,18 @@ struct RGCapture;
 class RGNodeCaptureViewer;
 
 
+struct BufferInspectParams
+{
+	const CapturedBuffer::Version* bufferVersion = nullptr;
+	Uint64 offset = 0u;
+	Uint64 size   = 0u; // 0 means full buffer
+
+	lib::HashedString structTypeName;
+
+	std::optional<std::pair<Uint32, Uint32>> elementsRange;
+};
+
+
 class BufferInspector : public scui::UIView
 {
 protected:
@@ -28,7 +41,7 @@ protected:
 
 public:
 
-	BufferInspector(const scui::ViewDefinition& definition, RGNodeCaptureViewer& parentNodeViewer, const CapturedBufferBinding& buffer);
+	BufferInspector(const scui::ViewDefinition& definition, RGNodeCaptureViewer& parentNodeViewer, const BufferInspectParams& inspectParams);
 
 	// Begin UIView overrides
 	virtual void             BuildDefaultLayout(ImGuiID dockspaceID) override;
@@ -45,7 +58,7 @@ private:
 	Int32 m_byteViewerOffset   = 0;
 	Int32 m_dataViewerBeginidx = 0;
 
-	const CapturedBufferBinding& m_capturedBufferBinding;
+	BufferInspectParams m_inspectParams;
 
 	RGNodeCaptureViewer& m_parentNodeViewer;
 };

@@ -4,6 +4,7 @@
 #include "RenderSceneRegistry.h"
 #include "Bindless/BindlessTypes.h"
 #include "RenderSceneTypes.h"
+#include "Material.h"
 
 namespace spt::rdr
 {
@@ -55,13 +56,13 @@ enum class EMaterialRTFlags : Uint16
 
 
 BEGIN_SHADER_STRUCT(RTInstanceData)
-	SHADER_STRUCT_FIELD(RenderEntityGPUPtr, entity)
-	SHADER_STRUCT_FIELD(Uint16, materialDataID)
-	SHADER_STRUCT_FIELD(Uint16, metarialRTFlags) // EMaterialRTFlags
-	SHADER_STRUCT_FIELD(Uint32, indicesDataUGBOffset)
-	SHADER_STRUCT_FIELD(Uint32, locationsDataUGBOffset)
-	SHADER_STRUCT_FIELD(Uint32, uvsDataUGBOffset)
-	SHADER_STRUCT_FIELD(Uint32, normalsDataUGBOffset)
+	SHADER_STRUCT_FIELD(RenderEntityGPUPtr,      entity)
+	SHADER_STRUCT_FIELD(mat::MaterialDataHandle, materialDataHandle)
+	SHADER_STRUCT_FIELD(Uint16,                  metarialRTFlags) // EMaterialRTFlags
+	SHADER_STRUCT_FIELD(Uint32,                  indicesDataUGBOffset)
+	SHADER_STRUCT_FIELD(Uint32,                  locationsDataUGBOffset)
+	SHADER_STRUCT_FIELD(Uint32,                  uvsDataUGBOffset)
+	SHADER_STRUCT_FIELD(Uint32,                  normalsDataUGBOffset)
 END_SHADER_STRUCT();
 
 

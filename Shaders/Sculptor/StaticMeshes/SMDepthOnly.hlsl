@@ -56,7 +56,7 @@ VS_OUTPUT SMDepthOnly_VS(VS_INPUT input)
     const float3 vertexWorldLocation = mul(instanceTransform, float4(vertexLocation, 1.f)).xyz;
 
 #if FRAGMENT_SHADER_NEEDS_MATERIAL
-    output.materialDataID = uint(u_batchElements[drawCall.batchElementIdx].materialDataID);
+    output.materialDataID = uint(u_batchElements[drawCall.batchElementIdx].materialDataHandle.id);
 
     const float2 vertexUV = UGB().LoadUV(submesh.uvsOffset, vertexIdx);
     output.uv = vertexUV;
@@ -80,7 +80,7 @@ DP_PS_OUTPUT SMDepthOnly_FS(VS_OUTPUT vertexInput)
     MaterialEvaluationParameters materialEvalParams;
     materialEvalParams.uv = vertexInput.uv;
     
-    const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(uint16_t(vertexInput.materialDataID));
+    const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(MaterialDataHandle(vertexInput.materialDataID));
 
     const CustomOpacityOutput opacityOutput = EvaluateCustomOpacity(materialEvalParams, materialData);
     if(opacityOutput.shouldDiscard)

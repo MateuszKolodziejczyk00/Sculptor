@@ -100,6 +100,8 @@ struct CapturedPass
 	lib::DynamicArray<CapturedTextureBinding> textures;
 	lib::DynamicArray<CapturedBufferBinding>  buffers;
 
+	lib::HashMap<lib::HashedString, Uint32> namedBuffersCaptures;
+
 	Bool CapturedBinding(const CapturedTexture& texture) const
 	{
 		return std::any_of(textures.begin(), textures.end(),

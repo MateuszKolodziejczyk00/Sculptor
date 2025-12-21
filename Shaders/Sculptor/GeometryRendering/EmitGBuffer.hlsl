@@ -256,7 +256,7 @@ GBufferOutput EmitGBuffer_FS(in OutputVertex vertexInput)
 
 		const MaterialEvaluationParameters materialEvalParams = CreateMaterialEvalParams(vertexData);
 
-		const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(visibleMeshlet.materialDataID);
+		const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(visibleMeshlet.materialDataHandle);
 		const MaterialEvaluationOutput evaluatedMaterial = EvaluateMaterial(materialEvalParams, materialData);
 
 		GBufferData gBufferData;

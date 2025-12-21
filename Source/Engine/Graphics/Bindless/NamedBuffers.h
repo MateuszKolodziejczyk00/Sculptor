@@ -222,6 +222,13 @@ struct HLSLStructDependenciesBuider<gfx::NamedBuffer<TType, name>>
 		{
 			rg::RGBufferAccessInfo accessInfo;
 			accessInfo.access = rg::ERGBufferAccess::Read;
+
+#if DEBUG_RENDER_GRAPH
+			accessInfo.structTypeName = rdr::shader_translator::GetTypeName<TType>();
+			accessInfo.elementsNum    = idxNone<Uint32>;
+			accessInfo.namedBuffer    = name.Get();
+#endif // DEBUG_RENDER_GRAPH
+
 			dependenciesBuilder.AddBufferAccess(descriptoridx, accessInfo);
 		}
 	}

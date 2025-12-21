@@ -56,6 +56,8 @@ public:
 	const lib::DynamicArray<RTHitGroupPermutation>& GetRTHitGroups() const;
 	Uint32 GetRTHitGroupIdx(const RTHitGroupPermutation& hitGroupPermutation) const;
 
+	const lib::DynamicArray<lib::HashedString>& GetMaterialDataStructNames() const;
+
 private:
 
 	MaterialsSubsystem();
@@ -74,6 +76,8 @@ private:
 
 	MaterialDefaultShadersConfig m_defaultShadersConfig;
 	lib::HashMap<lib::HashedString, ecs::EntityHandle> m_defaultShadersEntities;
+
+	lib::DynamicArray<lib::HashedString> m_materialDataStructNames;
 };
 
 template<typename TMaterialData>

@@ -73,9 +73,19 @@ void RGNodeCaptureViewer::OpenTextureCapture(const CapturedTextureBinding& textu
 
 void RGNodeCaptureViewer::OpenBufferCapture(const CapturedBufferBinding& bufferBinding)
 {
+	BufferInspectParams inspectParams;
+	inspectParams.bufferVersion  = bufferBinding.bufferVersion;
+	inspectParams.offset         = bufferBinding.offset;
+	inspectParams.size           = bufferBinding.size;
+	inspectParams.structTypeName = bufferBinding.structTypeName;
+	OpenBufferCapture(inspectParams);
+}
+
+void RGNodeCaptureViewer::OpenBufferCapture(const BufferInspectParams& inspectParams)
+{
 	scui::ViewDefinition nodeViewDefinition;
-	nodeViewDefinition.name = bufferBinding.bufferVersion->owningBuffer->name;
-	const lib::HashedString& viewName = AddChild(lib::MakeShared<BufferInspector>(nodeViewDefinition, *this, bufferBinding));
+	nodeViewDefinition.name = inspectParams.bufferVersion->owningBuffer->name;
+	const lib::HashedString& viewName = AddChild(lib::MakeShared<BufferInspector>(nodeViewDefinition, *this, inspectParams));
 	m_inspectorsStack.Push(viewName);
 }
 

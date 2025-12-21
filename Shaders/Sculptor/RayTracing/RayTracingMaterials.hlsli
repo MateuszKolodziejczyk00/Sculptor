@@ -88,7 +88,7 @@ MaterialEvaluationOutput EvaluateMat(in RTMaterialEvaluationParams evalParams)
 		uv += UGB().LoadUV(instanceData.uvsDataUGBOffset, indices[idx]) * barycentricCoords[idx];;
 	}
 
-	const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(instanceData.materialDataID);
+	const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(instanceData.materialDataHandle);
 
 	MaterialEvaluationParameters materialEvalParams;
 	materialEvalParams.clipSpace = -1.f;
@@ -123,7 +123,7 @@ CustomOpacityOutput EvaluateOpacity(in RTMaterialEvaluationParams evalParams)
 		uv += UGB().LoadUV(instanceData.uvsDataUGBOffset, indices[idx]) * barycentricCoords[idx];;
 	}
 
-	const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(instanceData.materialDataID);
+	const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(instanceData.materialDataHandle);
 
 	MaterialEvaluationParameters materialEvalParams;
 	materialEvalParams.clipSpace     = -1.f;

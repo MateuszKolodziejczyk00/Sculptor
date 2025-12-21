@@ -813,7 +813,7 @@ struct HLSLStructDependenciesBuider<gfx::BufferDescriptor<metadata, TType>>
 				if constexpr (!std::is_same_v<TType, Byte>)
 				{
 					accessInfo.structTypeName = rdr::shader_translator::GetTypeName<TType>();
-					accessInfo.elementsNum    = 1u;
+					accessInfo.elementsNum    = idxNone<Uint32>;
 				}
 #endif // DEBUG_RENDER_GRAPH
 

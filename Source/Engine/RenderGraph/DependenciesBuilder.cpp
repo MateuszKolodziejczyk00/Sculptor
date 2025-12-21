@@ -68,6 +68,7 @@ void RGDependenciesBuilder::AddBufferAccess(RGBufferViewHandle buffer, const RGB
 #if DEBUG_RENDER_GRAPH
 	accessDef.structTypeName = access.structTypeName;
 	accessDef.elementsNum    = access.elementsNum;
+	accessDef.namedBuffer    = access.namedBuffer;
 #endif // DEBUG_RENDER_GRAPH
 
 	m_dependeciesRef.bufferAccesses.emplace_back(std::move(accessDef));

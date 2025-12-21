@@ -29,9 +29,9 @@ SPT_REGISTER_COMPONENT_TYPE(StaticMeshInstanceRenderData, RenderSceneRegistry);
 
 
 BEGIN_SHADER_STRUCT(StaticMeshBatchElement)
-	SHADER_STRUCT_FIELD(RenderEntityGPUPtr, entityPtr)
-	SHADER_STRUCT_FIELD(SubmeshGPUPtr,      submeshPtr)
-	SHADER_STRUCT_FIELD(Uint16,             materialDataID)
+	SHADER_STRUCT_FIELD(RenderEntityGPUPtr,      entityPtr)
+	SHADER_STRUCT_FIELD(SubmeshGPUPtr,           submeshPtr)
+	SHADER_STRUCT_FIELD(mat::MaterialDataHandle, materialDataHandle)
 END_SHADER_STRUCT();
 
 
