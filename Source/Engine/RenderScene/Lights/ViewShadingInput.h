@@ -18,8 +18,6 @@
 namespace spt::rsc
 {
 
-class ShadowMapsDS;
-
 BEGIN_SHADER_STRUCT(LightsRenderingData)
 	SHADER_STRUCT_FIELD(HeightFogParams,	heightFog)
 	SHADER_STRUCT_FIELD(Uint32,				localLightsNum)
@@ -59,8 +57,7 @@ struct ViewDirectionalShadowMasksData
 
 struct ViewSpecShadingParameters
 {
-	lib::MTHandle<ViewShadingInputDS>	shadingInputDS;
-	lib::MTHandle<ShadowMapsDS>			shadowMapsDS;
+	lib::MTHandle<ViewShadingInputDS> shadingInputDS;
 };
 
 } // spt::rsc

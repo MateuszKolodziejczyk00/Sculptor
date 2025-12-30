@@ -5,7 +5,6 @@
 
 [[descriptor_set(RTShadingDS)]]
 [[descriptor_set(GlobalLightsDS)]]
-[[descriptor_set(ShadowMapsDS)]]
 
 #ifndef USE_DDGI
 #error "USE_DDGI must be defined"

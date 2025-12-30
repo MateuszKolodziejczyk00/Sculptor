@@ -229,6 +229,11 @@ public:
 		return GetTextureDefinition().format;
 	}
 
+	Bool IsGloballyReadable() const
+	{
+		return lib::HasAnyFlag(GetTextureRHIDefinition().flags, rhi::ETextureFlags::GloballyReadable);
+	}
+
 	Bool TryAppendUsage(rhi::ETextureUsage usage)
 	{
 		if (!IsExternal())

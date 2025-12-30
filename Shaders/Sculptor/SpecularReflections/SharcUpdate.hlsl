@@ -7,7 +7,6 @@
 [[descriptor_set(RenderViewDS)]]
 [[descriptor_set(SharcUpdateDS)]]
 [[descriptor_set(GlobalLightsDS)]]
-[[descriptor_set(ShadowMapsDS)]]
 [[descriptor_set(CloudscapeProbesDS)]]
 
 #include "SpecularReflections/RTGITracing.hlsli"

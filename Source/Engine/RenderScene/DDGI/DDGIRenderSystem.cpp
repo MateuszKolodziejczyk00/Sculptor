@@ -16,7 +16,6 @@
 #include "StaticMeshes/StaticMeshGeometry.h"
 #include "GeometryManager.h"
 #include "Lights/LightTypes.h"
-#include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "Atmosphere/AtmosphereTypes.h"
 #include "Atmosphere/AtmosphereSceneSubsystem.h"
 #include "MaterialsSubsystem.h"
@@ -466,26 +465,13 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 
 	LightsRenderSystem& lightsRenderSystem = renderScene.GetRenderSystemChecked<LightsRenderSystem>();
 
-	lib::MTHandle<ShadowMapsDS> shadowMapsDS;
-	
-	const lib::SharedPtr<ShadowMapsManagerSubsystem> shadowMapsManager = renderScene.GetSceneSubsystem<ShadowMapsManagerSubsystem>();
-	if (shadowMapsManager && shadowMapsManager->CanRenderShadows())
-	{
-		shadowMapsDS = shadowMapsManager->GetShadowMapsDS();
-	}
-	else
-	{
-		shadowMapsDS = graphBuilder.CreateDescriptorSet<ShadowMapsDS>(RENDERER_RESOURCE_NAME("DDGI Shadow Maps DS"));
-	}
-
 	graphBuilder.TraceRays(RG_DEBUG_NAME("DDGI Trace Rays"),
 						   pipelines::DDGITraceRaysPSO::pso,
 						   math::Vector3u(probesToUpdateNum, relitParams.raysNumPerProbe, 1u),
 						   rg::BindDescriptorSets(traceRaysDS,
 												  relitParams.ddgiSceneDS,
 												  lightsRenderSystem.GetGlobalLightsDS(),
-												  viewContext.cloudscapeProbesDS,
-												  shadowMapsDS));
+												  viewContext.cloudscapeProbesDS));
 
 	return probesTraceResultTexture;
 }

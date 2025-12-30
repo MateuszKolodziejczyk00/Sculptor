@@ -67,8 +67,6 @@ ShadowMapsManagerSubsystem::ShadowMapsManagerSubsystem(RenderScene& owningScene,
 	, m_shadowMapTechnique(EShadowMappingTechnique::DPCF)
 {
 	CreateShadowMaps();
-
-	CreateShadowMapsDescriptorSet();
 }
 
 void ShadowMapsManagerSubsystem::Update()
@@ -93,11 +91,29 @@ void ShadowMapsManagerSubsystem::Update()
 
 		UpdateShadowMapRenderViews(lightEntity, pointLightData, pointLightShadowMap.shadowMapFirstFaceIdx);
 	}
+}
 
-	if (!m_pointLightsWithShadowMapsToUpdate.empty())
-	{
-		UpdateShadowMapsDSViewsData();
-	}
+void ShadowMapsManagerSubsystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
+{
+	Super::UpdateGPUSceneData(sceneData);
+
+	gfx::UploadDataToBuffer(lib::Ref(m_shadowMapViewsBuffer), 0, reinterpret_cast<const Byte*>(m_shadowMapViewsData.data()), m_shadowMapViewsData.size() * sizeof(ShadowMapViewData));
+
+	ShadowsSettings shadowsSettings;
+	shadowsSettings.highQualitySMEndIdx      = m_highQualityShadowMapLightEndIdx * 6;
+	shadowsSettings.mediumQualitySMEndIdx    = m_mediumQualityShadowMapsLightEndIdx * 6;
+	shadowsSettings.highQualitySMPixelSize   = constants::highQualitySMResolution.cast<Real32>().cwiseInverse();
+	shadowsSettings.mediumQualitySMPixelSize = constants::mediumQualitySMResolution.cast<Real32>().cwiseInverse();
+	shadowsSettings.lowQualitySMPixelSize    = constants::lowQualitySMResolution.cast<Real32>().cwiseInverse();
+	shadowsSettings.shadowViewsNearPlane     = constants::projectionNearPlane;
+	shadowsSettings.shadowMappingTechnique   = static_cast<Uint32>(GetShadowMappingTechnique());
+
+	ShadowMapsData data;
+	data.settings       = shadowsSettings;
+	data.shadowMapViews = m_shadowMapViewsBuffer->GetFullView();
+	data.shadowMaps     = m_shadowMapTexturesBuffer->GetFullView();
+
+	sceneData.shadows = data;
 }
 
 void ShadowMapsManagerSubsystem::SetShadowMappingTechnique(EShadowMappingTechnique newTechnique)
@@ -122,12 +138,7 @@ Bool ShadowMapsManagerSubsystem::IsMainView(const RenderView& renderView) const
 
 Bool ShadowMapsManagerSubsystem::CanRenderShadows() const
 {
-	return !m_shadowMaps.empty();
-}
-
-const lib::MTHandle<ShadowMapsDS>& ShadowMapsManagerSubsystem::GetShadowMapsDS() const
-{
-	return m_shadowMapsDS;
+	return !m_shadowMapViews.empty();
 }
 
 const lib::DynamicArray<RenderSceneEntity>& ShadowMapsManagerSubsystem::GetPointLightsWithShadowMapsToUpdate() const
@@ -250,23 +261,27 @@ void ShadowMapsManagerSubsystem::CreateShadowMaps()
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(m_shadowMaps.empty());
+	SPT_CHECK(m_shadowMapViews.empty());
 
 	const auto CreateShadowMapsHelper = [this](math::Vector2u resolution, SizeType shadowMapsNum, EShadowMapQuality quality)
 	{
-		const Uint32 prevShadowMapsNum = static_cast<Uint32>(m_shadowMaps.size());
+		const Uint32 prevShadowMapsNum = static_cast<Uint32>(m_shadowMapViews.size());
 
 		const SizeType shadowMapTexturesToCreate = shadowMapsNum * 6;
-		m_shadowMaps.reserve(m_shadowMaps.size() + shadowMapTexturesToCreate);
+		m_shadowMapViews.reserve(m_shadowMapViews.size() + shadowMapTexturesToCreate);
 		for (Uint32 i = 0; i < shadowMapTexturesToCreate; ++i)
 		{
 			const rhi::TextureDefinition textureDef = ShadowMapUtils::CreateShadowMapDefinition(resolution, GetShadowMappingTechnique());
 			const lib::SharedRef<rdr::Texture> shadowMap = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Shadow Map"), textureDef, rhi::EMemoryUsage::GPUOnly);
-			m_shadowMaps.emplace_back(shadowMap);
+
+			rhi::TextureViewDefinition shadowMapViewDef;
+			shadowMapViewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::GetFullAspectForFormat(shadowMap->GetDefinition().format));
+			lib::SharedPtr<rdr::TextureView> shadowMapView = shadowMap->CreateView(RENDERER_RESOURCE_NAME("Shadow Map View"), shadowMapViewDef);
+			m_shadowMapViews.emplace_back(std::move(shadowMapView));
 		}
 
 		lib::DynamicArray<Uint32>& shadowMapsOfQuality = m_availableShadowMaps[quality];
-		for (SizeType idx = prevShadowMapsNum; idx < m_shadowMaps.size(); idx += 6)
+		for (SizeType idx = prevShadowMapsNum; idx < m_shadowMapViews.size(); idx += 6)
 		{
 			shadowMapsOfQuality.emplace_back(static_cast<Uint32>(idx));
 		}
@@ -285,27 +300,29 @@ void ShadowMapsManagerSubsystem::CreateShadowMaps()
 
 	CreateShadowMapsRenderViews();
 
-	const Uint32 framesInFlightNum = rdr::RendererSettings::Get().framesInFlight;
-
-	m_shadowMapViewsBuffers.reserve(static_cast<SizeType>(framesInFlightNum));
-
 	m_shadowMapViewsData.resize(m_shadowMapsRenderViews.size());
 
-	const Uint64 shadowMapViewsBufferSize = m_shadowMapViewsData.size() * sizeof(ShadowMapViewData);
-	const rhi::BufferDefinition shadowMapViewsBufferDef(shadowMapViewsBufferSize, rhi::EBufferUsage::Storage);
-	for (Uint32 i = 0; i < framesInFlightNum; ++i)
+	m_shadowMapTexturesBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Shadow Map Textures Buffer"), rhi::BufferDefinition(m_shadowMapViews.size() * sizeof(rdr::HLSLStorage<ShadowMapTexture>), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst)), rhi::EMemoryUsage::GPUOnly);
+	m_shadowMapViewsBuffer    = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Shadow Map Views Buffer"), rhi::BufferDefinition(m_shadowMapViewsData.size() * sizeof(rdr::HLSLStorage<ShadowMapViewData>), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst)), rhi::EMemoryUsage::GPUOnly);
+
+	lib::DynamicArray<rdr::HLSLStorage<ShadowMapTexture>> shadowMapTexturesHLSL;
+	shadowMapTexturesHLSL.reserve(m_shadowMapViews.size());
+	for (const lib::SharedRef<rdr::TextureView>& smView : m_shadowMapViews)
 	{
-		m_shadowMapViewsBuffers.emplace_back(rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Shadow Map Views Buffer"), shadowMapViewsBufferDef, rhi::EMemoryUsage::CPUToGPU));
+		ShadowMapTexture hlslSM;
+		hlslSM.texture = smView;
+		shadowMapTexturesHLSL.emplace_back(hlslSM);
 	}
+	gfx::UploadDataToBuffer(lib::Ref(m_shadowMapTexturesBuffer), 0, reinterpret_cast<const Byte*>(shadowMapTexturesHLSL.data()), shadowMapTexturesHLSL.size() * sizeof(rdr::HLSLStorage<ShadowMapTexture>));
 }
 
 void ShadowMapsManagerSubsystem::CreateShadowMapsRenderViews()
 {
 	SPT_PROFILER_FUNCTION();
 	
-	m_shadowMapsRenderViews.reserve(m_shadowMaps.size());
+	m_shadowMapsRenderViews.reserve(m_shadowMapViews.size());
 
-	for (SizeType idx = 0; idx < m_shadowMaps.size(); ++idx)
+	for (SizeType idx = 0; idx < m_shadowMapViews.size(); ++idx)
 	{
 		lib::UniquePtr<RenderView>& renderView = m_shadowMapsRenderViews.emplace_back();
 		renderView = std::make_unique<RenderView>(GetOwningScene());
@@ -322,7 +339,7 @@ void ShadowMapsManagerSubsystem::AssignShadowMaps()
 		return;
 	}
 
-	SPT_CHECK(m_shadowMaps.size() % 6 == 0);
+	SPT_CHECK(m_shadowMapViews.size() % 6 == 0);
 
 	m_lightsWithShadowMapsToUpdate.clear();
 
@@ -332,7 +349,7 @@ void ShadowMapsManagerSubsystem::AssignShadowMaps()
 		return;
 	}
 
-	const SizeType availableShadowMapsNum = m_shadowMaps.size() / 6;
+	const SizeType availableShadowMapsNum = m_shadowMapViews.size() / 6;
 
 	const RenderSceneRegistry& registry = GetOwningScene().GetRegistry();
 	const auto pointLightsView = registry.view<PointLightData>();
@@ -493,7 +510,7 @@ void ShadowMapsManagerSubsystem::UpdateShadowMapRenderViews(RenderSceneEntity ow
 
 		const lib::UniquePtr<RenderView>& renderView = m_shadowMapsRenderViews[renderViewIdx];
 
-		const lib::SharedRef<rdr::Texture>& shadowMapTexture = m_shadowMaps[renderViewIdx];
+		const lib::SharedRef<rdr::Texture>& shadowMapTexture = m_shadowMapViews[renderViewIdx]->GetTexture();
 		const math::Vector2u shadowMapResolution = shadowMapTexture->GetResolution2D();
 
 		ShadowMapViewComponent shadowMapViewComp;
@@ -582,42 +599,6 @@ void ShadowMapsManagerSubsystem::ReleaseAllShadowMaps()
 	m_pointLightsWithAssignedShadowMaps.clear();
 }
 
-void ShadowMapsManagerSubsystem::CreateShadowMapsDescriptorSet()
-{
-	m_shadowMapsDS = rdr::ResourcesManager::CreateDescriptorSetState<ShadowMapsDS>(RENDERER_RESOURCE_NAME("ShadowMapsDS"));
-	for (const lib::SharedPtr<rdr::Texture>& shadowMap : m_shadowMaps)
-	{
-		rhi::TextureViewDefinition shadowMapViewDef;
-		shadowMapViewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::GetFullAspectForFormat(shadowMap->GetDefinition().format));
-		m_shadowMapsDS->u_shadowMaps.BindTexture(shadowMap->CreateView(RENDERER_RESOURCE_NAME("Shadow Map View"), shadowMapViewDef));
-	}
-
-	UpdateShadowMapsDSViewsData();
-
-	ShadowsSettings shadowsSettings;
-	shadowsSettings.highQualitySMEndIdx			= m_highQualityShadowMapLightEndIdx * 6;
-	shadowsSettings.mediumQualitySMEndIdx		= m_mediumQualityShadowMapsLightEndIdx * 6;
-	shadowsSettings.highQualitySMPixelSize		= constants::highQualitySMResolution.cast<Real32>().cwiseInverse();
-	shadowsSettings.mediumQualitySMPixelSize	= constants::mediumQualitySMResolution.cast<Real32>().cwiseInverse();
-	shadowsSettings.lowQualitySMPixelSize		= constants::lowQualitySMResolution.cast<Real32>().cwiseInverse();
-	shadowsSettings.shadowViewsNearPlane		= constants::projectionNearPlane;
-	shadowsSettings.shadowMappingTechnique		= static_cast<Uint32>(GetShadowMappingTechnique());
-	m_shadowMapsDS->u_shadowsSettings = shadowsSettings;
-}
-
-void ShadowMapsManagerSubsystem::UpdateShadowMapsDSViewsData()
-{
-	SPT_PROFILER_FUNCTION();
-
-	const lib::SharedPtr<rdr::Buffer>& buffer = m_shadowMapViewsBuffers[0];
-
-	gfx::UploadDataToBuffer(lib::Ref(buffer), 0, reinterpret_cast<const Byte*>(m_shadowMapViewsData.data()), m_shadowMapViewsData.size() * sizeof(ShadowMapViewData));
-	m_shadowMapsDS->u_shadowMapViews = buffer->GetFullView();
-
-	m_shadowMapViewsBuffers.emplace_back(buffer);
-	m_shadowMapViewsBuffers.erase(std::cbegin(m_shadowMapViewsBuffers));
-}
-
 Real32 ShadowMapsManagerSubsystem::ComputeLocalLightShadowMapPriority(const SceneView& view, RenderSceneEntity light) const
 {
 	const auto getLightCurrentQualityPriority = [](EShadowMapQuality currentQuality)
@@ -681,16 +662,17 @@ void ShadowMapsManagerSubsystem::RecreateShadowMaps()
 {
 	ReleaseAllShadowMaps();
 
-	m_shadowMaps.clear();
+	m_shadowMapViews.clear();
 	m_shadowMapsRenderViews.clear();
 	m_availableShadowMaps.clear();
 	m_shadowMapViewsData.clear();
-	m_shadowMapViewsBuffers.clear();
+
+	m_shadowMapTexturesBuffer.reset();
+	m_shadowMapViewsBuffer.reset();
 
 	if (GetShadowMappingTechnique() != EShadowMappingTechnique::None)
 	{
 		CreateShadowMaps();
-		CreateShadowMapsDescriptorSet();
 	}
 }
 

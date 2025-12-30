@@ -15,6 +15,44 @@
 #define SPT_SHADOWS_TECHNIQUE_VSM    3
 
 
+SamplerState GetShadowMapSampler()
+{
+	return BindlessSamplers::LinearMaxClampEdge();
+}
+
+
+[[shader_struct(ShadowMapsData)]]
+
+
+struct ShadowMapsManagerInterface : ShadowMapsData
+{
+	ShadowMapViewData GetSMView(in uint idx)
+	{
+		return shadowMapViews.Load(idx);
+	}
+
+	SRVTexture2D<float> GetSM(in uint idx)
+	{
+		return shadowMaps.Load(idx).texture;
+	}
+
+	ShadowsSettings GetShadowsSettings()
+	{
+		return settings;
+	}
+};
+
+
+#ifdef DS_RenderSceneDS
+
+ShadowMapsManagerInterface ShadowMapsManager()
+{
+	return ShadowMapsManagerInterface(u_renderSceneConstants.shadows);
+}
+
+#endif // DS_RenderSceneDS
+
+
 static const float2 pcssShadowSamples[PCSS_SHADOW_SAMPLES_NUM] =
 {
 	float2(0.f, 0.f),
@@ -111,11 +149,13 @@ uint GetShadowMapFaceIndex(float3 lightToSurface)
 
 uint GetShadowMapQuality(uint shadowMapIdx)
 {
-	if(shadowMapIdx < u_shadowsSettings.highQualitySMEndIdx)
+	const ShadowsSettings shadowsSettings = ShadowMapsManager().GetShadowsSettings();
+
+	if(shadowMapIdx < shadowsSettings.highQualitySMEndIdx)
 	{
 		return SM_QUALITY_HIGH;
 	}
-	else if(shadowMapIdx < u_shadowsSettings.mediumQualitySMEndIdx)
+	else if(shadowMapIdx < shadowsSettings.mediumQualitySMEndIdx)
 	{
 		return SM_QUALITY_MEDIUM;
 	}
@@ -126,16 +166,18 @@ uint GetShadowMapQuality(uint shadowMapIdx)
 
 float2 GetShadowMapPixelSize(uint quality)
 {
+	const ShadowsSettings shadowsSettings = ShadowMapsManager().GetShadowsSettings();
+
 	if(quality == SM_QUALITY_HIGH)
 	{
-		return u_shadowsSettings.highQualitySMPixelSize;
+		return shadowsSettings.highQualitySMPixelSize;
 	}
 	else if(quality == SM_QUALITY_MEDIUM)
 	{
-		return u_shadowsSettings.mediumQualitySMPixelSize;
+		return shadowsSettings.mediumQualitySMPixelSize;
 	}
 
-	return u_shadowsSettings.lowQualitySMPixelSize;
+	return shadowsSettings.lowQualitySMPixelSize;
 }
 
 
@@ -180,7 +222,7 @@ float2 ComputeKernelScale(float3 surfaceNormal, float3 shadowMapRightWS, float3 
 }
 
 
-float FindAverageOccluderDepth(Texture2D shadowMap, SamplerState occludersSampler, float2 shadowMapPixelSize, float2 shadowMapUV, float ndcDepth, float p20, float p23)
+float FindAverageOccluderDepth(in SRVTexture2D<float> shadowMap, SamplerState occludersSampler, float2 shadowMapPixelSize, float2 shadowMapUV, float ndcDepth, float p20, float p23)
 {
 	float occludersLinearDepth = 0.f;
 	float occludersNum = 0.f;
@@ -222,7 +264,7 @@ float2 ComputePenumbraSize(float surfaceDepth, float occluderDepth, float lightR
 }
 
 
-float EvaluateShadowsPCSS(Texture2D shadowMap, SamplerComparisonState shadowSampler, float2 shadowMapUV, float ndcDepth, float2 penumbraSize, float noise)
+float EvaluateShadowsPCSS(in SRVTexture2D<float> shadowMap, SamplerComparisonState shadowSampler, float2 shadowMapUV, float ndcDepth, float2 penumbraSize, float noise)
 {
 	float shadow = 0.f;
 
@@ -243,7 +285,7 @@ float EvaluateShadowsPCSS(Texture2D shadowMap, SamplerComparisonState shadowSamp
 }
 
 
-float EvaluateShadowsPCF(Texture2D shadowMap, SamplerComparisonState shadowSampler, float2 shadowMapUV, float ndcDepth, float2 penumbraSize, float noise)
+float EvaluateShadowsPCF(in SRVTexture2D<float> shadowMap, SamplerComparisonState shadowSampler, float2 shadowMapUV, float ndcDepth, float2 penumbraSize, float noise)
 {
 	float shadow = 0.f;
 
@@ -265,7 +307,7 @@ float EvaluateShadowsPCF(Texture2D shadowMap, SamplerComparisonState shadowSampl
 
 
 /** Based on "Shadows of Cold War" by Kevin Meyers, Treyarch */ 
-float EvaluateShadowsDPCF(Texture2D shadowMap, SamplerState shadowSampler, float2 shadowMapUV, float linearDepth, float2 penumbraSize, float p20, float p23, float noise)
+float EvaluateShadowsDPCF(in SRVTexture2D<float> shadowMap, SamplerState shadowSampler, float2 shadowMapUV, float linearDepth, float2 penumbraSize, float p20, float p23, float noise)
 {
 	const float2x2 samplesRotation = NoiseRotation(noise);
 
@@ -282,7 +324,7 @@ float EvaluateShadowsDPCF(Texture2D shadowMap, SamplerState shadowSampler, float
 		offset = mul(samplesRotation, offset);
 		const float2 uv = shadowMapUV + offset;
 		
-		const float4 depths = shadowMap.Gather(shadowSampler, uv);
+		const float4 depths = shadowMap.Gather<float4>(shadowSampler, uv);
 
 		[unroll]
 		for (uint depthIdx = 0; depthIdx < 4; ++depthIdx)
@@ -345,7 +387,7 @@ float EvaluateShadowsAtLine(in Texture2D shadowMap, in SamplerState shadowSample
 }
 
 
-float EvaluateShadowsVSM(in Texture2D shadowMap, in SamplerState shadowSampler, in float2 shadowMapUV, in float linearDepth)
+float EvaluateShadowsVSM(in SRVTexture2D<float2> shadowMap, in SamplerState shadowSampler, in float2 shadowMapUV, in float linearDepth)
 {
 	const float adjustedDepth = linearDepth - 0.002f;
 	const float2 moments = shadowMap.SampleLevel(shadowSampler, shadowMapUV, 0.f).xy;
@@ -361,6 +403,10 @@ float EvaluateShadowsVSM(in Texture2D shadowMap, in SamplerState shadowSampler, 
 
 float EvaluatePointLightShadows(ShadedSurface surface, float3 pointLightLocation, float pointLightAttenuationRadius, uint shadowMapFirstFaceIdx)
 {
+	ShadowMapsManagerInterface sm = ShadowMapsManager();
+
+	const ShadowsSettings shadowsSettings = sm.GetShadowsSettings();
+
 	const uint shadowMapFaceIdx = GetShadowMapFaceIndex(surface.location - pointLightLocation);
 	const uint shadowMapIdx = shadowMapFirstFaceIdx + shadowMapFaceIdx;
 
@@ -370,12 +416,12 @@ float EvaluatePointLightShadows(ShadedSurface surface, float3 pointLightLocation
 
 	const float2 kernelScale = ComputeKernelScale(surface.geometryNormal, shadowMapRight, shadowMapUp);
 
-	const float4 surfaceShadowCS = mul(u_shadowMapViews[shadowMapIdx].viewProjectionMatrix, float4(surface.location, 1.f));
+	const float4 surfaceShadowCS = mul(sm.GetSMView(shadowMapIdx).viewProjectionMatrix, float4(surface.location, 1.f));
 	const float3 surfaceShadowNDC = surfaceShadowCS.xyz / surfaceShadowCS.w;
 
 	const float2 shadowMapUV = surfaceShadowNDC.xy * 0.5f + 0.5f;
 
-	const float nearPlane = u_shadowsSettings.shadowViewsNearPlane;
+	const float nearPlane = shadowsSettings.shadowViewsNearPlane;
 	const float farPlane = pointLightAttenuationRadius;
 	float p20, p23;
 	ComputeShadowProjectionParams(nearPlane, farPlane, p20, p23);
@@ -384,12 +430,12 @@ float EvaluatePointLightShadows(ShadedSurface surface, float3 pointLightLocation
 	const float surfaceNDCDepth = surfaceShadowNDC.z + bias;
 	const float surfaceLinearDepth = ComputeShadowLinearDepth(surfaceNDCDepth, p20, p23);
 
-	if (u_shadowsSettings.shadowMappingTechnique == SPT_SHADOWS_TECHNIQUE_DPCF)
+	if (shadowsSettings.shadowMappingTechnique == SPT_SHADOWS_TECHNIQUE_DPCF)
 	{
 		const float time = GPUScene().time;
 		const float noise = Random(float2(surface.location.x - surface.location.z, surface.location.y + surface.location.z) + float2(time * 0.3f, time * -0.4f));
 		const float2 penumbraSize = rcp(256.f);
-		return EvaluateShadowsDPCF(u_shadowMaps[shadowMapIdx], u_shadowMapSampler, shadowMapUV, surfaceLinearDepth, penumbraSize, p20, p23, noise);
+		return EvaluateShadowsDPCF(sm.GetSM(shadowMapIdx), GetShadowMapSampler(), shadowMapUV, surfaceLinearDepth, penumbraSize, p20, p23, noise);
 	}
 
 	return 1.f;
@@ -398,6 +444,8 @@ float EvaluatePointLightShadows(ShadedSurface surface, float3 pointLightLocation
 
 float EvaluatePointLightShadowsAtLocation(in float3 worldLocation, in float3 pointLightLocation, in float pointLightAttenuationRadius, in uint shadowMapFirstFaceIdx)
 {
+	ShadowMapsManagerInterface sm = ShadowMapsManager();
+
 	const uint shadowMapFaceIdx = GetShadowMapFaceIndex(worldLocation - pointLightLocation);
 	const uint shadowMapIdx = shadowMapFirstFaceIdx + shadowMapFaceIdx;
 
@@ -405,12 +453,12 @@ float EvaluatePointLightShadowsAtLocation(in float3 worldLocation, in float3 poi
 	float3 shadowMapUp;
 	GetPointShadowMapViewAxis(shadowMapFaceIdx, shadowMapRight, shadowMapUp);
 
-	const float4 sampleShadowCS = mul(u_shadowMapViews[shadowMapIdx].viewProjectionMatrix, float4(worldLocation, 1.f));
+	const float4 sampleShadowCS = mul(sm.GetSMView(shadowMapIdx).viewProjectionMatrix, float4(worldLocation, 1.f));
 	const float3 sampleShadowNDC = sampleShadowCS.xyz / sampleShadowCS.w;
 
 	const float2 shadowMapUV = sampleShadowNDC.xy * 0.5f + 0.5f;
 
-	const float shadowMapDepth = u_shadowMaps[shadowMapIdx].SampleLevel(u_shadowMapSampler, shadowMapUV, 0).x;
+	const float shadowMapDepth = sm.GetSM(shadowMapIdx).SampleLevel(GetShadowMapSampler(), shadowMapUV, 0).x;
 	return step(shadowMapDepth, sampleShadowNDC.z);
 }
 
@@ -453,7 +501,7 @@ float EvaluateCascadedShadowsAtLine(in float3 beginWorldLocation, in float3 endW
 	
 	if(selectedCascadeIdx != IDX_NONE_32)
 	{
-		visibility = EvaluateShadowsAtLine(u_shadowMapCascades[selectedCascadeIdx], u_shadowMapSampler, lineBeginUV, lineEndUV, sampleDepth, samplesNum);
+		visibility = EvaluateShadowsAtLine(u_shadowMapCascades[selectedCascadeIdx], GetShadowMapSampler(), lineBeginUV, lineEndUV, sampleDepth, samplesNum);
 	}
 
 	return visibility;
@@ -471,7 +519,7 @@ float EvaluateCascadedShadowsAtLocation(in float3 worldLocation, in uint firstCa
 		const float3 cascadeShadowNDC = cascadeShadowCS.xyz / cascadeShadowCS.w;
 		const float2 cascadeShadowUV = cascadeShadowNDC.xy * 0.5f + 0.5f;
 
-		const float shadowMapDepth = u_shadowMapCascades[cascadeIdx].SampleLevel(u_shadowMapSampler, cascadeShadowUV, 0.f).x;
+		const float shadowMapDepth = u_shadowMapCascades[cascadeIdx].SampleLevel(GetShadowMapSampler(), cascadeShadowUV, 0.f).x;
 		return step(shadowMapDepth, cascadeShadowNDC.z);
 	}
 

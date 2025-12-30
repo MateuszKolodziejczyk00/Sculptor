@@ -63,6 +63,8 @@ public:
 
 	VkImage							GetHandle() const;
 
+	Bool							IsGloballyReadable() const;
+
 	// Currently not threadsafe
 	Byte*							MapPtr() const;
 	void							Unmap() const;
@@ -91,8 +93,6 @@ private:
 
 	rhi::TextureDefinition           m_definition;
 	VkImage                          m_imageHandle;
-	
-	rhi::ETextureType                m_type;
 	
 	rhi::RHIResourceAllocationHandle m_allocationHandle;
 	rhi::RHIAllocationInfo           m_allocationInfo;

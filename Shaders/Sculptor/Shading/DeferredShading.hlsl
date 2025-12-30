@@ -1,12 +1,11 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderViewDS, 0)]]
-[[descriptor_set(RenderSceneDS, 1)]]
+[[descriptor_set(RenderViewDS)]]
+[[descriptor_set(RenderSceneDS)]]
 
-[[descriptor_set(DeferredShadingDS, 2)]]
+[[descriptor_set(DeferredShadingDS)]]
 
-[[descriptor_set(ViewShadingInputDS, 3)]]
-[[descriptor_set(ShadowMapsDS, 4)]]
+[[descriptor_set(ViewShadingInputDS)]]
 
 #if ENABLE_DDGI
 

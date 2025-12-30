@@ -216,6 +216,8 @@ private:
 	void ResolveNodeTextureAccesses(RGNode& node, const RGDependeciesContainer& dependencies);
 	void AppendTextureTransitionToNode(RGNode& node, RGTextureHandle accessedTexture, const rhi::TextureSubresourceRange& accessedSubresourceRange, const rhi::BarrierTextureTransitionDefinition& transitionTarget);
 
+	void RevertGloballyReadableState(RGNode& node, RGTextureHandle accessedTexture, const rhi::TextureSubresourceRange& accessedSubresourceRange);
+
 	void ResolveNodeBufferAccesses(RGNode& node, const RGDependeciesContainer& dependencies);
 
 	const rhi::BarrierTextureTransitionDefinition& GetTransitionDefForAccess(RGNodeHandle node, ERGTextureAccess access) const;
@@ -256,6 +258,8 @@ private:
 	lib::SharedPtr<rdr::GPUStatisticsCollector> m_statisticsCollector;
 
 	RGResourceHandle<RGRenderPassNodeBase> m_lastRenderPassNode;
+
+	lib::DynamicArray<RGTextureViewHandle> m_pendingGloballyReadableTransitions;
 
 #if SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME
 	lib::DynamicArray<lib::MTHandle<RGDescriptorSetStateBase>> m_allocatedDSStates;

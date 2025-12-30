@@ -251,8 +251,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 						  rg::BindDescriptorSets(std::move(ds),
 												 fogRenderingParams.volumetricFogDS,
 												 renderView.GetRenderViewDS(),
-												 shadingParams.shadingInputDS,
-												 shadingParams.shadowMapsDS));
+												 shadingParams.shadingInputDS));
 }
 
 } // shadow_term
@@ -387,8 +386,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 						  rg::BindDescriptorSets(computeInScatteringDS,
 												 fogRenderingParams.volumetricFogDS,
 												 renderView.GetRenderViewDS(),
-												 shadingParams.shadingInputDS,
-												 shadingParams.shadowMapsDS));
+												 shadingParams.shadingInputDS));
 }
 
 } // in_scattering

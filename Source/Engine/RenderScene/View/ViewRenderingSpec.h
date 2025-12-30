@@ -23,7 +23,6 @@ class ViewRenderingSpec;
 class DepthCullingDS;
 class ViewShadingInputDS;
 class SharcCacheDS;
-class ShadowMapsDS;
 struct VolumetricFogParams;
 
 
@@ -229,7 +228,6 @@ struct ShadingViewContext
 	GBuffer gBuffer;
 
 	lib::MTHandle<ViewShadingInputDS> shadingInputDS;
-	lib::MTHandle<ShadowMapsDS>       shadowMapsDS;
 
 	lib::MTHandle<SharcCacheDS> sharcCacheDS;
 

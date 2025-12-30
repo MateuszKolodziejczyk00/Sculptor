@@ -106,6 +106,19 @@ struct SRVTexture2D
 		return texture.Sample(s, uv);
 	}
 
+	float SampleCmp(in SamplerComparisonState s, in float2 uv, in T cmp)
+	{
+		const Texture2D<T> texture = GetResource();
+		return texture.SampleCmp(s, uv, cmp);
+	}
+
+	template<typename TReturn>
+	TReturn Gather(in SamplerState s, in float2 uv)
+	{
+		const Texture2D<T> texture = GetResource();
+		return TReturn(texture.Gather(s, uv));
+	}
+
 	bool IsValid()
 	{
 		return descriptorIdx != IDX_NONE_32;

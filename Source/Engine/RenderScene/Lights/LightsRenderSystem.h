@@ -66,14 +66,11 @@ private:
 	void BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 
 	void CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
-	void CacheShadowMapsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene);
 
 	lib::SharedPtr<rdr::Buffer> m_spotLightProxyVertices;
 	lib::SharedPtr<rdr::Buffer> m_pointLightProxyVertices;
 
 	lib::SharedPtr<rdr::Buffer> m_lightsDrawCommandsBuffer;
-
-	lib::MTHandle<ShadowMapsDS> m_shadowMapsDS;
 
 	lib::MTHandle<GlobalLightsDS> m_globalLightsDS;
 };

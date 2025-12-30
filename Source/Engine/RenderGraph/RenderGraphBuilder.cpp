@@ -763,6 +763,8 @@ void RenderGraphBuilder::ResolveNodeDependecies(RGNode& node, const RGDependecie
 
 void RenderGraphBuilder::ResolveNodeTextureAccesses(RGNode& node, const RGDependeciesContainer& dependencies)
 {
+	const auto globallyReadableTransitionsToHandle = std::move(m_pendingGloballyReadableTransitions);
+
 	for (const RGTextureAccessDef& textureAccessDef : dependencies.textureAccesses)
 	{
 		const RGTextureViewHandle accessedTextureView					= textureAccessDef.textureView;
@@ -787,6 +789,19 @@ void RenderGraphBuilder::ResolveNodeTextureAccesses(RGNode& node, const RGDepend
 
 		RGTextureAccessState& textureAccessState = accessedTexture->GetAccessState();
 		textureAccessState.SetSubresourcesAccess(RGTextureSubresourceAccessState(textureAccessDef.access, &node), accessedSubresourceRange);
+
+		if (accessedTexture->IsGloballyReadable() && textureAccessDef.access != ERGTextureAccess::SampledTexture && textureAccessDef.access != ERGTextureAccess::TransferSource)
+		{
+			SPT_CHECK(accessedTexture->IsExternal());
+			m_pendingGloballyReadableTransitions.emplace_back(accessedTextureView);
+		}
+	}
+
+	for (const RGTextureViewHandle& textureViewToRevert : globallyReadableTransitionsToHandle)
+	{
+		const RGTextureHandle textureToRevert = textureViewToRevert->GetTexture();
+		const rhi::TextureSubresourceRange& subresourceRangeToRevert = textureViewToRevert->GetSubresourceRange();
+		RevertGloballyReadableState(node, textureToRevert, subresourceRangeToRevert);
 	}
 }
 
@@ -822,6 +837,53 @@ void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHa
 												  if (RequiresSynchronization(transitionSource, transitionTarget))
 												  {
 													  node.AddTextureTransition(accessedTexture, subresourceRange, transitionSource, transitionTarget);
+												  }
+											  });
+	}
+}
+
+void RenderGraphBuilder::RevertGloballyReadableState(RGNode& node, RGTextureHandle accessedTexture, const rhi::TextureSubresourceRange& accessedSubresourceRange)
+{
+	RGTextureAccessState& textureAccessState = accessedTexture->GetAccessState();
+
+	const rhi::BarrierTextureTransitionDefinition& transitionTarget = rhi::TextureTransition::ReadOnly;
+
+	if (textureAccessState.IsFullResource() && textureAccessState.RangeContainsFullResource(accessedSubresourceRange))
+	{
+		const RGTextureSubresourceAccessState& sourceAccessState = textureAccessState.GetForFullResource();
+
+		if (sourceAccessState.lastAccessNode != &node)
+		{
+			const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(sourceAccessState.lastAccessNode, sourceAccessState.lastAccessType);
+
+			if (RequiresSynchronization(transitionSource, transitionTarget))
+			{
+				node.AddTextureTransition(accessedTexture, accessedSubresourceRange, transitionSource, transitionTarget);
+			}
+		}
+	}
+	else
+	{
+		textureAccessState.ForEachSubresource(accessedSubresourceRange,
+											  [&, this](RGTextureSubresource subresource)
+											  {
+												  const RGTextureSubresourceAccessState& subresourceSourceAccessState = textureAccessState.GetForSubresource(subresource);
+
+												  if (subresourceSourceAccessState.lastAccessNode != &node)
+												  {
+													  const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(subresourceSourceAccessState.lastAccessNode, subresourceSourceAccessState.lastAccessType);
+
+													  rhi::TextureSubresourceRange subresourceRange;
+													  subresourceRange.aspect			= accessedSubresourceRange.aspect;
+													  subresourceRange.baseArrayLayer	= subresource.arrayLayerIdx;
+													  subresourceRange.arrayLayersNum	= 1;
+													  subresourceRange.baseMipLevel		= subresource.mipMapIdx;
+													  subresourceRange.mipLevelsNum		= 1;
+
+													  if (RequiresSynchronization(transitionSource, transitionTarget))
+													  {
+														  node.AddTextureTransition(accessedTexture, subresourceRange, transitionSource, transitionTarget);
+													  }
 												  }
 											  });
 	}

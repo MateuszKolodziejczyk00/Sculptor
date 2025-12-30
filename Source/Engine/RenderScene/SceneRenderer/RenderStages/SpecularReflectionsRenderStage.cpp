@@ -14,7 +14,6 @@
 #include "MaterialsUnifiedData.h"
 #include "SceneRenderer/SceneRenderingTypes.h"
 #include "Lights/LightsRenderSystem.h"
-#include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "DDGI/DDGISceneSubsystem.h"
 #include "SceneRenderer/Utils/DepthBasedUpsampler.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
@@ -335,8 +334,7 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene
 
 	const ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
 
-	const LightsRenderSystem& lightsRenderSystem        = renderScene.GetRenderSystemChecked<LightsRenderSystem>();
-	const ShadowMapsManagerSubsystem& shadowMapsManager = renderScene.GetSceneSubsystemChecked<ShadowMapsManagerSubsystem>();
+	const LightsRenderSystem& lightsRenderSystem = renderScene.GetRenderSystemChecked<LightsRenderSystem>();
 
 	const ddgi::DDGISceneSubsystem& ddgiSceneSubsystem = renderScene.GetSceneSubsystemChecked<ddgi::DDGISceneSubsystem>();
 	lib::MTHandle<ddgi::DDGISceneDS> ddgiDS = ddgiSceneSubsystem.GetDDGISceneDS();
@@ -350,8 +348,7 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene
 														  renderView.GetRenderViewDS(),
 														  std::move(ddgiDS),
 														  shadingViewContext.sharcCacheDS,
-														  lightsRenderSystem.GetGlobalLightsDS(),
-														  shadowMapsManager.GetShadowMapsDS()));
+														  lightsRenderSystem.GetGlobalLightsDS()));
 }
 
 } // hit_rays

@@ -17,17 +17,19 @@ static constexpr Uint32 allRemainingArrayLayers	= idxNone<Uint32>;
 
 enum class ETextureUsage : Flags32
 {
-	None						= 0,
-	TransferSource				= BIT(0),
-	TransferDest				= BIT(1),
-	SampledTexture				= BIT(2),
-	StorageTexture				= BIT(3),
-	ColorRT						= BIT(4),
-	DepthSetncilRT				= BIT(5),
-	TransientRT					= BIT(6),
-	InputRT						= BIT(7),
-	ShadingRateTexture			= BIT(8),
-	FragmentDensityMap			= BIT(9),
+	None               = 0,
+	TransferSource     = BIT(0),
+	TransferDest       = BIT(1),
+	SampledTexture     = BIT(2),
+	StorageTexture     = BIT(3),
+	ColorRT            = BIT(4),
+	DepthSetncilRT     = BIT(5),
+	TransientRT        = BIT(6),
+	InputRT            = BIT(7),
+	ShadingRateTexture = BIT(8),
+	FragmentDensityMap = BIT(9),
+
+	GloballyReadable   = TransferSource | SampledTexture
 };
 
 
@@ -320,7 +322,8 @@ inline rhi::EFragmentFormat GetFormatByName(lib::StringView name)
 
 enum class ETextureFlags : Flags8
 {
-	None = 0,
+	None             = 0,
+	GloballyReadable = BIT(0),
 
 	Default = None
 };

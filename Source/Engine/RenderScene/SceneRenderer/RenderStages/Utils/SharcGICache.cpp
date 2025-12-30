@@ -12,7 +12,6 @@
 #include "GeometryManager.h"
 #include "StaticMeshes/StaticMeshGeometry.h"
 #include "RenderScene.h"
-#include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "Lights/LightsRenderSystem.h"
 #include "DDGI/DDGISceneSubsystem.h"
 #include "Atmosphere/Clouds/VolumetricCloudsTypes.h"
@@ -198,18 +197,6 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 	LightsRenderSystem& lightsRenderSystem = renderScene.GetRenderSystemChecked<LightsRenderSystem>();
 	const ddgi::DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<ddgi::DDGISceneSubsystem>();
 
-	lib::MTHandle<ShadowMapsDS> shadowMapsDS;
-	
-	const lib::SharedPtr<ShadowMapsManagerSubsystem> shadowMapsManager = renderScene.GetSceneSubsystem<ShadowMapsManagerSubsystem>();
-	if (shadowMapsManager && shadowMapsManager->CanRenderShadows())
-	{
-		shadowMapsDS = shadowMapsManager->GetShadowMapsDS();
-	}
-	else
-	{
-		shadowMapsDS = graphBuilder.CreateDescriptorSet<ShadowMapsDS>(RENDERER_RESOURCE_NAME("DDGI Shadow Maps DS"));
-	}
-
 	graphBuilder.TraceRays(RG_DEBUG_NAME("Update Sharc GI Cache"),
 						   sharc_passes::SharcUpdatePSO::pso,
 						   tracesNum,
@@ -217,8 +204,7 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 												  renderView.GetRenderViewDS(),
 												  ddgiSubsystem.GetDDGISceneDS(),
 												  lightsRenderSystem.GetGlobalLightsDS(),
-												  viewContext.cloudscapeProbesDS,
-												  shadowMapsDS));
+												  viewContext.cloudscapeProbesDS));
 
 	lib::MTHandle<sharc_passes::SharcResolveDS> resolveDS = graphBuilder.CreateDescriptorSet<sharc_passes::SharcResolveDS>(RENDERER_RESOURCE_NAME("Sharc Resolve DS"));
 	resolveDS->u_hashEntries   = m_hashEntriesBuffer->GetFullView();

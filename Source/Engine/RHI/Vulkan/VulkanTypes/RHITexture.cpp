@@ -273,7 +273,20 @@ static VkImageAspectFlags GetVulkanAspect(rhi::ETextureAspect aspect)
 	return vulkanAspect;
 }
 
+static rhi::TextureDefinition AdjustTextureDefinition(const rhi::TextureDefinition& def)
+{
+	rhi::TextureDefinition adjustedDef = def;
+	adjustedDef.type = rhi::GetSelectedTextureType(def);
+
+	if (lib::HasAnyFlag(def.flags, rhi::ETextureFlags::GloballyReadable))
+	{
+		lib::AddFlag(adjustedDef.usage, rhi::ETextureUsage::GloballyReadable);
+	}
+
+	return adjustedDef;
 }
+
+} // priv
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RHITextureReleaseTicket =======================================================================
@@ -298,19 +311,19 @@ void RHITextureReleaseTicket::ExecuteReleaseRHI()
 
 RHITexture::RHITexture()
 	: m_imageHandle(VK_NULL_HANDLE)
-	, m_type(rhi::ETextureType::Auto)
 { }
 
 void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, VkImage imageHandle, rhi::EMemoryUsage memoryUsage)
 {
 	SPT_CHECK(!IsValid());
 
+	const rhi::TextureDefinition adjustedDefinition = priv::AdjustTextureDefinition(definition);
+
 	m_imageHandle      = imageHandle;
-	m_definition       = definition;
+	m_definition       = adjustedDefinition;
 	m_allocationHandle = rhi::RHIExternalAllocation();
 
-	m_type = rhi::GetSelectedTextureType(definition);
-	SPT_CHECK(m_type != rhi::ETextureType::Auto);
+	SPT_CHECK(m_definition.type != rhi::ETextureType::Auto);
 
 	m_allocationInfo.memoryUsage = memoryUsage;
 	m_allocationInfo.allocationFlags = rhi::EAllocationFlags::Unknown;
@@ -322,25 +335,24 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const r
 {
 	SPT_CHECK(!IsValid());
 
-	const math::Vector3u resolution = definition.resolution.AsVector();
+	const rhi::TextureDefinition adjustedDefinition = priv::AdjustTextureDefinition(definition);
+
+	const math::Vector3u resolution = adjustedDefinition.resolution.AsVector();
 
 	SPT_CHECK(resolution.x() > 0);
 	SPT_CHECK(resolution.y() > 0);
 	SPT_CHECK(resolution.z() > 0);
 
-	m_type = rhi::GetSelectedTextureType(definition);
-	SPT_CHECK(m_type != rhi::ETextureType::Auto);
-
 	VkImageCreateInfo imageInfo{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 	imageInfo.flags             = 0;
-	imageInfo.imageType         = priv::GetVulkanImageType(m_type);
-	imageInfo.format            = RHIToVulkan::GetVulkanFormat(definition.format);
+	imageInfo.imageType         = priv::GetVulkanImageType(adjustedDefinition.type);
+	imageInfo.format            = RHIToVulkan::GetVulkanFormat(adjustedDefinition.format);
 	imageInfo.extent            = { resolution.x(), resolution.y(), resolution.z() };
-	imageInfo.mipLevels         = definition.mipLevels;
-	imageInfo.arrayLayers       = definition.arrayLayers;
-	imageInfo.samples           = priv::GetVulkanSampleCountFlag(definition.samples);
-	imageInfo.tiling            = RHIToVulkan::GetImageTiling(definition.tiling);
-	imageInfo.usage             = priv::GetVulkanTextureUsageFlags(definition.usage);
+	imageInfo.mipLevels         = adjustedDefinition.mipLevels;
+	imageInfo.arrayLayers       = adjustedDefinition.arrayLayers;
+	imageInfo.samples           = priv::GetVulkanSampleCountFlag(adjustedDefinition.samples);
+	imageInfo.tiling            = RHIToVulkan::GetImageTiling(adjustedDefinition.tiling);
+	imageInfo.usage             = priv::GetVulkanTextureUsageFlags(adjustedDefinition.usage);
 	imageInfo.sharingMode       = VK_SHARING_MODE_EXCLUSIVE;
 	imageInfo.initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
 
@@ -348,7 +360,9 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const r
 
 	BindMemory(allocationDef);
 
-	m_definition = definition;
+	m_definition = adjustedDefinition;
+
+	SPT_CHECK(m_definition.type != rhi::ETextureType::Auto);
 
 	PostImageInitialized();
 }
@@ -460,7 +474,7 @@ rhi::EFragmentFormat RHITexture::GetFormat() const
 
 rhi::ETextureType RHITexture::GetType() const
 {
-	return m_type;
+	return m_definition.type;
 }
 
 const rhi::RHIAllocationInfo& RHITexture::GetAllocationInfo() const
@@ -487,6 +501,11 @@ Uint64 RHITexture::GetMipSize(Uint32 mipIdx) const
 VkImage RHITexture::GetHandle() const
 {
 	return m_imageHandle;
+}
+
+Bool RHITexture::IsGloballyReadable() const
+{
+	return lib::HasAnyFlag(GetDefinition().usage, rhi::ETextureUsage::GloballyReadable);
 }
 
 Byte* RHITexture::MapPtr() const

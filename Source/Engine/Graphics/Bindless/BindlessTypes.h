@@ -43,6 +43,19 @@ public:
 
 	TextureDescriptor() = default;
 
+	TextureDescriptor(const lib::SharedPtr<rdr::TextureView>& texture)
+		: m_textureView(texture)
+	{ }
+
+	TextureDescriptor(const rg::RGTextureViewHandle& texture)
+		: m_textureView(texture)
+	{ }
+
+	TextureDescriptor(const TextureDescriptor& other) = default;
+	TextureDescriptor& operator=(const TextureDescriptor& other) = default;
+	TextureDescriptor(TextureDescriptor&& other) = default;
+	TextureDescriptor& operator=(TextureDescriptor&& other) = default;
+
 	TextureDescriptor& operator=(lib::SharedPtr<rdr::TextureView> texture)
 	{
 		m_textureView = std::move(texture);
@@ -199,6 +212,7 @@ public:
 	static constexpr BufferDescriptorMetadata GetMetadata() { return metadata; }
 
 	BufferDescriptor() = default;
+
 
 	BufferDescriptor& operator=(lib::SharedPtr<rdr::BindableBufferView> buffer)
 	{

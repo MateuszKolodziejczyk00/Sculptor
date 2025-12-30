@@ -11,6 +11,7 @@ rhi::TextureDefinition ShadowMapUtils::CreateShadowMapDefinition(math::Vector2u 
 	definition.format      = GetShadowMapFormat(technique);
 	definition.usage       = GetShadowMapUsage(technique);
 	definition.mipLevels   = GetShadowMapMipsNum(technique);
+	definition.flags       = rhi::ETextureFlags::GloballyReadable;
 
 	return definition;
 }

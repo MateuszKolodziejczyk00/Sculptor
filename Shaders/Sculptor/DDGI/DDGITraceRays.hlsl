@@ -4,7 +4,6 @@
 
 [[descriptor_set(RenderSceneDS)]]
 [[descriptor_set(GlobalLightsDS)]]
-[[descriptor_set(ShadowMapsDS)]]
 [[descriptor_set(DDGISceneDS)]]
 [[descriptor_set(CloudscapeProbesDS)]]
 [[descriptor_set(DDGITraceRaysDS)]]

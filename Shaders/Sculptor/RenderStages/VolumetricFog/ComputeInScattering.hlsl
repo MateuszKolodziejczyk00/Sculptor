@@ -1,11 +1,10 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderVolumetricFogDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
-[[descriptor_set(RenderSceneDS, 2)]]
-[[descriptor_set(ViewShadingInputDS, 3)]]
-[[descriptor_set(ShadowMapsDS, 4)]]
-[[descriptor_set(ComputeInScatteringDS, 5)]]
+[[descriptor_set(RenderVolumetricFogDS)]]
+[[descriptor_set(RenderViewDS)]]
+[[descriptor_set(RenderSceneDS)]]
+[[descriptor_set(ViewShadingInputDS)]]
+[[descriptor_set(ComputeInScatteringDS)]]
 
 
 #define VOLUMETRIC_FOG_LIGHTING 1

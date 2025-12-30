@@ -13,7 +13,6 @@
 #include "RenderGraphBuilder.h"
 #include "Common/ShaderCompilationInput.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
-#include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "EngineFrame.h"
 #include "ViewShadingInput.h"
 #include "SceneRenderer/RenderStages/DirectionalLightShadowMasksRenderStage.h"
@@ -672,9 +671,6 @@ void LightsRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, co
 {
 	Super::RenderPerFrame(graphBuilder, renderScene, viewSpecs, settings);
 
-	// Cache shadow maps for each views for this frame
-	CacheShadowMapsDS(graphBuilder, renderScene);
-
 	for (ViewRenderingSpec* viewSpec : viewSpecs)
 	{
 		if (viewSpec->SupportsStage(ERenderStage::GlobalIllumination))
@@ -783,7 +779,6 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 	}
 
 	viewContext.shadingInputDS = lightsRenderingData.shadingInputDS;
-	viewContext.shadowMapsDS   = m_shadowMapsDS;
 
 	RenderViewEntryDelegates::FillShadingDSData delegateParams;
 	delegateParams.ds = viewContext.shadingInputDS;
@@ -793,7 +788,6 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 
 	ViewSpecShadingParameters shadingParams;
 	shadingParams.shadingInputDS = lightsRenderingData.shadingInputDS;
-	shadingParams.shadowMapsDS   = m_shadowMapsDS;
 	viewSpec.GetBlackboard().Create<ViewSpecShadingParameters>(shadingParams);
 }
 
@@ -899,19 +893,6 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 	m_globalLightsDS->u_localLights        = localLightsBuffer->GetFullView();
 	m_globalLightsDS->u_directionalLights  = directionalLightsBuffer->GetFullView();
 	m_globalLightsDS->u_brdfIntegrationLUT = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
-}
-
-void LightsRenderSystem::CacheShadowMapsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
-{
-	lib::SharedPtr<ShadowMapsManagerSubsystem> shadowMapsManager = renderScene.GetSceneSubsystem<ShadowMapsManagerSubsystem>();
-	if (shadowMapsManager && shadowMapsManager->CanRenderShadows())
-	{
-		m_shadowMapsDS = shadowMapsManager->GetShadowMapsDS();
-	}
-	else
-	{
-		m_shadowMapsDS = graphBuilder.CreateDescriptorSet<ShadowMapsDS>(RENDERER_RESOURCE_NAME("ShadowMapsDS"));
-	}
 }
 
 } // spt::rsc

@@ -63,13 +63,16 @@ BEGIN_SHADER_STRUCT(ShadowsSettings)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(ShadowMapsDS, rg::RGDescriptorSetState<ShadowMapsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<ShadowMapViewData>),               u_shadowMapViews)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMaxClampToEdge>), u_shadowMapSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),    u_linearShadowMapSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<256, true>),                           u_shadowMaps)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<ShadowsSettings>),                           u_shadowsSettings)
-DS_END();
+BEGIN_SHADER_STRUCT(ShadowMapTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>, texture)
+END_SHADER_STRUCT();
+
+
+BEGIN_SHADER_STRUCT(ShadowMapsData)
+	SHADER_STRUCT_FIELD(ShadowsSettings,                        settings)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<ShadowMapViewData>, shadowMapViews)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<ShadowMapTexture>,  shadowMaps)
+END_SHADER_STRUCT();
 
 
 class RENDER_SCENE_API ShadowMapsManagerSubsystem : public RenderSceneSubsystem
@@ -87,6 +90,7 @@ public:
 
 	// Begin PrimitivesSystem overrides
 	virtual void Update() override;
+	virtual void UpdateGPUSceneData(RenderSceneConstants& sceneData) override;
 	// End PrimitivesSystem overrides
 
 	void SetShadowMappingTechnique(EShadowMappingTechnique newTechnique);
@@ -96,8 +100,6 @@ public:
 	Bool IsMainView(const RenderView& renderView) const;
 
 	Bool CanRenderShadows() const;
-
-	const lib::MTHandle<ShadowMapsDS>& GetShadowMapsDS() const;
 
 	const lib::DynamicArray<RenderSceneEntity>& GetPointLightsWithShadowMapsToUpdate() const;
 	
@@ -127,16 +129,11 @@ private:
 
 	void ReleaseAllShadowMaps();
 
-	void CreateShadowMapsDescriptorSet();
-	void UpdateShadowMapsDSViewsData();
-
-	Bool IsLocalLightVisible(RenderSceneEntity light) const;
-
 	Real32 ComputeLocalLightShadowMapPriority(const SceneView& view, RenderSceneEntity light) const;
 
 	void RecreateShadowMaps();
 
-	lib::DynamicArray<lib::SharedRef<rdr::Texture>> m_shadowMaps;
+	lib::DynamicArray<lib::SharedRef<rdr::TextureView>> m_shadowMapViews;
 	lib::DynamicArray<lib::UniquePtr<RenderView>> m_shadowMapsRenderViews;
 	
 	lib::HashMap<EShadowMapQuality, lib::DynamicArray<Uint32>> m_availableShadowMaps;
@@ -157,9 +154,9 @@ private:
 	lib::DynamicArray<RenderSceneEntity> m_lightsWithShadowMapsToUpdate;
 
 	lib::DynamicArray<ShadowMapViewData> m_shadowMapViewsData;
-	lib::DynamicArray<lib::SharedPtr<rdr::Buffer>> m_shadowMapViewsBuffers;
 
-	lib::MTHandle<ShadowMapsDS> m_shadowMapsDS;
+	lib::SharedPtr<rdr::Buffer> m_shadowMapTexturesBuffer;
+	lib::SharedPtr<rdr::Buffer> m_shadowMapViewsBuffer;
 
 	lib::WeakPtr<RenderView> m_mainView;
 
