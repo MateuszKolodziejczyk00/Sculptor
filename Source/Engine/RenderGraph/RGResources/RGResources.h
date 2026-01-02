@@ -331,18 +331,13 @@ public:
 		case ERGTextureAccess::StencilRenderTarget:
 			success |= TryAppendUsage(rhi::ETextureUsage::DepthSetncilRT);
 			break;
-		case ERGTextureAccess::StorageWriteTexture:
+		case ERGTextureAccess::ShaderWrite:
 			success |= TryAppendUsage(rhi::ETextureUsage::StorageTexture);
-			break;
-		case ERGTextureAccess::SampledTexture:
-			success |= TryAppendUsage(rhi::ETextureUsage::SampledTexture);
-			break;
-		case ERGTextureAccess::TransferSource:
-			success |= TryAppendUsage(rhi::ETextureUsage::TransferSource);
-			break;
-		case ERGTextureAccess::TransferDest:
 			success |= TryAppendUsage(rhi::ETextureUsage::TransferDest);
-
+			break;
+		case ERGTextureAccess::ShaderRead:
+			success |= TryAppendUsage(rhi::ETextureUsage::SampledTexture);
+			success |= TryAppendUsage(rhi::ETextureUsage::TransferSource);
 			break;
 		}
 

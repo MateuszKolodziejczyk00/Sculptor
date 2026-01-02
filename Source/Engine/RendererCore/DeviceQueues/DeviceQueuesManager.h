@@ -7,6 +7,7 @@
 #include "Containers/Queue.h"
 #include "Job.h"
 #include "Types/Window.h"
+#include "Utils/GPUResourceInitQueue.h"
 
 #include <semaphore>
 
@@ -86,6 +87,9 @@ enum class EGPUWorkloadSubmitFlags
 	// Warning: This flag must be used with MemoryTransfersWait flag to ensure correct ordering
 	MemoryTransfersSignal    = BIT(4),
 	MemoryTransfers          = MemoryTransfersWait | MemoryTransfersSignal,
+
+	// This is workload for gpu resource initialization. All other workloads will wait for this workload to finish before executing
+	GPUResourcesInitSignal   = BIT(6),
 
 	Default = None
 };
@@ -191,12 +195,16 @@ public:
 
 	void AdvanceGPUTimelineSection();
 
+	void GPUInitTexture(const lib::SharedPtr<Texture>& texture) { m_gpuResourceInitQueue.EnqueueTextureInit(texture); }
+
 private:
 
-	void SubmitWorkloadInternal(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags = EGPUWorkloadSubmitFlags::Default);
+	void SubmitWorkloadInternal_Locked(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags = EGPUWorkloadSubmitFlags::Default);
 
 	void CollectWaitSemaphores(const lib::SharedRef<GPUWorkload>& workload, const DeviceQueue& submissionQueue, EGPUWorkloadSubmitFlags flags, INOUT SemaphoresArray& waitSemaphores);
 	void CollectSignalSemaphores(const lib::SharedRef<GPUWorkload>& workload, const DeviceQueue& submissionQueue, EGPUWorkloadSubmitFlags flags, INOUT SemaphoresArray& signalSemaphores);
+
+	void FlushGPUInits_Locked();
 
 	DeviceQueue& GetQueue(rhi::EDeviceCommandQueueType queueType);
 
@@ -209,6 +217,11 @@ private:
 
 	lib::SharedPtr<rdr::Semaphore> m_memoryTransfersSemaphore;
 	Uint64                         m_memoryTransfersSemaphoreValue;
+
+	lib::SharedPtr<rdr::Semaphore> m_resourceGPUInitSemaphore;
+	Uint64                         m_resourceGPUInitSemaphoreValue;
+
+	GPUResourceInitQueue m_gpuResourceInitQueue;
 
 	SubmittedWorkloadsQueue m_submittedWorkloadsQueue;
 

@@ -1,7 +1,6 @@
 #include "RHITexture.h"
 #include "Vulkan/VulkanRHI.h"
 #include "Vulkan/Memory/VulkanMemoryManager.h"
-#include "Vulkan/LayoutsManager.h"
 #include "Vulkan/VulkanRHIUtils.h"
 #include "Vulkan/Memory/VulkanMemoryTypes.h"
 #include "Vulkan/Device/LogicalDevice.h"
@@ -327,8 +326,6 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, VkImage
 
 	m_allocationInfo.memoryUsage = memoryUsage;
 	m_allocationInfo.allocationFlags = rhi::EAllocationFlags::Unknown;
-	
-	PostImageInitialized();
 }
 
 void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const rhi::RHIResourceAllocationDefinition& allocationDef)
@@ -363,8 +360,6 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const r
 	m_definition = adjustedDefinition;
 
 	SPT_CHECK(m_definition.type != rhi::ETextureType::Auto);
-
-	PostImageInitialized();
 }
 
 void RHITexture::ReleaseRHI()
@@ -377,8 +372,6 @@ RHITextureReleaseTicket RHITexture::DeferredReleaseRHI()
 {
 	SPT_CHECK(IsValid());
 	SPT_CHECK_MSG(!std::holds_alternative<rhi::RHIPlacedAllocation>(m_allocationHandle), "Placed allocations must be released manually before releasing resource!");
-
-	PreImageReleased();
 
 	RHITextureReleaseTicket releaseTicket;
 
@@ -569,20 +562,6 @@ rhi::ETextureUsage RHITexture::GetRHITextureUsageFlags(VkImageUsageFlags usageFl
 rhi::EFragmentFormat RHITexture::GetRHIFormat(VkFormat format)
 {
 	return priv::GetRHIFormat(format);
-}
-
-void RHITexture::PostImageInitialized()
-{
-	VulkanRHI::GetLayoutsManager().RegisterImage(m_imageHandle, m_definition.mipLevels, m_definition.arrayLayers);
-}
-
-void RHITexture::PreImageReleased()
-{
-	// In case of images not owned by rhi, it's user responsibility to unregister image
-	if (!std::holds_alternative<rhi::RHIExternalAllocation>(m_allocationHandle))
-	{
-		VulkanRHI::GetLayoutsManager().UnregisterImage(m_imageHandle);
-	}
 }
 
 Bool RHITexture::BindMemory(const rhi::RHIResourceAllocationDefinition& allocationDefinition)

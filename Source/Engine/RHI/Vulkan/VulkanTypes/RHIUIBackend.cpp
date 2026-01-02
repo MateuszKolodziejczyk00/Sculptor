@@ -145,7 +145,7 @@ ui::TextureID RHIUIBackend::GetUITexture(const RHITextureView& textureView, cons
 	SPT_CHECK(textureView.IsValid());
 	SPT_CHECK(sampler.IsValid());
 
-	const ui::TextureID uiTexture = ImGui_ImplVulkan_AddTexture(sampler.GetHandle(), textureView.GetHandle(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	const ui::TextureID uiTexture = ImGui_ImplVulkan_AddTexture(sampler.GetHandle(), textureView.GetHandle(), VK_IMAGE_LAYOUT_GENERAL);
 
 #if SPT_RHI_DEBUG
 	const VkDescriptorSet* textureDS = reinterpret_cast<const VkDescriptorSet*>(&uiTexture);

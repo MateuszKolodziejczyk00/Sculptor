@@ -275,7 +275,7 @@ void UploadsManager::FlushPendingUploads_AssumesLocked()
 	{
 		rhi::RHIDependency dependency;
 		const SizeType barrierIdx = dependency.AddTextureDependency(command.destTexture->GetRHI(), rhi::TextureSubresourceRange(command.aspect));
-		dependency.SetLayoutTransition(barrierIdx, rhi::TextureTransition::TransferDest);
+		dependency.SetLayoutTransition(barrierIdx, rhi::TextureTransition::Undefined, rhi::TextureTransition::TransferDest);
 
 		recorder->ExecuteBarrier(dependency);
 

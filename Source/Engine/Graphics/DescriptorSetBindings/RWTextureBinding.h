@@ -46,7 +46,7 @@ public:
 
 		if (isValid)
 		{
-			BuildRGDependenciesImpl(builder, rg::ERGTextureAccess::StorageWriteTexture);
+			BuildRGDependenciesImpl(builder, rg::ERGTextureAccess::ShaderWrite);
 		}
 	}
 

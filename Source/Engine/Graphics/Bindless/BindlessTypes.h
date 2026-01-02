@@ -796,7 +796,7 @@ struct HLSLStructDependenciesBuider<gfx::TextureDescriptor<metadata, TType>>
 
 			if (descriptoridx != rdr::invalidResourceDescriptorIdx)
 			{
-				constexpr rg::ERGTextureAccess access = metadata.isUAV ? ERGTextureAccess::StorageWriteTexture : ERGTextureAccess::SampledTexture;
+				constexpr rg::ERGTextureAccess access = metadata.isUAV ? ERGTextureAccess::ShaderWrite : ERGTextureAccess::ShaderRead;
 
 				dependenciesBuilder.AddTextureAccess(descriptoridx, access);
 			}

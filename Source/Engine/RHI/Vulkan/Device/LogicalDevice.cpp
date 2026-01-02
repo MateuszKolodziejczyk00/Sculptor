@@ -134,6 +134,11 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 
 	deviceInfoLinkedData.Append(mutableDescriptorTypeFeatures);
 
+	VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR unifiedImageLayoutsFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFIED_IMAGE_LAYOUTS_FEATURES_KHR };
+	unifiedImageLayoutsFeatures.unifiedImageLayouts = VK_TRUE;
+
+	deviceInfoLinkedData.Append(unifiedImageLayoutsFeatures);
+
 #if SPT_ENABLE_NSIGHT_AFTERMATH
 	VkDeviceDiagnosticsConfigCreateInfoNV aftermathInfo{ VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV };
 

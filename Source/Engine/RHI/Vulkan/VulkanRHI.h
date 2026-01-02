@@ -82,8 +82,6 @@ public:
 
 	static CommandPoolsManager&				GetCommandPoolsManager();
 
-	static LayoutsManager&					GetLayoutsManager();
-
 	static PipelineLayoutsManager&			GetPipelineLayoutsManager();
 
 	static const LogicalDevice&				GetLogicalDevice();

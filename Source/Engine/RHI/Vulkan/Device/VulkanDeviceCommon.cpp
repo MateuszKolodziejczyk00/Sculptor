@@ -56,6 +56,8 @@ lib::DynamicArray<const char*> VulkanDeviceCommon::GetRequiredDeviceExtensions()
 
 	requiredExtensions.emplace_back(VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME);
 
+	requiredExtensions.emplace_back(VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME);
+
 #if SPT_ENABLE_NSIGHT_AFTERMATH
 
 	if (VulkanRHI::GetSettings().AreGPUCrashDumpsEnabled())

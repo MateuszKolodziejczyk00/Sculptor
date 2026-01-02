@@ -134,7 +134,7 @@ void TextureInspectorRenderer::Render(const lib::SharedRef<rdr::TextureView>& in
 		m_saveTextureParams.reset();
 	}
 
-	graphBuilder.ReleaseTextureWithTransition(outputTextureView->GetTexture(), rhi::TextureTransition::FragmentReadOnly);
+	graphBuilder.ReleaseTextureWithTransition(outputTextureView->GetTexture(), rhi::TextureTransition::ShaderRead);
 
 	// Schedule readback
 	js::Launch(SPT_GENERIC_JOB_NAME,

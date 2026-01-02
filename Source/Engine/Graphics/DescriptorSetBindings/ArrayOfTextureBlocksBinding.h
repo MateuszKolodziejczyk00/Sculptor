@@ -389,15 +389,15 @@ private:
 	{
 		if constexpr (resourceType == priv::ETextureResourceType::SRVTexture)
 		{
-			return rg::ERGTextureAccess::SampledTexture;
+			return rg::ERGTextureAccess::ShaderRead;
 		}
 		else if constexpr (resourceType == priv::ETextureResourceType::RWTexture)
 		{
-			return rg::ERGTextureAccess::StorageWriteTexture;
+			return rg::ERGTextureAccess::ShaderWrite;
 		}
 		else
 		{
-			return rg::ERGTextureAccess::SampledTexture;
+			return rg::ERGTextureAccess::ShaderRead;
 		}
 	}
 

@@ -407,7 +407,7 @@ static lib::DynamicArray<lib::SharedPtr<rdr::TextureView>> LoadImages(const tiny
 
 		for (const auto& texture : textures)
 		{
-			rdr::utils::GenerateMipMaps(*commandRecorder, texture, rhi::ETextureAspect::Color, 0, rhi::TextureTransition::ReadOnly);
+			rdr::utils::GenerateMipMaps(*commandRecorder, texture, rhi::ETextureAspect::Color, 0, rhi::TextureTransition::ShaderRead);
 		}
 
 		const lib::SharedRef<rdr::GPUWorkload> workload = commandRecorder->FinishRecording();

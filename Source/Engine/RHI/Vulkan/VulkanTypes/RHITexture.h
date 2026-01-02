@@ -82,9 +82,6 @@ public:
 
 private:
 
-	void PostImageInitialized();
-	void PreImageReleased();
-
 	Bool                             BindMemory(const rhi::RHIResourceAllocationDefinition& allocationDefinition);
 	rhi::RHIResourceAllocationHandle ReleasePlacedAllocation();
 

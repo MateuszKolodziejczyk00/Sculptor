@@ -1,5 +1,4 @@
 #include "Vulkan/VulkanTypes/RHIDependency.h"
-#include "Vulkan/LayoutsManager.h"
 #include "Vulkan/VulkanTypes/RHITexture.h"
 #include "Vulkan/VulkanTypes/RHICommandBuffer.h"
 #include "Vulkan/VulkanRHIUtils.h"
@@ -14,66 +13,6 @@ namespace priv
 {
 
 constexpr VkImageLayout g_uninitializedLayoutValue = VK_IMAGE_LAYOUT_MAX_ENUM;
-
-static void FillImageLayoutTransitionFlags(VkImageLayout layout, VkPipelineStageFlags2& outStage, VkAccessFlags2& outAccessFlags)
-{
-	switch (layout)
-	{
-	case VK_IMAGE_LAYOUT_UNDEFINED:
-		outStage		= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-		outAccessFlags	= VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
-
-		break;
-	case VK_IMAGE_LAYOUT_GENERAL:
-		outStage		= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-		outAccessFlags	= VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
-
-		break;
-	case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-		outStage		= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-		outAccessFlags	= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-		
-		break;
-	case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:
-		outStage		= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-		outAccessFlags	= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-		
-		break;
-	case VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL:
-		outStage		= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-		outAccessFlags	= VK_ACCESS_2_SHADER_READ_BIT;
-
-		break;
-	case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-		outStage		= VK_PIPELINE_STAGE_TRANSFER_BIT;
-		outAccessFlags	= VK_ACCESS_2_TRANSFER_READ_BIT;
-		
-		break;
-	case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-		outStage		= VK_PIPELINE_STAGE_TRANSFER_BIT;
-		outAccessFlags	= VK_ACCESS_2_TRANSFER_WRITE_BIT;
-		
-		break;
-	case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-		outStage		= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-		outAccessFlags	= VK_ACCESS_SHADER_READ_BIT;
-
-		break;
-	case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
-		outStage		= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-		outAccessFlags	= VK_ACCESS_SHADER_READ_BIT;
-
-		break;
-	case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-		outStage		= VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-		outAccessFlags	= 0;
-		
-		break;
-	default:
-		SPT_CHECK_NO_ENTRY();
-		break;
-	}
-}
 
 static VkAccessFlags2 GetVulkanAccessFlags(const rhi::BarrierTextureTransitionDefinition& transitionTarget)
 {
@@ -258,8 +197,8 @@ SizeType RHIDependency::AddTextureDependency(const RHITexture& texture, const rh
     barrier.srcAccessMask						= VK_ACCESS_2_NONE;
     barrier.dstStageMask						= VK_PIPELINE_STAGE_2_NONE;
     barrier.dstAccessMask						= VK_ACCESS_2_NONE;
-	barrier.oldLayout							= priv::g_uninitializedLayoutValue;
-    barrier.newLayout							= priv::g_uninitializedLayoutValue;
+	barrier.oldLayout							= VK_IMAGE_LAYOUT_GENERAL;
+    barrier.newLayout							= VK_IMAGE_LAYOUT_GENERAL;
     barrier.srcQueueFamilyIndex					= VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex					= VK_QUEUE_FAMILY_IGNORED;
 
@@ -336,64 +275,26 @@ void RHIDependency::SetBufferDependencyStages(SizeType bufferIdx, rhi::EPipeline
 
 void RHIDependency::ExecuteBarrier(const RHICommandBuffer& cmdBuffer)
 {
-	PrepareLayoutTransitionsForCommandBuffer(cmdBuffer);
-
 	const VkDependencyInfo dependencyInfo = GetDependencyInfo();
 	vkCmdPipelineBarrier2(cmdBuffer.GetHandle(), &dependencyInfo);
-
-	WriteNewLayoutsToLayoutsManager(cmdBuffer);
 }
 
 void RHIDependency::SetEvent(const RHICommandBuffer& cmdBuffer, const RHIEvent& event)
 {
 	SPT_CHECK(event.IsValid());
 
-	PrepareLayoutTransitionsForCommandBuffer(cmdBuffer);
-
 	const VkDependencyInfo dependencyInfo = GetDependencyInfo();
 	vkCmdSetEvent2(cmdBuffer.GetHandle(), event.GetHandle(), &dependencyInfo);
-
-	ReleaseTexturesWriteAccess(cmdBuffer);
 }
 
 void RHIDependency::WaitEvent(const RHICommandBuffer& cmdBuffer, const RHIEvent& event)
 {
 	SPT_CHECK(event.IsValid());
 
-	AcquireTexturesWriteAccess(cmdBuffer);
-
 	const VkDependencyInfo dependencyInfo = GetDependencyInfo();
 
 	const VkEvent eventHandle = event.GetHandle();
 	vkCmdWaitEvents2(cmdBuffer, 1, &eventHandle, &dependencyInfo);
-
-	WriteNewLayoutsToLayoutsManager(cmdBuffer);
-}
-
-void RHIDependency::PrepareLayoutTransitionsForCommandBuffer(const RHICommandBuffer& cmdBuffer)
-{
-	const LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
-
-	for (VkImageMemoryBarrier2& textureBarrier : m_textureBarriers)
-	{
-		if (textureBarrier.oldLayout == priv::g_uninitializedLayoutValue)
-		{
-			textureBarrier.oldLayout = layoutsManager.GetSubresourcesSharedLayout(cmdBuffer.GetHandle(), textureBarrier.image, textureBarrier.subresourceRange);
-
-			// fill stage and access masks based on old layout
-			priv::FillImageLayoutTransitionFlags(textureBarrier.oldLayout, textureBarrier.srcStageMask, textureBarrier.srcAccessMask);
-		}
-	}
-}
-
-void RHIDependency::WriteNewLayoutsToLayoutsManager(const RHICommandBuffer& cmdBuffer)
-{
-	LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
-
-	for (VkImageMemoryBarrier2& textureBarrier : m_textureBarriers)
-	{
-		layoutsManager.SetSubresourcesLayout(cmdBuffer.GetHandle(), textureBarrier.image, textureBarrier.subresourceRange, textureBarrier.newLayout);
-	}
 }
 
 VkDependencyInfo RHIDependency::GetDependencyInfo() const
@@ -409,30 +310,6 @@ VkDependencyInfo RHIDependency::GetDependencyInfo() const
     dependency.pBufferMemoryBarriers	= m_bufferBarriers.data();
 
 	return dependency;
-}
-
-void RHIDependency::ReleaseTexturesWriteAccess(const RHICommandBuffer& cmdBuffer)
-{
-	LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
-
-	for (SizeType idx = 0; idx < m_textureBarriers.size(); ++idx)
-	{
-		const VkImageMemoryBarrier2& textureBarrier = m_textureBarriers[idx];
-
-		layoutsManager.ReleaseImageWriteAccess(cmdBuffer.GetHandle(), textureBarrier.image);
-	}
-}
-
-void RHIDependency::AcquireTexturesWriteAccess(const RHICommandBuffer& cmdBuffer)
-{
-	LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
-
-	for (SizeType idx = 0; idx < m_textureBarriers.size(); ++idx)
-	{
-		const VkImageMemoryBarrier2& textureBarrier = m_textureBarriers[idx];
-
-		layoutsManager.AcquireImageWriteAccess(cmdBuffer.GetHandle(), textureBarrier.image);
-	}
 }
 
 void RHIDependency::ValidateBarriers() const

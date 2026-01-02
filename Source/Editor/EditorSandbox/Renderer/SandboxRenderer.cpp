@@ -291,7 +291,7 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 							 sceneRenderingResultTextureView->GetResolution());
 
 	// prepare for UI pass
-	graphBuilder.ReleaseTextureWithTransition(sceneUItextureView->GetTexture(), rhi::TextureTransition::FragmentReadOnly);
+	graphBuilder.ReleaseTextureWithTransition(sceneUItextureView->GetTexture(), rhi::TextureTransition::ShaderRead);
 
 	graphBuilder.Execute();
 

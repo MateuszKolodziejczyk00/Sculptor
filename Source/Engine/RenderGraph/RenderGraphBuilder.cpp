@@ -11,7 +11,6 @@
 #include "Types/Pipeline/Pipeline.h"
 #include "GPUDiagnose/Debug/GPUDebug.h"
 
-
 SPT_DEFINE_LOG_CATEGORY(RenderGraph, true);
 
 
@@ -468,8 +467,8 @@ void RenderGraphBuilder::CopyTexture(const RenderGraphDebugName& copyName, RGTex
 
 	RGDependeciesContainer dependencies;
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
-	dependenciesBuilder.AddTextureAccess(sourceRGTextureView, ERGTextureAccess::TransferSource);
-	dependenciesBuilder.AddTextureAccess(destRGTextureView, ERGTextureAccess::TransferDest);
+	dependenciesBuilder.AddTextureAccess(sourceRGTextureView, ERGTextureAccess::ShaderRead);
+	dependenciesBuilder.AddTextureAccess(destRGTextureView, ERGTextureAccess::ShaderWrite);
 
 	AddNodeInternal(node, dependencies);
 }
@@ -523,8 +522,8 @@ void RenderGraphBuilder::BlitTexture(const RenderGraphDebugName& blitName, rg::R
 
 	RGDependeciesContainer dependencies;
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
-	dependenciesBuilder.AddTextureAccess(source, ERGTextureAccess::TransferSource);
-	dependenciesBuilder.AddTextureAccess(dest, ERGTextureAccess::TransferDest);
+	dependenciesBuilder.AddTextureAccess(source, ERGTextureAccess::ShaderRead);
+	dependenciesBuilder.AddTextureAccess(dest, ERGTextureAccess::ShaderWrite);
 	AddNodeInternal(node, dependencies);
 }
 
@@ -549,7 +548,7 @@ void RenderGraphBuilder::CopyTextureToBuffer(const RenderGraphDebugName& copyNam
 	SPT_CHECK(resolution.z() == 1u);
 	SPT_CHECK(sourceRGTextureView->GetMipSize() + bufferOffset <= destBufferView->GetSize());
 
-	sourceRGTextureView->GetTexture()->AddUsageForAccess(ERGTextureAccess::TransferSource);
+	sourceRGTextureView->GetTexture()->AddUsageForAccess(ERGTextureAccess::ShaderRead);
 
 	const auto executeLambda = [=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
@@ -584,7 +583,7 @@ void RenderGraphBuilder::CopyTextureToBuffer(const RenderGraphDebugName& copyNam
 
 	RGDependeciesContainer dependencies;
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
-	dependenciesBuilder.AddTextureAccess(sourceRGTextureView, ERGTextureAccess::TransferSource);
+	dependenciesBuilder.AddTextureAccess(sourceRGTextureView, ERGTextureAccess::ShaderRead);
 	dependenciesBuilder.AddBufferAccess(destBufferView, ERGBufferAccess::Write, rhi::EPipelineStage::Transfer);
 
 	AddNodeInternal(node, dependencies);
@@ -642,7 +641,7 @@ void RenderGraphBuilder::CopyBufferToFullTexture(const RenderGraphDebugName& cop
 	RGDependeciesContainer dependencies;
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
 	dependenciesBuilder.AddBufferAccess(sourceBufferView, ERGBufferAccess::Read, rhi::EPipelineStage::Transfer);
-	dependenciesBuilder.AddTextureAccess(destRGTextureView, ERGTextureAccess::TransferDest);
+	dependenciesBuilder.AddTextureAccess(destRGTextureView, ERGTextureAccess::ShaderWrite);
 
 	AddNodeInternal(node, dependencies);
 }
@@ -670,7 +669,7 @@ void RenderGraphBuilder::ClearTexture(const RenderGraphDebugName& clearName, RGT
 
 	RGDependeciesContainer dependencies;
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
-	dependenciesBuilder.AddTextureAccess(textureView, ERGTextureAccess::TransferDest);
+	dependenciesBuilder.AddTextureAccess(textureView, ERGTextureAccess::ShaderWrite);
 
 	AddNodeInternal(node, dependencies);
 }
@@ -783,14 +782,14 @@ void RenderGraphBuilder::ResolveNodeTextureAccesses(RGNode& node, const RGDepend
 			node.AddTextureViewToAcquire(accessedTextureView);
 		}
 
-		const rhi::BarrierTextureTransitionDefinition& transitionTarget = GetTransitionDefForAccess(&node, textureAccessDef.access);
+		const rhi::BarrierTextureTransitionDefinition& transitionTarget = GetTransitionDefForAccess(&node, accessedTexture, textureAccessDef.access);
 
 		AppendTextureTransitionToNode(node, accessedTexture, accessedSubresourceRange, transitionTarget);
 
 		RGTextureAccessState& textureAccessState = accessedTexture->GetAccessState();
 		textureAccessState.SetSubresourcesAccess(RGTextureSubresourceAccessState(textureAccessDef.access, &node), accessedSubresourceRange);
 
-		if (accessedTexture->IsGloballyReadable() && textureAccessDef.access != ERGTextureAccess::SampledTexture && textureAccessDef.access != ERGTextureAccess::TransferSource)
+		if (accessedTexture->IsGloballyReadable() && textureAccessDef.access != ERGTextureAccess::ShaderRead)
 		{
 			SPT_CHECK(accessedTexture->IsExternal());
 			m_pendingGloballyReadableTransitions.emplace_back(accessedTextureView);
@@ -812,7 +811,7 @@ void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHa
 	if (textureAccessState.IsFullResource() && textureAccessState.RangeContainsFullResource(accessedSubresourceRange))
 	{
 		const RGTextureSubresourceAccessState& sourceAccessState = textureAccessState.GetForFullResource();
-		const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(sourceAccessState.lastAccessNode, sourceAccessState.lastAccessType);
+		const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(sourceAccessState.lastAccessNode, accessedTexture, sourceAccessState.lastAccessType);
 
 		if (RequiresSynchronization(transitionSource, transitionTarget))
 		{
@@ -825,7 +824,7 @@ void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHa
 											  [&, this](RGTextureSubresource subresource)
 											  {
 												  const RGTextureSubresourceAccessState& subresourceSourceAccessState = textureAccessState.GetForSubresource(subresource);
-												  const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(subresourceSourceAccessState.lastAccessNode, subresourceSourceAccessState.lastAccessType);
+												  const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(subresourceSourceAccessState.lastAccessNode, accessedTexture, subresourceSourceAccessState.lastAccessType);
 
 												  rhi::TextureSubresourceRange subresourceRange;
 												  subresourceRange.aspect			= accessedSubresourceRange.aspect;
@@ -846,7 +845,7 @@ void RenderGraphBuilder::RevertGloballyReadableState(RGNode& node, RGTextureHand
 {
 	RGTextureAccessState& textureAccessState = accessedTexture->GetAccessState();
 
-	const rhi::BarrierTextureTransitionDefinition& transitionTarget = rhi::TextureTransition::ReadOnly;
+	const rhi::BarrierTextureTransitionDefinition& transitionTarget = rhi::TextureTransition::ShaderRead;
 
 	if (textureAccessState.IsFullResource() && textureAccessState.RangeContainsFullResource(accessedSubresourceRange))
 	{
@@ -854,7 +853,7 @@ void RenderGraphBuilder::RevertGloballyReadableState(RGNode& node, RGTextureHand
 
 		if (sourceAccessState.lastAccessNode != &node)
 		{
-			const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(sourceAccessState.lastAccessNode, sourceAccessState.lastAccessType);
+			const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(sourceAccessState.lastAccessNode, accessedTexture, sourceAccessState.lastAccessType);
 
 			if (RequiresSynchronization(transitionSource, transitionTarget))
 			{
@@ -871,7 +870,7 @@ void RenderGraphBuilder::RevertGloballyReadableState(RGNode& node, RGTextureHand
 
 												  if (subresourceSourceAccessState.lastAccessNode != &node)
 												  {
-													  const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(subresourceSourceAccessState.lastAccessNode, subresourceSourceAccessState.lastAccessType);
+													  const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(subresourceSourceAccessState.lastAccessNode, accessedTexture, subresourceSourceAccessState.lastAccessType);
 
 													  rhi::TextureSubresourceRange subresourceRange;
 													  subresourceRange.aspect			= accessedSubresourceRange.aspect;
@@ -940,14 +939,12 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 	}
 }
 
-const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransitionDefForAccess(RGNodeHandle node, ERGTextureAccess access) const
+const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransitionDefForAccess(RGNodeHandle node, rg::RGTextureHandle texture, ERGTextureAccess access) const
 {
-	const ERenderGraphNodeType nodeType = node.IsValid() ? node->GetType() : ERenderGraphNodeType::None;
-
 	switch (access)
 	{
 	case ERGTextureAccess::Unknown:
-		return rhi::TextureTransition::Auto;
+		return texture->IsExternal() ? rhi::TextureTransition::Generic : rhi::TextureTransition::Undefined;
 
 	case ERGTextureAccess::ColorRenderTarget:
 		return rhi::TextureTransition::ColorRenderTarget;
@@ -958,57 +955,11 @@ const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransition
 	case ERGTextureAccess::StencilRenderTarget:
 		return rhi::TextureTransition::DepthStencilRenderTarget;
 
-	case ERGTextureAccess::StorageWriteTexture:
-		if (nodeType == ERenderGraphNodeType::RenderPass)
-		{
-			return rhi::TextureTransition::FragmentGeneral;
-		}
-		else if (nodeType == ERenderGraphNodeType::Dispatch)
-		{
-			return rhi::TextureTransition::ComputeGeneral;
-		}
-		else if (nodeType == ERenderGraphNodeType::TraceRays)
-		{
-			return rhi::TextureTransition::RayTracingGeneral;
-		}
-		else if (nodeType == ERenderGraphNodeType::Generic)
-		{
-			return rhi::TextureTransition::ComputeGeneral;
-		}
-		else
-		{
-			SPT_CHECK_NO_ENTRY();
-			return rhi::TextureTransition::Undefined;
-		}
+	case ERGTextureAccess::ShaderWrite:
+		return rhi::TextureTransition::ShaderWrite;
 
-	case ERGTextureAccess::SampledTexture:
-		if (nodeType == ERenderGraphNodeType::RenderPass)
-		{
-			return rhi::TextureTransition::FragmentReadOnly;
-		}
-		else if (nodeType == ERenderGraphNodeType::Dispatch)
-		{
-			return rhi::TextureTransition::ComputeReadOnly;
-		}
-		else if (nodeType == ERenderGraphNodeType::TraceRays)
-		{
-			return rhi::TextureTransition::RayTracingReadOnly;
-		}
-		else if (nodeType == ERenderGraphNodeType::Generic)
-		{
-			return rhi::TextureTransition::ReadOnly;
-		}
-		else
-		{
-			SPT_CHECK_NO_ENTRY();
-			return rhi::TextureTransition::Undefined;
-		}
-
-	case ERGTextureAccess::TransferSource:
-		return rhi::TextureTransition::TransferSource;
-
-	case ERGTextureAccess::TransferDest:
-		return rhi::TextureTransition::TransferDest;
+	case ERGTextureAccess::ShaderRead:
+		return rhi::TextureTransition::ShaderRead;
 
 	default:
 		SPT_CHECK_NO_ENTRY();
@@ -1173,8 +1124,8 @@ void RenderGraphBuilder::AddReleaseResourcesNode()
 				// Alternative is to add this barrier immediately after last use, but this might decrease performance on GPU
 				const rhi::EFragmentFormat textureFormat = texture->GetTextureDefinition().format;
 				const rhi::TextureSubresourceRange transitionRange(rhi::GetFullAspectForFormat(textureFormat));
-				AppendTextureTransitionToNode(barrierNode, texture, transitionRange, rhi::TextureTransition::FragmentGeneral);
-				accessState.SetSubresourcesAccess(RGTextureSubresourceAccessState(ERGTextureAccess::StorageWriteTexture, &barrierNode), transitionRange);
+				AppendTextureTransitionToNode(barrierNode, texture, transitionRange, rhi::TextureTransition::ShaderRead);
+				accessState.SetSubresourcesAccess(RGTextureSubresourceAccessState(ERGTextureAccess::ShaderWrite, &barrierNode), transitionRange);
 			}
 		}
 	}

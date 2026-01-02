@@ -71,7 +71,17 @@ lib::SharedRef<Texture> ResourcesManager::CreateTexture(const RendererResourceNa
 	lib::AddFlag(newDefinition.usage, rhi::ETextureUsage::TransferSource);
 #endif
 
-	return lib::MakeShared<Texture>(name, newDefinition, allocationDefinition);
+	lib::SharedRef<Texture> texture = lib::MakeShared<Texture>(name, newDefinition, allocationDefinition);
+
+	const Bool autoGPUInit = !lib::HasAnyFlag(newDefinition.flags, rhi::ETextureFlags::SkipAutoGPUInit);
+	SPT_CHECK(!autoGPUInit || allocationDefinition.IsCommitted());
+
+	if (autoGPUInit)
+	{
+		Renderer::GetDeviceQueuesManager().GPUInitTexture(texture);
+	}
+
+	return texture;
 }
 
 lib::SharedRef<TextureView> ResourcesManager::CreateTextureView(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationDefinition)

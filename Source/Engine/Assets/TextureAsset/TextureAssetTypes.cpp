@@ -31,7 +31,7 @@ void TextureUploadRequest::EnqueueUploads()
 void TextureUploadRequest::FinishStreaming(rdr::CommandRecorder& cmdRecorder, rhi::RHIDependency& postUploadDependency)
 {
 	const SizeType dependencyIdx = postUploadDependency.AddTextureDependency(dstTextureView->GetTexture()->GetRHI(), dstTextureView->GetRHI().GetSubresourceRange());
-	postUploadDependency.SetLayoutTransition(dependencyIdx, rhi::TextureTransition::ReadOnly);
+	postUploadDependency.SetLayoutTransition(dependencyIdx, rhi::TextureTransition::ShaderRead);
 }
 
 } // spt::as

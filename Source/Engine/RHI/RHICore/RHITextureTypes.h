@@ -324,6 +324,7 @@ enum class ETextureFlags : Flags8
 {
 	None             = 0,
 	GloballyReadable = BIT(0),
+	SkipAutoGPUInit  = BIT(1), // If this flag is set, transition from "Undefined" state will have to be done manually by the user
 
 	Default = None
 };

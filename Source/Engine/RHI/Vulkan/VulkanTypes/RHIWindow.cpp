@@ -1,6 +1,5 @@
 #include "RHIWindow.h"
 #include "Vulkan/VulkanRHI.h"
-#include "Vulkan/LayoutsManager.h"
 #include "RHISemaphore.h"
 #include "Vulkan/Device/LogicalDevice.h"
 #include "RHICore/RHIInitialization.h"
@@ -159,12 +158,6 @@ RHIWindowReleaseTicket RHIWindow::DeferredReleaseRHI()
 	RHIWindowReleaseTicket releaseTicket;
 	releaseTicket.surface   = m_surface;
 	releaseTicket.swapchain = m_swapchain;
-
-	{
-		const lib::LockGuard lock(m_swapchainLock);
-
-		ReleaseSwapchainImages_Locked();
-	}
 
 	m_surface   = VK_NULL_HANDLE;
 	m_swapchain = VK_NULL_HANDLE;
@@ -345,8 +338,6 @@ void RHIWindow::ReleaseSwapchain()
 
 	const lib::LockGuard lock(m_swapchainLock);
 
-	ReleaseSwapchainImages_Locked();
-
 	if (m_swapchain != VK_NULL_HANDLE)
 	{
 		vkDestroySwapchainKHR(VulkanRHI::GetDeviceHandle(), m_swapchain, VulkanRHI::GetAllocationCallbacks());
@@ -359,40 +350,40 @@ VkSwapchainKHR RHIWindow::CreateSwapchain_Locked(math::Vector2u framebufferSize,
 	SPT_PROFILER_FUNCTION();
 
 	const VkPresentModeKHR requestedPresentModes[] = { m_enableVSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR };
-	const VkPresentModeKHR presentMode = ImGui_ImplVulkanH_SelectPresentMode(VulkanRHI::GetPhysicalDeviceHandle(), m_surface, requestedPresentModes, SPT_ARRAY_SIZE(requestedPresentModes));
+	const VkPresentModeKHR presentMode             = ImGui_ImplVulkanH_SelectPresentMode(VulkanRHI::GetPhysicalDeviceHandle(), m_surface, requestedPresentModes, SPT_ARRAY_SIZE(requestedPresentModes));
 
-	const VkFormat swapchainTextureFormat			= m_surfaceFormat.format;
-	const VkImageUsageFlags swapchainTextureUsage	= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	const VkFormat swapchainTextureFormat         = m_surfaceFormat.format;
+	const VkImageUsageFlags swapchainTextureUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-	const rhi::EFragmentFormat rhiSwapchainTextureFormat	= RHITexture::GetRHIFormat(swapchainTextureFormat);
-	const rhi::ETextureUsage rhiSwapchainTextureUsage		= RHITexture::GetRHITextureUsageFlags(swapchainTextureUsage);
+	const rhi::EFragmentFormat rhiSwapchainTextureFormat = RHITexture::GetRHIFormat(swapchainTextureFormat);
+	const rhi::ETextureUsage rhiSwapchainTextureUsage    = RHITexture::GetRHITextureUsageFlags(swapchainTextureUsage);
 
 	VkSwapchainCreateInfoKHR swapchainInfo{ VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
-	swapchainInfo.surface					= m_surface;
-	swapchainInfo.minImageCount				= m_minImagesNum;
-	swapchainInfo.imageFormat				= m_surfaceFormat.format;
-	swapchainInfo.imageColorSpace			= m_surfaceFormat.colorSpace;
-	swapchainInfo.imageExtent.width			= framebufferSize.x();
-	swapchainInfo.imageExtent.height		= framebufferSize.y();
-	swapchainInfo.imageArrayLayers			= 1;
-	swapchainInfo.imageUsage				= swapchainTextureUsage;
-	swapchainInfo.imageSharingMode			= VK_SHARING_MODE_EXCLUSIVE;
-	swapchainInfo.preTransform				= VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-	swapchainInfo.compositeAlpha			= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	swapchainInfo.presentMode				= presentMode;
-	swapchainInfo.clipped					= VK_TRUE;
-	swapchainInfo.oldSwapchain				= VK_NULL_HANDLE;
+	swapchainInfo.surface            = m_surface;
+	swapchainInfo.minImageCount      = m_minImagesNum;
+	swapchainInfo.imageFormat        = m_surfaceFormat.format;
+	swapchainInfo.imageColorSpace    = m_surfaceFormat.colorSpace;
+	swapchainInfo.imageExtent.width  = framebufferSize.x();
+	swapchainInfo.imageExtent.height = framebufferSize.y();
+	swapchainInfo.imageArrayLayers   = 1;
+	swapchainInfo.imageUsage         = swapchainTextureUsage;
+	swapchainInfo.imageSharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+	swapchainInfo.preTransform       = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+	swapchainInfo.compositeAlpha     = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	swapchainInfo.presentMode        = presentMode;
+	swapchainInfo.clipped            = VK_TRUE;
+	swapchainInfo.oldSwapchain       = VK_NULL_HANDLE;
 
-	m_swapchainTextureDef.resolution	= math::Vector3u(framebufferSize.x(), framebufferSize.y(), 1);
-	m_swapchainTextureDef.usage			= rhiSwapchainTextureUsage;
-	m_swapchainTextureDef.format		= rhiSwapchainTextureFormat;
-	m_swapchainTextureDef.samples		= 1;
-	m_swapchainTextureDef.mipLevels		= 1;
-	m_swapchainTextureDef.arrayLayers	= 1;
+	m_swapchainTextureDef.resolution  = math::Vector3u(framebufferSize.x(), framebufferSize.y(), 1);
+	m_swapchainTextureDef.usage       = rhiSwapchainTextureUsage;
+	m_swapchainTextureDef.format      = rhiSwapchainTextureFormat;
+	m_swapchainTextureDef.samples     = 1;
+	m_swapchainTextureDef.mipLevels   = 1;
+	m_swapchainTextureDef.arrayLayers = 1;
+	m_swapchainTextureDef.flags       = rhi::ETextureFlags::SkipAutoGPUInit;
 
 	if (oldSwapchain)
 	{
-		ReleaseSwapchainImages_Locked();
 		vkDestroySwapchainKHR(VulkanRHI::GetDeviceHandle(), oldSwapchain, VulkanRHI::GetAllocationCallbacks());
 	}
 
@@ -412,14 +403,6 @@ void RHIWindow::CacheSwapchainImages_Locked(VkSwapchainKHR swapchain)
 	SPT_VK_CHECK(vkGetSwapchainImagesKHR(VulkanRHI::GetDeviceHandle(), swapchain, &imagesNum, nullptr));
 	m_swapchainImages.resize(static_cast<SizeType>(imagesNum));
 	SPT_VK_CHECK(vkGetSwapchainImagesKHR(VulkanRHI::GetDeviceHandle(), swapchain, &imagesNum, m_swapchainImages.data()));
-}
-
-void RHIWindow::ReleaseSwapchainImages_Locked()
-{
-	for (VkImage image : m_swapchainImages)
-	{
-		VulkanRHI::GetLayoutsManager().UnregisterImage(image);
-	}
 }
 
 } // spt::vulkan

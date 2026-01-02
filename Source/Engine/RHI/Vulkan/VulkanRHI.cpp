@@ -8,7 +8,6 @@
 #include "VulkanTypes/RHISemaphore.h"
 #include "VulkanTypes/RHICommandBuffer.h"
 #include "VulkanUtils.h"
-#include "LayoutsManager.h"
 #include "Pipeline/PipelineLayoutsManager.h"
 #include "Engine.h"
 
@@ -51,8 +50,6 @@ public:
 	VkDebugUtilsMessengerEXT    debugMessenger;
 
 	CommandPoolsManager         commandPoolsManager;
-
-	LayoutsManager              layoutsManager;
 
 	PipelineLayoutsManager      pipelineLayoutsManager;
 
@@ -323,11 +320,6 @@ VkPhysicalDevice VulkanRHI::GetPhysicalDeviceHandle()
 CommandPoolsManager& VulkanRHI::GetCommandPoolsManager()
 {
 	return priv::g_data.commandPoolsManager;
-}
-
-LayoutsManager& VulkanRHI::GetLayoutsManager()
-{
-	return priv::g_data.layoutsManager;
 }
 
 PipelineLayoutsManager& VulkanRHI::GetPipelineLayoutsManager()

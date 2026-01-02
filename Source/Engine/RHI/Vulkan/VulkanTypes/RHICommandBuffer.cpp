@@ -1,7 +1,6 @@
 #include "RHICommandBuffer.h"
 #include "Vulkan/VulkanRHI.h"
 #include "Vulkan/CommandPool/RHICommandPoolsManager.h"
-#include "Vulkan/LayoutsManager.h"
 #include "Vulkan/VulkanRHIUtils.h"
 #include "RHITexture.h"
 #include "RHIBuffer.h"
@@ -115,14 +114,10 @@ void RHICommandBuffer::StartRecording(const rhi::CommandBufferUsageDefinition& u
 	}
 
 	vkBeginCommandBuffer(m_cmdBufferHandle, &beginInfo);
-
-	VulkanRHI::GetLayoutsManager().RegisterRecordingCommandBuffer(m_cmdBufferHandle);
 }
 
 void RHICommandBuffer::StopRecording()
 {
-	VulkanRHI::GetLayoutsManager().UnregisterRecordingCommnadBuffer(m_cmdBufferHandle);
-
 	vkEndCommandBuffer(m_cmdBufferHandle);
 }
 
@@ -162,30 +157,22 @@ void RHICommandBuffer::BeginRendering(const rhi::RenderingDefinition& renderingD
 	
 	const auto CreateAttachmentInfo = [this](const rhi::RHIRenderTargetDefinition& renderTarget, Bool isColor)
 	{
-		LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
-
 		VkRenderingAttachmentInfo attachmentInfo{ VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 
 		const RHITextureView& textureView = renderTarget.textureView;
 		SPT_CHECK(textureView.IsValid() && textureView.GetTexture());
-		const RHITexture& texture = *textureView.GetTexture();
 
-		attachmentInfo.imageView	= textureView.GetHandle();
-		attachmentInfo.imageLayout	= layoutsManager.GetSubresourcesSharedLayout(m_cmdBufferHandle,
-																				texture.GetHandle(),
-																				textureView.GetSubresourceRange());
+		attachmentInfo.imageView   = textureView.GetHandle();
+		attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 		if (renderTarget.resolveTextureView.IsValid())
 		{
 			const RHITextureView& resolveTextureView = renderTarget.resolveTextureView;
 			SPT_CHECK(!!resolveTextureView.GetTexture());
-			const RHITexture& resolveTexture = *resolveTextureView.GetTexture();
 
-			attachmentInfo.resolveMode			= RHIToVulkan::GetResolveMode(renderTarget.resolveMode);
-			attachmentInfo.resolveImageView		= resolveTextureView.GetHandle();
-			attachmentInfo.resolveImageLayout	= layoutsManager.GetSubresourcesSharedLayout(m_cmdBufferHandle,
-																							 resolveTexture.GetHandle(),
-																							 resolveTextureView.GetSubresourceRange());
+			attachmentInfo.resolveMode        = RHIToVulkan::GetResolveMode(renderTarget.resolveMode);
+			attachmentInfo.resolveImageView   = resolveTextureView.GetHandle();
+			attachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_GENERAL;
 		}
 
 		attachmentInfo.loadOp	= RHIToVulkan::GetLoadOp(renderTarget.loadOperation);
@@ -440,9 +427,8 @@ void RHICommandBuffer::BlitTexture(const RHITexture& source, Uint32 sourceMipLev
 	const math::Vector3u sourceResolution	= source.GetMipResolution(sourceMipLevel);
 	const math::Vector3u destResolution		= dest.GetMipResolution(destMipLevel);
 
-	const LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
-	const VkImageLayout sourceLayout	= layoutsManager.GetSubresourceLayout(m_cmdBufferHandle, source.GetHandle(), sourceMipLevel, sourceArrayLayer);
-	const VkImageLayout destLayout		= layoutsManager.GetSubresourceLayout(m_cmdBufferHandle, dest.GetHandle(), destMipLevel, destArrayLayer);
+	const VkImageLayout sourceLayout = VK_IMAGE_LAYOUT_GENERAL;
+	const VkImageLayout destLayout   = VK_IMAGE_LAYOUT_GENERAL;
 
 	const VkImageAspectFlags vulkanAspect = RHIToVulkan::GetAspectFlags(aspect == rhi::ETextureAspect::Auto ? rhi::GetFullAspectForFormat(source.GetFormat()) : aspect);
 
@@ -473,15 +459,14 @@ void RHICommandBuffer::ClearTexture(const RHITexture& texture, const rhi::ClearC
 	SPT_CHECK(IsValid());
 	SPT_CHECK(texture.IsValid());
 	
-	const LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
-	const VkImageLayout textureLayout	= layoutsManager.GetSubresourcesSharedLayout(m_cmdBufferHandle, texture.GetHandle(), subresourceRange);
+	const VkImageLayout textureLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 	VkImageSubresourceRange vulkanSubresourceRange{};
-    vulkanSubresourceRange.aspectMask		= RHIToVulkan::GetAspectFlags(subresourceRange.aspect);
-    vulkanSubresourceRange.baseMipLevel		= subresourceRange.baseMipLevel;
-    vulkanSubresourceRange.levelCount		= subresourceRange.mipLevelsNum == rhi::constants::allRemainingMips ? VK_REMAINING_MIP_LEVELS : subresourceRange.mipLevelsNum;
-    vulkanSubresourceRange.baseArrayLayer	= subresourceRange.baseArrayLayer;
-    vulkanSubresourceRange.layerCount		= subresourceRange.arrayLayersNum == rhi::constants::allRemainingArrayLayers ? VK_REMAINING_ARRAY_LAYERS : subresourceRange.arrayLayersNum;
+	vulkanSubresourceRange.aspectMask		= RHIToVulkan::GetAspectFlags(subresourceRange.aspect);
+	vulkanSubresourceRange.baseMipLevel		= subresourceRange.baseMipLevel;
+	vulkanSubresourceRange.levelCount		= subresourceRange.mipLevelsNum == rhi::constants::allRemainingMips ? VK_REMAINING_MIP_LEVELS : subresourceRange.mipLevelsNum;
+	vulkanSubresourceRange.baseArrayLayer	= subresourceRange.baseArrayLayer;
+	vulkanSubresourceRange.layerCount		= subresourceRange.arrayLayersNum == rhi::constants::allRemainingArrayLayers ? VK_REMAINING_ARRAY_LAYERS : subresourceRange.arrayLayersNum;
 
 	vkCmdClearColorImage(m_cmdBufferHandle, texture.GetHandle(), textureLayout, reinterpret_cast<const VkClearColorValue*>(&clearColor), 1, &vulkanSubresourceRange);
 }
@@ -492,13 +477,11 @@ void RHICommandBuffer::CopyTexture(const RHITexture& source, const rhi::TextureC
 	SPT_CHECK(source.IsValid());
 	SPT_CHECK(target.IsValid());
 
-	const LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
-
 	const VkImage sourceImage = source.GetHandle();
-	const VkImageLayout sourceLayout = layoutsManager.GetSubresourcesSharedLayout(m_cmdBufferHandle, sourceImage, ImageSubresourceRange(sourceRange.mipLevel, 1, sourceRange.baseArrayLayer, sourceRange.arrayLayersNum));
+	const VkImageLayout sourceLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 	const VkImage targetImage = target.GetHandle();
-	const VkImageLayout targetLayout = layoutsManager.GetSubresourcesSharedLayout(m_cmdBufferHandle, targetImage, ImageSubresourceRange(targetRange.mipLevel, 1, targetRange.baseArrayLayer, targetRange.arrayLayersNum));
+	const VkImageLayout targetLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 	const auto getArrayLayersNum = [](const rhi::TextureCopyRange& range, const RHITexture& texture) -> Uint32
 	{
@@ -583,7 +566,7 @@ void RHICommandBuffer::CopyBufferToTexture(const RHIBuffer& buffer, Uint64 buffe
 	SPT_CHECK(buffer.IsValid());
 	SPT_CHECK(texture.IsValid());
 
-	const VkImageLayout layout = VulkanRHI::GetLayoutsManager().GetSubresourceLayout(m_cmdBufferHandle, texture.GetHandle(), mipLevel, arrayLayer);
+	const VkImageLayout layout = VK_IMAGE_LAYOUT_GENERAL;
 
 	VkImageSubresourceLayers imageSubresource;
     imageSubresource.aspectMask		= RHIToVulkan::GetAspectFlags(aspect);
@@ -625,7 +608,7 @@ void RHICommandBuffer::CopyTextureToBuffer(const RHITexture& texture, rhi::EText
 
 	SPT_CHECK(bufferOffset + buffer.GetSize() >= copyExtent.x() * copyExtent.y() * copyExtent.z() * rhi::GetFragmentSize(texture.GetFormat()));
 
-	const VkImageLayout layout = VulkanRHI::GetLayoutsManager().GetSubresourceLayout(m_cmdBufferHandle, texture.GetHandle(), mipLevel, arrayLayer);
+	const VkImageLayout layout = VK_IMAGE_LAYOUT_GENERAL;
 
 	VkImageSubresourceLayers imageSubresource;
 	imageSubresource.aspectMask     = RHIToVulkan::GetAspectFlags(aspect);

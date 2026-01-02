@@ -123,10 +123,9 @@ void RGCapturerDecorator::AddDependenciesToPass(RenderGraphBuilder& graphBuilder
 {
 	for (const RGTextureAccessDef& textureAccess : dependencies.textureAccesses)
 	{
-		const Bool isOutputTexture = textureAccess.access == ERGTextureAccess::StorageWriteTexture
-			|| textureAccess.access == ERGTextureAccess::ColorRenderTarget
-			|| textureAccess.access == ERGTextureAccess::DepthRenderTarget
-			|| textureAccess.access == ERGTextureAccess::TransferDest;
+		const Bool isOutputTexture = textureAccess.access == ERGTextureAccess::ShaderWrite
+			                      || textureAccess.access == ERGTextureAccess::ColorRenderTarget
+			                      || textureAccess.access == ERGTextureAccess::DepthRenderTarget;
 
 		const RGTextureViewHandle rgTextureView = textureAccess.textureView;
 		const RGTextureHandle rgTexture = rgTextureView->GetTexture();
@@ -187,7 +186,7 @@ void RGCapturerDecorator::AddDependenciesToPass(RenderGraphBuilder& graphBuilder
 			newVersion.texture       = captureTexture;
 			newVersion.producingPass = &pass; // might be null in case of first version of external texture
 
-			graphBuilder.ReleaseTextureWithTransition(rgTextureCapture->GetTexture(), rhi::TextureTransition::ReadOnly);
+			graphBuilder.ReleaseTextureWithTransition(rgTextureCapture->GetTexture(), rhi::TextureTransition::ShaderRead);
 		}
 
 		const CapturedTexture::Version& lastVersion = *capturedTexture->versions.back();

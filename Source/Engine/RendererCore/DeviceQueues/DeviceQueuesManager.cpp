@@ -260,6 +260,9 @@ void DeviceQueuesManager::Initialize()
 	m_memoryTransfersSemaphore      = rdr::ResourcesManager::CreateRenderSemaphore(RENDERER_RESOURCE_NAME("Memory Transfers Semaphore"), rhi::SemaphoreDefinition(rhi::ESemaphoreType::Timeline));
 	m_memoryTransfersSemaphoreValue = 0u;
 
+	m_resourceGPUInitSemaphore      = rdr::ResourcesManager::CreateRenderSemaphore(RENDERER_RESOURCE_NAME("Resource GPU Init Semaphore"), rhi::SemaphoreDefinition(rhi::ESemaphoreType::Timeline));
+	m_resourceGPUInitSemaphoreValue = 0u;
+
 	m_submittedWorkloadsQueue.Initialize();
 }
 
@@ -273,6 +276,7 @@ void DeviceQueuesManager::Uninitialize()
 
 	m_corePipeSemaphore.reset();
 	m_memoryTransfersSemaphore.reset();
+	m_resourceGPUInitSemaphore.reset();
 }
 
 void DeviceQueuesManager::Submit(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags /*= EGPUWorkloadSubmitFlags::Default*/)
@@ -281,7 +285,9 @@ void DeviceQueuesManager::Submit(const lib::SharedRef<GPUWorkload>& workload, EG
 
 	const lib::LockGuard lock(m_lock);
 
-	SubmitWorkloadInternal(workload, flags);
+	FlushGPUInits_Locked();
+
+	SubmitWorkloadInternal_Locked(workload, flags);
 }
 
 void DeviceQueuesManager::Present(const lib::SharedRef<Window>& window, SwapchainTextureHandle swapchainTexture, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
@@ -326,10 +332,14 @@ Bool DeviceQueuesManager::IsExecuted(GPUTimelineSection section) const
 
 void DeviceQueuesManager::AdvanceGPUTimelineSection()
 {
+	const lib::LockGuard lock(m_lock);
+
+	FlushGPUInits_Locked();
+
 	m_submittedWorkloadsQueue.AdvanceGPUTimelineSection();
 }
 
-void DeviceQueuesManager::SubmitWorkloadInternal(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags /*= EGPUWorkloadSubmitFlags::Default*/)
+void DeviceQueuesManager::SubmitWorkloadInternal_Locked(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags /*= EGPUWorkloadSubmitFlags::Default*/)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -373,29 +383,44 @@ void DeviceQueuesManager::CollectWaitSemaphores(const lib::SharedRef<GPUWorkload
 		}
 	}
 
-	if(lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::CorePipeWait) && m_corePipeSemaphoreValue > 0)
+	if (lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::CorePipeWait) && m_corePipeSemaphoreValue > 0)
 	{
 		waitSemaphores.AddTimelineSemaphore(m_corePipeSemaphore, m_corePipeSemaphoreValue, rhi::EPipelineStage::ALL_COMMANDS);
 	}
 
-	if(lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::MemoryTransfersWait) && m_memoryTransfersSemaphoreValue > 0)
+	if (lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::MemoryTransfersWait) && m_memoryTransfersSemaphoreValue > 0)
 	{
 		waitSemaphores.AddTimelineSemaphore(m_memoryTransfersSemaphore, m_memoryTransfersSemaphoreValue, rhi::EPipelineStage::ALL_COMMANDS);
 	}
+
+	waitSemaphores.AddTimelineSemaphore(m_resourceGPUInitSemaphore, m_resourceGPUInitSemaphoreValue, rhi::EPipelineStage::ALL_COMMANDS);
 }
 
 void DeviceQueuesManager::CollectSignalSemaphores(const lib::SharedRef<GPUWorkload>& workload, const DeviceQueue& submissionQueue, EGPUWorkloadSubmitFlags flags, INOUT SemaphoresArray& signalSemaphores)
 {
 	SPT_PROFILER_FUNCTION();
 
-	if(lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::CorePipeSignal))
+	if (lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::CorePipeSignal))
 	{
 		signalSemaphores.AddTimelineSemaphore(m_corePipeSemaphore, ++m_corePipeSemaphoreValue, rhi::EPipelineStage::ALL_COMMANDS);
 	}
 
-	if(lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::MemoryTransfersSignal))
+	if (lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::MemoryTransfersSignal))
 	{
 		signalSemaphores.AddTimelineSemaphore(m_memoryTransfersSemaphore, ++m_memoryTransfersSemaphoreValue, rhi::EPipelineStage::ALL_COMMANDS);
+	}
+
+	if (lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::GPUResourcesInitSignal))
+	{
+		signalSemaphores.AddTimelineSemaphore(m_resourceGPUInitSemaphore, ++m_resourceGPUInitSemaphoreValue, rhi::EPipelineStage::ALL_COMMANDS);
+	}
+}
+
+void DeviceQueuesManager::FlushGPUInits_Locked()
+{
+	if (lib::SharedPtr<GPUWorkload> gpuResourcesInit = m_gpuResourceInitQueue.RecordGPUInitializations())
+	{
+		SubmitWorkloadInternal_Locked(lib::Ref(gpuResourcesInit), lib::Flags(EGPUWorkloadSubmitFlags::MemoryTransfersWait, EGPUWorkloadSubmitFlags::CorePipeWait, EGPUWorkloadSubmitFlags::GPUResourcesInitSignal));
 	}
 }
 

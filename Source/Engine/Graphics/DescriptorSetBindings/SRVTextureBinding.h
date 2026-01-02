@@ -52,7 +52,7 @@ public:
 
 		if (isBound)
 		{
-			BuildRGDependenciesImpl(builder, rg::ERGTextureAccess::SampledTexture);
+			BuildRGDependenciesImpl(builder, rg::ERGTextureAccess::ShaderRead);
 		}
 	}
 

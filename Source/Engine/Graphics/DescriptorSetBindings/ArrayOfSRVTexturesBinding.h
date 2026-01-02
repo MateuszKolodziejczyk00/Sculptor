@@ -45,11 +45,11 @@ public:
 			{
 				if (texture.textureInstance)
 				{
-					builder.AddTextureAccessIfAcquired(lib::Ref(texture.textureInstance), rg::ERGTextureAccess::SampledTexture);
+					builder.AddTextureAccessIfAcquired(lib::Ref(texture.textureInstance), rg::ERGTextureAccess::ShaderRead);
 				}
 				else
 				{
-					builder.AddTextureAccess(texture.rgTexture, rg::ERGTextureAccess::SampledTexture);
+					builder.AddTextureAccess(texture.rgTexture, rg::ERGTextureAccess::ShaderRead);
 				}
 			}
 		}

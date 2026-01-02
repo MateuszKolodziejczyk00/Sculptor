@@ -49,7 +49,7 @@ public:
 
 	static ShadersManager&						GetShadersManager();
 
-	static PipelinesCache&					GetPipelinesCache();
+	static PipelinesCache&						GetPipelinesCache();
 
 	static SamplersCache&						GetSamplersCache();
 	

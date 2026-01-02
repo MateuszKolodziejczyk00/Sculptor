@@ -32,18 +32,6 @@ namespace TextureTransition
 
 	static constexpr BarrierTextureTransitionDefinition Undefined					= BarrierTextureTransitionDefinition(EAccessType::None, ETextureLayout::Undefined, EPipelineStage::TopOfPipe);
 
-	// This can be used only as a source transition
-	static constexpr BarrierTextureTransitionDefinition Auto						= BarrierTextureTransitionDefinition(EAccessType::None, ETextureLayout::Auto, EPipelineStage::None);
-
-	static constexpr BarrierTextureTransitionDefinition ComputeGeneral				= BarrierTextureTransitionDefinition(lib::Flags(EAccessType::Read, EAccessType::Write), ETextureLayout::General, EPipelineStage::ComputeShader);
-	static constexpr BarrierTextureTransitionDefinition FragmentGeneral				= BarrierTextureTransitionDefinition(lib::Flags(EAccessType::Read, EAccessType::Write), ETextureLayout::General, EPipelineStage::FragmentShader);
-	static constexpr BarrierTextureTransitionDefinition RayTracingGeneral			= BarrierTextureTransitionDefinition(lib::Flags(EAccessType::Read, EAccessType::Write), ETextureLayout::General, lib::Flags(EPipelineStage::RayTracingShader, EPipelineStage::ComputeShader));
-
-	static constexpr BarrierTextureTransitionDefinition ReadOnly					= BarrierTextureTransitionDefinition(EAccessType::Read, ETextureLayout::ColorReadOnlyOptimal, EPipelineStage::ALL_COMMANDS);
-	static constexpr BarrierTextureTransitionDefinition FragmentReadOnly			= BarrierTextureTransitionDefinition(EAccessType::Read, ETextureLayout::ColorReadOnlyOptimal, EPipelineStage::FragmentShader);
-	static constexpr BarrierTextureTransitionDefinition ComputeReadOnly				= BarrierTextureTransitionDefinition(EAccessType::Read, ETextureLayout::ColorReadOnlyOptimal, EPipelineStage::ComputeShader);
-	static constexpr BarrierTextureTransitionDefinition RayTracingReadOnly			= BarrierTextureTransitionDefinition(EAccessType::Read, ETextureLayout::ColorReadOnlyOptimal, lib::Flags(EPipelineStage::RayTracingShader, EPipelineStage::ComputeShader));
-	
 	static constexpr BarrierTextureTransitionDefinition PresentSource				= BarrierTextureTransitionDefinition(EAccessType::None, ETextureLayout::PresentSrc, EPipelineStage::TopOfPipe);
 	
 	static constexpr BarrierTextureTransitionDefinition ColorRenderTarget			= BarrierTextureTransitionDefinition(lib::Flags(EAccessType::Write, EAccessType::Read), ETextureLayout::ColorRTOptimal, EPipelineStage::ColorRTOutput);
@@ -52,6 +40,11 @@ namespace TextureTransition
 
 	static constexpr BarrierTextureTransitionDefinition TransferSource				= BarrierTextureTransitionDefinition(EAccessType::Read, ETextureLayout::TransferSrcOptimal, EPipelineStage::Transfer);
 	static constexpr BarrierTextureTransitionDefinition TransferDest				= BarrierTextureTransitionDefinition(EAccessType::Write, ETextureLayout::TransferDstOptimal, EPipelineStage::Transfer);
+
+	static constexpr BarrierTextureTransitionDefinition Generic					= BarrierTextureTransitionDefinition(lib::Flags(EAccessType::Read, EAccessType::Write), ETextureLayout::General, lib::Flags(EPipelineStage::Transfer, rhi::EPipelineStage::FragmentShader, rhi::EPipelineStage::ComputeShader));
+
+	static constexpr BarrierTextureTransitionDefinition ShaderRead				= BarrierTextureTransitionDefinition(EAccessType::Read, ETextureLayout::General, lib::Flags(EPipelineStage::Transfer, rhi::EPipelineStage::FragmentShader, rhi::EPipelineStage::ComputeShader));
+	static constexpr BarrierTextureTransitionDefinition ShaderWrite				= BarrierTextureTransitionDefinition(lib::Flags(EAccessType::Read, EAccessType::Write), ETextureLayout::General, lib::Flags(EPipelineStage::Transfer, rhi::EPipelineStage::FragmentShader, rhi::EPipelineStage::ComputeShader));
 }
 
 

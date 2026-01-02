@@ -360,7 +360,7 @@ void SculptorEdApplication::RenderFrame(EditorFrameContext& frame, rdr::Swapchai
 		{
 			rhi::RHIDependency dependency;
 			const SizeType barrierIdx = dependency.AddTextureDependency(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
-			dependency.SetLayoutTransition(barrierIdx, rhi::TextureTransition::ColorRenderTarget);
+			dependency.SetLayoutTransition(barrierIdx, rhi::TextureTransition::Undefined, rhi::TextureTransition::ColorRenderTarget);
 
 			recorder->ExecuteBarrier(dependency);
 		}

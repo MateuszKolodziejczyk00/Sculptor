@@ -12,18 +12,14 @@ namespace spt::rg
 
 enum class ERGTextureAccess
 {
-	Unknown,
+	Unknown = 0u,
 
 	ColorRenderTarget,
 	DepthRenderTarget,
 	StencilRenderTarget,
 
-	StorageWriteTexture,
-
-	SampledTexture,
-
-	TransferSource,
-	TransferDest
+	ShaderRead,
+	ShaderWrite,
 };
 
 

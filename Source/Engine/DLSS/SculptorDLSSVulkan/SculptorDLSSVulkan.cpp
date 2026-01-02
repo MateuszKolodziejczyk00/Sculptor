@@ -117,20 +117,20 @@ DLSSRHIPlugin g_dlssRHIPlugin;
 
 
 BEGIN_RG_NODE_PARAMETERS_STRUCT(DLSSRenderNodeParams)
-	RG_TEXTURE_VIEW(input,    rg::ERGTextureAccess::SampledTexture,      rhi::EPipelineStage::ComputeShader)
-	RG_TEXTURE_VIEW(output,   rg::ERGTextureAccess::StorageWriteTexture, rhi::EPipelineStage::ComputeShader)
-	RG_TEXTURE_VIEW(depth,    rg::ERGTextureAccess::SampledTexture,      rhi::EPipelineStage::ComputeShader)
-	RG_TEXTURE_VIEW(motion,   rg::ERGTextureAccess::SampledTexture,      rhi::EPipelineStage::ComputeShader)
-	RG_TEXTURE_VIEW(exposure, rg::ERGTextureAccess::SampledTexture,      rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(input,    rg::ERGTextureAccess::ShaderRead,  rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(output,   rg::ERGTextureAccess::ShaderWrite, rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(depth,    rg::ERGTextureAccess::ShaderRead,  rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(motion,   rg::ERGTextureAccess::ShaderRead,  rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(exposure, rg::ERGTextureAccess::ShaderRead,  rhi::EPipelineStage::ComputeShader)
 END_RG_NODE_PARAMETERS_STRUCT();
 
 
 BEGIN_RG_NODE_PARAMETERS_STRUCT(DLSSRayReconstructionParams)
-	RG_TEXTURE_VIEW(diffuseAlbedo,       rg::ERGTextureAccess::SampledTexture,      rhi::EPipelineStage::ComputeShader)
-	RG_TEXTURE_VIEW(specularAlbedo,      rg::ERGTextureAccess::StorageWriteTexture, rhi::EPipelineStage::ComputeShader)
-	RG_TEXTURE_VIEW(normals,             rg::ERGTextureAccess::SampledTexture,      rhi::EPipelineStage::ComputeShader)
-	RG_TEXTURE_VIEW(roughness,           rg::ERGTextureAccess::SampledTexture,      rhi::EPipelineStage::ComputeShader)
-	RG_TEXTURE_VIEW(specularHitDistance, rg::ERGTextureAccess::SampledTexture,      rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(diffuseAlbedo,       rg::ERGTextureAccess::ShaderRead,  rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(specularAlbedo,      rg::ERGTextureAccess::ShaderWrite, rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(normals,             rg::ERGTextureAccess::ShaderRead,  rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(roughness,           rg::ERGTextureAccess::ShaderRead,  rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(specularHitDistance, rg::ERGTextureAccess::ShaderRead,  rhi::EPipelineStage::ComputeShader)
 END_RG_NODE_PARAMETERS_STRUCT()
 
 

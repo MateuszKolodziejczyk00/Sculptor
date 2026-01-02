@@ -76,7 +76,6 @@ private:
 	VkSwapchainKHR				CreateSwapchain_Locked(math::Vector2u framebufferSize, VkSwapchainKHR oldSwapchain);
 
 	void						CacheSwapchainImages_Locked(VkSwapchainKHR m_swapchain);
-	void						ReleaseSwapchainImages_Locked();
 
 	VkSwapchainKHR				m_swapchain;
 
