@@ -9,7 +9,7 @@
 
 #if ENABLE_DDGI
 
-[[descriptor_set(DDGISceneDS, 5)]]
+[[descriptor_set(DDGISceneDS)]]
 
 #include "DDGI/DDGITypes.hlsli"
 
