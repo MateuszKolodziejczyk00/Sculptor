@@ -55,9 +55,6 @@ enum class ETextureLayout : Uint32
 
 	ReadOnlyOptimal,
 	RenderTargetOptimal,
-
-	// Special layout that can be used as prev texture layout when performing layout transitions
-	Auto
 };
 
 

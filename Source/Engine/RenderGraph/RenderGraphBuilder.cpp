@@ -720,7 +720,7 @@ void RenderGraphBuilder::AssignDescriptorSetsToNode(RGNode& node, const lib::Sha
 	processDSStatesRange(m_boundDSStates);
 }
 
-void RenderGraphBuilder::AddNodeInternal(RGNode& node, const RGDependeciesContainer& dependencies)
+void RenderGraphBuilder::AddNodeInternal(RGNode& node, RGDependeciesContainer& dependencies)
 {
 	ResolveNodeDependecies(node, dependencies);
 
@@ -815,7 +815,7 @@ void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHa
 
 		if (RequiresSynchronization(transitionSource, transitionTarget))
 		{
-			node.AddTextureTransition(accessedTexture, accessedSubresourceRange, transitionSource, transitionTarget);
+			node.AddPreExecutionBarrier(transitionSource.stage, transitionSource.accessType, transitionTarget.stage, transitionTarget.accessType);
 		}
 	}
 	else
@@ -835,7 +835,7 @@ void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHa
 		
 												  if (RequiresSynchronization(transitionSource, transitionTarget))
 												  {
-													  node.AddTextureTransition(accessedTexture, subresourceRange, transitionSource, transitionTarget);
+													  node.AddPreExecutionBarrier(transitionSource.stage, transitionSource.accessType, transitionTarget.stage, transitionTarget.accessType);
 												  }
 											  });
 	}
@@ -857,7 +857,7 @@ void RenderGraphBuilder::RevertGloballyReadableState(RGNode& node, RGTextureHand
 
 			if (RequiresSynchronization(transitionSource, transitionTarget))
 			{
-				node.AddTextureTransition(accessedTexture, accessedSubresourceRange, transitionSource, transitionTarget);
+				node.AddPreExecutionBarrier(transitionSource.stage, transitionSource.accessType, transitionTarget.stage, transitionTarget.accessType);
 			}
 		}
 	}
@@ -881,7 +881,7 @@ void RenderGraphBuilder::RevertGloballyReadableState(RGNode& node, RGTextureHand
 
 													  if (RequiresSynchronization(transitionSource, transitionTarget))
 													  {
-														  node.AddTextureTransition(accessedTexture, subresourceRange, transitionSource, transitionTarget);
+														  node.AddPreExecutionBarrier(transitionSource.stage, transitionSource.accessType, transitionTarget.stage, transitionTarget.accessType);
 													  }
 												  }
 											  });
@@ -898,9 +898,6 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 		const RGBufferHandle accessedBuffer = accessedBufferView->GetBuffer();
 		SPT_CHECK(accessedBuffer.IsValid());
 
-		const Uint64 offset	= accessedBufferView->GetOffset();
-		const Uint64 size	= accessedBufferView->GetSize();
-
 		if (!accessedBuffer->IsExternal() && !accessedBuffer->GetAcquireNode().IsValid())
 		{
 			node.AddBufferToAcquire(accessedBuffer);
@@ -915,7 +912,7 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 		{
 			rhi::EAccessType destAccessType = rhi::EAccessType::None;
 			GetSynchronizationParamsForBuffer(nextAccess, destAccessType);
-			node.TryAppendBufferSynchronizationDest(accessedBuffer, offset, size, nextAccessStages, destAccessType);
+			node.AddPreExecutionBarrier(rhi::EPipelineStage::None, rhi::EAccessType::None, nextAccessStages, destAccessType);
 			continue;
 		}
 
@@ -930,7 +927,7 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 			rhi::EAccessType destAccessType = rhi::EAccessType::None;
 			GetSynchronizationParamsForBuffer(nextAccess, OUT destAccessType);
 
-			node.AddBufferSynchronization(accessedBuffer, offset, size, prevAccessStages, sourceAccessType, nextAccessStages, destAccessType);
+			node.AddPreExecutionBarrier(prevAccessStages, sourceAccessType, nextAccessStages, destAccessType);
 		}
 		
 		accessedBuffer->SetLastAccessNode(&node);
@@ -999,8 +996,7 @@ Bool RenderGraphBuilder::RequiresSynchronization(const rhi::BarrierTextureTransi
 	const Bool prevAccessIsWrite = lib::HasAnyFlag(transitionSource.accessType, rhi::EAccessType::Write);
 	const Bool newAccessIsWrite = lib::HasAnyFlag(transitionTarget.accessType, rhi::EAccessType::Write);
 
-	return transitionSource.layout == rhi::ETextureLayout::Auto // always do transition from "auto" state
-		|| transitionSource.layout != transitionTarget.layout
+	return transitionSource.layout != transitionTarget.layout
 		|| prevAccessIsWrite || newAccessIsWrite // read -> write, write -> read, write -> write
 		|| transitionTarget.stage != transitionSource.stage; // read -> read, but target stage is earlier than source stage (it's not necessary in some cases (f.e. vertex shader -> fragment shader) but in practice we don't have such cases
 }
@@ -1103,7 +1099,8 @@ void RenderGraphBuilder::ExecuteGraph()
 void RenderGraphBuilder::AddReleaseResourcesNode()
 {
 	RGEmptyNode& barrierNode = AllocateNode<RGEmptyNode>(RG_DEBUG_NAME("ExtractionBarrierNode"), ERenderGraphNodeType::None);
-	AddNodeInternal(barrierNode, RGDependeciesContainer{});
+	RGDependeciesContainer deps{};
+	AddNodeInternal(barrierNode, deps);
 
 	for (RGTextureHandle texture : m_textures)
 	{

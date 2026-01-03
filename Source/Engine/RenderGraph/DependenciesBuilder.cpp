@@ -14,6 +14,11 @@ RGDependenciesBuilder::RGDependenciesBuilder(RenderGraphBuilder& graphBuilder, R
 
 void RGDependenciesBuilder::AddTextureAccess(RGTextureViewHandle texture, ERGTextureAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
 {
+	if (lib::ContainsPred(m_dependeciesRef.textureAccesses, [texture](const RGTextureAccessDef& access) { return access.textureView == texture; }))
+	{
+		return;
+	}
+
 	const rhi::EPipelineStage accessStages = dependencyStages.shouldUseDefaultStages ? m_defaultStages : dependencyStages.pipelineStages;
 	m_dependeciesRef.textureAccesses.emplace_back(RGTextureAccessDef{ texture, access, accessStages });
 }
@@ -62,6 +67,11 @@ void RGDependenciesBuilder::AddTextureAccessIfAcquired(const lib::SharedRef<rdr:
 
 void RGDependenciesBuilder::AddBufferAccess(RGBufferViewHandle buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
 {
+	if (lib::ContainsPred(m_dependeciesRef.bufferAccesses, [buffer](const RGBufferAccessDef& access) { return access.resource == buffer; }))
+	{
+		return;
+	}
+
 	const rhi::EPipelineStage accessStages = dependencyStages.shouldUseDefaultStages ? m_defaultStages : dependencyStages.pipelineStages;
 
 	RGBufferAccessDef accessDef{ buffer, access.access, accessStages };

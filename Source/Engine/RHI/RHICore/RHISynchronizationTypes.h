@@ -21,9 +21,9 @@ struct BarrierTextureTransitionDefinition
 		, stage(inStage)
 	{ }
 
-	EAccessType				accessType;
-	ETextureLayout			layout;
-	EPipelineStage			stage;
+	EAccessType    accessType;
+	ETextureLayout layout;
+	EPipelineStage stage;
 };
 
 

@@ -129,33 +129,9 @@ void RGNode::AddBufferToRelease(RGBufferHandle buffer)
 	m_buffersToRelease.emplace_back(buffer);
 }
 
-void RGNode::AddTextureTransition(RGTextureHandle texture, const rhi::TextureSubresourceRange& textureSubresourceRange, const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget)
+void RGNode::AddPreExecutionBarrier(rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess)
 {
-	m_preExecuteTextureTransitions.emplace_back(TextureTransitionDef(texture, textureSubresourceRange, &transitionSource, &transitionTarget));
-}
-
-void RGNode::AddBufferSynchronization(RGBufferHandle buffer, Uint64 offset, Uint64 size, rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess)
-{
-	SPT_CHECK(buffer->GetLastAccessNode() != this);
-
-	m_preExecuteBufferTransitions.emplace_back(BufferTransitionDef(buffer, offset, size, sourceStage, sourceAccess, destStage, destAccess));
-}
-
-void RGNode::TryAppendBufferSynchronizationDest(RGBufferHandle buffer, Uint64 offset, Uint64 size, rhi::EPipelineStage destStage, rhi::EAccessType destAccess)
-{
-	const auto foundBufferTranstion = std::find_if(std::begin(m_preExecuteBufferTransitions), std::end(m_preExecuteBufferTransitions),
-												   [=](const BufferTransitionDef& bufferTransition)
-												   {
-													   return bufferTransition.buffer == buffer
-														   && bufferTransition.offset == offset
-														   && bufferTransition.size == size;
-												   });
-
-	if (foundBufferTranstion != std::end(m_preExecuteBufferTransitions))
-	{
-		foundBufferTranstion->destStage		= lib::Union(foundBufferTranstion->destStage, destStage);
-		foundBufferTranstion->destAccess	= lib::Union(foundBufferTranstion->destAccess, destAccess);
-	}
+	m_preExecuteDependency.StageBarrier(sourceStage, sourceAccess, destStage, destAccess);
 }
 
 void RGNode::AddDescriptorSetState(lib::MTHandle<rdr::DescriptorSetState> dsState)
@@ -197,25 +173,14 @@ void RGNode::AcquireResources()
 
 void RGNode::PreExecuteBarrier(rdr::CommandRecorder& recorder)
 {
-	rhi::RHIDependency barrierDependency;
-
-	for (const TextureTransitionDef& textureTransition : m_preExecuteTextureTransitions)
+	for (RGTextureHandle textureToAcquire : m_texturesToAcquire)
 	{
-		SPT_CHECK(textureTransition.texture->IsAcquired());
-		const lib::SharedPtr<rdr::Texture>& textureInstance = textureTransition.texture->GetResource();
-		const SizeType barrierIdx = barrierDependency.AddTextureDependency(textureInstance->GetRHI(), textureTransition.textureSubresourceRange);
-		barrierDependency.SetLayoutTransition(barrierIdx, *textureTransition.transitionSource, *textureTransition.transitionTarget);
+		const lib::SharedPtr<rdr::Texture>& textureInstance = textureToAcquire->GetResource();
+		const SizeType depIdx = m_preExecuteDependency.AddTextureDependency(textureInstance->GetRHI(), rhi::TextureSubresourceRange{});
+		m_preExecuteDependency.SetLayoutTransition(depIdx, rhi::TextureTransition::Undefined, rhi::TextureTransition::Generic);
 	}
 
-	for (const BufferTransitionDef& transition : m_preExecuteBufferTransitions)
-	{
-		SPT_CHECK(transition.buffer->IsAcquired());
-		const lib::SharedPtr<rdr::Buffer>& bufferInstance = transition.buffer->GetResource();
-		const SizeType barrierIdx = barrierDependency.AddBufferDependency(bufferInstance->GetRHI(), transition.offset, transition.size);
-		barrierDependency.SetBufferDependencyStages(barrierIdx, transition.sourceStage, transition.sourceAccess, transition.destStage, transition.destAccess);
-	}
-
-	recorder.ExecuteBarrier(barrierDependency);
+	recorder.ExecuteBarrier(m_preExecuteDependency);
 }
 
 void RGNode::ReleaseResources()

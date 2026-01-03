@@ -9,6 +9,7 @@
 #include "RenderGraphTypes.h"
 #include "Pipelines/PipelineState.h"
 #include "RGDiagnostics.h"
+#include "RHIBridge/RHIDependencyImpl.h"
 
 
 namespace spt::rhi
@@ -78,10 +79,7 @@ public:
 	void AddBufferToAcquire(RGBufferHandle buffer);
 	void AddBufferToRelease(RGBufferHandle buffer);
 
-	void AddTextureTransition(RGTextureHandle texture, const rhi::TextureSubresourceRange& textureSubresourceRange, const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget);
-
-	void AddBufferSynchronization(RGBufferHandle buffer, Uint64 offset, Uint64 size, rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess);
-	void TryAppendBufferSynchronizationDest(RGBufferHandle buffer, Uint64 offset, Uint64 size, rhi::EPipelineStage destStage, rhi::EAccessType destAccess);
+	void AddPreExecutionBarrier(rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess);
 
 	void AddDescriptorSetState(lib::MTHandle<rdr::DescriptorSetState> dsState);
 
@@ -112,47 +110,6 @@ private:
 	void AcquireBuffers();
 	void ReleaseBuffers();
 
-	struct TextureTransitionDef
-	{
-		TextureTransitionDef(RGTextureHandle inTexture,
-							 const rhi::TextureSubresourceRange& inTextureSubresourceRange,
-							 const rhi::BarrierTextureTransitionDefinition* inTransitionSource,
-							 const rhi::BarrierTextureTransitionDefinition* inTransitionTarget)
-			: texture(inTexture)
-			, textureSubresourceRange(inTextureSubresourceRange)
-			, transitionSource(inTransitionSource)
-			, transitionTarget(inTransitionTarget)
-		{ }
-
-		RGTextureHandle texture;
-		rhi::TextureSubresourceRange textureSubresourceRange;
-		const rhi::BarrierTextureTransitionDefinition* transitionSource;
-		const rhi::BarrierTextureTransitionDefinition* transitionTarget;
-	};
-
-	struct BufferTransitionDef
-	{
-		BufferTransitionDef(RGBufferHandle inBuffer, Uint64 inOffset, Uint64 inSize, rhi::EPipelineStage inSourceStage, rhi::EAccessType inSourceAccess, rhi::EPipelineStage inDestStage, rhi::EAccessType inDestAccess)
-			: buffer(inBuffer)
-			, offset(inOffset)
-			, size(inSize)
-			, sourceStage(inSourceStage)
-			, sourceAccess(inSourceAccess)
-			, destStage(inDestStage)
-			, destAccess(inDestAccess)
-		{ }
-
-		RGBufferHandle		buffer;
-		Uint64				offset;
-		Uint64				size;
-
-		rhi::EPipelineStage	sourceStage;
-		rhi::EAccessType	sourceAccess;
-
-		rhi::EPipelineStage	destStage;
-		rhi::EAccessType	destAccess;
-	};
-
 	RenderGraphBuilder& m_owningGraphBuilder;
 
 	RenderGraphDebugName m_name;
@@ -169,8 +126,7 @@ private:
 	
 	lib::DynamicArray<RGTextureViewHandle> m_textureViewsToAcquire;
 
-	lib::DynamicArray<TextureTransitionDef>	m_preExecuteTextureTransitions;
-	lib::DynamicArray<BufferTransitionDef>	m_preExecuteBufferTransitions;
+	rhi::RHIDependency m_preExecuteDependency;
 
 	lib::DynamicArray<lib::MTHandle<rdr::DescriptorSetState>> m_dsStates;
 

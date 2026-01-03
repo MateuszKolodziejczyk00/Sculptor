@@ -34,9 +34,11 @@ public:
 	void		SetBufferDependencyStages(SizeType bufferIdx, rhi::EPipelineStage destStage, rhi::EAccessType destAccess);
 	void		SetBufferDependencyStages(SizeType bufferIdx, rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess);
 
+	void		StageBarrier(rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess);
+
 	// Execution ==============================================================
 
-	void ExecuteBarrier(const RHICommandBuffer& cmdBuffer);
+	void ExecuteBarrier(const RHICommandBuffer& cmdBuffer) const;
 
 	void SetEvent(const RHICommandBuffer& cmdBuffer, const RHIEvent& event);
 	void WaitEvent(const RHICommandBuffer& cmdBuffer, const RHIEvent& event);
@@ -51,6 +53,8 @@ private:
 
 	lib::DynamicArray<VkImageMemoryBarrier2>	m_textureBarriers;
 	lib::DynamicArray<VkBufferMemoryBarrier2>	m_bufferBarriers;
+
+	VkMemoryBarrier2 							m_memoryBarrier;
 };
 
 } // spt::vulkan

@@ -207,7 +207,7 @@ private:
 
 	void AssignDescriptorSetsToNode(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<lib::MTHandle<RGDescriptorSetStateBase> const> dsStatesRange, RGDependenciesBuilder& dependenciesBuilder);
 
-	void AddNodeInternal(RGNode& node, const RGDependeciesContainer& dependencies);
+	void AddNodeInternal(RGNode& node, RGDependeciesContainer& dependencies);
 	void PostNodeAdded(RGNode& node, const RGDependeciesContainer& dependencies);
 	void PostSubpassAdded(RGNode& node, const RGDependeciesContainer& dependencies);
 

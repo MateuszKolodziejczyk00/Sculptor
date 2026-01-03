@@ -173,7 +173,13 @@ static VkAccessFlags2 GetVulkanBufferAccessFlags(rhi::EAccessType access, rhi::E
 } // spt::priv
 
 RHIDependency::RHIDependency()
-{ }
+{
+	m_memoryBarrier = VkMemoryBarrier2{ VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+	m_memoryBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_NONE;
+	m_memoryBarrier.srcAccessMask = VK_ACCESS_2_NONE;
+	m_memoryBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_NONE;
+	m_memoryBarrier.dstAccessMask = VK_ACCESS_2_NONE;
+}
 
 Bool RHIDependency::IsEmpty() const
 {
@@ -187,21 +193,21 @@ SizeType RHIDependency::AddTextureDependency(const RHITexture& texture, const rh
 																  : subresourceRange.aspect);
 
 	VkImageMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
-	barrier.image								= texture.GetHandle();
-	barrier.subresourceRange.aspectMask			= aspect;
-	barrier.subresourceRange.baseMipLevel		= subresourceRange.baseMipLevel;
-	barrier.subresourceRange.levelCount			= subresourceRange.mipLevelsNum;
-	barrier.subresourceRange.baseArrayLayer		= subresourceRange.baseArrayLayer;
-	barrier.subresourceRange.layerCount			= subresourceRange.arrayLayersNum;
-    barrier.srcStageMask						= VK_PIPELINE_STAGE_2_NONE;
-    barrier.srcAccessMask						= VK_ACCESS_2_NONE;
-    barrier.dstStageMask						= VK_PIPELINE_STAGE_2_NONE;
-    barrier.dstAccessMask						= VK_ACCESS_2_NONE;
-	barrier.oldLayout							= VK_IMAGE_LAYOUT_GENERAL;
-    barrier.newLayout							= VK_IMAGE_LAYOUT_GENERAL;
-    barrier.srcQueueFamilyIndex					= VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex					= VK_QUEUE_FAMILY_IGNORED;
-
+	barrier.image                           = texture.GetHandle();
+	barrier.subresourceRange.aspectMask     = aspect;
+	barrier.subresourceRange.baseMipLevel   = subresourceRange.baseMipLevel;
+	barrier.subresourceRange.levelCount     = subresourceRange.mipLevelsNum;
+	barrier.subresourceRange.baseArrayLayer = subresourceRange.baseArrayLayer;
+	barrier.subresourceRange.layerCount     = subresourceRange.arrayLayersNum;
+	barrier.srcStageMask                    = VK_PIPELINE_STAGE_2_NONE;
+	barrier.srcAccessMask                   = VK_ACCESS_2_NONE;
+	barrier.dstStageMask                    = VK_PIPELINE_STAGE_2_NONE;
+	barrier.dstAccessMask                   = VK_ACCESS_2_NONE;
+	barrier.oldLayout                       = VK_IMAGE_LAYOUT_GENERAL;
+	barrier.newLayout                       = VK_IMAGE_LAYOUT_GENERAL;
+	barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+	
 	m_textureBarriers.push_back(barrier);
 
 	return m_textureBarriers.size() - 1;
@@ -210,11 +216,7 @@ SizeType RHIDependency::AddTextureDependency(const RHITexture& texture, const rh
 void RHIDependency::SetLayoutTransition(SizeType textureBarrierIdx, const rhi::BarrierTextureTransitionDefinition& transitionTarget)
 {
 	SPT_CHECK(textureBarrierIdx < m_textureBarriers.size());
-
-	VkImageMemoryBarrier2& barrier = m_textureBarriers[textureBarrierIdx];
-    barrier.dstStageMask	= RHIToVulkan::GetStageFlags(transitionTarget.stage);
-    barrier.dstAccessMask	= priv::GetVulkanAccessFlags(transitionTarget);
-    barrier.newLayout		= RHIToVulkan::GetImageLayout(transitionTarget.layout);
+	SetLayoutTransition(textureBarrierIdx, rhi::TextureTransition::Generic, transitionTarget);
 }
 
 void RHIDependency::SetLayoutTransition(SizeType textureBarrierIdx, const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget)
@@ -223,30 +225,27 @@ void RHIDependency::SetLayoutTransition(SizeType textureBarrierIdx, const rhi::B
 
 	VkImageMemoryBarrier2& barrier = m_textureBarriers[textureBarrierIdx];
 
-	if (transitionSource.layout != rhi::ETextureLayout::Auto)
-	{
-		barrier.srcStageMask = RHIToVulkan::GetStageFlags(transitionSource.stage);
-		barrier.srcAccessMask = priv::GetVulkanAccessFlags(transitionSource);
-		barrier.oldLayout = RHIToVulkan::GetImageLayout(transitionSource.layout);
-	}
+	barrier.srcStageMask  = RHIToVulkan::GetStageFlags(transitionSource.stage);
+	barrier.srcAccessMask = priv::GetVulkanAccessFlags(transitionSource);
+	barrier.oldLayout     = RHIToVulkan::GetImageLayout(transitionSource.layout);
 
-    barrier.dstStageMask	= RHIToVulkan::GetStageFlags(transitionTarget.stage);
-    barrier.dstAccessMask	= priv::GetVulkanAccessFlags(transitionTarget);
-    barrier.newLayout		= RHIToVulkan::GetImageLayout(transitionTarget.layout);
+	barrier.dstStageMask  = RHIToVulkan::GetStageFlags(transitionTarget.stage);
+	barrier.dstAccessMask = priv::GetVulkanAccessFlags(transitionTarget);
+	barrier.newLayout     = RHIToVulkan::GetImageLayout(transitionTarget.layout);
 }
 
 SizeType RHIDependency::AddBufferDependency(const RHIBuffer& buffer, SizeType offset, SizeType size)
 {
 	VkBufferMemoryBarrier2& barrier = m_bufferBarriers.emplace_back(VkBufferMemoryBarrier2{ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 });
-    barrier.srcStageMask		= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-    barrier.srcAccessMask		= 0;
-    barrier.dstStageMask		= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-    barrier.dstAccessMask		=  0;
-	barrier.buffer				= buffer.GetHandle();
-	barrier.offset				= offset;
-	barrier.size				= size;
-    barrier.srcQueueFamilyIndex	= VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex	= VK_QUEUE_FAMILY_IGNORED;
+    barrier.srcStageMask            = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+    barrier.srcAccessMask           = 0;
+    barrier.dstStageMask            = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+    barrier.dstAccessMask           =  0;
+	barrier.buffer                  = buffer.GetHandle();
+	barrier.offset                  = offset;
+	barrier.size                    = size;
+    barrier.srcQueueFamilyIndex     = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex     = VK_QUEUE_FAMILY_IGNORED;
 
 	return m_bufferBarriers.size() - 1;
 }
@@ -267,13 +266,21 @@ void RHIDependency::SetBufferDependencyStages(SizeType bufferIdx, rhi::EPipeline
 	
 	VkBufferMemoryBarrier2& barrier = m_bufferBarriers[bufferIdx];
 
-	barrier.srcStageMask	= RHIToVulkan::GetStageFlags(sourceStage);
-	barrier.srcAccessMask	= priv::GetVulkanBufferAccessFlags(sourceAccess, sourceStage);
-	barrier.dstStageMask	= RHIToVulkan::GetStageFlags(destStage);
-	barrier.dstAccessMask	= priv::GetVulkanBufferAccessFlags(destAccess, destStage);
+	barrier.srcStageMask  = RHIToVulkan::GetStageFlags(sourceStage);
+	barrier.srcAccessMask = priv::GetVulkanBufferAccessFlags(sourceAccess, sourceStage);
+	barrier.dstStageMask  = RHIToVulkan::GetStageFlags(destStage);
+	barrier.dstAccessMask = priv::GetVulkanBufferAccessFlags(destAccess, destStage);
 }
 
-void RHIDependency::ExecuteBarrier(const RHICommandBuffer& cmdBuffer)
+void RHIDependency::StageBarrier(rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess)
+{
+	m_memoryBarrier.srcStageMask  |= RHIToVulkan::GetStageFlags(sourceStage);
+	m_memoryBarrier.srcAccessMask |= priv::GetVulkanBufferAccessFlags(sourceAccess, sourceStage);
+	m_memoryBarrier.dstStageMask  |= RHIToVulkan::GetStageFlags(destStage);
+	m_memoryBarrier.dstAccessMask |= priv::GetVulkanBufferAccessFlags(destAccess, destStage);
+}
+
+void RHIDependency::ExecuteBarrier(const RHICommandBuffer& cmdBuffer) const
 {
 	const VkDependencyInfo dependencyInfo = GetDependencyInfo();
 	vkCmdPipelineBarrier2(cmdBuffer.GetHandle(), &dependencyInfo);
@@ -304,10 +311,12 @@ VkDependencyInfo RHIDependency::GetDependencyInfo() const
 #endif // DO_CHECKS
 
 	VkDependencyInfo dependency{ VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
-    dependency.imageMemoryBarrierCount	= static_cast<Uint32>(m_textureBarriers.size());
-    dependency.pImageMemoryBarriers		= m_textureBarriers.data();
-    dependency.bufferMemoryBarrierCount = static_cast<Uint32>(m_bufferBarriers.size());
-    dependency.pBufferMemoryBarriers	= m_bufferBarriers.data();
+	dependency.imageMemoryBarrierCount  = static_cast<Uint32>(m_textureBarriers.size());
+	dependency.pImageMemoryBarriers	    = m_textureBarriers.data();
+	dependency.bufferMemoryBarrierCount = static_cast<Uint32>(m_bufferBarriers.size());
+	dependency.pBufferMemoryBarriers    = m_bufferBarriers.data();
+	dependency.memoryBarrierCount       = 1u;
+	dependency.pMemoryBarriers          = &m_memoryBarrier;
 
 	return dependency;
 }

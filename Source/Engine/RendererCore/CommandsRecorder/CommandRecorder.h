@@ -38,7 +38,7 @@ public:
 
 	const lib::SharedPtr<CommandBuffer>&	GetCommandBuffer() const;
 
-	void									ExecuteBarrier(rhi::RHIDependency& dependency);
+	void									ExecuteBarrier(const rhi::RHIDependency& dependency);
 
 	void									SetEvent(const lib::SharedRef<GPUEvent>& event, rhi::RHIDependency& dependency);
 	void									WaitEvent(const lib::SharedRef<GPUEvent>& event, rhi::RHIDependency& dependency);

@@ -42,7 +42,7 @@ const lib::SharedPtr<CommandBuffer>& CommandRecorder::GetCommandBuffer() const
 	return m_commandsBuffer;
 }
 
-void CommandRecorder::ExecuteBarrier(rhi::RHIDependency& dependency)
+void CommandRecorder::ExecuteBarrier(const rhi::RHIDependency& dependency)
 {
 	dependency.ExecuteBarrier(GetCommandBufferRHI());
 }
