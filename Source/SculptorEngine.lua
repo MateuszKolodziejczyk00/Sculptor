@@ -69,6 +69,8 @@ IncludeProjectFromDirectory("Assets/TextureAsset",         "TextureAsset")
 IncludeProjectFromDirectory("Assets/TextureAssetTests",    "TextureAssetTests")
 IncludeProjectFromDirectory("Assets/IESProfileAsset",      "IESProfileAsset")
 IncludeProjectFromDirectory("Assets/IESProfileAssetTests", "IESProfileAssetTests")
+IncludeProjectFromDirectory("Assets/MeshAsset",            "MeshAsset")
+IncludeProjectFromDirectory("Assets/MeshAssetTests",       "MeshAssetTests")
 
 SetProjectsSubgroupName("Tools")
 IncludeProject("Profiler")

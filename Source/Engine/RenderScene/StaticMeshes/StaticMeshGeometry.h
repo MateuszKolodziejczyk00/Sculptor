@@ -20,13 +20,16 @@ struct StaticMeshGeometryData
 	rhi::RHIVirtualAllocation meshletsSuballocation;
 	rhi::RHIVirtualAllocation geometrySuballocation;
 };
-SPT_REGISTER_COMPONENT_TYPE(StaticMeshGeometryData, ecs::Registry);
 
 
 struct SubmeshRenderingDefinition
 {
-	Uint32 trianglesNum;
-	Uint32 meshletsNum;
+	Uint32 trianglesNum = 0u;
+	Uint32 verticesNum  = 0u;
+	Uint32 meshletsNum  = 0u;
+
+	rhi::DeviceAddress locationsAddress = 0u;
+	rhi::DeviceAddress indicesAddress   = 0u;
 };
 
 
@@ -64,25 +67,6 @@ END_SHADER_STRUCT();
 CREATE_NAMED_BUFFER(SubmeshesArray, SubmeshGPUData);
 using SubmeshGPUPtr   = gfx::GPUNamedElemPtr<SubmeshesArray, SubmeshGPUData>;
 using SubmeshsGPUSpan = gfx::GPUNamedElemsSpan<SubmeshesArray, SubmeshGPUData>;
-
-
-struct StaticMeshRenderingDefinition
-{
-	StaticMeshRenderingDefinition()
-		: geometryDataOffset(0)
-		, boundingSphereCenter(math::Vector3f::Zero())
-		, boundingSphereRadius(0.f)
-	{ }
-	
-	Uint32 geometryDataOffset;
-	
-	math::Vector3f boundingSphereCenter;
-	Real32 boundingSphereRadius;
-
-	SubmeshGPUPtr submeshesPtr; // points to first submesh of this mesh in global submeshes array
-	lib::DynamicArray<SubmeshRenderingDefinition> submeshesDefs;
-};
-SPT_REGISTER_COMPONENT_TYPE(StaticMeshRenderingDefinition, ecs::Registry);
 
 
 BEGIN_SHADER_STRUCT(StaticMeshGeometryBuffers)

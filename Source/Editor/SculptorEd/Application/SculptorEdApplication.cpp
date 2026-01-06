@@ -71,7 +71,7 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 	rhi::RHIWindowInitializationInfo windowInitInfo;
 	windowInitInfo.framebufferSize = math::Vector2u(1920, 1080);
 	windowInitInfo.enableVSync     = false;
-	m_window = rdr::ResourcesManager::CreateWindow("SculptorEd", windowInitInfo);
+	m_window = rdr::ResourcesManager::CreateRenderWindow("SculptorEd", windowInitInfo);
 
 	gfx::global::GlobalResourcesRegistry::Get().InitializeAll();
 }

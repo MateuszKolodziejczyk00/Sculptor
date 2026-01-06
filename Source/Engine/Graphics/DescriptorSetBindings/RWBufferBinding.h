@@ -49,7 +49,7 @@ public:
 				if (IsValid())
 				{
 					accessInfo.structTypeName = rdr::shader_translator::GetTypeName<TStruct>();
-					accessInfo.elementsNum    = m_boundBuffer.GetBoundBufferSize() / sizeof(rdr::HLSLStorage<TStruct>);
+					accessInfo.elementsNum    = static_cast<Uint32>(m_boundBuffer.GetBoundBufferSize() / sizeof(rdr::HLSLStorage<TStruct>));
 				}
 			}
 			m_boundBuffer.AddRGDependency(builder, accessInfo);

@@ -35,7 +35,7 @@ lib::UniquePtr<rdr::CommandRecorder> ResourcesManager::CreateCommandRecorder(con
 	return std::make_unique<rdr::CommandRecorder>(name, context, cmdBufferDef, commandBufferUsage);
 }
 
-lib::SharedRef<Window> ResourcesManager::CreateWindow(lib::StringView name, const rhi::RHIWindowInitializationInfo& windowInfo)
+lib::SharedRef<Window> ResourcesManager::CreateRenderWindow(lib::StringView name, const rhi::RHIWindowInitializationInfo& windowInfo)
 {
 	return lib::MakeShared<Window>(name, windowInfo);
 }

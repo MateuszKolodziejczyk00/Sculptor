@@ -19,11 +19,12 @@ struct PointLightData;
 struct StaticMeshRenderingDefinition;
 struct MaterialsDataComponent;
 class StaticMeshBatchDS;
+class RenderMesh;
 
 
 struct StaticMeshInstanceRenderData
 {
-	ecs::EntityHandle staticMesh;
+	lib::MTHandle<RenderMesh> staticMesh;
 };
 SPT_REGISTER_COMPONENT_TYPE(StaticMeshInstanceRenderData, RenderSceneRegistry);
 
@@ -76,7 +77,7 @@ public:
 
 	SMBatchesBuilder(lib::DynamicArray<StaticMeshSMBatchDefinition>& inBatches);
 
-	void AppendMeshToBatch(RenderEntityGPUPtr entityPtr, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const rsc::MaterialSlotsComponent& materialsSlots);
+	void AppendMeshToBatch(RenderEntityGPUPtr entityPtr, const RenderMesh& mesh, const rsc::MaterialSlotsComponent& materialsSlots);
 
 	void FinalizeBatches();
 

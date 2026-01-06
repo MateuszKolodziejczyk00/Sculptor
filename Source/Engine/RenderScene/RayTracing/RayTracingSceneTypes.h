@@ -15,14 +15,6 @@ class BottomLevelAS;
 namespace spt::rsc
 {
 
-struct RayTracingGeometryProviderComponent
-{
-	// Entity that contains RayTracingGeometryComponent
-	ecs::EntityHandle entity;
-};
-SPT_REGISTER_COMPONENT_TYPE(RayTracingGeometryProviderComponent, RenderSceneRegistry)
-
-
 struct RayTracingGeometryDefinition
 {
 	lib::SharedPtr<rdr::BottomLevelAS> blas;
@@ -39,6 +31,23 @@ struct RayTracingGeometryDefinition
 	Uint32 uvsDataUGBOffset       = 0u;
 	Uint32 normalsDataUGBOffset   = 0u;
 };
+
+
+class RayTracingGeometryProvider
+{
+public:
+
+	virtual ~RayTracingGeometryProvider() = default;
+
+	virtual lib::Span<const RayTracingGeometryDefinition> GetRayTracingGeometries() const = 0;
+};
+
+
+struct RayTracingGeometryProviderComponent
+{
+	RayTracingGeometryProvider* provider = nullptr;
+};
+SPT_REGISTER_COMPONENT_TYPE(RayTracingGeometryProviderComponent, RenderSceneRegistry)
 
 
 struct RayTracingGeometryComponent

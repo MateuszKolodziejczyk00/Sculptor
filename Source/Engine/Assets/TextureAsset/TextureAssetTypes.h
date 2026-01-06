@@ -4,7 +4,7 @@
 #include "AssetTypes.h"
 #include "RHI/RHICore/RHITextureTypes.h"
 #include "DDC.h"
-#include "Transfers/GPUDeferredUploadsQueueTypes.h"
+#include "Transfers/GPUDeferredCommandsQueueTypes.h"
 
 
 namespace spt::rdr

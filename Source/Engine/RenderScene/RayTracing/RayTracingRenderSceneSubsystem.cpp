@@ -70,15 +70,17 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 
 	for (const auto& [entity, gpuEntity, transform, materialsSlots, rtGeoProvider] : rayTracedObjectsEntities.each())
 	{
-		const RayTracingGeometryComponent& rayTracingGeoComp = rtGeoProvider.entity.get<const RayTracingGeometryComponent>();
+		SPT_CHECK(rtGeoProvider.provider != nullptr);
+
+		const lib::Span<const RayTracingGeometryDefinition> rtGeometries = rtGeoProvider.provider->GetRayTracingGeometries();
 
 		const rhi::TLASInstanceDefinition::TransformMatrix transformMatrix = transform.GetTransform().matrix().topLeftCorner<3, 4>();
 
-		SPT_CHECK(rayTracingGeoComp.geometries.size() == materialsSlots.slots.size());
+		SPT_CHECK(rtGeometries.size() == materialsSlots.slots.size());
 
-		for(SizeType idx = 0; idx < rayTracingGeoComp.geometries.size(); ++idx)
+		for(SizeType idx = 0; idx < rtGeometries.size(); ++idx)
 		{
-			const RayTracingGeometryDefinition& rtGeometry   = rayTracingGeoComp.geometries[idx];
+			const RayTracingGeometryDefinition& rtGeometry   = rtGeometries[idx];
 			const ecs::EntityHandle material                 = materialsSlots.slots[idx];
 			const mat::MaterialProxyComponent& materialProxy = material.get<const mat::MaterialProxyComponent>();
 

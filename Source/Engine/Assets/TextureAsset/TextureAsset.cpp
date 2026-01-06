@@ -6,7 +6,7 @@
 #include "Transfers/UploadUtils.h"
 #include "TextureCompiler.h"
 #include "AssetsSystem.h"
-#include "Transfers/GPUDeferredUploadsQueue.h"
+#include "Transfers/GPUDeferredCommandsQueue.h"
 
 namespace spt::as
 {
@@ -70,7 +70,7 @@ void TextureAsset::CreateTextureInstance()
 	m_textureInstance = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME(GetName()), textureDefinition, rhi::EMemoryUsage::GPUOnly);
 	SPT_CHECK_MSG(!!m_textureInstance, "Failed to create texture instance");
 
-	gfx::GPUDeferredUploadsQueue& queue = gfx::GPUDeferredUploadsQueue::Get();
+	gfx::GPUDeferredCommandsQueue& queue = gfx::GPUDeferredCommandsQueue::Get();
 
 	lib::UniquePtr<TextureUploadRequest> uploadRequest = lib::MakeUnique<TextureUploadRequest>();
 	uploadRequest->dstTextureView  = m_textureInstance;

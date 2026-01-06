@@ -38,7 +38,7 @@ RendererFloatParameter directionalLightMaxShadowTraceDist("Max Shadow Trace Dist
 RendererFloatParameter directionalLightShadowRayBias("Shadow Ray Bias", { "Lighting", "Shadows", "Directional"}, 0.01f, 0.f, 0.1f);
 
 RendererBoolParameter halfResShadows("Half Res", { "Lighting", "Shadows", "Directional" }, false);
-RendererBoolParameter enableScreenSpaceShadows("Enable Screen Space Shadows", { "Lighting", "Shadows", "Directional" }, true);
+RendererBoolParameter enableScreenSpaceShadows("Enable Screen Space Shadows", { "Lighting", "Shadows", "Directional" }, false);
 RendererIntParameter screenSpaceShadowsSteps("Screen Space Shadows Steps", { "Lighting", "Shadows", "Directional" }, 8, 1, 64);
 RendererFloatParameter screenSpaceShadowsDistance("Screen Space Shadows Distance", { "Lighting", "Shadows", "Directional" }, 0.3f, 0.f, 5.f);
 RendererBoolParameter enableScreenSpaceDebug("Enable Screen Space Debug", { "Lighting", "Shadows", "Directional" }, false);

@@ -163,8 +163,10 @@ void SharcUpdateRTG()
 		}
 	}
 
+	const uint bouncesNum = 4u;
+
 	uint hitsNum = 0u;
-	for(uint it = 0u; it < 4u; ++it)
+	for(uint it = 0u; it < bouncesNum; ++it)
 	{
 		hitsNum++;
 		const RayDirectionInfo rayInfo = GenerateReflectionRayDir(diffuseColor, specularColor, normal, roughness, fromDir, rng);
@@ -190,7 +192,7 @@ void SharcUpdateRTG()
 
 		if (hitRes.hitType == RTGBUFFER_HIT_TYPE_VALID_HIT)
 		{
-			const bool isLastBounce = it == 3u;
+			const bool isLastBounce = (it == (bouncesNum - 1u));
 
 			const float3 hitLocation = worldLocation + rayInfo.direction * hitRes.hitDistance;
 
@@ -198,7 +200,7 @@ void SharcUpdateRTG()
 
 			worldLocation     = worldLocation + rayInfo.direction * hitRes.hitDistance;
 			normal            = hitRes.normal;
-			roughness         = hitRes.roughness;
+			roughness         = max(hitRes.roughness, 0.4f);
 			baseColorMetallic = float4(hitRes.baseColor, hitRes.metallic);
 			fromDir           = -rayInfo.direction;
 

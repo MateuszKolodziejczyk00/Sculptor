@@ -3,8 +3,8 @@
 #include "AssetsSystem.h"
 #include "IESProfileCompiler.h"
 #include "DDC.h"
-#include "Transfers/GPUDeferredUploadsQueue.h"
-#include "Transfers/GPUDeferredUploadsQueueTypes.h"
+#include "Transfers/GPUDeferredCommandsQueue.h"
+#include "Transfers/GPUDeferredCommandsQueueTypes.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/Texture.h"
 #include "Transfers/UploadUtils.h"
@@ -134,7 +134,7 @@ void IESProfileAsset::InitGPUTexture()
 														 textureDef,
 														 rhi::RHIAllocationInfo(rhi::EMemoryUsage::GPUOnly));
 
-	gfx::GPUDeferredUploadsQueue& queue = gfx::GPUDeferredUploadsQueue::Get();
+	gfx::GPUDeferredCommandsQueue& queue = gfx::GPUDeferredCommandsQueue::Get();
 
 	lib::UniquePtr<IESProfileUploadRequest> uploadRequest = lib::MakeUnique<IESProfileUploadRequest>();
 	uploadRequest->dstTextureView = m_texture;

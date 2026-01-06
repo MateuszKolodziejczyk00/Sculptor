@@ -79,7 +79,7 @@ public:
 
 	SPT_NODISCARD static lib::UniquePtr<CommandRecorder> CreateCommandRecorder(const rdr::RendererResourceName& name, const lib::SharedRef<RenderContext>& context, const rhi::CommandBufferDefinition& cmdBufferDef, const rhi::CommandBufferUsageDefinition& commandBufferUsage = rhi::CommandBufferUsageDefinition());
 	
-	SPT_NODISCARD static lib::SharedRef<Window> CreateWindow(lib::StringView name, const rhi::RHIWindowInitializationInfo& windowInfo);
+	SPT_NODISCARD static lib::SharedRef<Window> CreateRenderWindow(lib::StringView name, const rhi::RHIWindowInitializationInfo& windowInfo);
 
 	SPT_NODISCARD static lib::SharedRef<GPUEvent> CreateGPUEvent(const RendererResourceName& name, const rhi::EventDefinition& definition);
 	

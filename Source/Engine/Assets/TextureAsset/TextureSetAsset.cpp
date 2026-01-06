@@ -8,7 +8,7 @@
 #include "RHIBridge/RHIDependencyImpl.h"
 #include "Transfers/UploadUtils.h"
 #include "ResourcesManager.h"
-#include "Transfers/GPUDeferredUploadsQueue.h"
+#include "Transfers/GPUDeferredCommandsQueue.h"
 
 
 namespace spt::as
@@ -83,7 +83,7 @@ void PBRTextureSetAsset::CreateTextureInstances()
 		return uploadRequest;
 	};
 
-	gfx::GPUDeferredUploadsQueue& queue = gfx::GPUDeferredUploadsQueue::Get();
+	gfx::GPUDeferredCommandsQueue& queue = gfx::GPUDeferredCommandsQueue::Get();
 
 	queue.RequestUpload(createUploadRequest(m_baseColor, dd->header.baseColor));
 	queue.RequestUpload(createUploadRequest(m_metallicRoughness, dd->header.metallicRoughness));

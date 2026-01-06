@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 #include "AssetsSystem.h"
-#include "IESProfileAsset.h"
+#include "MeshAsset.h"
 #include "Engine.h"
 #include "Renderer.h"
 #include "Graphics/Transfers/GPUDeferredCommandsQueue.h"
@@ -9,7 +9,7 @@
 namespace spt::as::tests
 {
 
-class IESProfileAssetsSystemTests : public testing::Test
+class MeshAssetsTests : public testing::Test
 {
 protected:
 
@@ -19,7 +19,7 @@ protected:
 	AssetsSystem m_assetsSystem;
 };
 
-void IESProfileAssetsSystemTests::SetUp()
+void MeshAssetsTests::SetUp()
 {
 	const lib::Path executablePath = platf::Platform::GetExecutablePath();
 	const lib::Path contentPath    = executablePath.parent_path() / "../../Tests/Content";
@@ -33,26 +33,30 @@ void IESProfileAssetsSystemTests::SetUp()
 	EXPECT_TRUE(initialized);
 }
 
-void IESProfileAssetsSystemTests::TearDown()
+void MeshAssetsTests::TearDown()
 {
 	m_assetsSystem.Shutdown();
 }
 
-TEST_F(IESProfileAssetsSystemTests, CreateIESProfile)
+TEST_F(MeshAssetsTests, CreateMesh)
 {
-	const lib::Path assetPath = "IESProfile/CreateIESProfile/IESProfile.sptasset";
+	const lib::Path assetPath = "Mesh/CreateMesh/Mesh.sptasset";
 	m_assetsSystem.DeleteAsset(assetPath); // Delete leftover asset if exists
 
-	IESProfileDataInitializer textureInitializer
+	MeshDataInitializer meshInitializer
 	{
-		IESProfileSourceDefinition{ .path = "Source/sample0.ies" }
+		MeshSourceDefinition
+		{ 
+			.path    = "Source/Cube.gltf",
+			.meshIdx = 0u
+		}
 	};
 
 	CreateResult result = m_assetsSystem.CreateAsset(AssetInitializer
 													 {
-														 .type            = CreateAssetType<IESProfileAsset>(),
+														 .type            = CreateAssetType<MeshAsset>(),
 														 .path            = assetPath,
-														 .dataInitializer = &textureInitializer
+														 .dataInitializer = &meshInitializer
 													 });
 
 	EXPECT_TRUE(result);

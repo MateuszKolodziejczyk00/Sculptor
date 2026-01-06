@@ -16,20 +16,22 @@ namespace spt::gfx
 {
 
 class GPUDeferredUploadRequest;
+class GPUDeferredBLASBuildRequest;
 
 
 using PostDeferredUploadsMulticastDelegate = lib::ThreadSafeMulticastDelegate<void()>;
 
 
-class GRAPHICS_API GPUDeferredUploadsQueue : public engn::Plugin
+class GRAPHICS_API GPUDeferredCommandsQueue : public engn::Plugin
 {
-	SPT_GENERATE_PLUGIN(GPUDeferredUploadsQueue);
+	SPT_GENERATE_PLUGIN(GPUDeferredCommandsQueue);
 
 	using Super = Plugin;
 
 public:
 
 	void RequestUpload(lib::UniquePtr<GPUDeferredUploadRequest> request);
+	void RequestBLASBuild(lib::UniquePtr<GPUDeferredBLASBuildRequest> request);
 
 	void ForceFlushUploads();
 
@@ -47,13 +49,14 @@ protected:
 
 private:
 
-	void ExecuteUploads();
+	void ExecuteCommands();
 
 	void ExecutePreUploadBarriers(const lib::SharedPtr<rdr::RenderContext>& renderContext);
 	void ExecutePostUploadBarriers(const lib::SharedPtr<rdr::RenderContext>& renderContext);
 
 
-	lib::DynamicArray<lib::UniquePtr<GPUDeferredUploadRequest>> m_requests;
+	lib::DynamicArray<lib::UniquePtr<GPUDeferredUploadRequest>> m_uploadRequests;
+	lib::DynamicArray<lib::UniquePtr<GPUDeferredBLASBuildRequest>> m_blasBuildRequests;
 
 	PostDeferredUploadsMulticastDelegate m_postDeferredUploadsDelegate;
 };

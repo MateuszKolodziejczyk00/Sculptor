@@ -1,7 +1,7 @@
 #include "glTFSceneLoader.h"
 #include "ResourcesManager.h"
 #include "Paths.h"
-#include "MeshBuilder.h"
+#include "GLTFMeshBuilder.h"
 #include "RenderScene.h"
 #include "StaticMeshes/StaticMeshRenderSceneSubsystem.h"
 #include "Types/Texture.h"
@@ -20,211 +20,11 @@
 #include "DeviceQueues/DeviceQueuesManager.h"
 #include "DeviceQueues/GPUWorkload.h"
 
-#if SPT_BUILD_LIBS_AS_DLL // If engine libs are build as static, stb is already defined in texture loader code
-	#define STB_IMAGE_IMPLEMENTATION
-#endif // SPT_BUILD_LIBS_AS_DLL
-
-#define TINYGLTF_IMPLEMENTATION
-#define TINYGLTF_NO_STB_IMAGE_WRITE
-
-#pragma warning(push)
-#pragma warning(disable: 4996)
-#include "tiny_gltf.h"
-#pragma warning(pop)
-
 
 namespace spt::rsc
 {
 
 SPT_DEFINE_LOG_CATEGORY(LogGLTFLoader, true);
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// GLTFPrimitiveBuilder ==========================================================================
-int test = 0;
-
-class GLTFMeshBuilder : public MeshBuilder
-{
-protected:
-
-	using Super = MeshBuilder;
-
-public:
-
-	explicit GLTFMeshBuilder(const MeshBuildParameters& parameters);
-
-	void BuildMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model);
-
-private:
-
-	const tinygltf::Accessor* GetAttributeAccessor(const tinygltf::Primitive& prim, const tinygltf::Model& model, const lib::String& name);
-
-	void SetIndices(const tinygltf::Accessor& accessor, const tinygltf::Model& model);
-	void SetLocations(const tinygltf::Accessor& accessor, const tinygltf::Model& model);
-	void SetNormals(const tinygltf::Accessor& accessor, const tinygltf::Model& model);
-	void SetTangents(const tinygltf::Accessor& accessor, const tinygltf::Model& model);
-	void SetUVs(const tinygltf::Accessor& accessor, const tinygltf::Model& model);
-
-	template<typename TDestType>
-	Uint32 AppendAccessorData(const tinygltf::Accessor& accessor, const tinygltf::Model& model);
-};
-
-GLTFMeshBuilder::GLTFMeshBuilder(const MeshBuildParameters& parameters)
-	: Super(parameters)
-{ }
-
-void GLTFMeshBuilder::BuildMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model)
-{
-	SPT_PROFILER_FUNCTION();
-
-	for (const tinygltf::Primitive& prim : mesh.primitives)
-	{
-		if (prim.material == -1)
-		{
-			continue;
-		}
-
-		BeginNewSubmesh();
-
-		SetIndices(model.accessors[prim.indices], model);
-
-		const static lib::String locationsAccessorName = "POSITION";
-		if (const tinygltf::Accessor* locationsAccessor = GetAttributeAccessor(prim, model, locationsAccessorName))
-		{
-			SetLocations(*locationsAccessor, model);
-		}
-
-		const static lib::String normalsAccessorName = "NORMAL";
-		if (const tinygltf::Accessor* normalsAccessor = GetAttributeAccessor(prim, model, normalsAccessorName))
-		{
-			SetNormals(*normalsAccessor, model);
-		}
-
-		const static lib::String tangentsAccessorName = "TANGENT";
-		if (const tinygltf::Accessor* tangentsAccessor = GetAttributeAccessor(prim, model, tangentsAccessorName))
-		{
-			SetTangents(*tangentsAccessor, model);
-		}
-
-		const static lib::String uvsAccessorName = "TEXCOORD_0";
-		if (const tinygltf::Accessor* uvsAccessor = GetAttributeAccessor(prim, model, uvsAccessorName))
-		{
-			SetUVs(*uvsAccessor, model);
-		}
-	}
-}
-
-const tinygltf::Accessor* GLTFMeshBuilder::GetAttributeAccessor(const tinygltf::Primitive& prim, const tinygltf::Model& model, const lib::String& name)
-{
-	const auto foundAccessorIdxIt = prim.attributes.find(name);
-	const Int32 foundAccessorIdx = foundAccessorIdxIt != std::cend(prim.attributes) ? foundAccessorIdxIt->second : -1;
-	return foundAccessorIdx != -1 ? &model.accessors[foundAccessorIdx] : nullptr;
-}
-
-void GLTFMeshBuilder::SetIndices(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
-{
-	SubmeshBuildData& submeshBD = GetBuiltSubmesh();
-	SPT_CHECK(submeshBD.submesh.indicesNum == 0);
-	SPT_CHECK(submeshBD.submesh.indicesOffset == idxNone<Uint32>);
-
-	submeshBD.submesh.indicesOffset = static_cast<Uint32>(GetCurrentDataSize());
-	submeshBD.submesh.indicesNum = AppendAccessorData<Uint32>(accessor, model);
-}
-
-void GLTFMeshBuilder::SetLocations(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
-{
-	SubmeshBuildData& submeshBD = GetBuiltSubmesh();
-	SPT_CHECK(submeshBD.submesh.locationsOffset == idxNone<Uint32>);
-	
-	submeshBD.submesh.locationsOffset = static_cast<Uint32>(GetCurrentDataSize());
-	submeshBD.vertexCount = AppendAccessorData<Real32>(accessor, model);
-}
-
-void GLTFMeshBuilder::SetNormals(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
-{
-	SubmeshBuildData& submeshBD = GetBuiltSubmesh();
-	SPT_CHECK(submeshBD.submesh.normalsOffset == idxNone<Uint32>);
-	
-	submeshBD.submesh.normalsOffset = static_cast<Uint32>(GetCurrentDataSize());
-	AppendAccessorData<Real32>(accessor, model);
-}
-
-void GLTFMeshBuilder::SetTangents(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
-{
-	SubmeshBuildData& submeshBD = GetBuiltSubmesh();
-	SPT_CHECK(submeshBD.submesh.tangentsOffset == idxNone<Uint32>);
-	
-	submeshBD.submesh.tangentsOffset = static_cast<Uint32>(GetCurrentDataSize());
-	AppendAccessorData<Real32>(accessor, model);
-}
-
-void GLTFMeshBuilder::SetUVs(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
-{
-	SubmeshBuildData& submeshBD = GetBuiltSubmesh();
-	SPT_CHECK(submeshBD.submesh.uvsOffset == idxNone<Uint32>);
-	
-	submeshBD.submesh.uvsOffset = static_cast<Uint32>(GetCurrentDataSize());
-	AppendAccessorData<Real32>(accessor, model);
-}
-
-template<typename TDestType>
-Uint32 GLTFMeshBuilder::AppendAccessorData(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const Int32 bufferViewIdx = accessor.bufferView;
-	SPT_CHECK(bufferViewIdx != -1);
-
-	const tinygltf::BufferView& bufferView = model.bufferViews[bufferViewIdx];
-	const Int32 bufferIdx = bufferView.buffer;
-	SPT_CHECK(bufferIdx != -1);
-
-	const tinygltf::Buffer& buffer = model.buffers[bufferIdx];
-
-	const SizeType bufferByteOffset = accessor.byteOffset + bufferView.byteOffset;
-	const Int32 strideAsInt = accessor.ByteStride(bufferView);
-	SPT_CHECK(strideAsInt != -1);
-	const SizeType stride = static_cast<SizeType>(strideAsInt);
-
-	const SizeType elementsNum = accessor.count;
-	const SizeType componentsNum = tinygltf::GetNumComponentsInType(accessor.type);
-	const Int32 componentType = accessor.componentType;
-	
-	const unsigned char* data = buffer.data.data() + bufferByteOffset;
-
-	switch (componentType)
-	{
-	case TINYGLTF_COMPONENT_TYPE_BYTE:
-		AppendData<TDestType, char>(data, componentsNum, stride, elementsNum);
-		break;
-	case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
-		AppendData<TDestType, unsigned char>(data, componentsNum, stride, elementsNum);
-		break;
-	case TINYGLTF_COMPONENT_TYPE_SHORT:
-		AppendData<TDestType, short>(data, componentsNum, stride, elementsNum);
-		break;
-	case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-		AppendData<TDestType, unsigned short>(data, componentsNum, stride, elementsNum);
-		break;
-	case TINYGLTF_COMPONENT_TYPE_INT:
-		AppendData<TDestType, Int32>(data, componentsNum, stride, elementsNum);
-		break;
-	case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
-		AppendData<TDestType, Uint32>(data, componentsNum, stride, elementsNum);
-		break;
-	case TINYGLTF_COMPONENT_TYPE_FLOAT:
-		AppendData<TDestType, Real32>(data, componentsNum, stride, elementsNum);
-		break;
-	case TINYGLTF_COMPONENT_TYPE_DOUBLE:
-		AppendData<TDestType, Real64>(data, componentsNum, stride, elementsNum);
-		break;
-	default:
-		SPT_CHECK_NO_ENTRY();
-	}
-
-	// value must be lower because maxValue is reserved for "invalid"
-	SPT_CHECK(elementsNum < maxValue<Uint32>);
-	return static_cast<Uint32>(elementsNum);
-}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // glTFLoader ====================================================================================
@@ -279,7 +79,7 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 	return transform;
 }
 
-static ecs::EntityHandle LoadMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model, const MeshBuildParameters& parameters)
+static lib::MTHandle<RenderMesh> LoadMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model, const MeshBuildParameters& parameters)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -472,7 +272,8 @@ static lib::DynamicArray<ecs::EntityHandle> CreateMaterials(const tinygltf::Mode
 		materialDefinition.name          = materialSourceDef.name;
 		materialDefinition.customOpacity = isMasked;
 		materialDefinition.transparent   = isTransparent;
-		materialDefinition.doubleSided   = materialSourceDef.doubleSided;
+		//materialDefinition.doubleSided   = materialSourceDef.doubleSided;
+		materialDefinition.doubleSided   = true;
 		materialDefinition.emissive      = materialSourceDef.emissiveFactor[0] > 0.f || materialSourceDef.emissiveFactor[1] > 0.f || materialSourceDef.emissiveFactor[2] > 0.f;
 
 		const ecs::EntityHandle material = mat::MaterialsSubsystem::Get().CreateMaterial(materialDefinition, pbrData);
@@ -507,8 +308,6 @@ void BuildAccelerationStructures(const rdr::BLASBuilder& builder)
 void LoadScene(RenderScene& scene, lib::StringView path)
 {
 	SPT_PROFILER_FUNCTION();
-
-	test++;
 
 	const lib::StringView fileExtension = engn::Paths::GetExtension(path);
 	SPT_CHECK(fileExtension == "gltf" || fileExtension == "glb");
@@ -545,7 +344,7 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 		const lib::DynamicArray<lib::SharedPtr<rdr::TextureView>> loadedTextures = LoadImages(model);
 		const lib::DynamicArray<ecs::EntityHandle> materials = CreateMaterials(model, loadedTextures);
 
-		lib::HashMap<int, ecs::EntityHandle> loadedMeshes;
+		lib::HashMap<int, lib::MTHandle<RenderMesh>> loadedMeshes;
 		loadedMeshes.reserve(model.meshes.size());
 
 		rdr::BLASBuilder blasBuilder;
@@ -637,7 +436,7 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 				if (withRayTracing)
 				{
 					RayTracingGeometryProviderComponent rtGeoProvider;
-					rtGeoProvider.entity = loadedMeshes[node.mesh];
+					rtGeoProvider.provider = loadedMeshes[node.mesh].Get();
 					meshSceneEntity.emplace<RayTracingGeometryProviderComponent>(rtGeoProvider);
 				}
 			}

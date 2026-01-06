@@ -1,4 +1,4 @@
-#include "GPUDeferredUploadsQueue.h"
+#include "GPUDeferredCommandsQueue.h"
 #include "EngineFrame.h"
 #include "JobSystem.h"
 #include "ResourcesManager.h"
@@ -7,28 +7,33 @@
 #include "Renderer.h"
 #include "DeviceQueues/DeviceQueuesManager.h"
 #include "Transfers/UploadUtils.h"
-#include "GPUDeferredUploadsQueueTypes.h"
+#include "GPUDeferredCommandsQueueTypes.h"
 
 
 namespace spt::gfx
 {
 
-SPT_DEFINE_PLUGIN(GPUDeferredUploadsQueue);
+SPT_DEFINE_PLUGIN(GPUDeferredCommandsQueue);
 
 
-void GPUDeferredUploadsQueue::RequestUpload(lib::UniquePtr<GPUDeferredUploadRequest> request)
+void GPUDeferredCommandsQueue::RequestUpload(lib::UniquePtr<GPUDeferredUploadRequest> request)
 {
-	m_requests.emplace_back(std::move(request));
+	m_uploadRequests.emplace_back(std::move(request));
 }
 
-void GPUDeferredUploadsQueue::ForceFlushUploads()
+void GPUDeferredCommandsQueue::RequestBLASBuild(lib::UniquePtr<GPUDeferredBLASBuildRequest> request)
+{
+	m_blasBuildRequests.emplace_back(std::move(request));
+}
+
+void GPUDeferredCommandsQueue::ForceFlushUploads()
 {
 	SPT_PROFILER_FUNCTION();
 
-	ExecuteUploads();
+	ExecuteCommands();
 }
 
-void GPUDeferredUploadsQueue::OnPostEngineInit()
+void GPUDeferredCommandsQueue::OnPostEngineInit()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -38,12 +43,12 @@ void GPUDeferredUploadsQueue::OnPostEngineInit()
 	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]()
 															{
 																SPT_PROFILER_FUNCTION();
-																m_requests.clear();
+																m_uploadRequests.clear();
 															});
 }
 
 
-void GPUDeferredUploadsQueue::OnBeginFrame(engn::FrameContext& frameContext)
+void GPUDeferredCommandsQueue::OnBeginFrame(engn::FrameContext& frameContext)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -52,38 +57,63 @@ void GPUDeferredUploadsQueue::OnBeginFrame(engn::FrameContext& frameContext)
 	js::Launch(SPT_GENERIC_JOB_NAME,
 			   [this]
 			   {
-				   ExecuteUploads();
+				   ExecuteCommands();
 			   },
 			   js::Prerequisites(frameContext.GetStageBeginEvent(engn::EFrameStage::TransferDataForRendering)),
 			   js::JobDef().ExecuteBefore(frameContext.GetStageBeginEvent(engn::EFrameStage::RenderingBegin)));
 }
 
-void GPUDeferredUploadsQueue::ExecuteUploads()
+void GPUDeferredCommandsQueue::ExecuteCommands()
 {
 	SPT_PROFILER_FUNCTION();
 
-	if (!m_requests.empty())
+	if (!m_uploadRequests.empty() || !m_blasBuildRequests.empty())
 	{
 		const lib::SharedPtr<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("TextureStreamer"), rhi::ContextDefinition());
 
-		ExecutePreUploadBarriers(renderContext);
-
-		for (const lib::UniquePtr<GPUDeferredUploadRequest>& request : m_requests)
+		if (!m_uploadRequests.empty())
 		{
-			request->EnqueueUploads();
+			ExecutePreUploadBarriers(renderContext);
+
+			for (const lib::UniquePtr<GPUDeferredUploadRequest>& request : m_uploadRequests)
+			{
+				request->EnqueueUploads();
+			}
+
+			gfx::FlushPendingUploads();
+
+			ExecutePostUploadBarriers(renderContext);
+
+			m_uploadRequests.clear();
 		}
 
-		gfx::FlushPendingUploads();
+		if (!m_blasBuildRequests.empty())
+		{
+			rdr::BLASBuilder blasBuilder;
 
-		ExecutePostUploadBarriers(renderContext);
+			for (const lib::UniquePtr<GPUDeferredBLASBuildRequest>& request : m_blasBuildRequests)
+			{
+				request->BuildBLASes(blasBuilder);
+			}
 
-		m_requests.clear();
+			lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::ResourcesManager::CreateCommandRecorder(RENDERER_RESOURCE_NAME("BLAS Builds Cmd Buffer"),
+																										 lib::Ref(renderContext),
+																										 rhi::CommandBufferDefinition(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary));
+
+			blasBuilder.Build(*recorder);
+
+			const lib::SharedRef<rdr::GPUWorkload> gpuWorkload = recorder->FinishRecording();
+
+			rdr::Renderer::GetDeviceQueuesManager().Submit(gpuWorkload, rdr::EGPUWorkloadSubmitFlags::CorePipe);
+
+			m_blasBuildRequests.clear();
+		}
 	}
 
 	m_postDeferredUploadsDelegate.ResetAndBroadcast();
 }
 
-void GPUDeferredUploadsQueue::ExecutePreUploadBarriers(const lib::SharedPtr<rdr::RenderContext>& renderContext)
+void GPUDeferredCommandsQueue::ExecutePreUploadBarriers(const lib::SharedPtr<rdr::RenderContext>& renderContext)
 {
 	lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::ResourcesManager::CreateCommandRecorder(RENDERER_RESOURCE_NAME("Pre Upload Barriers Cmd Buffer"),
 																								 lib::Ref(renderContext),
@@ -92,7 +122,7 @@ void GPUDeferredUploadsQueue::ExecutePreUploadBarriers(const lib::SharedPtr<rdr:
 
 	rhi::RHIDependency dependency;
 
-	for (const lib::UniquePtr<GPUDeferredUploadRequest>& request : m_requests)
+	for (const lib::UniquePtr<GPUDeferredUploadRequest>& request : m_uploadRequests)
 	{
 		request->PrepareForUpload(*recorder, dependency);
 	}
@@ -106,7 +136,7 @@ void GPUDeferredUploadsQueue::ExecutePreUploadBarriers(const lib::SharedPtr<rdr:
 	rdr::Renderer::GetDeviceQueuesManager().Submit(gpuWorkload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::CorePipe, rdr::EGPUWorkloadSubmitFlags::MemoryTransfers));
 }
 
-void GPUDeferredUploadsQueue::ExecutePostUploadBarriers(const lib::SharedPtr<rdr::RenderContext>& renderContext)
+void GPUDeferredCommandsQueue::ExecutePostUploadBarriers(const lib::SharedPtr<rdr::RenderContext>& renderContext)
 {
 	lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::ResourcesManager::CreateCommandRecorder(RENDERER_RESOURCE_NAME("Post Upload Barriers Cmd Buffer"),
 																								 lib::Ref(renderContext),
@@ -116,7 +146,7 @@ void GPUDeferredUploadsQueue::ExecutePostUploadBarriers(const lib::SharedPtr<rdr
 
 	rhi::RHIDependency dependency;
 
-	for (const lib::UniquePtr<GPUDeferredUploadRequest>& request : m_requests)
+	for (const lib::UniquePtr<GPUDeferredUploadRequest>& request : m_uploadRequests)
 	{
 		request->FinishStreaming(*recorder, dependency);
 	}

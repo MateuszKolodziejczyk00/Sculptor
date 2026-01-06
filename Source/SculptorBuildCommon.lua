@@ -238,6 +238,8 @@ function Project:BuildConfiguration(configuration, platform)
         editAndContinue "Off"
     end
 
+    floatingpoint "Fast"
+
     enableunitybuild "On"
 
     -- setup function

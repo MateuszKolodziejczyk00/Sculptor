@@ -25,7 +25,7 @@ public:
 		std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
 	}
 
-	static void Yield()
+	static void YieldThread()
 	{
 		std::this_thread::yield();
 	}

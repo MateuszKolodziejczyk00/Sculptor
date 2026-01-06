@@ -4,6 +4,7 @@
 #include "GeometryManager.h"
 #include "StaticMeshes/StaticMeshGeometry.h"
 #include "ECSRegistry.h"
+#include "StaticMeshes/RenderMesh.h"
 
 
 namespace spt::rdr
@@ -28,31 +29,24 @@ struct MeshBuildParameters
 };
 
 
-struct SubmeshBuildData
-{
-	SubmeshBuildData()
-		: vertexCount(0)
-	{ }
-
-	SubmeshGPUData submesh;
-	Uint32 vertexCount;
-};
-
-
 class MeshBuilder abstract
 {
 public:
 
 	explicit MeshBuilder(const MeshBuildParameters& parameters);
 
-	ecs::EntityHandle EmitMeshGeometry();
+	lib::MTHandle<RenderMesh> EmitMeshGeometry();
+
+	void Build();
+
+	MeshDefinition CreateMeshDefinition() const;
 
 protected:
 
 	const MeshBuildParameters& GetParameters() const;
 
 	void BeginNewSubmesh();
-	SubmeshBuildData& GetBuiltSubmesh();
+	SubmeshDefinition& GetCurrentSubmesh();
 
 	Uint64 GetCurrentDataSize() const;
 
@@ -74,15 +68,15 @@ private:
 	}
 	
 #if SPT_DEBUG
-	void ValidateSubmesh(const SubmeshBuildData& submeshBuildData) const;
+	void ValidateSubmesh(SubmeshDefinition& submesh) const;
 #endif // SPT_DEBUG
 
-	void ComputeBoundingSphere(SubmeshBuildData& submeshBuildData) const;
+	void ComputeBoundingSphere(SubmeshDefinition& submesh) const;
 
-	void OptimizeSubmesh(SubmeshBuildData& submeshBuildData);
-	void BuildMeshlets(SubmeshBuildData& submeshBuildData);
+	void OptimizeSubmesh(SubmeshDefinition& submesh);
+	void BuildMeshlets(SubmeshDefinition& submesh);
 
-	void BuildMeshletsCullingData(SubmeshBuildData& submeshBuildData);
+	void BuildMeshletsCullingData(SubmeshDefinition& submesh);
 
 	void ComputeMeshBoundingSphere();
 
@@ -90,8 +84,8 @@ private:
 
 	lib::DynamicArray<Byte> m_geometryData;
 	
-	lib::DynamicArray<SubmeshBuildData> m_submeshes;
-	lib::DynamicArray<MeshletGPUData> m_meshlets;
+	lib::DynamicArray<SubmeshDefinition> m_submeshes;
+	lib::DynamicArray<MeshletDefinition> m_meshlets;
 
 	math::Vector3f m_boundingSphereCenter;
 	Real32 m_boundingSphereRadius;

@@ -5,7 +5,7 @@
 #include "EngineCore/Engine.h"
 #include "RendererCore/Renderer.h"
 #include "TextureSetAsset.h"
-#include "Transfers/GPUDeferredUploadsQueue.h"
+#include "Transfers/GPUDeferredCommandsQueue.h"
 
 
 namespace spt::as::tests
@@ -59,7 +59,7 @@ TEST_F(TextureAssetsSystemTests, CreateTexture)
 
 	EXPECT_TRUE(result);
 
-	gfx::GPUDeferredUploadsQueue::Get().ForceFlushUploads();
+	gfx::GPUDeferredCommandsQueue::Get().ForceFlushUploads();
 
 	result.GetValue().Reset();
 
@@ -67,7 +67,7 @@ TEST_F(TextureAssetsSystemTests, CreateTexture)
 
 	LoadResult loadResult = m_assetsSystem.LoadAsset(assetPath);
 
-	gfx::GPUDeferredUploadsQueue::Get().ForceFlushUploads();
+	gfx::GPUDeferredCommandsQueue::Get().ForceFlushUploads();
 
 	EXPECT_TRUE(loadResult);
 	loadResult.GetValue().Reset();
@@ -101,7 +101,7 @@ TEST_F(TextureAssetsSystemTests, CreateTextureSet)
 
 	EXPECT_TRUE(result);
 
-	gfx::GPUDeferredUploadsQueue::Get().ForceFlushUploads();
+	gfx::GPUDeferredCommandsQueue::Get().ForceFlushUploads();
 
 	result.GetValue().Reset();
 
@@ -109,7 +109,7 @@ TEST_F(TextureAssetsSystemTests, CreateTextureSet)
 
 	LoadResult loadResult = m_assetsSystem.LoadAsset(assetPath);
 
-	gfx::GPUDeferredUploadsQueue::Get().ForceFlushUploads();
+	gfx::GPUDeferredCommandsQueue::Get().ForceFlushUploads();
 
 	EXPECT_TRUE(loadResult);
 

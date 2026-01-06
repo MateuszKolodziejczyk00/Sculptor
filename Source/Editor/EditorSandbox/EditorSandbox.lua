@@ -14,6 +14,7 @@ function EditorSandbox:SetupConfiguration(configuration, platform)
 
 	self:AddPublicDependency("IESProfileAsset")
 	self:AddPublicDependency("TextureAsset")
+	self:AddPublicDependency("MeshAsset")
 end
 
 EditorSandbox:SetupProject()

@@ -6,7 +6,8 @@ function RenderScene:SetupConfiguration(configuration, platform)
 
     self:AddPublicDependency("Materials")
 
-    self:AddPrivateDependency("TinyGLTF")
+    self:AddPublicDependency("TinyGLTF")
+
     self:AddPrivateDependency("MeshOptimizer")
     
     self:AddPrivateDependency("JobSystem")

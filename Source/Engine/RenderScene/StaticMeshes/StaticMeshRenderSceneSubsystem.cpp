@@ -7,6 +7,7 @@
 #include "Transfers/UploadUtils.h"
 #include "Geometry/GeometryDrawer.h"
 
+
 namespace spt::rsc
 {
 
@@ -17,9 +18,11 @@ SMBatchesBuilder::SMBatchesBuilder(lib::DynamicArray<StaticMeshSMBatchDefinition
 	: m_batches(inBatches)
 { }
 
-void SMBatchesBuilder::AppendMeshToBatch(RenderEntityGPUPtr entityPtr, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const rsc::MaterialSlotsComponent& materialsSlots)
+void SMBatchesBuilder::AppendMeshToBatch(RenderEntityGPUPtr entityPtr, const RenderMesh& mesh, const rsc::MaterialSlotsComponent& materialsSlots)
 {
-	for (Uint32 idx = 0; idx < meshRenderingDef.submeshesDefs.size(); ++idx)
+	const lib::Span<const SubmeshRenderingDefinition> submeshes = mesh.GetSubmeshes();
+
+	for (Uint32 idx = 0; idx < submeshes.size(); ++idx)
 	{
 		const ecs::EntityHandle material = materialsSlots.slots[idx];
 		const mat::MaterialProxyComponent& materialProxy = material.get<mat::MaterialProxyComponent>();
@@ -29,7 +32,7 @@ void SMBatchesBuilder::AppendMeshToBatch(RenderEntityGPUPtr entityPtr, const Sta
 			continue;
 		}
 
-		const SubmeshRenderingDefinition& submeshDef = meshRenderingDef.submeshesDefs[idx];
+		const SubmeshRenderingDefinition& submeshDef = submeshes[idx];
 
 		SMDepthOnlyPermutation permutation;
 
@@ -41,7 +44,7 @@ void SMBatchesBuilder::AppendMeshToBatch(RenderEntityGPUPtr entityPtr, const Sta
 
 		BatchBuildData& batch = GetBatchBuildDataForMaterial(permutation);
 
-		const SubmeshGPUPtr submeshPtr = meshRenderingDef.submeshesPtr + idx;
+		const SubmeshGPUPtr submeshPtr = mesh.GetSubmeshesGPUPtr() + idx;
 
 		StaticMeshBatchElement batchElement;
 		batchElement.entityPtr          = entityPtr;
@@ -148,16 +151,15 @@ lib::DynamicArray<StaticMeshSMBatchDefinition> StaticMeshRenderSceneSubsystem::B
 	const auto meshesView = GetOwningScene().GetRegistry().view<TransformComponent, StaticMeshInstanceRenderData, EntityGPUDataHandle, rsc::MaterialSlotsComponent>();
 	for (const auto& [entity, transformComp, staticMeshRenderData, entityGPUDataHandle, materialsSlots] : meshesView.each())
 	{
-		const ecs::EntityHandle staticMeshDataHandle = staticMeshRenderData.staticMesh;
+		const RenderMesh* mesh = staticMeshRenderData.staticMesh.Get();
+		SPT_CHECK(!!mesh);
 
-		const StaticMeshRenderingDefinition& meshRenderingDef = staticMeshDataHandle.get<StaticMeshRenderingDefinition>();
-
-		const math::Vector3f boundingSphereCenterWS = transformComp.GetTransform() * meshRenderingDef.boundingSphereCenter;
-		const Real32 boundingSphereRadius = meshRenderingDef.boundingSphereRadius * transformComp.GetUniformScale();
+		const math::Vector3f boundingSphereCenterWS = transformComp.GetTransform() * mesh->GetBoundingSphereCenter();
+		const Real32 boundingSphereRadius = mesh->GetBoundingSphereRadius() * transformComp.GetUniformScale();
 
 		if ((boundingSphereCenterWS - pointLight.location).squaredNorm() < math::Utils::Square(pointLight.radius + boundingSphereRadius))
 		{
-			batchesBuilder.AppendMeshToBatch(entityGPUDataHandle.GetGPUDataPtr(), staticMeshRenderData, meshRenderingDef, materialsSlots);
+			batchesBuilder.AppendMeshToBatch(entityGPUDataHandle.GetGPUDataPtr(), *mesh, materialsSlots);
 		}
 	}
 
@@ -191,31 +193,31 @@ StaticMeshRenderSceneSubsystem::CachedSMBatches StaticMeshRenderSceneSubsystem::
 	// Legacy (currently, shadows only)
 	for (const auto& [entity, staticMeshRenderData, entityGPUDataHandle, materialsSlots] : meshesView.each())
 	{
-		const ecs::EntityHandle staticMeshDataHandle = staticMeshRenderData.staticMesh;
-
-		const StaticMeshRenderingDefinition& meshRenderingDef = staticMeshDataHandle.get<const StaticMeshRenderingDefinition>();
+		const RenderMesh* mesh = staticMeshRenderData.staticMesh.Get();
+		SPT_CHECK(!!mesh);
 
 		const RenderEntityGPUPtr entityPtr = entityGPUDataHandle.GetGPUDataPtr();
-		batchesBuilder.AppendMeshToBatch(entityPtr, staticMeshRenderData, meshRenderingDef, materialsSlots);
+		batchesBuilder.AppendMeshToBatch(entityPtr, *mesh, materialsSlots);
 	}
 
 	// New system
 	for (const auto& [entity, staticMeshRenderData, entityGPUDataHandle, materialsSlots] : meshesView.each())
 	{
-		const ecs::EntityHandle staticMeshDataHandle = staticMeshRenderData.staticMesh;
+		const RenderMesh* mesh = staticMeshRenderData.staticMesh.Get();
+		SPT_CHECK(!!mesh);
 
-		const StaticMeshRenderingDefinition& meshRenderingDef = staticMeshDataHandle.get<const StaticMeshRenderingDefinition>();
+		const lib::Span<const SubmeshRenderingDefinition> submeshes = mesh->GetSubmeshes();
 
-		for (Uint32 idx = 0; idx < meshRenderingDef.submeshesDefs.size(); ++idx)
+		for (Uint32 idx = 0; idx < submeshes.size(); ++idx)
 		{
 			const ecs::EntityHandle material = materialsSlots.slots[idx];
 			const mat::MaterialProxyComponent& materialProxy = material.get<mat::MaterialProxyComponent>();
 
-			const SubmeshRenderingDefinition& submeshDef = meshRenderingDef.submeshesDefs[idx];
+			const SubmeshRenderingDefinition& submeshDef = submeshes[idx];
 
 			GeometryDefinition geometryDef;
 			geometryDef.entityPtr   = entityGPUDataHandle.GetGPUDataPtr();
-			geometryDef.submeshPtr  = meshRenderingDef.submeshesPtr + idx;
+			geometryDef.submeshPtr  = mesh->GetSubmeshesGPUPtr() + idx;
 			geometryDef.meshletsNum = submeshDef.meshletsNum;
 
 			if (materialProxy.params.transparent)

@@ -69,7 +69,6 @@ private:
 	void InitGPUTexture();
 
 	lib::SharedPtr<rdr::TextureView> m_texture;
-
 };
 SPT_REGISTER_ASSET_TYPE(IESProfileAsset);
 

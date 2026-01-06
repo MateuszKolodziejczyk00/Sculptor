@@ -20,97 +20,87 @@ MeshBuilder::MeshBuilder(const MeshBuildParameters& parameters)
 	m_geometryData.reserve(1024 * 1024 * 8);
 }
 
-ecs::EntityHandle MeshBuilder::EmitMeshGeometry()
+lib::MTHandle<RenderMesh> MeshBuilder::EmitMeshGeometry()
 {
 	SPT_PROFILER_FUNCTION();
 
-	for (SubmeshBuildData& submeshBD : m_submeshes)
+	Build();
+
+	lib::MTHandle<RenderMesh> renderMesh = new RenderMesh();
+	renderMesh->Initialize(CreateMeshDefinition());
+
+	if (GetParameters().blasBuilder)
+	{
+		renderMesh->BuildBLASes(*GetParameters().blasBuilder);
+	}
+
+	return renderMesh;
+}
+
+void MeshBuilder::Build()
+{
+	SPT_PROFILER_FUNCTION();
+
+	for (SubmeshDefinition& submesh : m_submeshes)
 	{
 #if SPT_DEBUG
-		ValidateSubmesh(submeshBD);
+		ValidateSubmesh(submesh);
 #endif // SPT_DEBUG
 
 		if (GetParameters().optimizeMesh)
 		{
-			OptimizeSubmesh(submeshBD);
+			OptimizeSubmesh(submesh);
 		}
 
-		BuildMeshlets(submeshBD);
+		BuildMeshlets(submesh);
 
-		ComputeBoundingSphere(submeshBD);
+		ComputeBoundingSphere(submesh);
 	}
 
 	ComputeMeshBoundingSphere();
+}
 
-	GeometryManager& geomManager = GeometryManager::Get();
-	const rhi::RHIVirtualAllocation geometrySuballocation = geomManager.CreateGeometry(m_geometryData.data(), m_geometryData.size());
-	SPT_CHECK(geometrySuballocation.IsValid());
-	SPT_CHECK(geometrySuballocation.GetOffset() + m_geometryData.size() <= maxValue<Uint32>);
+MeshDefinition MeshBuilder::CreateMeshDefinition() const
+{
+	SPT_PROFILER_FUNCTION();
 
-	lib::DynamicArray<SubmeshGPUData> submeshesData;
-	submeshesData.reserve(m_submeshes.size());
-	std::transform(std::cbegin(m_submeshes), std::cend(m_submeshes), std::back_inserter(submeshesData),
-				   [](const SubmeshBuildData& submeshBD)
-				   {
-					   return submeshBD.submesh;
-				   });
+	SPT_CHECK(!m_submeshes.empty());
+	SPT_CHECK(!m_meshlets.empty());
 
-	const StaticMeshGeometryData staticMeshGeometryData = StaticMeshUnifiedData::Get().BuildStaticMeshData(submeshesData, m_meshlets, geometrySuballocation);
+	MeshDefinition meshDef;
+	meshDef.meshletsOffset  = sizeof(SubmeshDefinition) * static_cast<Uint32>(m_submeshes.size());
+	meshDef.geometryOffset  = meshDef.meshletsOffset + sizeof(MeshletDefinition) * static_cast<Uint32>(m_meshlets.size());
 
-	const Uint32 submeshesOffset = static_cast<Uint32>(staticMeshGeometryData.submeshesSuballocation.GetOffset());
+	meshDef.boundingSphereCenter = m_boundingSphereCenter;
+	meshDef.boundingSphereRadius = m_boundingSphereRadius;
 
-	StaticMeshRenderingDefinition staticMeshRenderingDef;
-	staticMeshRenderingDef.geometryDataOffset   = static_cast<Uint32>(staticMeshGeometryData.geometrySuballocation.GetOffset());
-	staticMeshRenderingDef.submeshesPtr         = SubmeshGPUPtr(submeshesOffset);
-	staticMeshRenderingDef.boundingSphereCenter = m_boundingSphereCenter;
-	staticMeshRenderingDef.boundingSphereRadius = m_boundingSphereRadius;
-	std::transform(std::cbegin(m_submeshes), std::cend(m_submeshes),
-				   std::back_inserter(staticMeshRenderingDef.submeshesDefs),
-				   [idx = 0](const SubmeshBuildData& submeshBD) mutable
-				   {
-					   SubmeshRenderingDefinition submeshDef;
-					   submeshDef.trianglesNum = submeshBD.submesh.indicesNum / 3;;
-					   submeshDef.meshletsNum  = submeshBD.submesh.meshlets.GetSize();
-					   return submeshDef;
-				   });
+	const SizeType totalSize = meshDef.geometryOffset + m_geometryData.size();
 
-	const ecs::EntityHandle staticMeshDataHandle = ecs::CreateEntity();
+	meshDef.blob.resize(totalSize);
+	meshDef.blobView = lib::Span<const Byte>(meshDef.blob.data(), meshDef.blob.size());
 
-	staticMeshDataHandle.emplace<StaticMeshGeometryData>(staticMeshGeometryData);
-	staticMeshDataHandle.emplace<StaticMeshRenderingDefinition>(std::move(staticMeshRenderingDef));
-
-	const Uint64 geometryDataDeviceAddress = GeometryManager::Get().GetGeometryBufferDeviceAddress();
-
-	if (GetParameters().blasBuilder)
+	// Write Submeshes
 	{
-		RayTracingGeometryComponent rtGeoComponent;
-		rtGeoComponent.geometries.reserve(m_submeshes.size());
-
-		// Create BLAS for each submesh
-		lib::DynamicArray<lib::SharedRef<rdr::BottomLevelAS>> submeshesBLASes;
-		submeshesBLASes.reserve(m_submeshes.size());
-
-		for(SizeType submeshIdx = 0; submeshIdx < m_submeshes.size(); ++submeshIdx)
-		{
-			rhi::BLASDefinition submeshBLAS;
-			submeshBLAS.trianglesGeometry.vertexLocationsAddress	= geometryDataDeviceAddress + static_cast<Uint64>(submeshesData[submeshIdx].locationsOffset);
-			submeshBLAS.trianglesGeometry.vertexLocationsStride		= sizeof(math::Vector3f);
-			submeshBLAS.trianglesGeometry.maxVerticesNum			= m_submeshes[submeshIdx].vertexCount;
-			submeshBLAS.trianglesGeometry.indicesAddress			= geometryDataDeviceAddress + static_cast<Uint64>(submeshesData[submeshIdx].indicesOffset);
-			submeshBLAS.trianglesGeometry.indicesNum				= submeshesData[submeshIdx].indicesNum;
-
-			RayTracingGeometryDefinition& rtGeoDef = rtGeoComponent.geometries.emplace_back();
-			rtGeoDef.blas                   = GetParameters().blasBuilder->CreateBLAS(RENDERER_RESOURCE_NAME("Temp BLAS Name"), submeshBLAS);
-			rtGeoDef.indicesDataUGBOffset   = submeshesData[submeshIdx].indicesOffset;
-			rtGeoDef.locationsDataUGBOffset = submeshesData[submeshIdx].locationsOffset;
-			rtGeoDef.uvsDataUGBOffset       = submeshesData[submeshIdx].uvsOffset;
-			rtGeoDef.normalsDataUGBOffset   = submeshesData[submeshIdx].normalsOffset;
-		}
-
-		staticMeshDataHandle.emplace<RayTracingGeometryComponent>(std::move(rtGeoComponent));
+		const Uint32 submeshesOffset = 0u;
+		SubmeshDefinition* submeshesDst = reinterpret_cast<SubmeshDefinition*>(&meshDef.blob[submeshesOffset]);
+		std::memcpy(submeshesDst, m_submeshes.data(), sizeof(SubmeshDefinition) * m_submeshes.size());
 	}
 
-	return staticMeshDataHandle;
+	// Write Meshlets
+	{
+		const Uint32 meshletsOffset = meshDef.meshletsOffset;
+		MeshletDefinition* meshletsDst = reinterpret_cast<MeshletDefinition*>(&meshDef.blob[meshletsOffset]);
+		std::memcpy(meshletsDst, m_meshlets.data(), sizeof(MeshletDefinition) * m_meshlets.size());
+	}
+
+	// Write Geometry Data
+	{
+		const Uint32 geometryOffset = meshDef.geometryOffset;
+		Byte* geometryDataDst = &meshDef.blob[geometryOffset];
+		std::memcpy(geometryDataDst, m_geometryData.data(), m_geometryData.size());
+	}
+
+	return meshDef;
 }
 
 const MeshBuildParameters& MeshBuilder::GetParameters() const
@@ -120,17 +110,17 @@ const MeshBuildParameters& MeshBuilder::GetParameters() const
 
 void MeshBuilder::BeginNewSubmesh()
 {
-	SubmeshBuildData& submeshBD = m_submeshes.emplace_back();
-	submeshBD.submesh.indicesOffset					= idxNone<Uint32>;
-	submeshBD.submesh.locationsOffset				= idxNone<Uint32>;
-	submeshBD.submesh.normalsOffset					= idxNone<Uint32>;
-	submeshBD.submesh.tangentsOffset				= idxNone<Uint32>;
-	submeshBD.submesh.uvsOffset						= idxNone<Uint32>;
-	submeshBD.submesh.meshletsPrimitivesDataOffset	= idxNone<Uint32>;
-	submeshBD.submesh.meshletsVerticesDataOffset	= idxNone<Uint32>;
+	SubmeshDefinition& submesh = m_submeshes.emplace_back();
+	submesh.indicesOffset                = idxNone<Uint32>;
+	submesh.locationsOffset              = idxNone<Uint32>;
+	submesh.normalsOffset                = idxNone<Uint32>;
+	submesh.tangentsOffset               = idxNone<Uint32>;
+	submesh.uvsOffset                    = idxNone<Uint32>;
+	submesh.meshletsPrimitivesDataOffset = idxNone<Uint32>;
+	submesh.meshletsVerticesDataOffset   = idxNone<Uint32>;
 }
 
-SubmeshBuildData& MeshBuilder::GetBuiltSubmesh()
+SubmeshDefinition& MeshBuilder::GetCurrentSubmesh()
 {
 	SPT_CHECK(!m_submeshes.empty());
 	return m_submeshes.back();
@@ -142,26 +132,26 @@ Uint64 MeshBuilder::GetCurrentDataSize() const
 }
 
 #if SPT_DEBUG
-void MeshBuilder::ValidateSubmesh(const SubmeshBuildData& submeshBuildData) const
+void MeshBuilder::ValidateSubmesh(SubmeshDefinition& submesh) const
 {
-	SPT_CHECK(submeshBuildData.vertexCount > 0);
-	SPT_CHECK(submeshBuildData.submesh.indicesOffset != idxNone<Uint32>);
-	SPT_CHECK(submeshBuildData.submesh.locationsOffset != idxNone<Uint32>);
+	SPT_CHECK(submesh.vertexCount > 0);
+	SPT_CHECK(submesh.indicesOffset != idxNone<Uint32>);
+	SPT_CHECK(submesh.locationsOffset != idxNone<Uint32>);
 }
 #endif // SPT_DEBUG
 
-void MeshBuilder::ComputeBoundingSphere(SubmeshBuildData& submeshBuildData) const
+void MeshBuilder::ComputeBoundingSphere(SubmeshDefinition& submesh) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(submeshBuildData.vertexCount > 0);
+	SPT_CHECK(submesh.verticesNum > 0);
 	
-	const math::Vector3f* locations = reinterpret_cast<const math::Vector3f*>(m_geometryData.data() + submeshBuildData.submesh.locationsOffset);
+	const math::Vector3f* locations = reinterpret_cast<const math::Vector3f*>(m_geometryData.data() + submesh.locationsOffset);
 
 	math::Vector3f min = math::Vector3f::Ones() * 999999.f;
 	math::Vector3f max = math::Vector3f::Ones() * -999999.f;
 
-	for (Uint32 idx = 0; idx < submeshBuildData.vertexCount; ++idx)
+	for (Uint32 idx = 0; idx < submesh.verticesNum; ++idx)
 	{
 		min.x() = std::min(min.x(), locations[idx].x());
 		min.y() = std::min(min.y(), locations[idx].y());
@@ -175,25 +165,25 @@ void MeshBuilder::ComputeBoundingSphere(SubmeshBuildData& submeshBuildData) cons
 	const math::Vector3f center = 0.5f * (min + max);
 
 	Real32 radiusSq = 0.f;
-	for (Uint32 idx = 0; idx < submeshBuildData.vertexCount; ++idx)
+	for (Uint32 idx = 0; idx < submesh.verticesNum; ++idx)
 	{
 		radiusSq = std::max(radiusSq, (locations[idx] - center).squaredNorm());
 	}
 
 	const Real32 radius = std::sqrt(radiusSq);
 	
-	submeshBuildData.submesh.boundingSphereCenter = center;
-	submeshBuildData.submesh.boundingSphereRadius = radius;
+	submesh.boundingSphereCenter = center;
+	submesh.boundingSphereRadius = radius;
 }
 
-void MeshBuilder::OptimizeSubmesh(SubmeshBuildData& submeshBuildData)
+void MeshBuilder::OptimizeSubmesh(SubmeshDefinition& submesh)
 {
 	SPT_PROFILER_FUNCTION();
 
-	Uint32* indices = GetGeometryDataMutable<Uint32>(submeshBuildData.submesh.indicesOffset);
+	Uint32* indices = GetGeometryDataMutable<Uint32>(submesh.indicesOffset);
 
-	SizeType vertexCount = static_cast<SizeType>(submeshBuildData.vertexCount);
-	const SizeType indexCount = static_cast<SizeType>(submeshBuildData.submesh.indicesNum);
+	SizeType vertexCount = static_cast<SizeType>(submesh.verticesNum);
+	const SizeType indexCount = static_cast<SizeType>(submesh.indicesNum);
 
 	meshopt_optimizeVertexCache<Uint32>(indices, indices, indexCount, vertexCount);
 
@@ -201,39 +191,39 @@ void MeshBuilder::OptimizeSubmesh(SubmeshBuildData& submeshBuildData)
 	meshopt_optimizeVertexFetchRemap(remapArray.data(), indices, indexCount, vertexCount);
 	meshopt_remapIndexBuffer(indices, indices, indexCount, remapArray.data());
 
-	math::Vector3f* locations = GetGeometryDataMutable<math::Vector3f>(submeshBuildData.submesh.locationsOffset);
+	math::Vector3f* locations = GetGeometryDataMutable<math::Vector3f>(submesh.locationsOffset);
 	meshopt_remapVertexBuffer(locations, locations, vertexCount, sizeof(math::Vector3f), remapArray.data());
 
-	if (submeshBuildData.submesh.uvsOffset != idxNone<Uint32>)
+	if (submesh.uvsOffset != idxNone<Uint32>)
 	{
-		math::Vector2f* uvs = GetGeometryDataMutable<math::Vector2f>(submeshBuildData.submesh.uvsOffset);
+		math::Vector2f* uvs = GetGeometryDataMutable<math::Vector2f>(submesh.uvsOffset);
 		meshopt_remapVertexBuffer(uvs, uvs, vertexCount, sizeof(math::Vector2f), remapArray.data());
 	}
 
-	if (submeshBuildData.submesh.normalsOffset != idxNone<Uint32>)
+	if (submesh.normalsOffset != idxNone<Uint32>)
 	{
-		math::Vector3f* normals = GetGeometryDataMutable<math::Vector3f>(submeshBuildData.submesh.normalsOffset);
+		math::Vector3f* normals = GetGeometryDataMutable<math::Vector3f>(submesh.normalsOffset);
 		meshopt_remapVertexBuffer(normals, normals, vertexCount, sizeof(math::Vector3f), remapArray.data());
 	}
 
-	if (submeshBuildData.submesh.tangentsOffset != idxNone<Uint32>)
+	if (submesh.tangentsOffset != idxNone<Uint32>)
 	{
-		math::Vector4f* tangents = GetGeometryDataMutable<math::Vector4f>(submeshBuildData.submesh.tangentsOffset);
+		math::Vector4f* tangents = GetGeometryDataMutable<math::Vector4f>(submesh.tangentsOffset);
 		meshopt_remapVertexBuffer(tangents, tangents, vertexCount, sizeof(math::Vector4f), remapArray.data());
 	}
 
-	submeshBuildData.vertexCount = static_cast<Uint32>(vertexCount);
+	submesh.verticesNum = static_cast<Uint32>(vertexCount);
 }
 
-void MeshBuilder::BuildMeshlets(SubmeshBuildData& submeshBuildData)
+void MeshBuilder::BuildMeshlets(SubmeshDefinition& submesh)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const SizeType meshletMaxTriangles = 64;
 	const SizeType meshletMaxVertices = 64;
 
-	const SizeType vertexCount = static_cast<SizeType>(submeshBuildData.vertexCount);
-	const SizeType indexCount = static_cast<SizeType>(submeshBuildData.submesh.indicesNum);
+	const SizeType vertexCount = static_cast<SizeType>(submesh.verticesNum);
+	const SizeType indexCount = static_cast<SizeType>(submesh.indicesNum);
 
 	const SizeType meshletsMaxNum = meshopt_buildMeshletsBound(indexCount, meshletMaxVertices, meshletMaxTriangles);
 
@@ -242,8 +232,8 @@ void MeshBuilder::BuildMeshlets(SubmeshBuildData& submeshBuildData)
 
 	lib::DynamicArray<meshopt_Meshlet> moMeshlets(meshletsMaxNum);
 
-	const Uint32* indices = GetGeometryData<Uint32>(submeshBuildData.submesh.indicesOffset);
-	const math::Vector3f* locations = GetGeometryData<math::Vector3f>(submeshBuildData.submesh.locationsOffset);
+	const Uint32* indices = GetGeometryData<Uint32>(submesh.indicesOffset);
+	const math::Vector3f* locations = GetGeometryData<math::Vector3f>(submesh.locationsOffset);
 
 	const Real32 coneWeigth = 0.5f;
 
@@ -260,13 +250,14 @@ void MeshBuilder::BuildMeshlets(SubmeshBuildData& submeshBuildData)
 																	coneWeigth);
 
 	const SizeType meshletVertsOffset = AppendData<Uint32, Uint32>(reinterpret_cast<const unsigned char*>(meshletVertices.data()), 1, sizeof(Uint32), meshletVertices.size());
-	submeshBuildData.submesh.meshletsVerticesDataOffset = static_cast<Uint32>(meshletVertsOffset);
+	submesh.meshletsVerticesDataOffset = static_cast<Uint32>(meshletVertsOffset);
 
 	const SizeType meshletPrimsOffset = AppendData<Uint8, Uint8>(reinterpret_cast<const unsigned char*>(meshletPrimitives.data()), 1, sizeof(Uint8), meshletPrimitives.size());
-	submeshBuildData.submesh.meshletsPrimitivesDataOffset = static_cast<Uint32>(meshletPrimsOffset);
+	submesh.meshletsPrimitivesDataOffset = static_cast<Uint32>(meshletPrimsOffset);
 
 	const SizeType submeshMeshletsBegin = m_meshlets.size();
-	submeshBuildData.submesh.meshlets = MeshletsGPUSpan(static_cast<Uint32>(submeshMeshletsBegin) * sizeof(rdr::HLSLStorage<MeshletGPUData>), static_cast<Uint32>(finalMeshletsNum));
+	submesh.firstMeshletIdx = static_cast<Uint32>(submeshMeshletsBegin);
+	submesh.meshletsNum     = static_cast<Uint32>(finalMeshletsNum);
 
 	m_meshlets.resize(m_meshlets.size() + finalMeshletsNum);
 	for (SizeType meshletIdx = 0; meshletIdx < finalMeshletsNum; ++meshletIdx)
@@ -278,26 +269,26 @@ void MeshBuilder::BuildMeshlets(SubmeshBuildData& submeshBuildData)
 		m_meshlets[meshletBuildDataIdx].meshletVerticesOffset   = moMeshlets[meshletIdx].vertex_offset * 4;
 	}
 
-	BuildMeshletsCullingData(submeshBuildData);
+	BuildMeshletsCullingData(submesh);
 }
 
-void MeshBuilder::BuildMeshletsCullingData(SubmeshBuildData& submeshBuildData)
+void MeshBuilder::BuildMeshletsCullingData(SubmeshDefinition& submesh)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const Real32* vertexLocations = GetGeometryData<Real32>(submeshBuildData.submesh.locationsOffset);
-	const SizeType verticesNum = static_cast<SizeType>(submeshBuildData.vertexCount);
+	const Real32* vertexLocations = GetGeometryData<Real32>(submesh.locationsOffset);
+	const SizeType verticesNum = static_cast<SizeType>(submesh.verticesNum);
 
-	const Uint32 firstMeshletIdx = submeshBuildData.submesh.meshlets.GetFirstElemIdx();
-	const Uint32 meshletsNum = submeshBuildData.submesh.meshlets.GetSize();
+	const Uint32 firstMeshletIdx = submesh.firstMeshletIdx;
+	const Uint32 meshletsNum = submesh.meshletsNum;
 	const Uint32 meshletsEndIdx = firstMeshletIdx + meshletsNum;
 
 	for (SizeType meshletIdx = firstMeshletIdx; meshletIdx < meshletsEndIdx; ++meshletIdx)
 	{
-		MeshletGPUData& meshlet = m_meshlets[meshletIdx];
+		MeshletDefinition& meshlet = m_meshlets[meshletIdx];
 
-		const Uint32 meshletVerticesOffset = submeshBuildData.submesh.meshletsVerticesDataOffset + meshlet.meshletVerticesOffset;
-		const Uint32 meshletPrimitivesOffset = submeshBuildData.submesh.meshletsPrimitivesDataOffset + meshlet.meshletPrimitivesOffset;
+		const Uint32 meshletVerticesOffset   = submesh.meshletsVerticesDataOffset + meshlet.meshletVerticesOffset;
+		const Uint32 meshletPrimitivesOffset = submesh.meshletsPrimitivesDataOffset + meshlet.meshletPrimitivesOffset;
 
 		const Uint32* meshletVertices = GetGeometryData<Uint32>(meshletVerticesOffset);
 		const Uint8* meshletPrimitives = GetGeometryData<Uint8>(meshletPrimitivesOffset);
@@ -331,25 +322,25 @@ void MeshBuilder::ComputeMeshBoundingSphere()
 	math::Vector3f min = math::Vector3f::Ones() * 999999.f;
 	math::Vector3f max = math::Vector3f::Ones() * -999999.f;
 
-	for(const SubmeshBuildData& submeshBD : m_submeshes)
+	for(const SubmeshDefinition& submesh : m_submeshes)
 	{
-		min.x() = std::min(min.x(), submeshBD.submesh.boundingSphereCenter.x());
-		min.y() = std::min(min.y(), submeshBD.submesh.boundingSphereCenter.y());
-		min.z() = std::min(min.z(), submeshBD.submesh.boundingSphereCenter.z());
+		min.x() = std::min(min.x(), submesh.boundingSphereCenter.x());
+		min.y() = std::min(min.y(), submesh.boundingSphereCenter.y());
+		min.z() = std::min(min.z(), submesh.boundingSphereCenter.z());
 
-		max.x() = std::max(max.x(), submeshBD.submesh.boundingSphereCenter.x());
-		max.y() = std::max(max.y(), submeshBD.submesh.boundingSphereCenter.y());
-		max.z() = std::max(max.z(), submeshBD.submesh.boundingSphereCenter.z());
+		max.x() = std::max(max.x(), submesh.boundingSphereCenter.x());
+		max.y() = std::max(max.y(), submesh.boundingSphereCenter.y());
+		max.z() = std::max(max.z(), submesh.boundingSphereCenter.z());
 	}
 
 	const math::Vector3f center = 0.5f * (min + max);
 
 	Real32 radius = 0.f;
 
-	for(const SubmeshBuildData& submeshBD : m_submeshes)
+	for(const SubmeshDefinition& submesh : m_submeshes)
 	{
-		const Real32 distToSubmesh = (submeshBD.submesh.boundingSphereCenter - center).norm();
-		radius = std::max(radius, distToSubmesh + submeshBD.submesh.boundingSphereRadius);
+		const Real32 distToSubmesh = (submesh.boundingSphereCenter - center).norm();
+		radius = std::max(radius, distToSubmesh + submesh.boundingSphereRadius);
 	}
 
 	m_boundingSphereCenter = center;
