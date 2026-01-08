@@ -89,7 +89,7 @@ struct SRTemporalResampler
 		const uint historyReservoirIdx = GetScreenReservoirIdx(coords, u_resamplingConstants.reservoirsResolution);
 		SRReservoir historyReservoir = UnpackReservoir(u_historyReservoirsBuffer[historyReservoirIdx]);
 
-		const uint maxHistoryLength = 30u;
+		const uint maxHistoryLength = 20u;
 		historyReservoir.M = uint16_t(min(historyReservoir.M, maxHistoryLength));
 
 		return historyReservoir;
@@ -288,6 +288,15 @@ bool WasVariableRateReprojectionSuccessful(in uint2 coords)
 }
 #endif // ENABLE_SECOND_TRACING_PASS
 
+uint2 ApplyTemporalPermutation(in uint2 pixelCoords, uint frameIdx, uint2 res)
+{
+	uint2 offset = uint2(frameIdx & 3u, (frameIdx >> 2u) & 3u);
+	uint2 shifted_pixel_id = pixelCoords + offset;
+	shifted_pixel_id ^= uint2(3u, 3u);
+	shifted_pixel_id -= offset;
+	return min(shifted_pixel_id, uint2(res - 1u));
+}
+
 
 [numthreads(8, 8, 1)]
 void ResampleTemporallyCS(CS_INPUT input)
@@ -369,7 +378,9 @@ void ResampleTemporallyCS(CS_INPUT input)
 				for(uint sampleIdx = 0; sampleIdx < HISTORY_SAMPLE_COUNT; ++sampleIdx)
 				{
 					const float2 sampleUV = reprojectedUV - (u_sceneView.jitter - u_prevFrameSceneView.jitter) * sampleIdx;
-					const int2 samplePixel = floor(sampleUV * u_resamplingConstants.resolution);
+					//const float2 sampleUV = reprojectedUV;
+					const int2 samplePixel = ApplyTemporalPermutation(floor(sampleUV * u_resamplingConstants.resolution), u_resamplingConstants.frameIdx, u_resamplingConstants.resolution);
+					//const int2 samplePixel = floor(sampleUV * u_resamplingConstants.resolution);
 					
 					if(resampler.TrySelectHistorySample(samplePixel, INOUT rng))
 					{

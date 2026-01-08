@@ -72,7 +72,7 @@ void SRDisocclusionFixCS(CS_INPUT input)
 					continue;
 				}
 
-				const int2 samplePixel = clamp(pixel + int2(x, y) * u_constants.filterStride, int2(0, 0), int2(u_constants.resolution));
+				const int2 samplePixel = clamp(pixel + int2(x, y) * u_constants.filterStride, int2(0, 0), int2(u_constants.resolution - 1));
 				const float w = kernel[max(abs(x), abs(y))];
 
 				const float3 sampleNormal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(samplePixel, 0)));
@@ -99,7 +99,6 @@ void SRDisocclusionFixCS(CS_INPUT input)
 					const RTSphericalBasis sampleSpecularY_SH2 = RawToRTSphericalBasis(u_inSpecularY_SH2.Load(uint3(samplePixel, 0)));
 
 					const float specularLum = sampleSpecularY_SH2.Evaluate(sampleNormal);
-					specularWeight /= specularLum + 1.f;
 
 					specularY_SH2Sum = specularY_SH2Sum + sampleSpecularY_SH2 * specularWeight;
 					diffSpecCoCgSum.zw += sampleDiffSpecCoCg.zw * specularWeight;
@@ -114,7 +113,6 @@ void SRDisocclusionFixCS(CS_INPUT input)
 					const RTSphericalBasis sampleDiffuseY_SH2 = RawToRTSphericalBasis(u_inDiffuseY_SH2.Load(uint3(samplePixel, 0)));
 
 					const float diffuseLum = sampleDiffuseY_SH2.Evaluate(sampleNormal);
-					diffuseWeight /= diffuseLum + 1.f;
 
 					diffuseY_SH2Sum = diffuseY_SH2Sum + sampleDiffuseY_SH2 * diffuseWeight;
 					diffSpecCoCgSum.xy += sampleDiffSpecCoCg.xy * diffuseWeight;

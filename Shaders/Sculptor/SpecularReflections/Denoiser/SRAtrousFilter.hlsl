@@ -238,8 +238,6 @@ void SRATrousFilterCS(CS_INPUT input)
 				const float swn = ComputeSpecularNormalWeight(normal, sampleNormal, roughness);
 				specularWeight *= swn;
 
-				specularWeight /= specularLum + 1.f;
-
 				specularY_SH_Sum = specularY_SH_Sum + (sampleSpecularY_SH * specularWeight);
 
 				const float2 variance = u_inVariance.Load(uint3(samplePixel, 0));
@@ -258,8 +256,6 @@ void SRATrousFilterCS(CS_INPUT input)
 
 				const float dwn = ComputeDiffuseNormalWeight(normal, sampleNormal);
 				diffuseWeight *= dwn;
-
-				diffuseWeight /= diffuseLum + 1.f;
 
 				diffuseY_SH_Sum = diffuseY_SH_Sum + (sampleDiffuseY_SH * diffuseWeight);
 

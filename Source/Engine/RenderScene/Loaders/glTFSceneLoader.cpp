@@ -272,8 +272,7 @@ static lib::DynamicArray<ecs::EntityHandle> CreateMaterials(const tinygltf::Mode
 		materialDefinition.name          = materialSourceDef.name;
 		materialDefinition.customOpacity = isMasked;
 		materialDefinition.transparent   = isTransparent;
-		//materialDefinition.doubleSided   = materialSourceDef.doubleSided;
-		materialDefinition.doubleSided   = true;
+		materialDefinition.doubleSided   = materialSourceDef.doubleSided;
 		materialDefinition.emissive      = materialSourceDef.emissiveFactor[0] > 0.f || materialSourceDef.emissiveFactor[1] > 0.f || materialSourceDef.emissiveFactor[2] > 0.f;
 
 		const ecs::EntityHandle material = mat::MaterialsSubsystem::Get().CreateMaterial(materialDefinition, pbrData);

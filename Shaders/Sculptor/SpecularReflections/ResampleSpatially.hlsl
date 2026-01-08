@@ -124,8 +124,8 @@ bool CoarseTestVisibility(in uint2 pixel, in float3 sourceWS, in float3 sourceND
 
 float ComputeResamplingRange(in const SRReservoir reservoir, in float roughness)
 {
-	const float stepSize = Remap(roughness, 0.1f, 0.4f, 0.4f, 1.f) * u_resamplingConstants.resamplingRangeStep;
-	return max(reservoir.spatialResamplingRangeID * stepSize, 16.f);
+	const float stepSize = u_resamplingConstants.resamplingRangeStep;
+	return max(reservoir.spatialResamplingRangeID * stepSize, 26.f);
 }
 
 

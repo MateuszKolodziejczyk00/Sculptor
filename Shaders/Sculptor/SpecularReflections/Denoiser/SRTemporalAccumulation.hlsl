@@ -233,7 +233,9 @@ void AccumulateSH(RTSphericalBasis aY, float2 aCoCg, RTSphericalBasis bY, float2
 	const float rcpWeightSum = 1.f / (aWeight + bWeight);
 
 	outY = (aY * aWeight + bY * bWeight) * rcpWeightSum;
-	outCoCg = (aCoCg * aWeight + bCoCg * bWeight) * rcpWeightSum;
+
+	const float ratio = outY.val / max(bY.val, 0.0001f);
+	outCoCg = bCoCg * ratio;
 }
 
 
@@ -305,7 +307,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		                         pixelSize,
 		                         maxPlaneDistance,
 		                         roughness,
-		                         motionReprojectedWS,
+		                         OUT motionReprojectedWS,
 		                         OUT diffuseReprojectedUV,
 		                         OUT motionBasedReprojectionConfidence);
 
@@ -343,7 +345,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 			// Fast history
 
-			const float currentFrameWeightFast = max(0.3f, diffuseFrameWeight);
+			const float currentFrameWeightFast = max(0.25f, diffuseFrameWeight);
 
 			const float3 diffuseFastHistory = u_diffuseFastHistoryTexture.SampleLevel(u_nearestSampler, diffuseReprojectedUV, 0.f);
 			u_rwDiffuseFastHistoryTexture[pixel] = lerp(diffuseFastHistory, diffuse.rgb, currentFrameWeightFast);
@@ -408,7 +410,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		                         pixelSize,
 		                         maxPlaneDistance,
 		                         roughness,
-		                         specularReprojectedWS,
+		                         OUT specularReprojectedWS,
 		                         OUT specularReprojectedUV,
 		                         OUT specularReprojectionConfidence);
 
@@ -426,13 +428,13 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		{
 			const uint3 historyPixel = uint3(specularReprojectedUV * outputRes.xy, 0u);
 
-			virtualPointSpecularY = RawToRTSphericalBasis(u_historySpecularY_SH2.SampleLevel(u_linearSampler, diffuseReprojectedUV, 0.f));
+			virtualPointSpecularY = RawToRTSphericalBasis(u_historySpecularY_SH2.SampleLevel(u_nearestSampler, specularReprojectedUV, 0.f));
 			virtualPointSpecularY = virtualPointSpecularY * HistoryToCurrentExposedLuminanceFactor();
 
 			virtualPointSpecularCoCg = ExposedHistoryLuminanceToCurrentExposedLuminance(u_historyDiffSpecCoCg.SampleLevel(u_nearestSampler, specularReprojectedUV, 0.f).zw);
 
-			virtualPointSpecularHistoryLength = u_historyDiffuseHistoryLengthTexture.Load(historyPixel);
-			virtualPointFastSpecular          = u_specularFastHistoryTexture.SampleLevel(u_nearestSampler, diffuseReprojectedUV, 0.f);
+			virtualPointSpecularHistoryLength = u_historySpecularHistoryLengthTexture.Load(historyPixel);
+			virtualPointFastSpecular          = u_specularFastHistoryTexture.SampleLevel(u_nearestSampler, specularReprojectedUV, 0.f);
 			virtualPointSpecularMoments       = u_specularHistoryTemporalVarianceTexture.Load(historyPixel);
 		}
 
@@ -448,15 +450,13 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			const float3 specularVariance = abs(Pow2(neighbourhoodInfo.specularM1.rgb) - neighbourhoodInfo.specularM2.rgb);
 			const float3 specularStdDev = sqrt(specularVariance);
 
-			const float3 clampWindow = specularStdDev * 6.f;
+			const float3 clampWindow = specularStdDev * 3.f;
 
 			const RTSphericalBasis specularYHistoryClamped = virtualPointSpecularY;
 			const float2 specularCoCgHistoryClamped = virtualPointSpecularCoCg;
 
 			const float parallaxCos = dot(normalize(u_sceneView.viewLocation - specularReprojectedWS), normalize(u_sceneView.viewLocation - currentSampleWS));
 			const float parallaxConfidence = Pow3(saturate((parallaxCos - 0.7f) / 0.3f));
-
-			const float unclampedWeight = parallaxConfidence * (0.6f * specularReprojectionConfidence + 0.4f * roughness);
 
 			RTSphericalBasis specularYHistory = virtualPointSpecularY * vpWeightNorm + motionBasedSpecularY * mbWeightNorm;
 			float2 specularCoCgHistory = virtualPointSpecularCoCg * vpWeightNorm + motionBasedSpecularCoCg * mbWeightNorm;
@@ -490,12 +490,13 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 			const float roughnessMaxHistoryMultiplier = 1.f - 0.4f * (max(0.4f - roughness, 0.f) / 0.4f);
 
-			specularHistoryLength = min(historyLength + 1u, uint(roughnessMaxHistoryMultiplier * parallaxConfidence * (mbWeight + vpWeight) * MAX_ACCUMULATED_FRAMES_NUM * min(1.f, 2.f * roughness)));
+			specularHistoryLength = min(historyLength + 1u, uint(roughnessMaxHistoryMultiplier * parallaxConfidence * (mbWeight + vpWeight) * MAX_ACCUMULATED_FRAMES_NUM));
+
 			const float currentFrameWeight = specularHistoryLength <= boostedAccumulationFramesNum ? 0.5f : rcp(float(specularHistoryLength + 1u));
 
 			const float specularFrameWeight = currentFrameWeight + min(1.f - currentFrameWeight, 0.3f) * (1.f - (vpWeight + mbWeight));
 
-			specularMoments = lerp(specularHistoryMoments, specularMoments, max(specularFrameWeight, 0.02f));
+			specularMoments = lerp(specularHistoryMoments, specularMoments, max(specularFrameWeight, 0.2f));
 
 			AccumulateSH(specularYHistory, specularCoCgHistory, specularY, specularCoCg, currentSampleNormal, specularFrameWeight, OUT outSpecularY, OUT outSpecularCoCg);
 

@@ -148,7 +148,7 @@ void SRClampHistoryCS(CS_INPUT input)
 			const float3 specularFastHistoryMean = specularM1;
 			const float3 specularFastHistoryVariance = abs(specularM2 - Pow2(specularM1));
 			const float3 specularFastHistoryStdDev = sqrt(specularFastHistoryVariance);
-			const float3 specularClampWindow = 2.5f * specularFastHistoryStdDev;
+			const float3 specularClampWindow = 3.f * specularFastHistoryStdDev;
 
 			const RTSphericalBasis specularY_SH2 = RawToRTSphericalBasis(u_specularY_SH2.Load(pixel));
 			const float3 specularYCoCg = float3(specularY_SH2.Evaluate(normal), diffSpecCoCg.zw);
@@ -171,7 +171,7 @@ void SRClampHistoryCS(CS_INPUT input)
 			const float3 diffuseFastHistoryMean = diffuseM1;
 			const float3 diffuseFastHistoryVariance = abs(diffuseM2 - Pow2(diffuseM1));
 			const float3 diffuseFastHistoryStdDev = sqrt(diffuseFastHistoryVariance);
-			const float3 diffuseClampWindow = 2.5f * diffuseFastHistoryStdDev;
+			const float3 diffuseClampWindow = 3.f * diffuseFastHistoryStdDev;
 
 			const RTSphericalBasis diffuseY_SH2 = RawToRTSphericalBasis(u_diffuseY_SH2.Load(pixel));
 			const float3 diffuseYCoCg = float3(diffuseY_SH2.Evaluate(normal), diffSpecCoCg.xy);

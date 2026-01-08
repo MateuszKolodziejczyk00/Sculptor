@@ -65,7 +65,7 @@ void ResolveReservoirsCS(CS_INPUT input)
 			float f0;
 			float3 diffuseColor;
 			ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, OUT diffuseColor, OUT f0);
-	
+
 			hitDistance = length(reservoir.hitLocation - sampleLocation);
 			lightDir = (reservoir.hitLocation - sampleLocation) / hitDistance;
 
