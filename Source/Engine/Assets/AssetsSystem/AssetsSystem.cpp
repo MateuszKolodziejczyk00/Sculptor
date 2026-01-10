@@ -1,5 +1,6 @@
 #include "AssetsSystem.h"
 #include "SerializationHelper.h"
+#include "JobSystem/JobSystem.h"
 
 SPT_DEFINE_LOG_CATEGORY(AssetsSystem, true);
 
@@ -78,7 +79,7 @@ CreateResult AssetsSystem::CreateAsset(const AssetInitializer& initializer)
 
 	SPT_CHECK(IsAssetCompiled(assetInstance->GetRelativePath()));
 
-	assetInstance->PostInitialize();
+	assetInstance->Initialize();
 
 	return CreateResult(std::move(assetInstance));
 }
@@ -87,61 +88,61 @@ LoadResult AssetsSystem::LoadAsset(const ResourcePath& path)
 {
 	SPT_PROFILER_FUNCTION();
 
-	lib::LockGuard lock(m_assetsSystemLock);
+	AssetHandle assetInstance;
 
 	{
-		const auto it = m_loadedAssets.find(path);
-		if (it != m_loadedAssets.end())
+		lib::LockGuard lock(m_assetsSystemLock);
+
 		{
-			return LoadResult(AssetHandle(it->second));
+			const auto it = m_loadedAssets.find(path);
+			if (it != m_loadedAssets.end())
+			{
+				return LoadResult(AssetHandle(it->second));
+			}
 		}
-	}
-
-	const lib::Path fullPath = m_contentPath / path.GetPath();
-
-	if (!std::filesystem::exists(fullPath))
-	{
-		return LoadResult(ELoadError::DoesNotExist);
-	}
-
-	AssetInstanceData assetData;
-	if (IsCompiledOnlyMode())
-	{
-		const std::optional<AssetDescriptor> descriptor = m_assetsDB.GetAssetDescriptor(path);
-		SPT_CHECK(!!descriptor);
-		assetData.type = AssetFactory::GetInstance().GetAssetTypeByKey(descriptor->assetTypeKey);
-	}
-	else
-	{
-		assetData = ReadAssetData(fullPath);
-	}
-
-	const AssetHandle assetInstance = CreateAssetInstance(AssetInitializer
-														  {
-															  .type = assetData.type,
-															  .path = path,
-														  });
-
-	if (!assetInstance.IsValid())
-	{
-		return ELoadError::FailedToCreateInstance;
-	}
-
-	assetInstance->AssignData(std::move(assetData));
-
-	if (!IsAssetCompiled(assetInstance->GetRelativePath()))
-	{
-		const Bool compilationResult = CompileAssetImpl(assetInstance);
-
-		if (!compilationResult && IsCompiledOnlyMode())
+	
+		AssetInstanceData assetData;
+		if (IsCompiledOnlyMode())
 		{
-			return LoadResult(ELoadError::CompilationFailed);
+			const std::optional<AssetDescriptor> descriptor = m_assetsDB.GetAssetDescriptor(path);
+			if (!descriptor)
+			{
+				return LoadResult(ELoadError::DoesNotExist);
+			}
+	
+			assetData.type = AssetFactory::GetInstance().GetAssetTypeByKey(descriptor->assetTypeKey);
 		}
+		else
+		{
+			const lib::Path fullPath = m_contentPath / path.GetPath();
+	
+			if (!std::filesystem::exists(fullPath))
+			{
+				return LoadResult(ELoadError::DoesNotExist);
+			}
+	
+			assetData = ReadAssetData(fullPath);
+		}
+	
+		assetInstance = CreateAssetInstance(AssetInitializer
+											{
+												.type = assetData.type,
+												.path = path,
+											});
+	
+		if (!assetInstance.IsValid())
+		{
+			return ELoadError::FailedToCreateInstance;
+		}
+	
+		m_loadedAssets[path] = assetInstance.Get();
+	
+		assetInstance->AssignData(std::move(assetData));
 	}
 
-	m_loadedAssets[path] = assetInstance.Get();
+	SPT_CHECK(assetInstance.IsValid());
 
-	assetInstance->PostInitialize();
+	ScheduleAssetInitialization(assetInstance);
 
 	return LoadResult(AssetHandle(std::move(assetInstance)));
 }
@@ -154,6 +155,13 @@ AssetHandle AssetsSystem::LoadAssetChecked(const ResourcePath& path)
 	SPT_CHECK(loadResult.HasValue());
 
 	return AssetHandle(loadResult.GetValue());
+}
+
+AssetHandle AssetsSystem::LoadAndInitAssetChecked(const ResourcePath& path)
+{
+	AssetHandle asset = LoadAssetChecked(path);
+	asset->AwaitInitialization();
+	return asset;
 }
 
 EDeleteResult AssetsSystem::DeleteAsset(const ResourcePath& path)
@@ -298,6 +306,34 @@ AssetHandle AssetsSystem::CreateAssetInstance(const AssetInitializer& initialize
 	return newAsset;
 }
 
+void AssetsSystem::ScheduleAssetInitialization(const AssetHandle& assetInstance)
+{
+	Bool isCompiled = false;
+
+	if (IsCompiledOnlyMode())
+	{
+		SPT_CHECK(IsAssetCompiled(assetInstance->GetRelativePath()));
+		isCompiled = true;
+	}
+	else
+	{
+		isCompiled = IsAssetCompiled(assetInstance->GetRelativePath());
+	}
+
+	js::Job initJob = js::Launch(SPT_GENERIC_JOB_NAME,
+								 [this, assetInstance, isCompiled]()
+								 {
+									 if (!isCompiled)
+									 {
+										 CompileAssetImpl(assetInstance);
+									 }
+					
+									 assetInstance->Initialize();
+								 });
+
+	assetInstance->AssignInitializationJob(std::move(initJob));
+}
+
 lib::DynamicArray<AssetHandle> AssetsSystem::GetLoadedAssetsList_Locked() const
 {
 	SPT_PROFILER_FUNCTION();
@@ -326,7 +362,6 @@ Bool AssetsSystem::CompileAssetImpl(const AssetHandle& asset)
 
 	if (compilationResult)
 	{
-		asset->AddRuntimeFlag(EAssetRuntimeFlags::Compiled);
 		m_assetsDB.SaveAssetDescriptor(asset->GetRelativePath(), AssetDescriptor{ .assetTypeKey = asset->GetTypeKey() });
 	}
 	else

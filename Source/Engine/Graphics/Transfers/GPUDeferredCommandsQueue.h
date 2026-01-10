@@ -54,6 +54,8 @@ private:
 	void ExecutePreUploadBarriers(const lib::SharedPtr<rdr::RenderContext>& renderContext);
 	void ExecutePostUploadBarriers(const lib::SharedPtr<rdr::RenderContext>& renderContext);
 
+	lib::Spinlock m_requestsLock;
+
 
 	lib::DynamicArray<lib::UniquePtr<GPUDeferredUploadRequest>> m_uploadRequests;
 	lib::DynamicArray<lib::UniquePtr<GPUDeferredBLASBuildRequest>> m_blasBuildRequests;

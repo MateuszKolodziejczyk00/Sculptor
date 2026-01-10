@@ -80,7 +80,7 @@ protected:
 
 	// Begin AssetInstance overrides
 	virtual Bool Compile() override;
-	virtual void PostInitialize() override;
+	virtual void OnInitialize() override;
 	// End AssetInstance overrides
 
 private:

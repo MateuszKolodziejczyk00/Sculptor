@@ -8,9 +8,11 @@
 #include "Utility/Threading/ThreadUtils.h"
 #include "Serialization.h"
 #include "DDC.h"
+#include "JobSystem/Job.h"
 
 #define SPT_REGISTER_ASSET_DATA_TYPE(DataType) \
 	SPT_REGISTER_TYPE_FOR_BLACKBOARD_SERIALIZATION(DataType)
+
 
 namespace spt::as
 {
@@ -104,7 +106,7 @@ private: \
 enum class EAssetRuntimeFlags : Uint32
 {
 	None,
-	Compiled = BIT(0),
+	Initialized = BIT(0),
 
 	Default = None
 };
@@ -128,7 +130,10 @@ public:
 
 	virtual ~AssetInstance();
 
-	Bool IsCompiled() const { return lib::HasAnyFlag(m_runtimeFlags, EAssetRuntimeFlags::Compiled); }
+	js::Job GetInitializationJob() const { return js::Job(lib::MTHandle<js::JobInstance>(m_initializationJob.load())); }
+	void AwaitInitialization()     const { GetInitializationJob().Wait(); }
+
+	Bool IsInitialized() const { return lib::HasAnyFlag(m_runtimeFlags, EAssetRuntimeFlags::Initialized); }
 
 	void                     AssignData(AssetInstanceData data) { m_data = std::move(data); }
 	const AssetInstanceData& GetInstanceData() const            { return m_data; }
@@ -148,13 +153,16 @@ public:
 
 protected:
 
+	void Initialize();
+	void AssignInitializationJob(js::Job job);
+
 	// Called after the asset is created and its data is initialized by initializer
 	virtual void PostCreate() {}
 
 	virtual Bool Compile() = 0;
 
-	// Called after asset is ready to be used (regardless of whether it was loaded or created)
-	virtual void PostInitialize() {}
+	// Called after asset DDC data is ready to be used (regardless of whether it was loaded or created)
+	virtual void OnInitialize() {}
 
 	virtual void PreSave() {}
 	virtual void PostSave() {}
@@ -178,6 +186,8 @@ private:
 
 	lib::HashedString m_name;
 	ResourcePath      m_path;
+
+	std::atomic<js::JobInstance*> m_initializationJob = nullptr;
 
 	EAssetRuntimeFlags m_runtimeFlags = EAssetRuntimeFlags::Default;
 

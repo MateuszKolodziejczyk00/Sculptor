@@ -438,6 +438,9 @@ void SandboxRenderer::InitializeRenderScene()
 	m_renderScene->AddRenderSystem<rsc::LightsRenderSystem>();
 	m_renderScene->AddRenderSystem<rsc::AtmosphereRenderSystem>();
 
+	iesProfile0->AwaitInitialization();
+	iesProfile1->AwaitInitialization();
+
 	const lib::HashedString scenePath = engn::Engine::Get().GetCmdLineArgs().GetValue("-Scene");
 	if (scenePath.IsValid())
 	{

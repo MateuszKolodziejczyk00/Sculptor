@@ -51,8 +51,7 @@ enum class EDeleteResult
 enum class ELoadError
 {
 	DoesNotExist,
-	FailedToCreateInstance,
-	CompilationFailed,
+	FailedToCreateInstance
 };
 
 
@@ -71,6 +70,7 @@ public:
 	void Shutdown();
 
 	CreateResult CreateAsset(const AssetInitializer& initializer);
+
 	LoadResult   LoadAsset(const ResourcePath& path);
 	AssetHandle  LoadAssetChecked(const ResourcePath& path);
 
@@ -78,6 +78,16 @@ public:
 	TypedAssetHandle<TAssetType> LoadAssetChecked(const ResourcePath& path)
 	{
 		AssetHandle asset = LoadAssetChecked(path);
+		SPT_CHECK(asset->GetInstanceData().type == CreateAssetType<TAssetType>());
+		return static_cast<TAssetType*>(asset.Get());
+	}
+
+	AssetHandle LoadAndInitAssetChecked(const ResourcePath& path);
+
+	template<typename TAssetType>
+	TypedAssetHandle<TAssetType> LoadAndInitAssetChecked(const ResourcePath& path)
+	{
+		AssetHandle asset = LoadAndInitAssetChecked(path);
 		SPT_CHECK(asset->GetInstanceData().type == CreateAssetType<TAssetType>());
 		return static_cast<TAssetType*>(asset.Get());
 	}
@@ -107,6 +117,8 @@ private:
 	AssetInstanceData ReadAssetData(const lib::Path& fullPath) const;
 
 	AssetHandle CreateAssetInstance(const AssetInitializer& initializer);
+
+	void ScheduleAssetInitialization(const AssetHandle& assetInstance);
 
 	lib::DynamicArray<AssetHandle> GetLoadedAssetsList_Locked() const;
 

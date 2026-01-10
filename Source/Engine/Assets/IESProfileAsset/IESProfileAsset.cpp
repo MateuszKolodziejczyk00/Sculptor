@@ -83,9 +83,9 @@ Bool IESProfileAsset::Compile()
 	return CompileIESProfileTexture();
 }
 
-void IESProfileAsset::PostInitialize()
+void IESProfileAsset::OnInitialize()
 {
-	Super::PostInitialize();
+	Super::OnInitialize();
 
 	InitGPUTexture();
 }

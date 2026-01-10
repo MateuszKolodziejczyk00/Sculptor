@@ -27,9 +27,9 @@ Bool TextureAsset::Compile()
 	return CompileTexture();
 }
 
-void TextureAsset::PostInitialize()
+void TextureAsset::OnInitialize()
 {
-	Super::PostInitialize();
+	Super::OnInitialize();
 
 	CreateTextureInstance();
 }

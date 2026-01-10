@@ -63,10 +63,10 @@ TEST_F(IESProfileAssetsSystemTests, CreateIESProfile)
 
 	EXPECT_TRUE(m_assetsSystem.GetLoadedAssetsList().size() == 0u);
 
-	LoadResult loadResult = m_assetsSystem.LoadAsset(assetPath);
+	AssetHandle asset = m_assetsSystem.LoadAndInitAssetChecked(assetPath);
 
-	EXPECT_TRUE(loadResult);
-	loadResult.GetValue().Reset();
+	EXPECT_TRUE(asset.IsValid());
+	asset.Reset();
 
 	gfx::GPUDeferredCommandsQueue::Get().ForceFlushUploads();
 

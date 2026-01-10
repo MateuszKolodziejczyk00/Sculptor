@@ -931,7 +931,10 @@ public:
 
 	void Wait() const
 	{
-		m_instance->Wait();
+		if (m_instance.IsValid())
+		{
+			m_instance->Wait();
+		}
 	}
 
 	const lib::MTHandle<JobInstance>& GetJobInstance() const

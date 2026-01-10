@@ -65,12 +65,12 @@ TEST_F(TextureAssetsSystemTests, CreateTexture)
 
 	EXPECT_TRUE(m_assetsSystem.GetLoadedAssetsList().size() == 0u);
 
-	LoadResult loadResult = m_assetsSystem.LoadAsset(assetPath);
+	AssetHandle asset = m_assetsSystem.LoadAndInitAssetChecked(assetPath);
 
 	gfx::GPUDeferredCommandsQueue::Get().ForceFlushUploads();
 
-	EXPECT_TRUE(loadResult);
-	loadResult.GetValue().Reset();
+	EXPECT_TRUE(asset.IsValid());
+	asset.Reset();
 
 	const EDeleteResult deleteResult = m_assetsSystem.DeleteAsset(assetPath);
 
@@ -107,13 +107,13 @@ TEST_F(TextureAssetsSystemTests, CreateTextureSet)
 
 	EXPECT_TRUE(m_assetsSystem.GetLoadedAssetsList().size() == 0u);
 
-	LoadResult loadResult = m_assetsSystem.LoadAsset(assetPath);
+	AssetHandle asset = m_assetsSystem.LoadAndInitAssetChecked(assetPath);
 
 	gfx::GPUDeferredCommandsQueue::Get().ForceFlushUploads();
 
-	EXPECT_TRUE(loadResult);
+	EXPECT_TRUE(asset.IsValid());
 
-	loadResult.GetValue().Reset();
+	asset.Reset();
 
 	const EDeleteResult deleteResult = m_assetsSystem.DeleteAsset(assetPath);
 

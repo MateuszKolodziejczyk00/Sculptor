@@ -66,4 +66,26 @@ const lib::Path AssetInstance::GetDirectoryPath() const
 	return GetOwningSystem().GetContentPath() / GetRelativePath().parent_path();
 }
 
+void AssetInstance::Initialize()
+{
+	OnInitialize();
+
+	AddRuntimeFlag(EAssetRuntimeFlags::Initialized);
+	js::JobInstance* initJobInstance = m_initializationJob.load();
+	SPT_CHECK(!!initJobInstance);
+	m_initializationJob.store(nullptr);
+
+	initJobInstance->Release();
+}
+
+void AssetInstance::AssignInitializationJob(js::Job job)
+{
+	SPT_CHECK(!IsInitialized());
+	SPT_CHECK(m_initializationJob.load() == nullptr);
+
+	js::JobInstance* jobInstance = job.GetJobInstance().Get();
+	jobInstance->AddRef();
+	m_initializationJob.store(jobInstance);
+}
+
 } // spt::as

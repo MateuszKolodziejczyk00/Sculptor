@@ -18,11 +18,15 @@ SPT_DEFINE_PLUGIN(GPUDeferredCommandsQueue);
 
 void GPUDeferredCommandsQueue::RequestUpload(lib::UniquePtr<GPUDeferredUploadRequest> request)
 {
+	const lib::LockGuard lock(m_requestsLock);
+
 	m_uploadRequests.emplace_back(std::move(request));
 }
 
 void GPUDeferredCommandsQueue::RequestBLASBuild(lib::UniquePtr<GPUDeferredBLASBuildRequest> request)
 {
+	const lib::LockGuard lock(m_requestsLock);
+
 	m_blasBuildRequests.emplace_back(std::move(request));
 }
 

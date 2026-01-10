@@ -138,9 +138,11 @@ Bool MeshAsset::Compile()
 	return true;
 }
 
-void MeshAsset::PostInitialize()
+void MeshAsset::OnInitialize()
 {
-	Super::PostInitialize();
+	SPT_PROFILER_FUNCTION();
+
+	Super::OnInitialize();
 
 	m_renderMesh = new rsc::RenderMesh();
 	

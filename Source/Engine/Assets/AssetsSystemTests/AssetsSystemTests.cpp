@@ -139,9 +139,9 @@ TEST_F(AssetsSystemTests, LoadAsset)
 
 	EXPECT_TRUE(m_assetsSystem.DoesAssetExist(assetPath));
 
-	const LoadResult loadResult = m_assetsSystem.LoadAsset(assetPath);
+	const AssetHandle asset = m_assetsSystem.LoadAndInitAssetChecked(assetPath);
 
-	EXPECT_TRUE(loadResult.HasValue());
+	EXPECT_TRUE(asset.IsValid());
 
 	EXPECT_TRUE(m_assetsSystem.GetLoadedAssetsList().size() == 1u);
 }
@@ -156,14 +156,14 @@ TEST_F(AssetsSystemTests, AssetsLoadingAndUnloading)
 
 	EXPECT_TRUE(m_assetsSystem.GetLoadedAssetsList().size() == 0u);
 
-	AssetHandle asset1 = m_assetsSystem.LoadAssetChecked(asset1Path);
+	AssetHandle asset1 = m_assetsSystem.LoadAndInitAssetChecked(asset1Path);
 	EXPECT_TRUE(m_assetsSystem.GetLoadedAssetsList().size() == 1u);
 
-	AssetHandle asset2 = m_assetsSystem.LoadAssetChecked(asset2Path);
+	AssetHandle asset2 = m_assetsSystem.LoadAndInitAssetChecked(asset2Path);
 	EXPECT_TRUE(m_assetsSystem.GetLoadedAssetsList().size() == 2u);
 
 	// Loading already loaded asset
-	AssetHandle asset1Again = m_assetsSystem.LoadAssetChecked(asset1Path);
+	AssetHandle asset1Again = m_assetsSystem.LoadAndInitAssetChecked(asset1Path);
 	EXPECT_TRUE(m_assetsSystem.GetLoadedAssetsList().size() == 2u);
 
 	// Create already loaded asset
@@ -184,7 +184,7 @@ TEST_F(AssetsSystemTests, AssetsLoadingAndUnloading)
 	EXPECT_TRUE(m_assetsSystem.GetLoadedAssetsList().size() == 1u);
 
 	// Load unloaded asset
-	asset1 = m_assetsSystem.LoadAssetChecked(asset1Path);
+	asset1 = m_assetsSystem.LoadAndInitAssetChecked(asset1Path);
 	EXPECT_TRUE(m_assetsSystem.GetLoadedAssetsList().size() == 2u);
 
 	asset1.Reset();
@@ -222,11 +222,9 @@ TEST_F(AssetsSystemTests, CreateAndLoadAssetWithData)
 
 	EXPECT_TRUE(m_assetsSystem.GetLoadedAssetsList().size() == 0u);
 
-	LoadResult loadResult = m_assetsSystem.LoadAsset(assetPath);
+	asset = m_assetsSystem.LoadAndInitAssetChecked(assetPath);
 
-	EXPECT_TRUE(loadResult.HasValue());
-
-	asset = std::move(loadResult.GetValue());
+	EXPECT_TRUE(asset.IsValid());
 
 	EXPECT_TRUE(asset->GetBlackboard().Contains<AssetData1>());
 	EXPECT_TRUE(asset->GetBlackboard().Contains<AssetData2>());

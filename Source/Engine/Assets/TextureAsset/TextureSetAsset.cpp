@@ -30,9 +30,9 @@ Bool PBRTextureSetAsset::Compile()
 	return CompileTextureSet();
 }
 
-void PBRTextureSetAsset::PostInitialize()
+void PBRTextureSetAsset::OnInitialize()
 {
-	Super::PostInitialize();
+	Super::OnInitialize();
 
 	CreateTextureInstances();
 }
