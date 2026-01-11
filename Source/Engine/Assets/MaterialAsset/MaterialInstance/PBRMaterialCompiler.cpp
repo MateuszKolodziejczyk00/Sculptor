@@ -89,7 +89,7 @@ static lib::SharedPtr<rdr::TextureView> TryLoadTexture(const lib::Path& path)
 	return loadedTexture ? loadedTexture->CreateView(RENDERER_RESOURCE_NAME(path.generic_string())) : lib::SharedPtr<rdr::TextureView>{};
 }
 
-#pragma optimize("", off)
+
 lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBRMaterialDefinition& definition)
 {
 	SPT_PROFILER_FUNCTION();

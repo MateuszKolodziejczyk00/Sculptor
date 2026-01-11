@@ -1,5 +1,5 @@
 #include "MaterialInstance.h"
-#pragma optimize("", off)
+
 
 namespace spt::as
 {
