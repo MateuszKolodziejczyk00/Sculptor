@@ -55,7 +55,6 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 		lib::AddFlags(asInitializer.flags, as::EAssetsSystemFlags::CompiledOnly);
 	}
 
-
 	engn::Engine::Get().GetAssetsSystem().Initialize(asInitializer);
 
 	const SizeType threadsNum = static_cast<SizeType>(std::thread::hardware_concurrency());
@@ -130,12 +129,12 @@ void SculptorEdApplication::OnRun()
 		rdr::UIBackend::DestroyFontsTemporaryObjects();
 	}
 
+	psoPrecachingJob.Wait();
+
 	scui::ViewDefinition sandboxViewDef;
 	sandboxViewDef.name = "SandboxView";
 	sandboxViewDef.minimumSize = m_window->GetSwapchainSize();
 	lib::SharedRef<SandboxUIView> view = scui::ApplicationUI::OpenView<SandboxUIView>(sandboxViewDef);
-
-	psoPrecachingJob.Wait();
 
 	lib::SharedPtr<EditorFrameContext> currentFrame;
 
@@ -180,6 +179,8 @@ void SculptorEdApplication::OnRun()
 void SculptorEdApplication::OnShutdown()
 {
 	rdr::Renderer::WaitIdle();
+
+	engn::Engine::Get().GetAssetsSystem().UnloadPermanentAssets();
 
 	scui::ApplicationUI::CloseAllViews();
 

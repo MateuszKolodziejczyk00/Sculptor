@@ -1,4 +1,5 @@
 #include "AssetsSystem.h"
+#include "ProfilerCore.h"
 #include "SerializationHelper.h"
 #include "JobSystem/JobSystem.h"
 
@@ -28,21 +29,12 @@ Bool AssetsSystem::Initialize(const AssetsSystemInitializer& initializer)
 
 void AssetsSystem::Shutdown()
 {
-	lib::LockGuard lock(m_assetsSystemLock);
+	UnloadPermanentAssets();
 
-	if (!m_loadedAssets.empty())
 	{
-		const lib::DynamicArray<AssetHandle> loadedAssets = GetLoadedAssetsList_Locked();
-
-		for (const AssetHandle& asset : loadedAssets)
-		{
-			SPT_LOG_ERROR(AssetsSystem, "Asset was not unloaded! Name: {}", asset->GetName().ToString());
-		}
-
-		SPT_CHECK_NO_ENTRY_MSG("Not all assets were unloaded before shutdown!");
+		lib::LockGuard lock(m_assetsSystemLock);
+		m_assetsDB.Shutdown();
 	}
-
-	m_assetsDB.Shutdown();
 }
 
 CreateResult AssetsSystem::CreateAsset(const AssetInitializer& initializer)
@@ -218,6 +210,37 @@ Bool AssetsSystem::IsLoaded(const ResourcePath& path) const
 	lib::LockGuard lock(m_assetsSystemLock);
 
 	return IsLoaded_Locked(path);
+}
+
+void AssetsSystem::UnloadPermanentAssets()
+{
+	SPT_PROFILER_FUNCTION();
+
+	if (!m_loadedAssets.empty())
+	{
+		lib::DynamicArray<AssetHandle> loadedAssets;
+
+		{
+			lib::LockGuard lock(m_assetsSystemLock);
+			loadedAssets = GetLoadedAssetsList_Locked();
+		}
+
+		Uint32 notUnloadedAssetsNum = 0u;
+
+		for (const AssetHandle& asset : loadedAssets)
+		{
+			if (!asset->ClearPermanent())
+			{
+				SPT_LOG_ERROR(AssetsSystem, "Asset was not unloaded! Name: {}", asset->GetName().ToString());
+				++notUnloadedAssetsNum;
+			}
+		}
+
+		if (notUnloadedAssetsNum > 0u)
+		{
+			SPT_CHECK_NO_ENTRY_MSG("Not all assets were unloaded before shutdown!");
+		}
+	}
 }
 
 lib::DynamicArray<AssetHandle> AssetsSystem::GetLoadedAssetsList() const

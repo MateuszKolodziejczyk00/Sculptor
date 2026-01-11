@@ -3,6 +3,7 @@
 #include "Material.h"
 #include "RenderSceneRegistry.h"
 #include "ShaderStructs.h"
+#include "Bindless/BindlessTypes.h"
 
 
 namespace spt::rsc

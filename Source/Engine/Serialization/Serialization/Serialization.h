@@ -292,7 +292,7 @@ protected:
 	{
 		if (name)
 		{
-			return m_json[name].get<TData>();
+			return m_json.contains(name) ? m_json[name].get<TData>() : TData{};
 		}
 		else
 		{

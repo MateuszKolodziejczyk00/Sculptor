@@ -87,12 +87,17 @@ struct AssetDerivedDataKey
 };
 
 
-template<typename THeader>
-struct DDCLoadedData : public lib::MTRefCounted
+struct DDCLoadedBin : public lib::MTRefCounted
 {
 	DDCResourceHandle     handle;
-	THeader               header;
 	lib::Span<const Byte> bin;
+};
+
+
+template<typename THeader>
+struct DDCLoadedData : public DDCLoadedBin
+{
+	THeader header;
 };
 
 
@@ -103,13 +108,17 @@ protected: \
 private: \
 
 
-enum class EAssetRuntimeFlags : Uint32
+namespace EAssetRuntimeFlags
+{
+enum Type : Uint32
 {
 	None,
 	Initialized = BIT(0),
+	Permanent   = BIT(1),
 
 	Default = None
 };
+} // EAssetRuntimeFlags
 
 
 class ASSETS_SYSTEM_API AssetInstance : public lib::MTRefCounted
@@ -133,7 +142,10 @@ public:
 	js::Job GetInitializationJob() const { return js::Job(lib::MTHandle<js::JobInstance>(m_initializationJob.load())); }
 	void AwaitInitialization()     const { GetInitializationJob().Wait(); }
 
-	Bool IsInitialized() const { return lib::HasAnyFlag(m_runtimeFlags, EAssetRuntimeFlags::Initialized); }
+	Bool IsInitialized() const { return (m_runtimeFlags.load() & EAssetRuntimeFlags::Initialized) != EAssetRuntimeFlags::None; }
+
+	Bool SetPermanent();
+	Bool ClearPermanent();
 
 	void                     AssignData(AssetInstanceData data) { m_data = std::move(data); }
 	const AssetInstanceData& GetInstanceData() const            { return m_data; }
@@ -169,7 +181,8 @@ protected:
 
 	virtual void PreUnload() {}
 
-	void AddRuntimeFlag(EAssetRuntimeFlags flag) { lib::AddFlag(m_runtimeFlags, flag); }
+	EAssetRuntimeFlags::Type AddRuntimeFlag(EAssetRuntimeFlags::Type flag)    { return static_cast<EAssetRuntimeFlags::Type>(m_runtimeFlags.fetch_or(flag)); }
+	EAssetRuntimeFlags::Type RemoveRuntimeFlag(EAssetRuntimeFlags::Type flag) { return static_cast<EAssetRuntimeFlags::Type>(m_runtimeFlags.fetch_and(~flag)); }
 
 	// This can be overridden by child class. In order to do that, create the same static function with the same signature
 	static void OnAssetDeleted(AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data) {}
@@ -189,7 +202,7 @@ private:
 
 	std::atomic<js::JobInstance*> m_initializationJob = nullptr;
 
-	EAssetRuntimeFlags m_runtimeFlags = EAssetRuntimeFlags::Default;
+	std::atomic<Uint32> m_runtimeFlags = EAssetRuntimeFlags::Default;
 
 	AssetsSystem& m_owningSystem;
 

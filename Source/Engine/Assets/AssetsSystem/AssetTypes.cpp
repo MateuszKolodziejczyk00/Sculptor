@@ -56,6 +56,28 @@ AssetInstance::~AssetInstance()
 	m_owningSystem.OnAssetUnloaded(*this);
 }
 
+Bool AssetInstance::SetPermanent()
+{
+	const EAssetRuntimeFlags::Type prevFlags = AddRuntimeFlag(EAssetRuntimeFlags::Permanent);
+	if ((prevFlags & EAssetRuntimeFlags::Permanent) == EAssetRuntimeFlags::None)
+	{
+		AddRef();
+		return true;
+	}
+	return false;
+}
+
+Bool AssetInstance::ClearPermanent()
+{
+	const EAssetRuntimeFlags::Type prevFlags = RemoveRuntimeFlag(EAssetRuntimeFlags::Permanent);
+	if ((prevFlags & EAssetRuntimeFlags::Permanent) != EAssetRuntimeFlags::None)
+	{
+		Release();
+		return true;
+	}
+	return false;
+}
+
 void AssetInstance::SaveAsset()
 {
 	m_owningSystem.SaveAsset(AssetHandle(this));

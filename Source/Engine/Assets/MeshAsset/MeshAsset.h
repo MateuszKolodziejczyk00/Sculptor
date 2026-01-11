@@ -6,12 +6,6 @@
 #include "DDC.h"
 
 
-namespace spt::rdr
-{
-class TextureView;
-} // spt::rdr
-
-
 namespace spt::rsc
 {
 class RenderMesh;

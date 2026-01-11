@@ -69,6 +69,8 @@ IncludeProjectFromDirectory("Assets/TextureAsset",         "TextureAsset")
 IncludeProjectFromDirectory("Assets/TextureAssetTests",    "TextureAssetTests")
 IncludeProjectFromDirectory("Assets/IESProfileAsset",      "IESProfileAsset")
 IncludeProjectFromDirectory("Assets/IESProfileAssetTests", "IESProfileAssetTests")
+IncludeProjectFromDirectory("Assets/MaterialAsset",        "MaterialAsset")
+IncludeProjectFromDirectory("Assets/MaterialAssetTests",   "MaterialAssetTests")
 IncludeProjectFromDirectory("Assets/MeshAsset",            "MeshAsset")
 IncludeProjectFromDirectory("Assets/MeshAssetTests",       "MeshAssetTests")
 

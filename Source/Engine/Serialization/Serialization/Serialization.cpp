@@ -104,12 +104,12 @@ void Serializer::Serialize(const char* name, lib::RuntimeTypeInfo& value)
 {
 	if (IsSaving())
 	{
-		SetImpl(name, value.name);
+		SetImpl(name, lib::String(value.name));
 	}
 	else
 	{
-		lib::String typeName = GetImpl<lib::String>(name);
-		value = lib::RuntimeTypeInfo::CreateFromName(typeName);
+		const lib::HashedString typeName = GetImpl<lib::String>(name);
+		value = lib::RuntimeTypeInfo::CreateFromName(typeName.GetView());
 	}
 }
 

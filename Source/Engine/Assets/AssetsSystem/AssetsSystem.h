@@ -102,6 +102,8 @@ public:
 
 	void OnAssetUnloaded(AssetInstance& instance);
 
+	void UnloadPermanentAssets();
+
 	lib::DynamicArray<AssetHandle> GetLoadedAssetsList() const;
 
 	const lib::Path& GetContentPath() const { return m_contentPath; }
