@@ -21,6 +21,9 @@ struct PBRMaterialDefinition
 	Real32 roughnessFactor         = 1.f;
 	math::Vector3f emissionFactor  = math::Vector3f::Zero();
 
+	Bool doubleSided   = true;
+	Bool customOpacity = false;
+
 	// factors etc..
 
 	void Serialize(srl::Serializer& serializer)
@@ -34,6 +37,9 @@ struct PBRMaterialDefinition
 		serializer.Serialize("MetallicFactor",  metallicFactor);
 		serializer.Serialize("RoughnessFactor", roughnessFactor);
 		serializer.Serialize("EmissionFactor",  emissionFactor);
+
+		serializer.Serialize("DoubleSided",   doubleSided);
+		serializer.Serialize("CustomOpacity", customOpacity);
 	}
 };
 SPT_REGISTER_ASSET_DATA_TYPE(PBRMaterialDefinition);

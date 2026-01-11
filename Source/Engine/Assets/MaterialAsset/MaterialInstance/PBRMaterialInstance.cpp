@@ -84,12 +84,14 @@ void PBRMaterialInstance::Load(const AssetInstance& asset, lib::MTHandle<DDCLoad
 	m_materialData.normalsTexture           = initTexture(materialDataHeader.normalsTexture);
 	m_materialData.emissiveTexture          = initTexture(materialDataHeader.emissiveTexture);
 
+	const Bool isEmissive = materialDataHeader.emissionFactor.x() > 0.f || materialDataHeader.emissionFactor.y() || materialDataHeader.emissionFactor.z();
+
 	mat::MaterialDefinition materialDefinition;
 	materialDefinition.name          = asset.GetName();
-	materialDefinition.customOpacity = false;
+	materialDefinition.customOpacity = materialDataHeader.customOpacity != 0u;
 	materialDefinition.transparent   = false;
-	materialDefinition.doubleSided   = true;
-	materialDefinition.emissive      = false;
+	materialDefinition.doubleSided   = materialDataHeader.doubleSided != 0u;
+	materialDefinition.emissive      = isEmissive;
 
 	m_materialEntity = mat::MaterialsSubsystem::Get().CreateMaterial(materialDefinition, m_materialData);
 }

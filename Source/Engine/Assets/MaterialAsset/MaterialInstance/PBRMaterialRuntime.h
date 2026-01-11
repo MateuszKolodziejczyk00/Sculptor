@@ -41,6 +41,11 @@ struct PBRMaterialDataHeader
 	Real32 roughnessFactor         = 0.f;
 	math::Vector3f emissionFactor  = math::Vector3f::Zero();
 
+	Uint8 doubleSided   = 0u;
+	Uint8 customOpacity = 0u;
+	Uint8 padding0      = 0u;
+	Uint8 padding1      = 0u;
+
 	MaterialTextureDefinition baseColorTexture;
 	MaterialTextureDefinition metallicRoughnessTexture;
 	MaterialTextureDefinition roughnessTexture;

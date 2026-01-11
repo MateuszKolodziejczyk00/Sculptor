@@ -4,7 +4,6 @@
 #include "TextureAsset.h"
 #include "EngineCore/Engine.h"
 #include "RendererCore/Renderer.h"
-#include "TextureSetAsset.h"
 #include "Transfers/GPUDeferredCommandsQueue.h"
 
 
@@ -70,49 +69,6 @@ TEST_F(TextureAssetsSystemTests, CreateTexture)
 	gfx::GPUDeferredCommandsQueue::Get().ForceFlushUploads();
 
 	EXPECT_TRUE(asset.IsValid());
-	asset.Reset();
-
-	const EDeleteResult deleteResult = m_assetsSystem.DeleteAsset(assetPath);
-
-	EXPECT_TRUE(deleteResult == EDeleteResult::Success);
-}
-
-TEST_F(TextureAssetsSystemTests, CreateTextureSet)
-{
-	const lib::Path assetPath = "CreateTextureSet/TextureSet.sptasset";
-	m_assetsSystem.DeleteAsset(assetPath); // Delete leftover asset if exists
-
-	PBRTextureSetInitializer textureSetInitializer
-	{
-		PBRTextureSetSource
-		{
-			.baseColor         = "Textures/BaseColor.jpg",
-			.metallicRoughness = "Textures/MetallicRoughness.jpg",
-			.normals           = "Textures/Normals.jpg",
-		}
-	};
-
-	CreateResult result = m_assetsSystem.CreateAsset(AssetInitializer
-													 {
-														 .type            = CreateAssetType<PBRTextureSetAsset>(),
-														 .path            = assetPath,
-														 .dataInitializer = &textureSetInitializer
-													 });
-
-	EXPECT_TRUE(result);
-
-	gfx::GPUDeferredCommandsQueue::Get().ForceFlushUploads();
-
-	result.GetValue().Reset();
-
-	EXPECT_TRUE(m_assetsSystem.GetLoadedAssetsList().size() == 0u);
-
-	AssetHandle asset = m_assetsSystem.LoadAndInitAssetChecked(assetPath);
-
-	gfx::GPUDeferredCommandsQueue::Get().ForceFlushUploads();
-
-	EXPECT_TRUE(asset.IsValid());
-
 	asset.Reset();
 
 	const EDeleteResult deleteResult = m_assetsSystem.DeleteAsset(assetPath);

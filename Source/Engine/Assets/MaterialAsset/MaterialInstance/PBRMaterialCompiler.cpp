@@ -99,6 +99,8 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 	headerData.metallicFactor  = definition.metallicFactor;
 	headerData.roughnessFactor = definition.roughnessFactor;
 	headerData.emissionFactor  = definition.emissionFactor;
+	headerData.doubleSided     = definition.doubleSided   ? 1u : 0u;
+	headerData.customOpacity   = definition.customOpacity ? 1u : 0u;
 
 	lib::DynamicArray<Byte> compiledData;
 	compiledData.resize(sizeof(PBRMaterialDataHeader));
