@@ -365,3 +365,7 @@ Shaders/Sharc/**
 
 DDC/**
 Tests/DDC/**
+
+compile_commands.json
+.clangd
+RunPresets.txt
