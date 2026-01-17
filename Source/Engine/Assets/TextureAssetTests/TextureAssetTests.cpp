@@ -41,7 +41,7 @@ void TextureAssetsSystemTests::TearDown()
 
 TEST_F(TextureAssetsSystemTests, CreateTexture)
 {
-	const lib::Path assetPath = "CreateTextureDDS/Texture.sptasset";
+	const ResourcePath assetPath = "CreateTextureDDS/Texture.sptasset";
 	m_assetsSystem.DeleteAsset(assetPath); // Delete leftover asset if exists
 
 	TextureDataInitializer textureInitializer

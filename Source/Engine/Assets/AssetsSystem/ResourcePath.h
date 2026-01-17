@@ -1,8 +1,9 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "FileSystem/File.h"
 #include "AssetsSystemMacros.h"
+#include "FileSystem/File.h"
+#include "Serialization.h"
 
 
 namespace spt::as
@@ -25,9 +26,11 @@ public:
 
 	static ResourcePathsCache& GetInstance();
 
+	const CachedPath* FindCachedPath(ResourcePathID id) const;
 	const CachedPath& GetCachedPathChecked(ResourcePathID id) const;
 
 	const CachedPath& GetOrCreatePath(lib::Path path);
+
 
 private:
 
@@ -59,6 +62,8 @@ public:
 		return m_cachedPath == other.m_cachedPath;
 	}
 
+	static ResourcePath GetCachedPath(ResourcePathID pathID);
+
 	const lib::Path& GetPath() const;
 
 	lib::String GetName() const;
@@ -67,9 +72,30 @@ public:
 
 	ResourcePathID GetID() const { return m_cachedPath ? m_cachedPath->id : InvalidResourcePathID; }
 
+	operator ResourcePathID() const { return GetID(); }
+
+	void Serialize(srl::Serializer& serializer)
+	{
+		lib::Path tempPath;
+		if (serializer.IsLoading())
+		{
+			serializer.Serialize("Path", tempPath);
+			*this = ResourcePath(tempPath);
+		}
+		else
+		{
+			tempPath = GetPath();
+			serializer.Serialize("Path", tempPath);
+		}
+	}
+
 private:
 
-	const CachedPath* m_cachedPath;
+	ResourcePath(const CachedPath* path)
+		: m_cachedPath(path)
+	{ }
+
+	const CachedPath* m_cachedPath = nullptr;
 };
 
 } // spt::as

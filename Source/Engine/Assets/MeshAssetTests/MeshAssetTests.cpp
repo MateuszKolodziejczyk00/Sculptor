@@ -40,7 +40,7 @@ void MeshAssetsTests::TearDown()
 
 TEST_F(MeshAssetsTests, CreateMesh)
 {
-	const lib::Path assetPath = "Mesh/CreateMesh/Mesh.sptasset";
+	const ResourcePath assetPath = "Mesh/CreateMesh/Mesh.sptasset";
 	m_assetsSystem.DeleteAsset(assetPath); // Delete leftover asset if exists
 
 	MeshDataInitializer meshInitializer

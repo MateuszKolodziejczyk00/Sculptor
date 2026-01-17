@@ -55,6 +55,14 @@ struct AssetInitializer
 };
 
 
+struct AssetInstanceDefinition
+{
+	AssetType         type;
+	lib::HashedString name;
+	ResourcePathID    pathID;
+};
+
+
 using AssetBlackboard = lib::Blackboard;
 
 
@@ -73,12 +81,12 @@ struct AssetInstanceData
 
 struct AssetDerivedDataKey
 {
-	AssetDerivedDataKey(const ResourcePath& path, lib::HashedString subData)
-		: ddcKey(path.GetID(), subData.GetKey())
+	AssetDerivedDataKey(ResourcePathID pathID, lib::HashedString subData)
+		: ddcKey(pathID, subData.GetKey())
 	{ }
 
-	AssetDerivedDataKey(const ResourcePath& path)
-		: ddcKey(path.GetID(), 0u)
+	AssetDerivedDataKey(ResourcePathID pathID)
+		: ddcKey(pathID, 0u)
 	{ }
 
 	operator DerivedDataKey() const { return ddcKey; }
@@ -127,14 +135,14 @@ class ASSETS_SYSTEM_API AssetInstance : public lib::MTRefCounted
 
 public:
 
-	explicit AssetInstance(AssetsSystem& owningSystem, AssetInitializer initializer)
-		: m_name(std::move(initializer.path.GetName()))
-		, m_path(std::move(initializer.path))
+	explicit AssetInstance(AssetsSystem& owningSystem, const AssetInstanceDefinition& instanceDef)
+		: m_name(instanceDef.name)
+		, m_pathID(instanceDef.pathID)
 		, m_owningSystem(owningSystem)
 	{
-		SPT_CHECK_MSG(initializer.type.IsValid(), "Invalid asset type");
+		SPT_CHECK_MSG(instanceDef.type.IsValid(), "Invalid asset type");
 
-		m_data.type = initializer.type;
+		m_data.type = instanceDef.type;
 	}
 
 	virtual ~AssetInstance();
@@ -153,10 +161,16 @@ public:
 	void SaveAsset();
 
 	const lib::HashedString& GetName() const { return m_name; }
-	const lib::Path&         GetRelativePath() const { return m_path.GetPath(); }
 	const AssetType&         GetType() const { return m_data.type; }
 	AssetTypeKey             GetTypeKey() const { return m_data.type.GetKey(); }
-	const lib::Path          GetDirectoryPath() const;
+
+	// Usable only when "CompiledOnlyMode" is not in use
+	lib::Path GetRelativePath() const;
+	lib::Path GetDirectoryPath() const;
+
+	ResourcePath ResolveAssetRelativePath(const lib::Path& relativePath) const;
+
+	ResourcePathID GetResourcePathID() const { return m_pathID; }
 
 	const AssetBlackboard& GetBlackboard() const { return m_data.blackboard; }
 	AssetBlackboard&       GetBlackboard() { return m_data.blackboard; }
@@ -187,7 +201,10 @@ protected:
 	// This can be overridden by child class. In order to do that, create the same static function with the same signature
 	static void OnAssetDeleted(AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data) {}
 
-	operator AssetDerivedDataKey() const { return AssetDerivedDataKey(GetRelativePath()); }
+	operator AssetDerivedDataKey() const { return AssetDerivedDataKey(GetResourcePathID()); }
+
+	template<typename THeader, typename TBlobWriter>
+	void CreateDerivedData(AssetDerivedDataKey key, const THeader& header, Uint32 blobSize, TBlobWriter&& blobWriter);
 
 	template<typename THeader>
 	void CreateDerivedData(AssetDerivedDataKey key, const THeader& header, lib::Span<const Byte> data);
@@ -198,7 +215,7 @@ protected:
 private:
 
 	lib::HashedString m_name;
-	ResourcePath      m_path;
+	ResourcePathID    m_pathID;
 
 	std::atomic<js::JobInstance*> m_initializationJob = nullptr;
 
@@ -210,22 +227,35 @@ private:
 };
 
 
-template<typename THeader>
-void AssetInstance::CreateDerivedData(AssetDerivedDataKey key, const THeader& header, lib::Span<const Byte> data)
+template<typename THeader, typename TBlobWriter>
+void AssetInstance::CreateDerivedData(AssetDerivedDataKey key, const THeader& header, Uint32 blobSize, TBlobWriter&& blobWriter)
 {
 	srl::Serializer serializer = srl::Serializer::CreateWriter();
 	const_cast<THeader&>(header).Serialize(serializer);
 	const lib::String headerData = serializer.ToCompactString();
 
 	const Uint32 headerSize = static_cast<Uint32>(headerData.size());
-	const Uint32 totalSize = sizeof(Uint32) + headerSize + static_cast<Uint32>(data.size());
+	const Uint32 totalSize = sizeof(Uint32) + headerSize + blobSize;
 
 	DDCResourceHandle handle = GetOwningSystem().GetDDC().CreateDerivedData(key, totalSize);
 	const lib::Span<Byte> mutableSpan = handle.GetMutableSpan();
 
 	std::memcpy(mutableSpan.data(), &headerSize, sizeof(Uint32));
 	std::memcpy(mutableSpan.data() + sizeof(Uint32), headerData.data(), headerSize);
-	std::memcpy(mutableSpan.data() + sizeof(Uint32) + headerSize, data.data(), data.size());
+
+	blobWriter(lib::Span<Byte>(mutableSpan.data() + sizeof(Uint32) + headerSize, blobSize));
+}
+
+
+template<typename THeader>
+void AssetInstance::CreateDerivedData(AssetDerivedDataKey key, const THeader& header, lib::Span<const Byte> data)
+{
+	CreateDerivedData(key, header, static_cast<Uint32>(data.size()),
+	                  [&data](lib::Span<Byte> blob)
+	                  {
+	                      SPT_CHECK(data.size() == blob.size());
+	                      std::memcpy(blob.data(), data.data(), data.size());
+	                  });
 }
 
 
@@ -274,9 +304,9 @@ public:
 	{
 		SPT_STATIC_CHECK_MSG(std::is_base_of_v<AssetInstance, TAssetType>, "TAssetType must be derived from AssetInstance");
 
-		const auto factory = [](AssetsSystem& owningSystem, AssetInitializer initializer) -> AssetHandle
+		const auto factory = [](AssetsSystem& owningSystem, const AssetInstanceDefinition& definition) -> AssetHandle
 		{
-			return new TAssetType(owningSystem, std::move(initializer));
+			return new TAssetType(owningSystem, definition);
 		};
 
 		const auto deleter = [](AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data) -> void
@@ -287,7 +317,7 @@ public:
 		m_assetTypes[CreateAssetTypeKey<TAssetType>()] = AssetTypeMetaData{ .type = CreateAssetType<TAssetType>(), .factory = factory, .deleter = deleter};
 	}
 
-	AssetHandle CreateAsset(AssetsSystem& owningSystem, const AssetInitializer& initializer);
+	AssetHandle CreateAsset(AssetsSystem& owningSystem, const AssetInstanceDefinition& definition);
 
 	void DeleteAsset(AssetType assetType, AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data);
 
@@ -300,7 +330,7 @@ private:
 	struct AssetTypeMetaData
 	{
 		AssetType type;
-		lib::RawCallable<AssetHandle(AssetsSystem& owningSystem, AssetInitializer initializer)>                    factory;
+		lib::RawCallable<AssetHandle(AssetsSystem& owningSystem, const AssetInstanceDefinition& definition)>       factory;
 		lib::RawCallable<void(AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data)> deleter;
 	};
 

@@ -46,7 +46,7 @@ void SchedulerImpl::InitWorkers(SizeType workersNum)
 	for (SizeType i = 0; i < workersNum; ++i)
 	{
 		m_workersContexts[i].localQueueIdx = i;
-		m_workersContexts[i].sleepEvent = lib::MakeShared<platf::Event>(L"WorkerSleepEvent", false);
+		m_workersContexts[i].sleepEvent = lib::MakeShared<platf::Event>(nullptr, false);
 	}
 
 	m_workers.reserve(workersNum);
@@ -64,7 +64,7 @@ void SchedulerImpl::DestroyWorkers()
 	std::for_each(std::begin(m_workersContexts), std::end(m_workersContexts),
 				  [](WorkerContext& context)
 				  {
-					  context.shouldContinue.exchange(false, std::memory_order_release);
+					  context.shouldContinue.exchange(false);
 					  
 					  // Wake all workers, so that they can clean all resources
 					  context.sleepEvent->Trigger();

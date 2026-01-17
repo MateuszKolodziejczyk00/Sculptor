@@ -114,7 +114,7 @@ void Worker::Run()
 			continue;
 		}
 		
-		if (!GetContext().shouldContinue.load(std::memory_order_relaxed))
+		if (!GetContext().shouldContinue.load())
 		{
 			break;
 		}

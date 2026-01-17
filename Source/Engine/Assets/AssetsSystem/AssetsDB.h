@@ -1,6 +1,8 @@
 #pragma once
 
+#include "AssetTypes.h"
 #include "AssetsSystemMacros.h"
+#include "ResourcePath.h"
 #include "SculptorCoreTypes.h"
 
 
@@ -16,7 +18,8 @@ struct AssetDescriptor
 struct AssetsDBInitInfo
 {
 	DDC&           ddc;
-	DerivedDataKey ddcKey;
+	DerivedDataKey assetsDDCKey;
+	DerivedDataKey pathsDDCKey;
 };
 
 
@@ -34,10 +37,16 @@ class AssetsDB
 		AssetTypeKey   assetTypeKey = 0u;
 	};
 
-	struct RuntimeDescriptor
+	struct RuntimeAssetDescriptor
 	{
 		AssetDescriptor descriptor;
 		Uint32 ddcDescriptorIdx = idxNone<Uint32>;
+	};
+
+	struct PersistentPathDescriptorData
+	{
+		static constexpr Uint32 s_maxLength = 256u;
+		wchar_t path[s_maxLength];
 	};
 
 public:
@@ -50,7 +59,16 @@ public:
 	void SaveAssetDescriptor(const ResourcePath& assetPath, const AssetDescriptor& descriptor);
 	void DeleteAssetDescriptor(const ResourcePath& assetPath);
 
-	std::optional<AssetDescriptor> GetAssetDescriptor(const ResourcePath& assetPath) const;
+	std::optional<AssetDescriptor> GetAssetDescriptor(ResourcePathID pathID) const;
+
+	Bool ContainsAsset(ResourcePathID pathID) const;
+
+	// Returns valid path only to compiled assets
+	ResourcePath GetPath(ResourcePathID pathID) const;
+
+	Bool ContainsPathsDB() const { return m_pathsDDCHandle.IsValid(); }
+
+	Bool IsWritable() const { return ContainsPathsDB(); }
 
 private:
 
@@ -58,13 +76,19 @@ private:
 
 	mutable lib::ReadWriteLock m_lock;
 
-	lib::HashMap<ResourcePathID, RuntimeDescriptor> m_descriptors;
+	lib::HashMap<ResourcePathID, RuntimeAssetDescriptor> m_descriptors;
 
 	DDC*              m_ddc = nullptr;
-	DDCResourceHandle m_ddcHandle;
+	DDCResourceHandle m_assetsDDCHandle;
 
 	AssetsDBHeader*                          m_ddcHeader = nullptr;
 	lib::Span<PersistentAssetDescriptorData> m_ddcDescriptors;
+
+
+	lib::HashMap<ResourcePathID, ResourcePath> m_paths;
+
+	DDCResourceHandle                       m_pathsDDCHandle;
+	lib::Span<PersistentPathDescriptorData> m_ddcPaths;
 };
 
 } // spt::as

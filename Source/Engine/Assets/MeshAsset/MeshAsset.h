@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Containers/DynamicArray.h"
 #include "MeshAssetMacros.h"
 #include "SculptorCoreTypes.h"
 #include "AssetTypes.h"
@@ -14,6 +15,9 @@ class RenderMesh;
 
 namespace spt::as
 {
+
+class MaterialAsset;
+
 
 struct MeshSourceDefinition
 {
@@ -60,6 +64,8 @@ public:
 
 	const lib::MTHandle<rsc::RenderMesh>& GetRenderMesh() const { return m_renderMesh; }
 
+	Uint32 GetSubmeshesNum() const { return m_submeshesNum; }
+
 protected:
 
 	// Begin AssetInstance overrides
@@ -70,6 +76,7 @@ protected:
 private:
 
 	lib::MTHandle<rsc::RenderMesh> m_renderMesh;
+	Uint32 m_submeshesNum = 0u;
 };
 SPT_REGISTER_ASSET_TYPE(MeshAsset);
 

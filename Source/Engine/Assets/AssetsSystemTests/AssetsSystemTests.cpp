@@ -109,7 +109,7 @@ TEST(AssetsSystemInitializationTests, Initialization)
 
 TEST_F(AssetsSystemTests, CreateAndDeleteAsset)
 {
-	lib::Path assetPath = "CreateAndDeleteAsset/Asset.sptasset";
+	const ResourcePath assetPath = "CreateAndDeleteAsset/Asset.sptasset";
 	m_assetsSystem.DeleteAsset(assetPath); // Delete leftover asset if exists
 
 	CreateResult result = m_assetsSystem.CreateAsset(AssetInitializer
@@ -135,7 +135,7 @@ TEST_F(AssetsSystemTests, CreateAndDeleteAsset)
 
 TEST_F(AssetsSystemTests, LoadAsset)
 {
-	lib::Path assetPath = "LoadAsset/Asset.sptasset";
+	const ResourcePath assetPath = "LoadAsset/Asset.sptasset";
 
 	EXPECT_TRUE(m_assetsSystem.DoesAssetExist(assetPath));
 
@@ -197,7 +197,7 @@ TEST_F(AssetsSystemTests, AssetsLoadingAndUnloading)
 
 TEST_F(AssetsSystemTests, CreateAndLoadAssetWithData)
 {
-	const lib::Path assetPath = "CreateAndLoadAssetWithData/Asset.sptasset";
+	const ResourcePath assetPath = "CreateAndLoadAssetWithData/Asset.sptasset";
 	m_assetsSystem.DeleteAsset(assetPath); // Delete leftover asset if exists
 
 	EXPECT_TRUE(!m_assetsSystem.DoesAssetExist(assetPath));

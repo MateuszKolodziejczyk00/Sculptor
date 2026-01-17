@@ -3,6 +3,7 @@
 #include "DDC.h"
 #include "Loaders/GLTFMeshBuilder.h"
 #include "Loaders/GLTF.h"
+#include "ResourcePath.h"
 #include "Transfers/GPUDeferredCommandsQueueTypes.h"
 #include "StaticMeshes/RenderMesh.h"
 #include "Transfers/GPUDeferredCommandsQueue.h"
@@ -21,6 +22,8 @@ struct MeshDerivedDataHeader
 	math::Vector3f  boundingSphereCenter = {};
 	Real32          boundingSphereRadius = 0.f;
 
+	Uint32 submeshesNum = 0u;
+
 	void Serialize(srl::Serializer& serializer)
 	{
 		serializer.Serialize("MeshletsOffset", meshletsOffset);
@@ -28,6 +31,8 @@ struct MeshDerivedDataHeader
 
 		serializer.Serialize("BoundingSphereCenter", boundingSphereCenter);
 		serializer.Serialize("BoundingSphereRadius", boundingSphereRadius);
+
+		serializer.Serialize("SubmeshesNum", submeshesNum);
 	}
 };
 
@@ -35,11 +40,11 @@ struct MeshDerivedDataHeader
 rsc::MeshDefinition CreateMeshDefinitionFromDDCData(const DDCLoadedData<MeshDerivedDataHeader>& dd)
 {
 	rsc::MeshDefinition meshDef;
-	meshDef.meshletsOffset       = dd.header.meshletsOffset;
-	meshDef.geometryOffset       = dd.header.geometryOffset;
-	meshDef.boundingSphereCenter = dd.header.boundingSphereCenter;
-	meshDef.boundingSphereRadius = dd.header.boundingSphereRadius;
-	meshDef.blobView             = lib::Span<const Byte>(dd.bin.data(), dd.bin.size());
+	meshDef.meshletsOffset         = dd.header.meshletsOffset;
+	meshDef.geometryOffset         = dd.header.geometryOffset;
+	meshDef.boundingSphereCenter   = dd.header.boundingSphereCenter;
+	meshDef.boundingSphereRadius   = dd.header.boundingSphereRadius;
+	meshDef.blobView               = dd.bin;
 	return meshDef;
 }
 
@@ -133,7 +138,9 @@ Bool MeshAsset::Compile()
 	header.boundingSphereCenter = meshDef.boundingSphereCenter;
 	header.boundingSphereRadius = meshDef.boundingSphereRadius;
 
-	CreateDerivedData(*this, header, { meshDef.blob });
+	header.submeshesNum = static_cast<Uint32>(meshDef.GetSubmeshes().size());
+
+	CreateDerivedData(*this, header, meshDef.blobView);
 
 	return true;
 }
@@ -145,12 +152,14 @@ void MeshAsset::OnInitialize()
 	Super::OnInitialize();
 
 	m_renderMesh = new rsc::RenderMesh();
+
+	lib::MTHandle<DDCLoadedData<MeshDerivedDataHeader>> meshDD =  LoadDerivedData<MeshDerivedDataHeader>(*this);
 	
 	gfx::GPUDeferredCommandsQueue& queue = gfx::GPUDeferredCommandsQueue::Get();
 
 	lib::UniquePtr<MeshUploadRequest> uploadRequest = lib::MakeUnique<MeshUploadRequest>();
 	uploadRequest->renderMesh = m_renderMesh;
-	uploadRequest->dd = LoadDerivedData<MeshDerivedDataHeader>(*this);
+	uploadRequest->dd = meshDD;
 	queue.RequestUpload(std::move(uploadRequest));
 
 	if (rdr::Renderer::IsRayTracingEnabled())
@@ -159,6 +168,8 @@ void MeshAsset::OnInitialize()
 		blasBuildRequest->renderMesh = m_renderMesh;
 		queue.RequestBLASBuild(std::move(blasBuildRequest));
 	}
+
+	m_submeshesNum = meshDD->header.submeshesNum;
 }
 
 } // spt::as

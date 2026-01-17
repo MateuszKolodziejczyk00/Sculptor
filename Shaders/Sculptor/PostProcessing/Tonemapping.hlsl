@@ -85,6 +85,6 @@ void TonemappingCS(CS_INPUT input)
 	{
 		color += Random(coords) * rcp(255.f);
 	}
-	
+
 	u_tonemappingConstants.rwLDRTexture.Store(coords, float4(color, 1.f));
 }

@@ -56,7 +56,9 @@ enum class ELoadError
 
 
 using CreateResult = lib::ValueOrError<AssetHandle, ECreateError>;
-using LoadResult   = lib::ValueOrError<AssetHandle, ELoadError>;
+
+template<typename TAssetType = AssetInstance>
+using LoadResult = lib::ValueOrError<TypedAssetHandle<TAssetType>, ELoadError>;
 
 
 class ASSETS_SYSTEM_API AssetsSystem
@@ -71,26 +73,38 @@ public:
 
 	CreateResult CreateAsset(const AssetInitializer& initializer);
 
-	LoadResult   LoadAsset(const ResourcePath& path);
-	AssetHandle  LoadAssetChecked(const ResourcePath& path);
+	LoadResult<> LoadAsset(ResourcePathID pathID);
+	AssetHandle  LoadAssetChecked(ResourcePathID pathID);
 
 	template<typename TAssetType>
-	TypedAssetHandle<TAssetType> LoadAssetChecked(const ResourcePath& path)
+	LoadResult<TAssetType> LoadAsset(ResourcePathID pathID)
 	{
-		AssetHandle asset = LoadAssetChecked(path);
+		LoadResult<> loadRes = LoadAsset(pathID);
+		SPT_CHECK(loadRes.HasValue() ? loadRes.GetValue()->GetInstanceData().type == CreateAssetType<TAssetType>() : true);
+		return loadRes.HasValue() 
+			  ? LoadResult<TAssetType>(reinterpret_cast<TAssetType*>(loadRes.GetValue().Get()))
+			  : LoadResult<TAssetType>(loadRes.GetError());
+	}
+
+	template<typename TAssetType>
+	TypedAssetHandle<TAssetType> LoadAssetChecked(ResourcePathID pathID)
+	{
+		AssetHandle asset = LoadAssetChecked(pathID);
 		SPT_CHECK(asset->GetInstanceData().type == CreateAssetType<TAssetType>());
 		return static_cast<TAssetType*>(asset.Get());
 	}
 
-	AssetHandle LoadAndInitAssetChecked(const ResourcePath& path);
+	AssetHandle LoadAndInitAssetChecked(ResourcePathID pathID);
 
 	template<typename TAssetType>
-	TypedAssetHandle<TAssetType> LoadAndInitAssetChecked(const ResourcePath& path)
+	TypedAssetHandle<TAssetType> LoadAndInitAssetChecked(ResourcePathID pathID)
 	{
-		AssetHandle asset = LoadAndInitAssetChecked(path);
+		AssetHandle asset = LoadAndInitAssetChecked(pathID);
 		SPT_CHECK(asset->GetInstanceData().type == CreateAssetType<TAssetType>());
 		return static_cast<TAssetType*>(asset.Get());
 	}
+
+	Bool CompileAssetIfDeprecated(const ResourcePath& path);
 
 	EDeleteResult DeleteAsset(const ResourcePath& path);
 
@@ -98,7 +112,7 @@ public:
 
 	Bool DoesAssetExist(const ResourcePath& path) const;
 
-	Bool IsLoaded(const ResourcePath& path) const;
+	Bool IsLoaded(ResourcePathID pathID) const;
 
 	void OnAssetUnloaded(AssetInstance& instance);
 
@@ -110,7 +124,10 @@ public:
 
 	DDC& GetDDC() { return m_ddc; }
 
-	Bool IsAssetCompiled(const ResourcePath& path) const;
+	Bool IsAssetCompiled(const ResourcePathID pathID) const;
+	Bool IsAssetUpToDate(const ResourcePath& path) const;
+
+	ResourcePath ResolvePath(const ResourcePathID pathID) const;
 
 private:
 
@@ -118,15 +135,17 @@ private:
 
 	AssetInstanceData ReadAssetData(const lib::Path& fullPath) const;
 
-	AssetHandle CreateAssetInstance(const AssetInitializer& initializer);
+	AssetHandle CreateAssetInstance(const AssetInstanceDefinition& initializer);
 
 	void ScheduleAssetInitialization(const AssetHandle& assetInstance);
 
 	lib::DynamicArray<AssetHandle> GetLoadedAssetsList_Locked() const;
 
-	Bool IsLoaded_Locked(const ResourcePath& path) const;
+	Bool IsLoaded_Locked(ResourcePathID pathID) const;
 
 	Bool CompileAssetImpl(const AssetHandle& asset);
+
+	lib::HashedString CreateAssetName(ResourcePathID pathID) const;
 
 	Bool IsCompiledOnlyMode() const { return lib::HasAnyFlag(m_flags, EAssetsSystemFlags::CompiledOnly); }
 
@@ -134,7 +153,7 @@ private:
 
 	EAssetsSystemFlags m_flags = EAssetsSystemFlags::Default;
 
-	lib::HashMap<ResourcePath, AssetInstance*> m_loadedAssets;
+	lib::HashMap<ResourcePathID, AssetInstance*> m_loadedAssets;
 
 	DDC m_ddc;
 

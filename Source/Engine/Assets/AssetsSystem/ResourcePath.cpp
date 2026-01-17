@@ -1,5 +1,6 @@
 #include "ResourcePath.h"
 
+
 namespace spt::as
 {
 
@@ -12,22 +13,27 @@ ResourcePathsCache& ResourcePathsCache::GetInstance()
 	return instance;
 }
 
-const CachedPath& ResourcePathsCache::GetCachedPathChecked(ResourcePathID id) const
+const CachedPath* ResourcePathsCache::FindCachedPath(ResourcePathID id) const
 {
 	const lib::LockGuard lock(m_lock);
 
-	const lib::UniquePtr<CachedPath>& path = m_paths.at(id);
+	const auto found_path = m_paths.find(id);
+	return found_path != m_paths.cend() ? found_path->second.get() : nullptr;
+}
 
-	SPT_CHECK(!!path);
+const CachedPath& ResourcePathsCache::GetCachedPathChecked(ResourcePathID id) const
+{
+	const CachedPath* pathPtr = FindCachedPath(id);
+	SPT_CHECK(!!pathPtr);
 
-	return *path;
+	return *pathPtr;
 }
 
 const CachedPath& ResourcePathsCache::GetOrCreatePath(lib::Path path)
 {
-	const lib::LockGuard lock(m_lock);
-
 	const ResourcePathID id = ComputePathID(path);
+
+	const lib::LockGuard lock(m_lock);
 
 	lib::UniquePtr<CachedPath>& cachedPath = m_paths[id];
 
@@ -51,7 +57,6 @@ ResourcePathID ResourcePathsCache::ComputePathID(const lib::Path& path) const
 
 ResourcePath::ResourcePath()
 {
-	
 }
 
 ResourcePath::ResourcePath(const char* path)
@@ -69,6 +74,12 @@ lib::String ResourcePath::GetName() const
 	SPT_CHECK(m_cachedPath->path.has_filename())
 
 	return m_cachedPath->path.filename().string();
+}
+
+ResourcePath ResourcePath::GetCachedPath(ResourcePathID pathID)
+{
+	const CachedPath* cachedPath = ResourcePathsCache::GetInstance().FindCachedPath(pathID);
+	return ResourcePath(cachedPath);
 }
 
 const lib::Path& ResourcePath::GetPath() const

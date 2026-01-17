@@ -23,33 +23,6 @@ struct MaterialDerivedDataHeader
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// MaterialUploadRequest =========================================================================
-
-//class MaterialUploadRequest : public gfx::GPUDeferredUploadRequest
-//{
-//public:
-//
-//	MaterialUploadRequest() = default;
-//
-//	// Begin GPUDeferredUploadRequest overrides
-//	virtual void EnqueueUploads() override;
-//	// End GPUDeferredUploadRequest overrides
-//	
-//	lib::MTHandle<rsc::RenderMaterial> renderMaterial;
-//	lib::MTHandle<DDCLoadedData<MaterialDerivedDataHeader>> dd;
-//};
-//
-//void MaterialUploadRequest::EnqueueUploads()
-//{
-//	SPT_PROFILER_FUNCTION();
-//
-//	SPT_CHECK(renderMaterial.IsValid());
-//	SPT_CHECK(dd.IsValid());
-//
-//	renderMaterial->Initialize(CreateMaterialDefinitionFromDDCData(*dd));
-//}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
 // MaterialAsset =================================================================================
 
 ecs::EntityHandle MaterialAsset::GetMaterialEntity() const

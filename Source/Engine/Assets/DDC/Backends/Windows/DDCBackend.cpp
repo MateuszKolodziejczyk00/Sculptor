@@ -1,7 +1,7 @@
 #include "Backends/DDCBackend.h"
 #include "windows.h"
 
-
+#pragma optimize("", off)
 namespace spt::as::ddc_backend
 {
 

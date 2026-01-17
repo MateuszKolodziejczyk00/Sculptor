@@ -40,7 +40,7 @@ void IESProfileAssetsSystemTests::TearDown()
 
 TEST_F(IESProfileAssetsSystemTests, CreateIESProfile)
 {
-	const lib::Path assetPath = "IESProfile/CreateIESProfile/IESProfile.sptasset";
+	const ResourcePath assetPath = "IESProfile/CreateIESProfile/IESProfile.sptasset";
 	m_assetsSystem.DeleteAsset(assetPath); // Delete leftover asset if exists
 
 	IESProfileDataInitializer textureInitializer

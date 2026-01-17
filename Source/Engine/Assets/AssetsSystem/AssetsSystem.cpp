@@ -1,5 +1,6 @@
 #include "AssetsSystem.h"
 #include "ProfilerCore.h"
+#include "ResourcePath.h"
 #include "SerializationHelper.h"
 #include "JobSystem/JobSystem.h"
 
@@ -11,6 +12,8 @@ namespace spt::as
 
 Bool AssetsSystem::Initialize(const AssetsSystemInitializer& initializer)
 {
+	SPT_PROFILER_FUNCTION();
+
 	m_contentPath = initializer.contentPath;
 	m_flags       = initializer.flags;
 
@@ -18,8 +21,10 @@ Bool AssetsSystem::Initialize(const AssetsSystemInitializer& initializer)
 
 	AssetsDBInitInfo dbInitInfo
 	{
-		.ddc = m_ddc,
-		.ddcKey = DerivedDataKey(idxNone<Uint64>, 0u)
+		.ddc          = m_ddc,
+
+		.assetsDDCKey = DerivedDataKey(idxNone<Uint64>, 0u),
+		.pathsDDCKey  = DerivedDataKey(idxNone<Uint64>, 1u)
 	};
 
 	m_assetsDB.Initalize(dbInitInfo);
@@ -50,35 +55,50 @@ CreateResult AssetsSystem::CreateAsset(const AssetInitializer& initializer)
 		return CreateResult(ECreateError::AlreadyExists);
 	}
 
-	const AssetHandle assetInstance = CreateAssetInstance(initializer);
+	const AssetHandle assetInstance = CreateAssetInstance(AssetInstanceDefinition
+														  {
+															.type   = initializer.type,
+															.name   = initializer.path.GetName(),
+															.pathID = initializer.path.GetID()
+														  });
 
 	if (!assetInstance.IsValid())
 	{
 		return CreateResult(ECreateError::FailedToCreateInstance);
 	}
 
+	if (initializer.dataInitializer)
+	{
+		initializer.dataInitializer->InitializeNewAsset(*assetInstance);
+	}
+
 	assetInstance->PostCreate();
 
 	SaveAssetImpl(assetInstance);
 
-	m_loadedAssets[initializer.path] = assetInstance.Get();
+	m_loadedAssets[initializer.path.GetID()] = assetInstance.Get();
 
-	SPT_CHECK(!IsAssetCompiled(assetInstance->GetRelativePath()));
+	SPT_CHECK(!IsAssetCompiled(assetInstance->GetResourcePathID()));
 	if (!CompileAssetImpl(assetInstance) && IsCompiledOnlyMode())
 	{
 		return CreateResult(ECreateError::CompilationFailed);
 	}
 
-	SPT_CHECK(IsAssetCompiled(assetInstance->GetRelativePath()));
+	SPT_CHECK(IsAssetCompiled(assetInstance->GetResourcePathID()) && IsAssetUpToDate(initializer.path));
 
 	assetInstance->Initialize();
 
 	return CreateResult(std::move(assetInstance));
 }
 
-LoadResult AssetsSystem::LoadAsset(const ResourcePath& path)
+LoadResult<> AssetsSystem::LoadAsset(ResourcePathID pathID)
 {
 	SPT_PROFILER_FUNCTION();
+
+	if (pathID == InvalidResourcePathID)
+	{
+		return LoadResult(ELoadError::DoesNotExist);
+	}
 
 	AssetHandle assetInstance;
 
@@ -86,7 +106,7 @@ LoadResult AssetsSystem::LoadAsset(const ResourcePath& path)
 		lib::LockGuard lock(m_assetsSystemLock);
 
 		{
-			const auto it = m_loadedAssets.find(path);
+			const auto it = m_loadedAssets.find(pathID);
 			if (it != m_loadedAssets.end())
 			{
 				return LoadResult(AssetHandle(it->second));
@@ -96,7 +116,7 @@ LoadResult AssetsSystem::LoadAsset(const ResourcePath& path)
 		AssetInstanceData assetData;
 		if (IsCompiledOnlyMode())
 		{
-			const std::optional<AssetDescriptor> descriptor = m_assetsDB.GetAssetDescriptor(path);
+			const std::optional<AssetDescriptor> descriptor = m_assetsDB.GetAssetDescriptor(pathID);
 			if (!descriptor)
 			{
 				return LoadResult(ELoadError::DoesNotExist);
@@ -106,6 +126,9 @@ LoadResult AssetsSystem::LoadAsset(const ResourcePath& path)
 		}
 		else
 		{
+			const ResourcePath path = ResolvePath(pathID);
+			SPT_CHECK(path.IsValid());
+
 			const lib::Path fullPath = m_contentPath / path.GetPath();
 	
 			if (!std::filesystem::exists(fullPath))
@@ -116,10 +139,11 @@ LoadResult AssetsSystem::LoadAsset(const ResourcePath& path)
 			assetData = ReadAssetData(fullPath);
 		}
 	
-		assetInstance = CreateAssetInstance(AssetInitializer
+		assetInstance = CreateAssetInstance(AssetInstanceDefinition
 											{
-												.type = assetData.type,
-												.path = path,
+												.type   = assetData.type,
+												.name   = CreateAssetName(pathID),
+												.pathID = pathID,
 											});
 	
 		if (!assetInstance.IsValid())
@@ -127,7 +151,7 @@ LoadResult AssetsSystem::LoadAsset(const ResourcePath& path)
 			return ELoadError::FailedToCreateInstance;
 		}
 	
-		m_loadedAssets[path] = assetInstance.Get();
+		m_loadedAssets[pathID] = assetInstance.Get();
 	
 		assetInstance->AssignData(std::move(assetData));
 	}
@@ -139,21 +163,38 @@ LoadResult AssetsSystem::LoadAsset(const ResourcePath& path)
 	return LoadResult(AssetHandle(std::move(assetInstance)));
 }
 
-AssetHandle AssetsSystem::LoadAssetChecked(const ResourcePath& path)
+AssetHandle AssetsSystem::LoadAssetChecked(ResourcePathID pathID)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const LoadResult loadResult = LoadAsset(path);
+	const LoadResult loadResult = LoadAsset(pathID);
 	SPT_CHECK(loadResult.HasValue());
 
 	return AssetHandle(loadResult.GetValue());
 }
 
-AssetHandle AssetsSystem::LoadAndInitAssetChecked(const ResourcePath& path)
+AssetHandle AssetsSystem::LoadAndInitAssetChecked(ResourcePathID pathID)
 {
-	AssetHandle asset = LoadAssetChecked(path);
+	AssetHandle asset = LoadAssetChecked(pathID);
 	asset->AwaitInitialization();
 	return asset;
+}
+
+Bool AssetsSystem::CompileAssetIfDeprecated(const ResourcePath& path)
+{
+	if (!DoesAssetExist(path))
+	{
+		return false;
+	}
+
+	if (!IsAssetCompiled(path.GetID()) || !IsAssetUpToDate(path))
+	{
+		SPT_CHECK(DoesAssetExist(path));
+
+		LoadAndInitAssetChecked(path.GetID());
+	}
+
+	return true;
 }
 
 EDeleteResult AssetsSystem::DeleteAsset(const ResourcePath& path)
@@ -172,7 +213,7 @@ EDeleteResult AssetsSystem::DeleteAsset(const ResourcePath& path)
 	{
 		lib::LockGuard lock(m_assetsSystemLock);
 
-		if (IsLoaded_Locked(path))
+		if (IsLoaded_Locked(path.GetID()))
 		{
 			return EDeleteResult::StillReferenced;
 		}
@@ -184,9 +225,9 @@ EDeleteResult AssetsSystem::DeleteAsset(const ResourcePath& path)
 
 	AssetFactory& factory = AssetFactory::GetInstance();
 	factory.DeleteAsset(assetData.type, *this, path, assetData);
-	m_ddc.DeleteDerivedData(AssetDerivedDataKey(path));
+	m_ddc.DeleteDerivedData(AssetDerivedDataKey(path.GetID()));
 
-	SPT_CHECK(!IsAssetCompiled(path)); // Derived data left?
+	SPT_CHECK(!IsAssetCompiled(path.GetID())); // Derived data left?
 
 	return EDeleteResult::Success;
 }
@@ -205,11 +246,11 @@ Bool AssetsSystem::DoesAssetExist(const ResourcePath& path) const
 	return std::filesystem::exists(m_contentPath / path.GetPath());
 }
 
-Bool AssetsSystem::IsLoaded(const ResourcePath& path) const
+Bool AssetsSystem::IsLoaded(ResourcePathID pathID) const
 {
 	lib::LockGuard lock(m_assetsSystemLock);
 
-	return IsLoaded_Locked(path);
+	return IsLoaded_Locked(pathID);
 }
 
 void AssetsSystem::UnloadPermanentAssets()
@@ -260,12 +301,17 @@ void AssetsSystem::OnAssetUnloaded(AssetInstance& instance)
 
 	SPT_CHECK(instance.GetRefCount() == 0u);
 
-	m_loadedAssets.erase(instance.GetRelativePath());
+	m_loadedAssets.erase(instance.GetResourcePathID());
 }
 
-Bool AssetsSystem::IsAssetCompiled(const ResourcePath& path) const
+Bool AssetsSystem::IsAssetCompiled(const ResourcePathID pathID) const
 {
-	const AssetDerivedDataKey mainKey(path);
+	return m_assetsDB.ContainsAsset(pathID);
+}
+
+Bool AssetsSystem::IsAssetUpToDate(const ResourcePath& path) const
+{
+	const AssetDerivedDataKey mainKey(path.GetID());
 
 	const lib::Path ddcPath = m_ddc.GetDerivedDataPath(mainKey.ddcKey);
 
@@ -280,6 +326,19 @@ Bool AssetsSystem::IsAssetCompiled(const ResourcePath& path) const
 	return ddcLastWriteTime >= assetLastWriteTime;
 }
 
+ResourcePath AssetsSystem::ResolvePath(const ResourcePathID pathID) const
+{
+	SPT_CHECK(!IsCompiledOnlyMode());
+
+	ResourcePath path = ResourcePath::GetCachedPath(pathID);
+	if (!path.IsValid())
+	{
+		path = m_assetsDB.GetPath(pathID);
+	}
+
+	return path;
+}
+
 void AssetsSystem::SaveAssetImpl(AssetHandle asset)
 {
 	SPT_PROFILER_FUNCTION();
@@ -291,7 +350,9 @@ void AssetsSystem::SaveAssetImpl(AssetHandle asset)
 
 	const lib::String data = srl::SerializationHelper::SerializeStruct(asset->GetInstanceData());
 
-	const lib::Path fullPath = m_contentPath / asset->GetRelativePath();
+	const ResourcePath resolvedPath = ResolvePath(asset->GetResourcePathID());
+	SPT_CHECK(resolvedPath.IsValid());
+	const lib::Path fullPath = m_contentPath / resolvedPath.GetPath();
 	lib::File::SaveDocument(fullPath, data, lib::EFileOpenFlags::ForceCreate);
 
 	asset->PostSave();
@@ -315,18 +376,11 @@ AssetInstanceData AssetsSystem::ReadAssetData(const lib::Path& fullPath) const
 	return assetData;
 }
 
-AssetHandle AssetsSystem::CreateAssetInstance(const AssetInitializer& initializer)
+AssetHandle AssetsSystem::CreateAssetInstance(const AssetInstanceDefinition& definition)
 {
 	AssetFactory& factory = AssetFactory::GetInstance();
 
-	AssetHandle newAsset = factory.CreateAsset(*this, initializer);
-
-	if (newAsset.IsValid() && initializer.dataInitializer)
-	{
-		initializer.dataInitializer->InitializeNewAsset(*newAsset);
-	}
-
-	return newAsset;
+	return factory.CreateAsset(*this, definition);
 }
 
 void AssetsSystem::ScheduleAssetInitialization(const AssetHandle& assetInstance)
@@ -335,12 +389,14 @@ void AssetsSystem::ScheduleAssetInitialization(const AssetHandle& assetInstance)
 
 	if (IsCompiledOnlyMode())
 	{
-		SPT_CHECK(IsAssetCompiled(assetInstance->GetRelativePath()));
+		SPT_CHECK(IsAssetCompiled(assetInstance->GetResourcePathID()));
 		isCompiled = true;
 	}
 	else
 	{
-		isCompiled = IsAssetCompiled(assetInstance->GetRelativePath());
+		const ResourcePath path = ResolvePath(assetInstance->GetResourcePathID());
+		SPT_CHECK(path.IsValid());
+		isCompiled = IsAssetCompiled(assetInstance->GetResourcePathID()) && IsAssetUpToDate(path);
 	}
 
 	js::Job initJob = js::Launch(SPT_GENERIC_JOB_NAME,
@@ -372,9 +428,9 @@ lib::DynamicArray<AssetHandle> AssetsSystem::GetLoadedAssetsList_Locked() const
 	return result;
 }
 
-Bool AssetsSystem::IsLoaded_Locked(const ResourcePath& path) const
+Bool AssetsSystem::IsLoaded_Locked(ResourcePathID pathID) const
 {
-	return m_loadedAssets.contains(path);
+	return m_loadedAssets.contains(pathID);
 }
 
 Bool AssetsSystem::CompileAssetImpl(const AssetHandle& asset)
@@ -385,14 +441,28 @@ Bool AssetsSystem::CompileAssetImpl(const AssetHandle& asset)
 
 	if (compilationResult)
 	{
-		m_assetsDB.SaveAssetDescriptor(asset->GetRelativePath(), AssetDescriptor{ .assetTypeKey = asset->GetTypeKey() });
+		m_assetsDB.SaveAssetDescriptor(ResolvePath(asset->GetResourcePathID()), AssetDescriptor{ .assetTypeKey = asset->GetTypeKey() });
 	}
 	else
 	{
-		SPT_LOG_ERROR(AssetsSystem, "Failed to compile asset: {}", asset->GetRelativePath().string());
+		SPT_LOG_ERROR(AssetsSystem, "Failed to compile asset: {}", ResolvePath(asset->GetResourcePathID()).GetPath().string());
 	}
 
 	return compilationResult;
+}
+
+lib::HashedString AssetsSystem::CreateAssetName(ResourcePathID pathID) const
+{
+	if (IsCompiledOnlyMode())
+	{
+		return lib::HashedString(lib::StringUtils::ToHexString(reinterpret_cast<Byte*>(&pathID), sizeof(ResourcePathID)));
+	}
+	else
+	{
+		const ResourcePath resolvedPath = ResolvePath(pathID);
+		SPT_CHECK(resolvedPath.IsValid());
+		return resolvedPath.GetName();
+	}
 }
 
 } // spt::as

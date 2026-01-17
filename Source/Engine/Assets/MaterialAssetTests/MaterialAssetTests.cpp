@@ -5,6 +5,7 @@
 #include "MaterialInstance/PBRMaterialInstance.h"
 #include "Renderer.h"
 #include "Graphics/Transfers/GPUDeferredCommandsQueue.h"
+#include "ResourcePath.h"
 
 
 namespace spt::as::tests
@@ -41,7 +42,7 @@ void MaterialAssetsTests::TearDown()
 
 TEST_F(MaterialAssetsTests, CreateMaterial)
 {
-	const lib::Path assetPath = "Material/CreateMaterial/Material.sptasset";
+	const ResourcePath assetPath = "Material/CreateMaterial/Material.sptasset";
 	m_assetsSystem.DeleteAsset(assetPath); // Delete leftover asset if exists
 
 	PBRMaterialInitializer materialInitializer

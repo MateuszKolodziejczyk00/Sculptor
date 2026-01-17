@@ -14,16 +14,16 @@ AssetFactory& AssetFactory::GetInstance()
 	return instance;
 }
 
-AssetHandle AssetFactory::CreateAsset(AssetsSystem& owningSystem, const AssetInitializer& initializer)
+AssetHandle AssetFactory::CreateAsset(AssetsSystem& owningSystem, const AssetInstanceDefinition& definition)
 {
-	const auto it = m_assetTypes.find(initializer.type.GetKey());
+	const auto it = m_assetTypes.find(definition.type.GetKey());
 	if (it == m_assetTypes.end())
 	{
 		return nullptr;
 	}
 
 	const auto& factory = it->second.factory;
-	return factory(owningSystem, initializer);
+	return factory(owningSystem, definition);
 }
 
 void AssetFactory::DeleteAsset(AssetType assetType, AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data)
@@ -83,9 +83,21 @@ void AssetInstance::SaveAsset()
 	m_owningSystem.SaveAsset(AssetHandle(this));
 }
 
-const lib::Path AssetInstance::GetDirectoryPath() const
+lib::Path AssetInstance::GetRelativePath() const
+{
+	const ResourcePath path = m_owningSystem.ResolvePath(GetResourcePathID());
+	SPT_CHECK(path.IsValid());
+	return path.GetPath();
+}
+
+lib::Path AssetInstance::GetDirectoryPath() const
 {
 	return GetOwningSystem().GetContentPath() / GetRelativePath().parent_path();
+}
+
+ResourcePath AssetInstance::ResolveAssetRelativePath(const lib::Path& relativePath) const
+{
+	return (GetRelativePath().parent_path() / relativePath);
 }
 
 void AssetInstance::Initialize()
