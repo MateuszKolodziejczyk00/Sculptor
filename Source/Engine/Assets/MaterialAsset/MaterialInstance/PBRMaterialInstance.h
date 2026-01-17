@@ -24,8 +24,6 @@ struct PBRMaterialDefinition
 	Bool doubleSided   = true;
 	Bool customOpacity = false;
 
-	// factors etc..
-
 	void Serialize(srl::Serializer& serializer)
 	{
 		serializer.Serialize("BaseColorTexPath",         baseColorTexPath);
@@ -58,6 +56,40 @@ public:
 private:
 
 	PBRMaterialDefinition m_definition;
+};
+
+
+struct PBRGLTFMaterialDefinition
+{
+	lib::Path gltfSourcePath;
+
+	// If materialName is valid, it will be used instead of idx
+	lib::String materialName = {};
+	Uint32      materialIdx  = idxNone<Uint32>;
+
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("GLTFSourcePath", gltfSourcePath);
+		serializer.Serialize("MaterialName",   materialName);
+		serializer.Serialize("MaterialIdx",    materialIdx);
+	}
+};
+SPT_REGISTER_ASSET_DATA_TYPE(PBRGLTFMaterialDefinition);
+
+
+class MATERIAL_ASSET_API PBRGLTFMaterialInitializer : public AssetDataInitializer
+{
+public:
+
+	explicit PBRGLTFMaterialInitializer(const PBRGLTFMaterialDefinition& materialDef)
+		: m_definition(materialDef)
+	{ }
+
+	virtual void InitializeNewAsset(AssetInstance& asset) override;
+
+private:
+
+	PBRGLTFMaterialDefinition m_definition;
 };
 
 

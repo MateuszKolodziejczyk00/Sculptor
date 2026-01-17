@@ -1,4 +1,5 @@
 #include "PBRMaterialInstance.h"
+#include "Assertions/Assertions.h"
 #include "MaterialAsset.h"
 #include "MaterialInstance/PBRMaterialCompiler.h"
 #include "MaterialInstance/PBRMaterialRuntime.h"
@@ -27,15 +28,37 @@ void PBRMaterialInitializer::InitializeNewAsset(AssetInstance& asset)
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// PBRGLTFMaterialInitializer ========================================================================
+
+void PBRGLTFMaterialInitializer::InitializeNewAsset(AssetInstance& asset)
+{
+	asset.GetBlackboard().Create<PBRGLTFMaterialDefinition>(m_definition);
+
+	MaterialTypeInfo materialTypeInfo;
+	materialTypeInfo.materialType = lib::TypeInfo<PBRMaterialInstance>();
+	asset.GetBlackboard().Create<MaterialTypeInfo>(std::move(materialTypeInfo));
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 // PBRMaterialInstance ===========================================================================
 
 lib::DynamicArray<Byte> PBRMaterialInstance::Compile(const AssetInstance& asset)
 {
 	SPT_PROFILER_FUNCTION();
 	
-	const PBRMaterialDefinition& materialDefinition = asset.GetBlackboard().Get<PBRMaterialDefinition>();
-
-	return CompilePBRMaterial(asset, materialDefinition);
+	if(const PBRMaterialDefinition* materialDefinition = asset.GetBlackboard().Find<PBRMaterialDefinition>())
+	{
+		return material_compiler::CompilePBRMaterial(asset, *materialDefinition);
+	}
+	else if (const PBRGLTFMaterialDefinition* gltfDefinition = asset.GetBlackboard().Find<PBRGLTFMaterialDefinition>())
+	{
+		return material_compiler::CompilePBRMaterial(asset, *gltfDefinition);
+	}
+	else
+	{
+		SPT_CHECK_NO_ENTRY();
+		return {};
+	}
 }
 
 void PBRMaterialInstance::Load(const AssetInstance& asset, lib::MTHandle<DDCLoadedBin> loadedBlob)
