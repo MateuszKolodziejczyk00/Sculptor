@@ -5,6 +5,7 @@ function Assets:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("TextureAsset")
     self:AddPublicDependency("MaterialAsset")
     self:AddPublicDependency("MeshAsset")
+    self:AddPublicDependency("PrefabAsset")
 end
 
 Assets:SetupProject()

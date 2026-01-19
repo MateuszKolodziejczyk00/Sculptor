@@ -84,7 +84,7 @@ lib::SharedRef<Texture> ResourcesManager::CreateTexture(const RendererResourceNa
 	return texture;
 }
 
-lib::SharedRef<TextureView> ResourcesManager::CreateTextureView(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationDefinition)
+	lib::SharedRef<TextureView> ResourcesManager::CreateTextureView(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationDefinition)
 {
 	const lib::SharedRef<Texture> texture = CreateTexture(name, textureDefinition, allocationDefinition);
 	return texture->CreateView(RENDERER_RESOURCE_NAME_FORMATTED("{} View", name.Get().ToString()));

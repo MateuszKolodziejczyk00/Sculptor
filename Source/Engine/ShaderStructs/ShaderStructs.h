@@ -181,8 +181,8 @@ public:
 } // priv
 
 
-#define BEGIN_ALIGNED_SHADER_STRUCT(alignment, name) \
-struct alignas(alignment) name \
+#define BEGIN_SHADER_STRUCT(name) \
+struct name \
 { \
 private: \
 	using ThisClass = name; \
@@ -194,10 +194,6 @@ public: \
 	Bool operator==(const name& other) const = default; \
 	Bool operator!=(const name& other) const = default; \
 	typedef rdr::priv::ShaderStructMemberMetaData<void, 
-
-
-// Use 4 as default alignment (it can be still greater if any of members will have greater alignment)
-#define BEGIN_SHADER_STRUCT(name) BEGIN_ALIGNED_SHADER_STRUCT(4, name)
 
 
 #define SHADER_STRUCT_FIELD(type, name) \

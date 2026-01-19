@@ -31,6 +31,9 @@ const CachedPath& ResourcePathsCache::GetCachedPathChecked(ResourcePathID id) co
 
 const CachedPath& ResourcePathsCache::GetOrCreatePath(lib::Path path)
 {
+	path = path.lexically_normal();
+	path.make_preferred();
+
 	const ResourcePathID id = ComputePathID(path);
 
 	const lib::LockGuard lock(m_lock);

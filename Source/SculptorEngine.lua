@@ -73,6 +73,7 @@ IncludeProjectFromDirectory("Assets/MaterialAsset",        "MaterialAsset")
 IncludeProjectFromDirectory("Assets/MaterialAssetTests",   "MaterialAssetTests")
 IncludeProjectFromDirectory("Assets/MeshAsset",            "MeshAsset")
 IncludeProjectFromDirectory("Assets/MeshAssetTests",       "MeshAssetTests")
+IncludeProjectFromDirectory("Assets/PrefabAsset",          "PrefabAsset")
 IncludeProjectFromDirectory("Assets/Assets",               "Assets")
 
 SetProjectsSubgroupName("Tools")

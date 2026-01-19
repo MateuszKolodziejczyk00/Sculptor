@@ -3,10 +3,10 @@
 
 #include "SceneRendering/GPUScene.hlsli"
 
-
 uint PackVisibilityInfo(in uint visibleMeshletIdx, in uint triangleIdx)
 {
 	SPT_CHECK_MSG(triangleIdx < (1 << 7), L"Invalid triangle index - {}", triangleIdx);
+	SPT_CHECK_MSG(((visibleMeshletIdx << 7) >> 7) == visibleMeshletIdx, L"Invalid meshlet index - {}", visibleMeshletIdx);
 	return (visibleMeshletIdx << 7) | triangleIdx;
 }
 

@@ -69,6 +69,8 @@ ecs::EntityHandle MaterialsSubsystem::CreateMaterial(const MaterialDefinition& m
 {
 	SPT_PROFILER_FUNCTION();
 
+	const lib::LockGuard lockGuard(m_lock);
+
 	const rhi::RHIVirtualAllocation materialDataSuballocation = MaterialsUnifiedData::Get().CreateMaterialDataSuballocation(materialData, static_cast<Uint32>(dataSize));
 
 	MaterialDataParameters dataParameters;

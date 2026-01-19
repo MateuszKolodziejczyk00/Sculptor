@@ -58,7 +58,7 @@ TEST_F(TextureAssetsSystemTests, CreateTexture)
 
 	EXPECT_TRUE(result);
 
-	gfx::GPUDeferredCommandsQueue::Get().ForceFlushUploads();
+	gfx::GPUDeferredCommandsQueue::Get().ForceFlushCommands();
 
 	result.GetValue().Reset();
 
@@ -66,7 +66,7 @@ TEST_F(TextureAssetsSystemTests, CreateTexture)
 
 	AssetHandle asset = m_assetsSystem.LoadAndInitAssetChecked(assetPath);
 
-	gfx::GPUDeferredCommandsQueue::Get().ForceFlushUploads();
+	gfx::GPUDeferredCommandsQueue::Get().ForceFlushCommands();
 
 	EXPECT_TRUE(asset.IsValid());
 	asset.Reset();

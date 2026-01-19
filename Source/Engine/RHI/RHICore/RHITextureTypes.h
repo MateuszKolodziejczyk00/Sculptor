@@ -9,7 +9,7 @@ namespace spt::rhi
 namespace constants
 {
 
-static constexpr Uint32 allRemainingMips			= idxNone<Uint32>;
+static constexpr Uint32 allRemainingMips		= idxNone<Uint32>;
 static constexpr Uint32 allRemainingArrayLayers	= idxNone<Uint32>;
 
 } // constants

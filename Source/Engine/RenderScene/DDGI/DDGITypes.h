@@ -43,7 +43,7 @@ struct DDGIVolumeParams
 };
 
 
-BEGIN_ALIGNED_SHADER_STRUCT(16, DDGIVolumeGPUParams)
+BEGIN_SHADER_STRUCT(DDGIVolumeGPUParams)
 	SHADER_STRUCT_FIELD(math::Vector3f, probesOriginWorldLocation) // AABB begin
 	SHADER_STRUCT_FIELD(math::Vector3f, probesEndWorldLocation) // AABB end
 	

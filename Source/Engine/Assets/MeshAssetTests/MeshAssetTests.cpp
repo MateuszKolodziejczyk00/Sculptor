@@ -61,7 +61,7 @@ TEST_F(MeshAssetsTests, CreateMesh)
 
 	EXPECT_TRUE(result);
 
-	gfx::GPUDeferredCommandsQueue::Get().ForceFlushUploads();
+	gfx::GPUDeferredCommandsQueue::Get().ForceFlushCommands();
 
 	result.GetValue().Reset();
 
@@ -72,7 +72,7 @@ TEST_F(MeshAssetsTests, CreateMesh)
 	EXPECT_TRUE(asset.IsValid());
 	asset.Reset();
 
-	gfx::GPUDeferredCommandsQueue::Get().ForceFlushUploads();
+	gfx::GPUDeferredCommandsQueue::Get().ForceFlushCommands();
 
 	const EDeleteResult deleteResult = m_assetsSystem.DeleteAsset(assetPath);
 

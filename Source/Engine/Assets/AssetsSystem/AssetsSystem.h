@@ -104,6 +104,16 @@ public:
 		return static_cast<TAssetType*>(asset.Get());
 	}
 
+	AssetHandle GetLoadedAsset(ResourcePathID pathID) const;
+
+	template<typename TAssetType>
+	TypedAssetHandle<TAssetType> GetLoadedAsset(ResourcePathID pathID)
+	{
+		const AssetHandle asset = GetLoadedAsset(pathID);
+		SPT_CHECK(!asset.IsValid() || asset->GetInstanceData().type == CreateAssetType<TAssetType>());
+		return static_cast<TAssetType*>(asset.Get());
+	}
+
 	Bool CompileAssetIfDeprecated(const ResourcePath& path);
 
 	EDeleteResult DeleteAsset(const ResourcePath& path);

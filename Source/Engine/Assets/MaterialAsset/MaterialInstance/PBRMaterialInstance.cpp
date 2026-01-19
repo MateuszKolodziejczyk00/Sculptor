@@ -67,7 +67,7 @@ void PBRMaterialInstance::Load(const AssetInstance& asset, lib::MTHandle<DDCLoad
 
 	const PBRMaterialDataHeader& materialDataHeader = reinterpret_cast<const PBRMaterialDataHeader&>(*loadedBlob->bin.data());
 
-	const auto initTexture = [loadedBlob](const MaterialTextureDefinition& textureDef) -> lib::SharedPtr<rdr::TextureView>
+	const auto initTexture = [loadedBlob](const rdr::RendererResourceName& name, const MaterialTextureDefinition& textureDef) -> lib::SharedPtr<rdr::TextureView>
 	{
 		if (textureDef.format == rhi::EFragmentFormat::None)
 		{
@@ -83,7 +83,7 @@ void PBRMaterialInstance::Load(const AssetInstance& asset, lib::MTHandle<DDCLoad
 		gpuTextureDef.mipLevels  = textureDef.mipLevelsNum;
 		gpuTextureDef.type       = rhi::ETextureType::Texture2D;
 		gpuTextureDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest);
-		lib::SharedPtr<rdr::TextureView> gpuTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("TEMP"), gpuTextureDef, rhi::EMemoryUsage::GPUOnly);
+		lib::SharedPtr<rdr::TextureView> gpuTexture = rdr::ResourcesManager::CreateTextureView(name, gpuTextureDef, rhi::EMemoryUsage::GPUOnly);
 
 		gfx::GPUDeferredCommandsQueue& commandsQueue = gfx::GPUDeferredCommandsQueue::Get();
 
@@ -102,10 +102,10 @@ void PBRMaterialInstance::Load(const AssetInstance& asset, lib::MTHandle<DDCLoad
 	m_materialData.metallicFactor           = materialDataHeader.metallicFactor;
 	m_materialData.roughnessFactor          = materialDataHeader.roughnessFactor;
 	m_materialData.emissiveFactor           = materialDataHeader.emissionFactor;
-	m_materialData.baseColorTexture         = initTexture(materialDataHeader.baseColorTexture);
-	m_materialData.metallicRoughnessTexture = initTexture(materialDataHeader.metallicRoughnessTexture);
-	m_materialData.normalsTexture           = initTexture(materialDataHeader.normalsTexture);
-	m_materialData.emissiveTexture          = initTexture(materialDataHeader.emissiveTexture);
+	m_materialData.baseColorTexture         = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "BaseColor"), materialDataHeader.baseColorTexture);
+	m_materialData.metallicRoughnessTexture = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "MetallicRoughness"), materialDataHeader.metallicRoughnessTexture);
+	m_materialData.normalsTexture           = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "Normals"), materialDataHeader.normalsTexture);
+	m_materialData.emissiveTexture          = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "Emissive"), materialDataHeader.emissiveTexture);
 
 	const Bool isEmissive = materialDataHeader.emissionFactor.x() > 0.f || materialDataHeader.emissionFactor.y() || materialDataHeader.emissionFactor.z();
 

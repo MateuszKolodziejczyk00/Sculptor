@@ -30,7 +30,7 @@ void GPUDeferredCommandsQueue::RequestBLASBuild(lib::UniquePtr<GPUDeferredBLASBu
 	m_blasBuildRequests.emplace_back(std::move(request));
 }
 
-void GPUDeferredCommandsQueue::ForceFlushUploads()
+void GPUDeferredCommandsQueue::ForceFlushCommands()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -70,6 +70,8 @@ void GPUDeferredCommandsQueue::OnBeginFrame(engn::FrameContext& frameContext)
 void GPUDeferredCommandsQueue::ExecuteCommands()
 {
 	SPT_PROFILER_FUNCTION();
+
+	const lib::LockGuard lock(m_requestsLock);
 
 	if (!m_uploadRequests.empty() || !m_blasBuildRequests.empty())
 	{

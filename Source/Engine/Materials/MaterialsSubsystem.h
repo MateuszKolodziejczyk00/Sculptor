@@ -66,6 +66,8 @@ private:
 
 	ecs::EntityHandle GetOrCreateShaderEntity(lib::HashedString materialDataStruct);
 
+	mutable lib::Lock m_lock;
+
 	lib::HashMap<lib::HashedString, ecs::EntityHandle> m_shaderSourceEntities;
 
 	lib::UniquePtr<IMaterialFactory> m_materialFactory;

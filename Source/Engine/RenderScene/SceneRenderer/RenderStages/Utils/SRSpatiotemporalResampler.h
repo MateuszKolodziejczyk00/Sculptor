@@ -28,7 +28,7 @@ class RenderScene;
 namespace sr_restir
 {
 
-BEGIN_ALIGNED_SHADER_STRUCT(16u, SRPackedReservoir)
+BEGIN_SHADER_STRUCT(SRPackedReservoir)
 	SHADER_STRUCT_FIELD(math::Vector3f, hitLocation)
 	SHADER_STRUCT_FIELD(Uint32,         packedLuminance)
 	SHADER_STRUCT_FIELD(math::Vector2f, hitNormal) // octahedral encoding

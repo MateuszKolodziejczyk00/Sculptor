@@ -1,4 +1,5 @@
 #include "UploadsManager.h"
+#include "RHICore/RHIAllocationTypes.h"
 #include "Renderer.h"
 #include "Types/Buffer.h"
 #include "CommandsRecorder/CommandRecorder.h"
@@ -129,7 +130,8 @@ UploadsManager::UploadsManager()
 	stagingBuffersDef.usage = rhi::EBufferUsage::TransferSrc;
 
 	rhi::RHIAllocationInfo allocationInfo;
-	allocationInfo.memoryUsage = rhi::EMemoryUsage::CPUToGPU;
+	allocationInfo.memoryUsage     = rhi::EMemoryUsage::CPUToGPU;
+	allocationInfo.allocationFlags = rhi::EAllocationFlags::CreateMapped;
 
 	for (Uint32 idx = 0; idx < 4; ++idx)
 	{

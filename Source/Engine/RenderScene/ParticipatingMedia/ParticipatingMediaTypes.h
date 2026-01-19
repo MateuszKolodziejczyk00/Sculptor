@@ -33,7 +33,7 @@ struct VolumetricFogParams
 };
 
 
-BEGIN_ALIGNED_SHADER_STRUCT(16, HeightFogParams)
+BEGIN_SHADER_STRUCT(HeightFogParams)
 	SHADER_STRUCT_FIELD(math::Vector3f, albedo)
 	SHADER_STRUCT_FIELD(Real32,         density)
 	SHADER_STRUCT_FIELD(Real32,         extinction)

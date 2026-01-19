@@ -46,47 +46,49 @@ CreateResult AssetsSystem::CreateAsset(const AssetInitializer& initializer)
 {
 	SPT_PROFILER_FUNCTION();
 
-	lib::LockGuard lock(m_assetsSystemLock);
+	AssetHandle assetInstance;
 
-	const lib::Path fullPath = m_contentPath / initializer.path.GetPath();
-
-	if (std::filesystem::exists(fullPath))
 	{
-		return CreateResult(ECreateError::AlreadyExists);
+		lib::LockGuard lock(m_assetsSystemLock);
+
+		const lib::Path fullPath = m_contentPath / initializer.path.GetPath();
+
+		if (std::filesystem::exists(fullPath))
+		{
+			return CreateResult(ECreateError::AlreadyExists);
+		}
+
+		assetInstance = CreateAssetInstance(AssetInstanceDefinition
+											{
+												.type   = initializer.type,
+												.name   = initializer.path.GetName(),
+												.pathID = initializer.path.GetID()
+											});
+
+		if (!assetInstance.IsValid())
+		{
+			return CreateResult(ECreateError::FailedToCreateInstance);
+		}
+
+		if (initializer.dataInitializer)
+		{
+			initializer.dataInitializer->InitializeNewAsset(*assetInstance);
+		}
+
+		assetInstance->PostCreate();
+
+		SaveAssetImpl(assetInstance);
+
+		m_loadedAssets[initializer.path.GetID()] = assetInstance.Get();
+
+		SPT_CHECK(!IsAssetCompiled(assetInstance->GetResourcePathID()));
+		if (IsCompiledOnlyMode())
+		{
+			return CreateResult(ECreateError::CompilationFailed);
+		}
 	}
 
-	const AssetHandle assetInstance = CreateAssetInstance(AssetInstanceDefinition
-														  {
-															.type   = initializer.type,
-															.name   = initializer.path.GetName(),
-															.pathID = initializer.path.GetID()
-														  });
-
-	if (!assetInstance.IsValid())
-	{
-		return CreateResult(ECreateError::FailedToCreateInstance);
-	}
-
-	if (initializer.dataInitializer)
-	{
-		initializer.dataInitializer->InitializeNewAsset(*assetInstance);
-	}
-
-	assetInstance->PostCreate();
-
-	SaveAssetImpl(assetInstance);
-
-	m_loadedAssets[initializer.path.GetID()] = assetInstance.Get();
-
-	SPT_CHECK(!IsAssetCompiled(assetInstance->GetResourcePathID()));
-	if (!CompileAssetImpl(assetInstance) && IsCompiledOnlyMode())
-	{
-		return CreateResult(ECreateError::CompilationFailed);
-	}
-
-	SPT_CHECK(IsAssetCompiled(assetInstance->GetResourcePathID()) && IsAssetUpToDate(initializer.path));
-
-	assetInstance->Initialize();
+	ScheduleAssetInitialization(assetInstance);
 
 	return CreateResult(std::move(assetInstance));
 }
@@ -180,6 +182,23 @@ AssetHandle AssetsSystem::LoadAndInitAssetChecked(ResourcePathID pathID)
 	return asset;
 }
 
+AssetHandle AssetsSystem::GetLoadedAsset(ResourcePathID pathID) const
+{
+	AssetHandle result;
+
+	{
+		lib::LockGuard lock(m_assetsSystemLock);
+
+		const auto it = m_loadedAssets.find(pathID);
+		if (it != m_loadedAssets.end())
+		{
+			result = it->second;
+		}
+	}
+
+	return result;
+}
+
 Bool AssetsSystem::CompileAssetIfDeprecated(const ResourcePath& path)
 {
 	if (!DoesAssetExist(path))
@@ -266,16 +285,25 @@ void AssetsSystem::UnloadPermanentAssets()
 			loadedAssets = GetLoadedAssetsList_Locked();
 		}
 
-		Uint32 notUnloadedAssetsNum = 0u;
-
 		for (const AssetHandle& asset : loadedAssets)
 		{
-			if (!asset->ClearPermanent())
-			{
-				SPT_LOG_ERROR(AssetsSystem, "Asset was not unloaded! Name: {}", asset->GetName().ToString());
-				++notUnloadedAssetsNum;
-			}
+			asset->ClearPermanent();
 		}
+
+		loadedAssets.clear();
+
+		{
+			lib::LockGuard lock(m_assetsSystemLock);
+			loadedAssets = GetLoadedAssetsList_Locked();
+		}
+
+		Uint32 notUnloadedAssetsNum = 0u;
+		for (const AssetHandle& asset : loadedAssets)
+		{
+			SPT_LOG_ERROR(AssetsSystem, "Asset was not unloaded! Name: {}", asset->GetName().ToString());
+			++notUnloadedAssetsNum;
+		}
+
 
 		if (notUnloadedAssetsNum > 0u)
 		{

@@ -33,7 +33,7 @@ public:
 	void RequestUpload(lib::UniquePtr<GPUDeferredUploadRequest> request);
 	void RequestBLASBuild(lib::UniquePtr<GPUDeferredBLASBuildRequest> request);
 
-	void ForceFlushUploads();
+	void ForceFlushCommands();
 
 	void AddPostDeferredUploadsDelegate(PostDeferredUploadsMulticastDelegate::Delegate delegate)
 	{
