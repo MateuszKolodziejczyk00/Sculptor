@@ -1,0 +1,13 @@
+{
+    "Blackboard": {
+        "BlackboardContent": [
+            "spt::as::MeshSourceDefinition"
+        ],
+        "spt::as::MeshSourceDefinition": {
+            "MeshIdx": 0,
+            "MeshName": "",
+            "Path": "glTF/Sponza.gltf"
+        }
+    },
+    "Type": "pt::as::MeshAsset"
+}

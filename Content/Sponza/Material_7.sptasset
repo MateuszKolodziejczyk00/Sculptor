@@ -1,0 +1,17 @@
+{
+    "Blackboard": {
+        "BlackboardContent": [
+            "spt::as::MaterialTypeInfo",
+            "spt::as::PBRGLTFMaterialDefinition"
+        ],
+        "spt::as::MaterialTypeInfo": {
+            "MaterialType": "pt::as::PBRMaterialInstance"
+        },
+        "spt::as::PBRGLTFMaterialDefinition": {
+            "GLTFSourcePath": "glTF/Sponza.gltf",
+            "MaterialIdx": 7,
+            "MaterialName": ""
+        }
+    },
+    "Type": "pt::as::MaterialAsset"
+}

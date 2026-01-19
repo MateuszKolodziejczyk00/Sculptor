@@ -12,7 +12,6 @@
 #include "JobSystem.h"
 #include "RenderGraphBuilder.h"
 #include "Engine.h"
-#include "Loaders/glTFSceneLoader.h"
 #include "Paths.h"
 #include "Transfers/UploadUtils.h"
 #include "StaticMeshes/StaticMeshRenderSceneSubsystem.h"
@@ -45,6 +44,12 @@
 #include "Techniques/TemporalAA/DLSSRenderer.h"
 #include "Techniques/TemporalAA/StandardTAARenderer.h"
 #include "IESProfileAsset.h"
+#include "Assets/MeshAsset/MeshAsset.h"
+#include "MaterialsSubsystem.h"
+#include "StaticMeshes/RenderMesh.h"
+#include "MaterialAsset.h"
+#include "PrefabAsset.h"
+#include "Transfers/GPUDeferredCommandsQueue.h"
 
 #if SPT_SHADERS_DEBUG_FEATURES
 #include "Debug/ShaderDebugUtils.h"
@@ -55,6 +60,7 @@ namespace spt::ed
 {
 
 SPT_DEFINE_LOG_CATEGORY(Sandbox, true)
+
 
 SandboxRenderer::SandboxRenderer()
 	: m_fovDegrees(90.f)
@@ -397,10 +403,17 @@ void SandboxRenderer::InitializeRenderScene()
 													 });
 
 	as::AssetsSystem& assetsSystem = engn::Engine::Get().GetAssetsSystem();
-	as::IESProfileAssetHandle iesProfile0 = assetsSystem.LoadAssetChecked<as::IESProfileAsset>("IESProfiles/IESProfile0.sptasset");
-	as::IESProfileAssetHandle iesProfile1 = assetsSystem.LoadAssetChecked<as::IESProfileAsset>("IESProfiles/IESProfile1.sptasset");
+
+	as::IESProfileAssetHandle iesProfile0 = assetsSystem.LoadAssetChecked<as::IESProfileAsset>(as::ResourcePath("IESProfiles/IESProfile0.sptasset"));
+	as::IESProfileAssetHandle iesProfile1 = assetsSystem.LoadAssetChecked<as::IESProfileAsset>(as::ResourcePath("IESProfiles/IESProfile1.sptasset"));
+
+	as::PrefabAssetHandle sponzaPrefab = assetsSystem.LoadAssetChecked<as::PrefabAsset>(as::ResourcePath("Sponza/Sponza.sptasset"));
+
+	as::IESProfileAssetHandle iesProfiles[] = { iesProfile0, iesProfile1 };
 
 	m_renderView = lib::MakeShared<rsc::RenderView>(*m_renderScene);
+	m_renderView->SetLocation(math::Vector3f(0.f, 0.f, 1.f));
+
 	m_renderView->AddRenderStages(rsc::ERenderStage::DeferredRendererStages);
 	if (rdr::Renderer::IsRayTracingEnabled())
 	{
@@ -438,97 +451,78 @@ void SandboxRenderer::InitializeRenderScene()
 	m_renderScene->AddRenderSystem<rsc::LightsRenderSystem>();
 	m_renderScene->AddRenderSystem<rsc::AtmosphereRenderSystem>();
 
-	iesProfile0->AwaitInitialization();
-	iesProfile1->AwaitInitialization();
-
-	const lib::HashedString scenePath = engn::Engine::Get().GetCmdLineArgs().GetValue("-Scene");
-	if (scenePath.IsValid())
 	{
-		const lib::String finalPath = engn::Paths::Combine(engn::Paths::GetContentPath(), scenePath.ToString());
-		rsc::glTFLoader::LoadScene(*m_renderScene, finalPath);
-		//rsc::glTFLoader::LoadScene(*m_renderScene, engn::Paths::Combine(engn::Paths::GetContentPath(), "Private/IceCliff/vd5leh0ga_tier_2.gltf"));
-		//rsc::glTFLoader::LoadScene(*m_renderScene, engn::Paths::Combine(engn::Paths::GetContentPath(), "Private/PKG_B_Ivy/NewSponza_IvyGrowth_glTF.gltf"));
-		//rsc::glTFLoader::LoadScene(*m_renderScene, engn::Paths::Combine(engn::Paths::GetContentPath(), "Private/Sponza_Curtains/NewSponza_Curtains.gltf"));
-		//rsc::glTFLoader::LoadScene(*m_renderScene, engn::Paths::Combine(engn::Paths::GetContentPath(), "Private/Bistro/BistroInterior.gltf"));
-		//rsc::glTFLoader::LoadScene(*m_renderScene, engn::Paths::Combine(engn::Paths::GetContentPath(), "Private/CyborgWeapon/scene.gltf"));
+		const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
+		rsc::PointLightData pointLightData;
+		pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
+		pointLightData.luminousPower = 3200.f;
+		pointLightData.location = math::Vector3f(8.30f, 2.6f, 1.55f);
+		pointLightData.radius = 5.f;
+		pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
+		lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
+	}
 
+	{
+		const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
+		rsc::PointLightData pointLightData;
+		pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
+		pointLightData.luminousPower = 3200.f;
+		pointLightData.location = math::Vector3f(-8.30f, 3.9f, 4.45f);
+		pointLightData.radius = 5.f;
+		pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
+		lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
+	}
 
-		{
-			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
-			rsc::PointLightData pointLightData;
-			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-			pointLightData.luminousPower = 3200.f;
-			pointLightData.location = math::Vector3f(8.30f, 2.6f, 1.55f);
-			pointLightData.radius = 5.f;
-			pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
-			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
-		}
+	{
+		const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
+		rsc::PointLightData pointLightData;
+		pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
+		pointLightData.luminousPower = 3200.f;
+		pointLightData.location = math::Vector3f(8.30f, -3.8f, 1.55f);
+		pointLightData.radius = 5.f;
+		pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
+		lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
+	}
+	
+	{
+		const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
+		rsc::PointLightData pointLightData;
+		pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
+		pointLightData.luminousPower = 3200.f;
+		pointLightData.location = math::Vector3f(-4.24f, -14.85f, 2.05f);
+		pointLightData.radius = 8.f;
+		pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
+		lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
+	}
 
-		{
-			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
-			rsc::PointLightData pointLightData;
-			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-			pointLightData.luminousPower = 3200.f;
-			pointLightData.location = math::Vector3f(-8.30f, 3.9f, 4.45f);
-			pointLightData.radius = 5.f;
-			pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
-			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
-		}
-
-		{
-			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
-			rsc::PointLightData pointLightData;
-			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-			pointLightData.luminousPower = 3200.f;
-			pointLightData.location = math::Vector3f(8.30f, -3.8f, 1.55f);
-			pointLightData.radius = 5.f;
-			pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
-			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
-		}
-		
-		{
-			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
-			rsc::PointLightData pointLightData;
-			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-			pointLightData.luminousPower = 3200.f;
-			//pointLightData.location = math::Vector3f(-9.30f, 2.6f, 1.55f);
-			pointLightData.location = math::Vector3f(-4.24f, -14.85f, 2.05f);
-			pointLightData.radius = 8.f;
-			pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
-			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
-		}
-
-		{
-			m_renderScene->CreateEntity().emplace<rsc::PointLightData>(rsc::PointLightData
-			{
-				.color = math::Vector3f(1.0f, 0.7333f, 0.451f),
-				.luminousPower = 8000.f,
-				.location       = math::Vector3f(0.f, 0.f, 3.f),
-				.radius          = 10.f,
-				.iesProfileTexture = iesProfile1->GetTextureView()
-			});
-		}
-
-		{
-			m_directionalLightEntity = m_renderScene->CreateEntity();
-			rsc::DirectionalLightData directionalLightData;
-			directionalLightData.color                  = math::Vector3f(1.f, 0.956f, 0.839f);
-			//directionalLightData.color                  = math::Vector3f::Constant(1.f);
-			directionalLightData.zenithIlluminance      = 120000.f;
-			//directionalLightData.color                  = math::Vector3f(0.667f, 0.725f, 0.0784f);
-			//directionalLightData.color                  = math::Vector3f(0.3f, 0.3f, 0.35f);
-			//directionalLightData.zenithIlluminance      = 0.1f;
-			directionalLightData.direction              = math::Vector3f(-0.5f, -0.3f, -1.7f).normalized();
-			directionalLightData.lightConeAngle         = 0.0046f;
-			directionalLightData.sunDiskAngleMultiplier = 3.8f;
-			directionalLightData.sunDiskEC              = 13.4f;
-			//directionalLightData.sunDiskEC              = 0.4f;
-			m_directionalLightEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
-		}
+	{
+		m_directionalLightEntity = m_renderScene->CreateEntity();
+		rsc::DirectionalLightData directionalLightData;
+		directionalLightData.color                  = math::Vector3f(1.f, 0.956f, 0.839f);
+		directionalLightData.zenithIlluminance      = 120000.f;
+		directionalLightData.direction              = math::Vector3f(-0.5f, -0.3f, -1.7f).normalized();
+		directionalLightData.lightConeAngle         = 0.0046f;
+		directionalLightData.sunDiskAngleMultiplier = 3.8f;
+		directionalLightData.sunDiskEC              = 13.4f;
+		m_directionalLightEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
 	}
 
 	dirLightTypeDirty = true;
 	sunAngleDirty = true;
+	for (const auto& iesProfile : iesProfiles)
+	{
+		iesProfile->AwaitInitialization();
+	}
+	sponzaPrefab->AwaitInitialization();
+	sponzaPrefab->SetPermanent();
+
+	sponzaPrefab->Spawn(as::PrefabSpawnParams
+						{
+							.scene = *m_renderScene,
+							.rotation = math::Vector3f(90.f, 0.f, 0.f)
+						});
+
+	gfx::GPUDeferredCommandsQueue::Get().ForceFlushCommands();
 
 	const Bool dlssInitResult = dlssInitJob.Await();
 

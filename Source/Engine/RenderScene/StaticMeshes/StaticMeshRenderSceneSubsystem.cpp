@@ -6,6 +6,7 @@
 #include "Lights/LightTypes.h"
 #include "Transfers/UploadUtils.h"
 #include "Geometry/GeometryDrawer.h"
+#include "RenderMesh.h"
 
 
 namespace spt::rsc

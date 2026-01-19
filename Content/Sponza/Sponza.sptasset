@@ -1,0 +1,11 @@
+{
+    "Blackboard": {
+        "BlackboardContent": [
+            "spt::as::GLTFPrefabDefinition"
+        ],
+        "spt::as::GLTFPrefabDefinition": {
+            "GLTFSourcePath": "glTF/Sponza.gltf"
+        }
+    },
+    "Type": "pt::as::PrefabAsset"
+}
