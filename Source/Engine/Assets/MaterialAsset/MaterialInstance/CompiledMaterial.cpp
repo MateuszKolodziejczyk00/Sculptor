@@ -1,4 +1,4 @@
-#include "PBRMaterialRuntime.h"
+#include "CompiledMaterial.h"
 #include "AssetTypes.h"
 #include "Transfers/UploadUtils.h"
 #include "Types/Texture.h"

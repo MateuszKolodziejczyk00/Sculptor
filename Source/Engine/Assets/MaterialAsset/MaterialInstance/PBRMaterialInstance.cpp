@@ -2,7 +2,7 @@
 #include "Assertions/Assertions.h"
 #include "MaterialAsset.h"
 #include "MaterialInstance/PBRMaterialCompiler.h"
-#include "MaterialInstance/PBRMaterialRuntime.h"
+#include "MaterialInstance/CompiledMaterial.h"
 #include "MaterialsSubsystem.h"
 #include "Materials/MaterialsRenderingCommon.h"
 #include "RHICore/RHIAllocationTypes.h"
