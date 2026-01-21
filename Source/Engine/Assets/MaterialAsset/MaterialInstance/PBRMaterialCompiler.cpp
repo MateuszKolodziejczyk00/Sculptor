@@ -16,6 +16,7 @@
 #include "PBRMaterialInstance.h"
 #include "Bindless/BindlessTypes.h"
 #include "Loaders/GLTF.h"
+#include "AssetsSystem.h"
 
 SPT_DEFINE_LOG_CATEGORY(PBRMaterialCompiler, true);
 
@@ -396,7 +397,13 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 
 	const lib::Path referencePath  = asset.GetDirectoryPath();
 	const lib::Path gltfSourcePath = !definition.gltfSourcePath.empty() ? (referencePath / definition.gltfSourcePath) : lib::Path{};
-	const std::optional<rsc::GLTFModel> gltfModel = rsc::LoadGLTFModel(gltfSourcePath.generic_string());
+	const lib::String gltfSourcePathAsString = gltfSourcePath.generic_string();
+
+	const std::optional<rsc::GLTFModel>& gltfModel = asset.GetOwningSystem().GetCompilationInputData<std::optional<rsc::GLTFModel>>(gltfSourcePathAsString,
+			[&gltfSourcePathAsString]()
+			{
+				return rsc::LoadGLTFModel(gltfSourcePathAsString);
+			});
 
 	if (!gltfModel)
 	{

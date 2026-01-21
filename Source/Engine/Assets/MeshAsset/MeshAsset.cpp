@@ -116,8 +116,14 @@ Bool MeshAsset::Compile()
 {
 	const MeshSourceDefinition& sourceDef = GetBlackboard().Get<MeshSourceDefinition>();
 	const lib::Path meshSourcePath = (GetDirectoryPath() / sourceDef.path);
+	const lib::String meshSourcePathAsString = meshSourcePath.generic_string();
 
-	const std::optional<rsc::GLTFModel> gltfModel = rsc::LoadGLTFModel(meshSourcePath.generic_string());
+	const std::optional<rsc::GLTFModel>& gltfModel = GetOwningSystem().GetCompilationInputData<std::optional<rsc::GLTFModel>>(meshSourcePathAsString,
+			[&meshSourcePathAsString]()
+			{
+				return rsc::LoadGLTFModel(meshSourcePathAsString);
+			});
+
 	if (!gltfModel.has_value())
 	{
 		SPT_LOG_ERROR(MeshAsset, "Failed to load GLTF model from path '{}'", meshSourcePath.generic_string());

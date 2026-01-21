@@ -465,6 +465,8 @@ Bool AssetsSystem::CompileAssetImpl(const AssetHandle& asset)
 {
 	SPT_PROFILER_FUNCTION();
 
+	m_compilationInputCache.OnCompilationStarted();
+
 	const Bool compilationResult = asset->Compile();
 
 	if (compilationResult)
@@ -475,6 +477,8 @@ Bool AssetsSystem::CompileAssetImpl(const AssetHandle& asset)
 	{
 		SPT_LOG_ERROR(AssetsSystem, "Failed to compile asset: {}", ResolvePath(asset->GetResourcePathID()).GetPath().string());
 	}
+
+	m_compilationInputCache.OnCompilationFinished();
 
 	return compilationResult;
 }

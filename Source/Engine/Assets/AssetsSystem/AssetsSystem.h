@@ -7,6 +7,7 @@
 #include "FileSystem/File.h"
 #include "ResourcePath.h"
 #include "DDC.h"
+#include "CompilationInputCache.h"
 #include "AssetsDB.h"
 
 
@@ -59,6 +60,7 @@ using CreateResult = lib::ValueOrError<AssetHandle, ECreateError>;
 
 template<typename TAssetType = AssetInstance>
 using LoadResult = lib::ValueOrError<TypedAssetHandle<TAssetType>, ELoadError>;
+
 
 
 class ASSETS_SYSTEM_API AssetsSystem
@@ -139,6 +141,9 @@ public:
 
 	ResourcePath ResolvePath(const ResourcePathID pathID) const;
 
+	template<typename TType, typename TLoader>
+	const TType& GetCompilationInputData(const lib::HashedString& key, TLoader&& loader);
+
 private:
 
 	void SaveAssetImpl(AssetHandle asset);
@@ -170,6 +175,15 @@ private:
 	AssetsDB m_assetsDB;
 
 	mutable lib::ReadWriteLock m_assetsSystemLock;
+
+	CompilationInputCache m_compilationInputCache;
 };
+
+
+template<typename TType, typename TLoader>
+const TType& AssetsSystem::GetCompilationInputData(const lib::HashedString& key, TLoader&& loader)
+{
+	return m_compilationInputCache.GetOrLoadData<TType>(key, std::forward<TLoader>(loader));
+}
 
 } // spt::as

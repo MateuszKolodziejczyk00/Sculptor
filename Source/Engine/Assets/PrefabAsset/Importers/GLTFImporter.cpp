@@ -65,7 +65,14 @@ void InitPrefabDefinition(PrefabDefinition& prefabDef, const AssetInstance& asse
 {
 	const lib::Path referencePath  = asset.GetDirectoryPath();
 	const lib::Path gltfSourcePath = !gltfDef.gltfSourcePath.empty() ? (referencePath / gltfDef.gltfSourcePath) : lib::Path{};
-	const std::optional<rsc::GLTFModel> model = rsc::LoadGLTFModel(gltfSourcePath.generic_string());
+	const lib::String gltfSourcePathAsString = gltfSourcePath.generic_string();
+
+	const std::optional<rsc::GLTFModel>& model = asset.GetOwningSystem().GetCompilationInputData<std::optional<rsc::GLTFModel>>(gltfSourcePathAsString,
+			[&gltfSourcePathAsString]()
+			{
+				return rsc::LoadGLTFModel(gltfSourcePathAsString);
+			});
+
 	if (!model)
 	{
 		return;
