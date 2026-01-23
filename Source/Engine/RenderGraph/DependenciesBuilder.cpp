@@ -65,6 +65,11 @@ void RGDependenciesBuilder::AddTextureAccessIfAcquired(const lib::SharedRef<rdr:
 	}
 }
 
+void RGDependenciesBuilder::AddBufferAccess(const lib::SharedPtr<rdr::Buffer>& buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages /* = RGDependencyStages() */)
+{
+	AddBufferAccess(m_graphBuilder.AcquireExternalBufferView(buffer->GetFullView()), access, dependencyStages);
+}
+
 void RGDependenciesBuilder::AddBufferAccess(RGBufferViewHandle buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
 {
 	if (lib::ContainsPred(m_dependeciesRef.bufferAccesses, [buffer](const RGBufferAccessDef& access) { return access.resource == buffer; }))

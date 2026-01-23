@@ -66,7 +66,8 @@ DescriptorSetState::DescriptorSetState(const RendererResourceName& name, const D
 	, m_typeID(DSStateTypeID(idxNone<SizeType>))
 	, m_dirty(true)
 	, m_flags(params.flags)
-	, m_stackAllocator(params.stackAllocator)
+	, m_descriptorsAllocator(params.descriptorsAllocator)
+	, m_constantsAllocator(params.constantsAllocator)
 	, m_name(name)
 { }
 
@@ -127,23 +128,6 @@ const lib::SharedPtr<DescriptorSetLayout>& DescriptorSetState::GetLayout() const
 	return m_layout;
 }
 
-Uint32* DescriptorSetState::AddDynamicOffset()
-{
-	const Uint32* prevDataPtr = m_dynamicOffsets.data();
-
-	Uint32& newOffset = m_dynamicOffsets.emplace_back(0);
-
-	// make sure that array wasn't deallocated as this would result in dangling pointers in bindings to their offsets
-	SPT_CHECK(prevDataPtr == m_dynamicOffsets.data());
-
-	return &newOffset;
-}
-
-const lib::DynamicArray<Uint32>& DescriptorSetState::GetDynamicOffsets() const
-{
-	return m_dynamicOffsets;
-}
-
 const lib::HashedString& DescriptorSetState::GetName() const
 {
 	return m_name.Get();
@@ -156,19 +140,13 @@ void DescriptorSetState::SetTypeID(DSStateTypeID id, const DescriptorSetStatePar
 	m_layout = DescriptorSetStateLayoutsRegistry::Get().GetLayoutChecked(m_typeID);
 }
 
-void DescriptorSetState::InitDynamicOffsetsArray(SizeType dynamicOffsetsNum)
-{
-
-	m_dynamicOffsets.reserve(dynamicOffsetsNum);
-}
-
 rhi::RHIDescriptorRange DescriptorSetState::AllocateDescriptorRange() const
 {
 	const Uint64 size = m_layout->GetRHI().GetDescriptorsDataSize();
 
-	if (m_stackAllocator)
+	if (m_descriptorsAllocator)
 	{
-		return m_stackAllocator->AllocateRange(static_cast<Uint32>(size));
+		return m_descriptorsAllocator->AllocateRange(static_cast<Uint32>(size));
 	}
 	else
 	{
@@ -181,7 +159,7 @@ void DescriptorSetState::SwapDescriptorRange(rhi::RHIDescriptorRange newDescript
 {
 	if (m_descriptorRange.IsValid())
 	{
-		if (!m_stackAllocator)
+		if (!m_descriptorsAllocator)
 		{
 			Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda(
 				[ds = m_descriptorRange]

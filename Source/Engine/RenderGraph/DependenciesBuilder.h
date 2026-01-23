@@ -125,6 +125,7 @@ public:
 	void AddTextureAccessIfAcquired(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
 	void AddTextureAccess(rdr::ResourceDescriptorIdx textureDescriptor, ERGTextureAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
 
+	void AddBufferAccess(const lib::SharedPtr<rdr::Buffer>& buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages = RGDependencyStages());
 	void AddBufferAccess(RGBufferViewHandle buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages = RGDependencyStages());
 	void AddBufferAccess(const lib::SharedPtr<rdr::BindableBufferView>& buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages = RGDependencyStages());
 	void AddBufferAccess(rdr::ResourceDescriptorIdx bufferDescriptor, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages = RGDependencyStages());

@@ -1,13 +1,17 @@
 #include "RenderGraphResourcesPool.h"
 #include "ResourcesManager.h"
 #include "Renderer.h"
+#include "Types/DescriptorSetState/DescriptorSetStateTypes.h"
 #include "Types/GPUMemoryPool.h"
 #include "Types/Texture.h"
 
 namespace spt::rg
 {
 
+static constexpr Uint32 allocatorSize = 1u * 1024u * 1024u;
+
 RenderGraphResourcesPool::RenderGraphResourcesPool()
+	: m_constantsAllocators{ rdr::ConstantsAllocator(allocatorSize), rdr::ConstantsAllocator(allocatorSize) }
 {
 }
 
@@ -25,6 +29,16 @@ void RenderGraphResourcesPool::Prepare()
 		{
 			poolData.memoryPool = rdr::ResourcesManager::CreateGPUMemoryPool(RENDERER_RESOURCE_NAME("Render Graph GPU Memory Pool"), rhi::RHIMemoryPoolDefinition(requiredMemory), rhi::EMemoryUsage::GPUOnly);
 		}
+	}
+
+	const rdr::DeviceQueuesManager& queuesManager = rdr::Renderer::GetDeviceQueuesManager();
+	const rdr::GPUTimelineSection currentlyRecordedSection = queuesManager.GetRecordedSection();
+
+	if (m_lastRecordedSection != currentlyRecordedSection)
+	{
+		m_lastRecordedSection = currentlyRecordedSection;
+		m_constantsAllocatorIdx = (m_constantsAllocatorIdx + 1u) % 2u;
+		m_constantsAllocators[m_constantsAllocatorIdx].Reset();
 	}
 }
 

@@ -47,6 +47,8 @@ protected:
 
 	lib::HashedString GetDescriptorSetName() const;
 
+	const DescriptorSetState& GetOwningState() const { return *m_owningState; }
+
 	// Helpers =========================================
 	static constexpr lib::String BuildBindingVariableCode(lib::StringView bindingVariable, Uint32 bindingIdx)
 	{
@@ -71,7 +73,8 @@ private:
 
 struct DescriptorSetStateParams
 {
-	DescriptorStackAllocator* stackAllocator = nullptr;
+	DescriptorStackAllocator* descriptorsAllocator = nullptr;
+	ConstantsAllocator*       constantsAllocator = nullptr;
 	EDescriptorSetStateFlags  flags = EDescriptorSetStateFlags::Default;
 };
 
@@ -98,20 +101,17 @@ public:
 
 	Uint32 GetDescriptorsHeapOffset() const;
 
+	ConstantsAllocator* GetConstantsAllocator() const { return m_constantsAllocator; }
+
 	EDescriptorSetStateFlags GetFlags() const;
 
 	const lib::SharedPtr<DescriptorSetLayout>& GetLayout() const;
-
-	Uint32*                          AddDynamicOffset();
-	const lib::DynamicArray<Uint32>& GetDynamicOffsets() const;
 
 	const lib::HashedString& GetName() const;
 
 protected:
 
 	void SetTypeID(DSStateTypeID id, const DescriptorSetStateParams& params);
-
-	void InitDynamicOffsetsArray(SizeType dynamicOffsetsNum);
 
 private:
 
@@ -126,9 +126,8 @@ private:
 
 	EDescriptorSetStateFlags m_flags;
 
-	DescriptorStackAllocator* m_stackAllocator;
-
-	lib::DynamicArray<Uint32> m_dynamicOffsets;
+	DescriptorStackAllocator* m_descriptorsAllocator;
+	ConstantsAllocator*       m_constantsAllocator;
 
 	lib::SharedPtr<DescriptorSetLayout> m_layout;
 
@@ -306,8 +305,6 @@ public:
 		: Super(name, params)																									\
 	{																															\
 		SetTypeID(GetStaticTypeID(), params);																					\
-		const SizeType dynamicOffsetsNum = rdr::bindings_refl::GetDynamicOffsetBindingsNum<ReflHeadBindingType>();				\
-		InitDynamicOffsetsArray(dynamicOffsetsNum);																				\
 		rdr::bindings_refl::InitializeBindings(GetBindingsBegin(), *this);														\
 	}																															\
 	static lib::HashedString GetDescriptorSetName()																				\
@@ -433,29 +430,6 @@ constexpr void ForEachBinding(TCallable callable)
 	{
 		ForEachBinding<typename TBindingHandle::NextBindingHandleType>(callable);
 	}
-}
-
-template<typename TBindingHandle>
-constexpr SizeType GetDynamicOffsetBindingsNum()
-{
-	SizeType dynamicOffsetBindingsNum = 0u;
-
-	ForEachBinding<TBindingHandle>([&dynamicOffsetBindingsNum]<typename TCurrentBindingHandle>() mutable
-	{
-		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
-
-		auto shaderBindingsMetaData = CurrentBindingType::GetShaderBindingsMetaData();
-
-		for (const ShaderBindingMetaData& shaderBindingMetaData : shaderBindingsMetaData)
-		{
-			if (lib::HasAnyFlag(shaderBindingMetaData.flags, smd::EBindingFlags::DynamicOffset))
-			{
-				++dynamicOffsetBindingsNum;
-			}
-		}
-	});
-
-	return dynamicOffsetBindingsNum;
 }
 
 template<typename TDescriptorSetType>

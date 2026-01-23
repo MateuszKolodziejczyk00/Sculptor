@@ -240,6 +240,8 @@ private:
 
 	lib::SharedPtr<rdr::Pipeline> GetPipelineObject(rdr::PipelineStateID psoID) const;
 
+	rdr::DescriptorSetStateParams BuildDesctiptorSetStateParams();
+
 	lib::DynamicArray<RGTextureHandle> m_textures;
 	lib::DynamicArray<RGBufferHandle> m_buffers;
 
@@ -287,9 +289,7 @@ TType* RenderGraphBuilder::Allocate(TArgs&&... args)
 template<typename TDSType>
 lib::MTHandle<TDSType> RenderGraphBuilder::CreateDescriptorSet(const rdr::RendererResourceName& name)
 {
-	rdr::DescriptorSetStateParams params;
-	params.stackAllocator = &m_dsAllocator;
-	lib::MTHandle<TDSType> ds = m_allocator.AllocateUntracked<TDSType>(name, params);
+	lib::MTHandle<TDSType> ds = m_allocator.AllocateUntracked<TDSType>(name, BuildDesctiptorSetStateParams());
 	ds->DisableDeleteOnZeroRefCount();
 #if SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME
 	m_allocatedDSStates.emplace_back(ds);

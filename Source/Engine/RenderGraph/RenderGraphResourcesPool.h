@@ -2,8 +2,17 @@
 
 #include "SculptorCoreTypes.h"
 #include "RenderGraphTypes.h"
+#include "Types/DescriptorSetState/DescriptorSetStateTypes.h"
 #include "Types/Texture.h"
 #include "RenderGraphMacros.h"
+#include "DeviceQueues/DeviceQueuesManager.h"
+
+
+namespace spt::rdr
+{
+class Buffer;
+} // spt::rdr
+
 
 namespace spt::rg
 {
@@ -18,6 +27,8 @@ public:
 
 	lib::SharedPtr<rdr::Texture> AcquireTexture(const RenderGraphDebugName& name, const rhi::TextureDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo);
 	void ReleaseTexture(lib::SharedPtr<rdr::Texture> texture);
+
+	rdr::ConstantsAllocator& GetConstantsAllocator() { return m_constantsAllocators[m_constantsAllocatorIdx]; }
 
 private:
 
@@ -34,6 +45,11 @@ private:
 	void DestroyResources();
 
 	lib::HashMap<rhi::EMemoryUsage, MemoryPoolData> m_memoryPools;
+
+	rdr::ConstantsAllocator m_constantsAllocators[2];
+	Uint32 m_constantsAllocatorIdx = 0u;
+
+	rdr::GPUTimelineSection m_lastRecordedSection = {};
 };
 
 } // spt::rg

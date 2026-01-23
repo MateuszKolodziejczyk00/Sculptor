@@ -1200,4 +1200,13 @@ lib::SharedPtr<rdr::Pipeline> RenderGraphBuilder::GetPipelineObject(rdr::Pipelin
 	return rdr::ResourcesManager::GetPipelineObject(psoID);
 }
 
+rdr::DescriptorSetStateParams RenderGraphBuilder::BuildDesctiptorSetStateParams()
+{
+	return rdr::DescriptorSetStateParams
+	{
+		.descriptorsAllocator = &m_dsAllocator,
+		.constantsAllocator   = &m_resourcesPool.GetConstantsAllocator()
+	};
+}
+
 } // spt::rg

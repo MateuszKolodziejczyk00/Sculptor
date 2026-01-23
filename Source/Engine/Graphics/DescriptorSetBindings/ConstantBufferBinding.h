@@ -10,6 +10,7 @@
 #include "ShaderStructs/ShaderStructs.h"
 #include "DependenciesBuilder.h"
 #include "Bindless/NamedBuffers.h"
+#include "Types/DescriptorSetState/DescriptorSetStateTypes.h"
 
 
 namespace spt::gfx
@@ -24,9 +25,8 @@ enum class EConstantBufferBindingType
 	Static,
 	// updating data will change static offset and mark descriptor as dirty
 	StaticOffset,
-	// updating data will only change dynamic offset
-	DynamicOffset
 };
+
 
 template<typename TStruct, EConstantBufferBindingType type>
 class ConstantBufferBinding : public rdr::DescriptorSetBinding 
@@ -41,16 +41,16 @@ public:
 		: Super(name)
 		, m_bufferMappedPtr(nullptr)
 		, m_structsStride(0u)
-		, m_offset(nullptr)
 	{ }
 
 	~ConstantBufferBinding()
 	{
 		if (m_bufferMappedPtr)
 		{
-			SPT_CHECK(!!m_buffer);
+			SPT_CHECK(!!m_bufferAllocation.buffer);
 		
-			m_buffer->GetRHI().Unmap();
+			m_bufferAllocation.buffer->GetRHI().Unmap();
+			m_bufferAllocation = {};
 			m_bufferMappedPtr = nullptr;
 		}
 	}
@@ -61,15 +61,7 @@ public:
 
 		InitResources(owningState);
 
-		if constexpr (type == EConstantBufferBindingType::DynamicOffset)
-		{
-			m_offset = owningState.AddDynamicOffset();
-			*std::get<DynamicOffset>(m_offset) = 0u;
-		}
-		else
-		{
-			m_offset = StaticOffset(0u);
-		}
+		m_offset = 0u;
 
 		if (m_bufferMappedPtr)
 		{
@@ -81,8 +73,8 @@ public:
 	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
 	{
 		constexpr Uint64 structSize = GetStructSize();
-		const Uint64 offset         = GetStaticOffset();
-		m_buffer->GetRHI().CopySRVDescriptor(offset, structSize, indexer[GetBaseBindingIdx()][0]);
+		const Uint64 offset         = m_bufferAllocation.offset + GetStaticOffset();
+		m_bufferAllocation.buffer->GetRHI().CopySRVDescriptor(offset, structSize, indexer[GetBaseBindingIdx()][0]);
 	}
 
 	static constexpr lib::String BuildAccessorsCode()
@@ -103,15 +95,8 @@ public:
 
 	static constexpr std::array<rdr::ShaderBindingMetaData, 1> GetShaderBindingsMetaData()
 	{
-		smd::EBindingFlags flags = smd::EBindingFlags::None;
-
-		constexpr Bool isDynamicOffset = (type == EConstantBufferBindingType::DynamicOffset);
-		if constexpr (isDynamicOffset)
-		{
-			lib::AddFlag(flags, smd::EBindingFlags::DynamicOffset);
-		}
-
-		return { rdr::ShaderBindingMetaData(isDynamicOffset ? rhi::EDescriptorType::UniformBufferDynamicOffset : rhi::EDescriptorType::UniformBuffer, flags) };
+		const smd::EBindingFlags flags = smd::EBindingFlags::None;
+		return { rdr::ShaderBindingMetaData(rhi::EDescriptorType::UniformBuffer, flags) };
 	}
 
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
@@ -123,7 +108,8 @@ public:
 		access.structTypeName = TStruct::GetStructName();
 		access.elementsNum    = 1u;
 #endif // DEBUG_RENDER_GRAPH
-		builder.AddBufferAccess(m_buffer->CreateView(GetCurrentOffset(), GetStructSize()), access);
+		//builder.AddBufferAccess(m_bindableBuffer, access);
+		builder.AddBufferAccess(m_bufferAllocation.buffer->GetFullView(), access);
 	}
 
 	template<typename TAssignable> requires std::is_assignable_v<TStruct, TAssignable>
@@ -142,11 +128,9 @@ public:
 
 private:
 
-	// Dynamic Offset value ptr
-	using DynamicOffset = Uint32*;
-	using StaticOffset  = Uint32;
+	using StaticOffset = Uint32;
 
-	static constexpr Bool hasVariableOffset = (type == EConstantBufferBindingType::DynamicOffset || type == EConstantBufferBindingType::StaticOffset);
+	static constexpr Bool hasVariableOffset = (type == EConstantBufferBindingType::StaticOffset);
 
 	static constexpr Uint64 GetStructSize()
 	{
@@ -167,7 +151,7 @@ private:
 				SPT_CHECK_MSG(m_structsStride != 0, "Buffer {} is not initialized to be updated!", GetName().ToString());
 				Uint32& offset = GetCurrentOffsetRef();
 				offset += m_structsStride;
-				if (offset >= m_buffer->GetRHI().GetSize())
+				if (offset >= m_bufferAllocation.size)
 				{
 					offset = 0;
 				}
@@ -214,7 +198,7 @@ private:
 	{
 		if constexpr (type == EConstantBufferBindingType::StaticOffset)
 		{
-			return std::get<StaticOffset>(m_offset);
+			return m_offset;
 		}
 		else
 		{
@@ -224,15 +208,9 @@ private:
 
 	Uint32 GetCurrentOffset() const
 	{
-		if constexpr (type == EConstantBufferBindingType::DynamicOffset)
+		if constexpr (type == EConstantBufferBindingType::StaticOffset)
 		{
-			const Uint32* offset = std::get<DynamicOffset>(m_offset);
-			SPT_CHECK(!!offset);
-			return *offset;
-		}
-		else if constexpr (type == EConstantBufferBindingType::StaticOffset)
-		{
-			return std::get<StaticOffset>(m_offset);
+			return m_offset;
 		}
 		else
 		{
@@ -244,16 +222,7 @@ private:
 	{
 		SPT_CHECK(hasVariableOffset);
 
-		if constexpr (type == EConstantBufferBindingType::DynamicOffset)
-		{
-			Uint32* offset = std::get<DynamicOffset>(m_offset);
-			SPT_CHECK(!!offset);
-			return *offset;
-		}
-		else
-		{
-			return std::get<StaticOffset>(m_offset);
-		}
+		return m_offset;
 	}
 
 	void InitResources(rdr::DescriptorSetState& owningState)
@@ -280,20 +249,37 @@ private:
 
 	void CreateNewBuffer(Uint64 size)
 	{
-		const rhi::BufferDefinition bufferDef(size, rhi::EBufferUsage::Uniform);
+		const rdr::DescriptorSetState& owningState = GetOwningState();
+		rdr::ConstantsAllocator* constantsAllocator = owningState.GetConstantsAllocator();
 
-		rhi::RHIAllocationInfo allocationInfo;
-		allocationInfo.allocationFlags = rhi::EAllocationFlags::CreateMapped;
-		allocationInfo.memoryUsage     = rhi::EMemoryUsage::CPUToGPU;
-		m_buffer = rdr::ResourcesManager::CreateBuffer(m_name, bufferDef, allocationInfo);
+		if (constantsAllocator)
+		{
+			m_bufferAllocation = constantsAllocator->Allocate(static_cast<Uint32>(size));
+			m_bufferMappedPtr  = m_bufferAllocation.buffer->GetRHI().MapPtr() + m_bufferAllocation.offset;
+		}
+		else
+		{
+			const rhi::BufferDefinition bufferDef(size, rhi::EBufferUsage::Uniform);
 
-		m_bufferMappedPtr = m_buffer->GetRHI().MapPtr();
+			rhi::RHIAllocationInfo allocationInfo;
+			allocationInfo.allocationFlags = rhi::EAllocationFlags::CreateMapped;
+			allocationInfo.memoryUsage     = rhi::EMemoryUsage::CPUToGPU;
+			lib::SharedPtr<rdr::Buffer> buffer = rdr::ResourcesManager::CreateBuffer(m_name, bufferDef, allocationInfo);
+
+			m_bufferAllocation = rdr::ConstantBufferAllocation
+			{
+				.buffer = std::move(buffer),
+				.offset = 0u,
+				.size   = static_cast<Uint32>(size)
+			};
+			m_bufferMappedPtr = m_bufferAllocation.buffer->GetRHI().MapPtr() + m_bufferAllocation.offset;
+		}
 	}
 
-	lib::SharedPtr<rdr::Buffer> m_buffer;
-	Byte*                       m_bufferMappedPtr;
+	rdr::ConstantBufferAllocation m_bufferAllocation;
+	Byte*                         m_bufferMappedPtr;
 
-	rdr::RendererResourceName   m_name;
+	rdr::RendererResourceName m_name;
 
 	Uint32 m_structsStride;
 
@@ -301,7 +287,7 @@ private:
 	// It's used to not changing offset multiple times during one state as this could override data used on GPU
 	rdr::GPUTimelineSection m_lastDynamicOffsetChangeGPUSection;
 
-	std::variant<DynamicOffset, StaticOffset> m_offset;
+	StaticOffset m_offset = 0u;
 };
 
 } // priv
