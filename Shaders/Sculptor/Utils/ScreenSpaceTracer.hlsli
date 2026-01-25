@@ -12,8 +12,6 @@ struct ScreenSpaceTracerContext
 {
 	SceneViewData    sceneView;
 	Texture2D<float> linearDepth;
-	SamplerState     linearSampler;
-	SamplerState     nearestSampler;
 	
 	uint2 resolution;
 	uint  stepsNum;
@@ -62,8 +60,8 @@ SSTraceResult TraceSSShadowRay(in ScreenSpaceTracerContext context, in float2 st
 			break;
 		}
 
-		const float zNearest = context.linearDepth.SampleLevel(context.nearestSampler, uv, 0.f);
-		const float zLinear  = context.linearDepth.SampleLevel(context.linearSampler, uv, 0.f);
+		const float zNearest = context.linearDepth.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0.f);
+		const float zLinear  = context.linearDepth.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0.f);
 
 		const float minZ = min(zNearest, zLinear);
 		const float maxZ = max(zNearest, zLinear);

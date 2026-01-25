@@ -174,8 +174,6 @@ static void ReprojectVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, c
 		reprojectVariableRateTextureDS->u_rwReprojectionSuccessMask = reprojectionParams.reprojectionSuccessMask;
 	}
 
-	lib::MTHandle<RenderViewDS> renderViewDS;
-
 	if (useDepthTest)
 	{
 		const VariableRateReprojectionParams::Geometry& geometryData = reprojectionParams.geometryData.value();
@@ -190,8 +188,6 @@ static void ReprojectVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, c
 		reprojectVariableRateTextureDS->u_normalsTexture      = geometryData.currentNormals;
 		reprojectVariableRateTextureDS->u_historyDepthTexture = geometryData.historyDepth;
 
-		renderViewDS = geometryData.renderView->GetRenderViewDS();
-
 		shaderConstants.reprojectionMaxPlaneDistance = geometryData.reprojectionMaxPlaneDistance;
 	}
 
@@ -202,7 +198,7 @@ static void ReprojectVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, c
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{} - Reproject Variable Rate Texture", vrSettings.debugName.AsString()),
 						  reprojectVariableRateTexturePipeline,
 						  math::Utils::DivideCeil(shaderConstants.resolution, math::Vector2u(8u, 4u)),
-						  rg::BindDescriptorSets(std::move(reprojectVariableRateTextureDS), std::move(renderViewDS)));
+						  rg::BindDescriptorSets(std::move(reprojectVariableRateTextureDS)));
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

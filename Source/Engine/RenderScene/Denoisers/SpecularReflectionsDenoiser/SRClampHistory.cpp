@@ -78,8 +78,7 @@ void ClampHistory(rg::RenderGraphBuilder& graphBuilder, const ClampHistoryParams
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{} SR Clamp History", params.debugName.AsString()),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds),
-												 params.renderView.GetRenderViewDS()));
+						  rg::BindDescriptorSets(std::move(ds)));
 }
 
 } // spt::rsc::sr_denoiser

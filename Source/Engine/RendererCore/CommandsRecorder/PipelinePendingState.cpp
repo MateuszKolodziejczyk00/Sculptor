@@ -153,6 +153,11 @@ void PipelinePendingState::UnbindDescriptorSetState(const lib::MTHandle<Descript
 	TryMarkAsDirty(state);
 }
 
+void PipelinePendingState::BindShaderParams(Uint32 heapOffset)
+{
+	m_pendingShaderParamsOffset = heapOffset;
+}
+
 void PipelinePendingState::TryMarkAsDirty(const lib::MTHandle<DescriptorSetState>& state)
 {
 	TryMarkAsDirtyImpl(state, m_boundGfxPipeline, m_gfxPipelineDescriptorsState);
@@ -229,9 +234,21 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 		descriptorSetsToBind.emplace_back(bindlessDescriptorsCommand);
 	}
 
+	if (metaData.GetShaderParamsType().IsValid())
+	{
+		SPT_CHECK_MSG(m_pendingShaderParamsOffset != idxNone<Uint32>, "Shader params not bound for pipeline {}! Expected: {}.", pipeline->GetRHI().GetName().GetData(), metaData.GetShaderParamsType().GetData());
+
+		DSBindCommand shaderParamsDescriptorCommand;
+		shaderParamsDescriptorCommand.idx        = metaData.GetDescriptorSetsNum();
+		shaderParamsDescriptorCommand.heapOffset = m_pendingShaderParamsOffset;
+
+		descriptorSetsToBind.emplace_back(shaderParamsDescriptorCommand);
+	}
+
 	// Clear all dirty flags
 	std::fill(std::begin(descriptorsState.dirtyDescriptorSets), std::end(descriptorsState.dirtyDescriptorSets), false);
 	descriptorsState.isBindlessBound = true;
+	m_pendingShaderParamsOffset = idxNone<Uint32>;
 
 	return descriptorSetsToBind;
 }

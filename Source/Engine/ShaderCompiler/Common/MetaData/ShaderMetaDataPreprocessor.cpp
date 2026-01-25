@@ -5,9 +5,10 @@
 #include "Common/DescriptorSetCompilation/DescriptorSetCompilationDefsRegistry.h"
 #include "ShaderStructsRegistry.h"
 #include "FileSystem/File.h"
+#include "Utility/String/StringUtils.h"
 
 #include <regex>
-#include "Utility/String/StringUtils.h"
+
 
 SPT_DEFINE_LOG_CATEGORY(ShaderMetaDataPrerpocessor, true)
 
@@ -252,67 +253,7 @@ static void ApplyTypeOverrides(lib::String& structCode, SizeType startPos, const
 	}
 }
 
-} // helper
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// ShaderMetaDataPrerpocessor ====================================================================
-
-ShaderPreprocessingMetaData ShaderMetaDataPrerpocessor::PreprocessMainShaderFile(const lib::String& sourceCode)
-{
-	SPT_PROFILER_FUNCTION();
-
-	ShaderPreprocessingMetaData metaData;
-
-	PreprocessShaderMetaParameters(sourceCode, INOUT metaData);
-
-	return metaData;
-}
-
-ShaderPreprocessingMetaData ShaderMetaDataPrerpocessor::PreprocessAdditionalCompilerArgs(const lib::String& sourceCode)
-{
-	SPT_PROFILER_FUNCTION();
-
-	ShaderPreprocessingMetaData metaData;
-
-	helper::IterateDescriptorSets([&metaData](const lib::HashedString& dsName, Uint32 dsIdx, SizeType dsTokenPosition, SizeType dsTokenLength)
-								  {
-									  const DescriptorSetCompilationDef& dsCompilationDef = DescriptorSetCompilationDefsRegistry::GetDescriptorSetCompilationDef(dsName);
-									  std::copy(std::cbegin(dsCompilationDef.GetMetaData().additionalMacros),
-												std::cend(dsCompilationDef.GetMetaData().additionalMacros),
-												std::back_inserter(metaData.macroDefinitions));
-									  return helper::EDSIteratorFuncResult::Continue;
-								  },
-								  sourceCode);
-
-	return metaData;
-}
-
-ShaderCompilationMetaData ShaderMetaDataPrerpocessor::PreprocessShader(lib::String& sourceCode)
-{
-	SPT_PROFILER_FUNCTION();
-
-	ShaderCompilationMetaData metaData;
-
-	ShaderPreprocessingState preprocessingState;
-	preprocessingState.overrides = helper::ParseTypeOverrides(sourceCode);
-
-	PreprocessShaderDescriptorSets(sourceCode, preprocessingState, OUT metaData);
-	PreprocessShaderStructs(sourceCode, preprocessingState, OUT metaData);
-
-	RemoveMetaParameters(sourceCode);
-
-#if WITH_SHADERS_HOT_RELOAD
-	PreprocessFileDependencies(sourceCode, OUT metaData);
-#endif // WITH_SHADERS_HOT_RELOAD
-
-#if SPT_SHADERS_DEBUG_FEATURES
-	PreprocessShaderLiterals(sourceCode, OUT metaData);
-#endif // SPT_SHADERS_DEBUG_FEATURES
-
-	return metaData;
-}
-
-void ShaderMetaDataPrerpocessor::PreprocessShaderMetaParameters(const lib::String& sourceCode, ShaderPreprocessingMetaData& outMetaData)
+static void PreprocessShaderMetaParameters(const lib::String& sourceCode, ShaderPreprocessingMetaData& outMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -322,7 +263,7 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderMetaParameters(const lib::Strin
 	};
 
 	static const std::regex metaDataRegex(R"~(\[\[meta\((.*?)\)\]\])~");
-    std::smatch match;
+	std::smatch match;
 
 	if (std::regex_search(sourceCode, match, metaDataRegex))
 	{
@@ -355,7 +296,7 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderMetaParameters(const lib::Strin
 	}
 }
 
-void ShaderMetaDataPrerpocessor::RemoveMetaParameters(lib::String& sourceCode)
+static void RemoveMetaParameters(lib::String& sourceCode)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -363,7 +304,7 @@ void ShaderMetaDataPrerpocessor::RemoveMetaParameters(lib::String& sourceCode)
 	sourceCode = std::regex_replace(sourceCode, metaDataRegex, "");
 }
 
-void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(lib::String& sourceCode, const ShaderPreprocessingState& preprocessingState, ShaderCompilationMetaData& outMetaData)
+static void PreprocessShaderStructs(lib::String& sourceCode, const ShaderPreprocessingState& preprocessingState, ShaderCompilationMetaData& outMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -404,7 +345,7 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(lib::String& sourceCode
 	}
 }
 
-void ShaderMetaDataPrerpocessor::PreprocessShaderDescriptorSets(lib::String& sourceCode, const ShaderPreprocessingState& preprocessingState, ShaderCompilationMetaData& outMetaData)
+static void PreprocessShaderDescriptorSets(lib::String& sourceCode, const ShaderPreprocessingState& preprocessingState, ShaderCompilationMetaData& outMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -433,8 +374,46 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderDescriptorSets(lib::String& sou
 	}
 }
 
+static void PreprocessShaderParams(lib::String& sourceCode, const ShaderPreprocessingState& preprocessingState, ShaderCompilationMetaData& outMetaData)
+{
+	SPT_PROFILER_FUNCTION();
+
+	static const std::regex pushConstantRegex(R"~(\[\[shader_params\(\s*(\w*)\s*\,\s*(\w*)\s*\)\]\])~");
+
+	lib::HashSet<lib::HashedString> m_definedStructs;
+
+	auto pushConstantIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), pushConstantRegex);
+
+	while (pushConstantIt != std::sregex_iterator())
+	{
+		const std::smatch& pushConstantMatch = *pushConstantIt;
+		SPT_CHECK(pushConstantMatch.size() == 3); // [{whole math}, {struct type}, {name}]
+
+		const lib::HashedString structName   = pushConstantMatch[1].str();
+		const lib::HashedString variableName = pushConstantMatch[2].str();
+
+		lib::String generatedCode;
+
+		generatedCode += "[[shader_struct(";
+		generatedCode += structName.GetView();
+		generatedCode += ")]]\n";
+		generatedCode += "[[vk::binding(0, ";
+		generatedCode += std::to_string(outMetaData.GetDescriptorSetsNum());
+		generatedCode += ")]] ConstantBuffer<";
+		generatedCode += structName.GetView();
+		generatedCode += "> ";
+		generatedCode += variableName.GetView();
+		generatedCode += ";\n";
+
+		outMetaData.SetShaderParamsTypeName(structName);
+
+		sourceCode.replace(pushConstantIt->prefix().length(), pushConstantMatch.length(), generatedCode);
+		++pushConstantIt;
+	}
+}
+
 #if WITH_SHADERS_HOT_RELOAD
-void ShaderMetaDataPrerpocessor::PreprocessFileDependencies(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData)
+static void PreprocessFileDependencies(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -458,7 +437,7 @@ void ShaderMetaDataPrerpocessor::PreprocessFileDependencies(lib::String& sourceC
 #endif // WITH_SHADERS_HOT_RELOAD
 
 #if SPT_SHADERS_DEBUG_FEATURES
-void ShaderMetaDataPrerpocessor::PreprocessShaderLiterals(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData)
+static void PreprocessShaderLiterals(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -490,5 +469,66 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderLiterals(lib::String& sourceCod
 	}
 }
 #endif // SPT_SHADERS_DEBUG_FEATURES
+
+} // helper
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// ShaderMetaDataPrerpocessor ====================================================================
+
+ShaderPreprocessingMetaData ShaderMetaDataPrerpocessor::PreprocessMainShaderFile(const lib::String& sourceCode)
+{
+	SPT_PROFILER_FUNCTION();
+
+	ShaderPreprocessingMetaData metaData;
+
+	helper::PreprocessShaderMetaParameters(sourceCode, INOUT metaData);
+
+	return metaData;
+}
+
+ShaderPreprocessingMetaData ShaderMetaDataPrerpocessor::PreprocessAdditionalCompilerArgs(const lib::String& sourceCode)
+{
+	SPT_PROFILER_FUNCTION();
+
+	ShaderPreprocessingMetaData metaData;
+
+	helper::IterateDescriptorSets([&metaData](const lib::HashedString& dsName, Uint32 dsIdx, SizeType dsTokenPosition, SizeType dsTokenLength)
+								  {
+									  const DescriptorSetCompilationDef& dsCompilationDef = DescriptorSetCompilationDefsRegistry::GetDescriptorSetCompilationDef(dsName);
+									  std::copy(std::cbegin(dsCompilationDef.GetMetaData().additionalMacros),
+												std::cend(dsCompilationDef.GetMetaData().additionalMacros),
+												std::back_inserter(metaData.macroDefinitions));
+									  return helper::EDSIteratorFuncResult::Continue;
+								  },
+								  sourceCode);
+
+	return metaData;
+}
+
+ShaderCompilationMetaData ShaderMetaDataPrerpocessor::PreprocessShader(lib::String& sourceCode)
+{
+	SPT_PROFILER_FUNCTION();
+
+	ShaderCompilationMetaData metaData;
+
+	ShaderPreprocessingState preprocessingState;
+	preprocessingState.overrides = helper::ParseTypeOverrides(sourceCode);
+
+	helper::PreprocessShaderDescriptorSets(sourceCode, preprocessingState, OUT metaData);
+	helper::PreprocessShaderParams(sourceCode, preprocessingState, OUT metaData);
+	helper::PreprocessShaderStructs(sourceCode, preprocessingState, OUT metaData);
+
+	helper::RemoveMetaParameters(sourceCode);
+
+#if WITH_SHADERS_HOT_RELOAD
+	helper::PreprocessFileDependencies(sourceCode, OUT metaData);
+#endif // WITH_SHADERS_HOT_RELOAD
+
+#if SPT_SHADERS_DEBUG_FEATURES
+	helper::PreprocessShaderLiterals(sourceCode, OUT metaData);
+#endif // SPT_SHADERS_DEBUG_FEATURES
+
+	return metaData;
+}
 
 } // spt::sc

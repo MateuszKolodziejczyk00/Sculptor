@@ -43,6 +43,11 @@ public:
 		return new (memoryPtr) TType(std::forward<TArgs>(args)...);
 	}
 
+	Byte* AllocateMemory(Uint32 size)
+	{
+		return reinterpret_cast<Byte*>(m_stackMemory.Allocate(size, 1u));
+	}
+
 	void Deallocate()
 	{
 		SPT_PROFILER_FUNCTION();

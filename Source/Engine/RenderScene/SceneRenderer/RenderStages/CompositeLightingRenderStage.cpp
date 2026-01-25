@@ -205,8 +205,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 						  rg::BindDescriptorSets(std::move(compositeLightingDS),
 												 std::move(compositeFogDS),
 												 std::move(compositeAtmosphereDS),
-												 std::move(compositeRTReflectionsDS),
-												 renderView.GetRenderViewDS()));
+												 std::move(compositeRTReflectionsDS)));
 }
 
 

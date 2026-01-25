@@ -273,7 +273,6 @@ static vrt::TracesAllocation ResampleTemporally(rg::RenderGraphBuilder& graphBui
 						  params.enableSecondTracingPass ? ResampleTemporallyPSO::withSecondTracingPass : ResampleTemporallyPSO::noSecondTracingPass,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds),
-												 params.renderView.GetRenderViewDS(),
 												 std::move(additionalPassesAllocatorDS)));
 
 	return additionalTracesAllocation;
@@ -386,7 +385,7 @@ static void ResampleSpatially(rg::RenderGraphBuilder& graphBuilder, const Resamp
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Resample Spatially"),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds), params.renderView.GetRenderViewDS()));
+						  rg::BindDescriptorSets(std::move(ds)));
 
 }
 
@@ -461,16 +460,14 @@ static void ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBuilder, con
 		graphBuilder.TraceRays(RG_DEBUG_NAME("SR Final Visibility Test"),
 									   SRFinalVisibilityTestPSO::fullRate,
 									   resolution,
-									   rg::BindDescriptorSets(std::move(ds),
-															  params.renderView.GetRenderViewDS()));
+									   rg::BindDescriptorSets(std::move(ds)));
 	}
 	else
 	{
 		graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("SR Final Visibility Test"),
 									   SRFinalVisibilityTestPSO::variableRate,
 									   params.tracesAllocation.tracingIndirectArgs, 0,
-									   rg::BindDescriptorSets(std::move(ds),
-															  params.renderView.GetRenderViewDS()));
+									   rg::BindDescriptorSets(std::move(ds)));
 	}
 }
 
@@ -532,7 +529,7 @@ static void ResolveReservoirs(rg::RenderGraphBuilder& graphBuilder, const Resamp
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Resolve Reservoirs"),
 						  ResolveReservoirsPSO::pso,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds), params.renderView.GetRenderViewDS()));
+						  rg::BindDescriptorSets(std::move(ds)));
 }
 
 } // resolve

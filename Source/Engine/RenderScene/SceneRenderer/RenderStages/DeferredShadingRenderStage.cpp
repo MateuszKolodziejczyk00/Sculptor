@@ -131,7 +131,6 @@ void ExecuteDeferredShading(rg::RenderGraphBuilder& graphBuilder, const Deferred
 						  DeferredShadingPSO::GetPermutation(permutation),
 						  math::Utils::DivideCeil(resolution, math::Vector2u{ 8u, 8u }),
 						  rg::BindDescriptorSets(std::move(deferredShadingDS),
-												 viewSpec.GetRenderView().GetRenderViewDS(),
 												 viewContext.shadingInputDS,
 												 ddgiDS));
 }

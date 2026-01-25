@@ -33,8 +33,6 @@ struct GatherBasedDOFParameters
 	rg::RGTextureViewHandle linearColorTexture;
 	rg::RGTextureViewHandle depthTexture;
 
-	lib::MTHandle<RenderViewDS> viewDS;
-
 	Real32 focalPlane;
 	Real32 fullFocusRange;
 	Real32 farFocusIncreaseRange;

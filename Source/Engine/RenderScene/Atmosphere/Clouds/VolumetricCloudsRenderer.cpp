@@ -127,8 +127,6 @@ struct AccumulateCloudsParams
 	rg::RGTextureViewHandle accumulatedAge;
 	rg::RGTextureViewHandle outAge;
 
-	lib::MTHandle<RenderViewDS> renderViewDS;
-
 	math::Vector2u tracedPixel2x2 = { 0u, 0u };
 };
 
@@ -189,7 +187,7 @@ static void AccumulateClouds(rg::RenderGraphBuilder& graphBuilder, const Accumul
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Accumulate Volumetric Clouds"),
 						  pipeline,
 						  math::Utils::DivideCeil(cloudsResolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds), params.renderViewDS));
+						  rg::BindDescriptorSets(std::move(ds)));
 }
 
 } // accumulate
@@ -347,8 +345,7 @@ static void RenderVolumetricCloudsMainView(rg::RenderGraphBuilder& graphBuilder,
 						  pipeline,
 						  math::Utils::DivideCeil(cloudsResolution, math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds),
-												 params.cloudscape->cloudscapeDS,
-												 renderView.GetRenderViewDS()));
+												 params.cloudscape->cloudscapeDS));
 
 	if (renderer_params::fullResClouds)
 	{
@@ -373,7 +370,6 @@ static void RenderVolumetricCloudsMainView(rg::RenderGraphBuilder& graphBuilder,
 			accumulateParams.outAccumulatedCloudsDepth     = params.accumulatedCloudsDepth;
 			accumulateParams.accumulatedAge                = params.accumulatedCloudsAgeHistory;
 			accumulateParams.outAge                        = params.accumulatedCloudsAge;
-			accumulateParams.renderViewDS                  = renderView.GetRenderViewDS();
 			accumulateParams.tracedPixel2x2                = tracedPixel2x2;
 
 			accumulate::AccumulateClouds(graphBuilder, accumulateParams);
@@ -694,7 +690,6 @@ void UpdateCloudscapeHighResProbe(rg::RenderGraphBuilder& graphBuilder, ViewRend
 						  pipeline,
 						  params.updateSize,
 						  rg::BindDescriptorSets(std::move(ds),
-												 viewSpec.GetRenderView().GetRenderViewDS(),
 												 params.cloudscape->cloudscapeDS));
 }
 
@@ -774,6 +769,7 @@ void VolumetricCloudsRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBuild
 		for (ViewRenderingSpec* viewSpec : viewSpecs)
 		{
 			SPT_CHECK(!!viewSpec);
+			const rg::BindDescriptorSetsScope viewDSScope(graphBuilder, rg::BindDescriptorSets(viewSpec->GetRenderView().GetRenderViewDS()));
 			RenderPerView(graphBuilder, renderScene, *viewSpec, cloudscapeContext);
 		}
 	}

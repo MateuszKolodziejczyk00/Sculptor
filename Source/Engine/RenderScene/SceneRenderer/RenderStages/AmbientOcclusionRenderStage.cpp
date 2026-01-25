@@ -113,8 +113,7 @@ static rg::RGTextureViewHandle TraceAmbientOcclusionRays(rg::RenderGraphBuilder&
 	graphBuilder.TraceRays(RG_DEBUG_NAME("RTAO Trace Rays"),
 						   AOTraceRaysPSO::pso,
 						   traceRaysResolution,
-						   rg::BindDescriptorSets(std::move(traceRaysDS),
-												  context.renderView.GetRenderViewDS()));
+						   rg::BindDescriptorSets(std::move(traceRaysDS)));
 
 	return traceRaysResultTexture;
 }

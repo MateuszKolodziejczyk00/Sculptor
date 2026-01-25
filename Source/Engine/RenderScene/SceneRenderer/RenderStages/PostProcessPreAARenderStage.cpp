@@ -32,7 +32,6 @@ void PostProcessPreAARenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder,
 		dof::GatherBasedDOFParameters dofParameters;
 		dofParameters.linearColorTexture		= viewContext.luminance;
 		dofParameters.depthTexture				= viewContext.depth;
-		dofParameters.viewDS					= viewSpec.GetRenderView().GetRenderViewDS();
 		dofParameters.focalPlane				= params::focalPlane;
 		dofParameters.fullFocusRange			= params::fullFocusRange;
 		dofParameters.farFocusIncreaseRange		= params::farFocusIncreaseRange;

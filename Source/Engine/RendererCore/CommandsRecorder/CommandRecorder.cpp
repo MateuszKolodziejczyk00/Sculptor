@@ -255,6 +255,11 @@ void CommandRecorder::UnbindDescriptorSetState(const lib::MTHandle<DescriptorSet
 	m_pipelineState.UnbindDescriptorSetState(state);
 }
 
+void CommandRecorder::BindShaderParams(Uint32 heapOffset)
+{
+	m_pipelineState.BindShaderParams(heapOffset);
+}
+
 void CommandRecorder::ExecuteCommands(const lib::SharedRef<rdr::GPUWorkload>& workload)
 {
 	const lib::SharedPtr<rdr::CommandBuffer> cmdBufferToExecute = workload->GetRecordedBuffer();

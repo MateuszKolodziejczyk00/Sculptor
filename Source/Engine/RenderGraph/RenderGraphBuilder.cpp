@@ -720,6 +720,49 @@ void RenderGraphBuilder::AssignDescriptorSetsToNode(RGNode& node, const lib::Sha
 	processDSStatesRange(m_boundDSStates);
 }
 
+Bool RenderGraphBuilder::AssignShaderParamsToNodeInternal(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<const Byte> paramsData, const lib::HashedString& paramsType, RGDependenciesBuilder& dependenciesBuilder)
+{
+	if (!pipeline)
+	{
+		SPT_LOG_WARN(RenderGraph, "RenderGraphBuilder::AssignShaderParamsToNodeInternal: Trying to assign shader params to a node with invalid PSO. Node name: {}", node.GetName().AsString());
+		return false;
+	}
+
+	const smd::ShaderMetaData& metaData = pipeline->GetMetaData();
+	const lib::HashedString expectedParamsType = metaData.GetShaderParamsType();
+	if (!expectedParamsType.IsValid())
+	{
+		SPT_LOG_WARN(RenderGraph, "RenderGraphBuilder::AssignShaderParamsToNodeInternal: Trying to assign shader params to a node with PSO that does not define shader params. Node name: {}", node.GetName().AsString());
+		return false;
+	}
+
+	if (paramsType != expectedParamsType)
+	{
+		SPT_LOG_ERROR(RenderGraph, "RenderGraphBuilder::AssignShaderParamsToNodeInternal: Mismatched shader params type. Expected: {}, got: {}. Node name: {}", expectedParamsType.ToString(), paramsType.ToString(), node.GetName().AsString());
+		return false;
+	}
+
+	RGBufferAccessInfo paramsBufferAccess;
+	paramsBufferAccess.access = ERGBufferAccess::Read;
+#if DEBUG_RENDER_GRAPH
+	paramsBufferAccess.structTypeName = paramsType;
+#endif // DEBUG_RENDER_GRAPH
+
+	const rdr::ConstantBufferAllocation cbAllocation = m_resourcesPool.GetConstantsAllocator().Allocate(static_cast<Uint32>(paramsData.size()));
+	std::memcpy(cbAllocation.buffer->GetRHI().MapPtr() + cbAllocation.offset, paramsData.data(), paramsData.size());
+
+	const lib::SharedPtr<rdr::DescriptorSetLayout>& layout = rdr::Renderer::GetShaderParamsDSLayout();
+	const rhi::RHIDescriptorRange descriptors = m_dsAllocator.AllocateRange(static_cast<Uint32>(layout->GetRHI().GetDescriptorsDataSize()));
+	const Uint64 descriptorOffset = layout->GetRHI().GetDescriptorOffset(0u);
+	cbAllocation.buffer->GetRHI().CopySRVDescriptor(cbAllocation.offset, cbAllocation.size, descriptors.data.data() + descriptorOffset);
+
+	dependenciesBuilder.AddBufferAccess(cbAllocation.buffer->CreateView(cbAllocation.offset, cbAllocation.size), paramsBufferAccess);
+
+	node.SetShaderParamsDescriptors(descriptors);
+
+	return true;
+}
+
 void RenderGraphBuilder::AddNodeInternal(RGNode& node, RGDependeciesContainer& dependencies)
 {
 	ResolveNodeDependecies(node, dependencies);

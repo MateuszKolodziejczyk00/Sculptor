@@ -12,7 +12,7 @@ struct Utils
 public:
 
 	template<typename TType> requires std::is_integral_v<TType>
-	static constexpr TType RoundUp(TType value, TType multiple)
+	SPT_NODISCARD static constexpr TType RoundUp(TType value, TType multiple)
 	{
 		return ((value + multiple - 1) / multiple) * multiple;
 	}

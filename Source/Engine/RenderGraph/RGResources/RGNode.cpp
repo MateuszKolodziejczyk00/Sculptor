@@ -8,6 +8,7 @@
 #include "GPUDiagnose/Profiler/GPUStatisticsCollector.h"
 #include "RenderGraphBuilder.h"
 
+
 namespace spt::rg
 {
 
@@ -139,6 +140,11 @@ void RGNode::AddDescriptorSetState(lib::MTHandle<rdr::DescriptorSetState> dsStat
 	m_dsStates.emplace_back(std::move(dsState));
 }
 
+void RGNode::SetShaderParamsDescriptors(const rhi::RHIDescriptorRange& range)
+{
+	m_shaderParamsDescriptorHeapOffset = range.heapOffset;
+}
+
 void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context)
 {
 	SPT_PROFILER_SCOPE(GetName().Get().GetData());
@@ -156,6 +162,7 @@ void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rd
 	PreExecuteBarrier(recorder);
 
 	BindDescriptorSetStates(recorder);
+	BindShaderParams(recorder);
 	OnExecute(renderContext, recorder, context);
 	UnbindDescriptorSetStates(recorder);
 
@@ -192,6 +199,14 @@ void RGNode::ReleaseResources()
 void RGNode::BindDescriptorSetStates(rdr::CommandRecorder& recorder)
 {
 	recorder.BindDescriptorSetStates(m_dsStates);
+}
+
+void RGNode::BindShaderParams(rdr::CommandRecorder& recorder)
+{
+	if (m_shaderParamsDescriptorHeapOffset != idxNone<Uint32>)
+	{
+		recorder.BindShaderParams(m_shaderParamsDescriptorHeapOffset);
+	}
 }
 
 void RGNode::UnbindDescriptorSetStates(rdr::CommandRecorder& recorder)

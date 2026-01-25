@@ -1,7 +1,8 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderViewDS, 0)]]
-[[descriptor_set(ScreenSpaceShadowsDS, 1)]]
+[[descriptor_set(RenderViewDS)]]
+
+[[shader_params(ScreenSpaceShadowsConstants, u_constants)]]
 
 
 #define DEBUG_SCREEN_SPACE_TRACER DEBUG_RAY
@@ -73,8 +74,6 @@ void TraceSSShadowsCS(CS_INPUT input)
 	ScreenSpaceTracerContext tracerContext;
 	tracerContext.sceneView      = u_sceneView;
 	tracerContext.linearDepth    = u_constants.linearDepth.GetResource();
-	tracerContext.linearSampler  = u_linearSampler;
-	tracerContext.nearestSampler = u_nearestSampler;
 	tracerContext.resolution     = u_constants.resolution;
 	tracerContext.stepsNum       = u_constants.stepsNum;
 

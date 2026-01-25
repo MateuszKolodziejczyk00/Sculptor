@@ -83,6 +83,8 @@ public:
 
 	void AddDescriptorSetState(lib::MTHandle<rdr::DescriptorSetState> dsState);
 
+	void SetShaderParamsDescriptors(const rhi::RHIDescriptorRange& range);
+
 	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context);
 
 protected:
@@ -98,6 +100,7 @@ private:
 	void ReleaseResources();
 
 	void BindDescriptorSetStates(rdr::CommandRecorder& recorder);
+	void BindShaderParams(rdr::CommandRecorder& recorder);
 	void UnbindDescriptorSetStates(rdr::CommandRecorder& recorder);
 
 	// Execution Helpers ================================================
@@ -129,6 +132,8 @@ private:
 	rhi::RHIDependency m_preExecuteDependency;
 
 	lib::DynamicArray<lib::MTHandle<rdr::DescriptorSetState>> m_dsStates;
+
+	Uint32 m_shaderParamsDescriptorHeapOffset = idxNone<Uint32>;
 
 #if DEBUG_RENDER_GRAPH
 	RGNodeDebugMetaData m_debugMetaData;

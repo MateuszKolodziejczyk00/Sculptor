@@ -469,19 +469,11 @@ BEGIN_SHADER_STRUCT(TonemappingPassConstants)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(TonemappingDS, rg::RGDescriptorSetState<TonemappingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TonemappingPassConstants>),					u_tonemappingConstants)
-DS_END();
-
-
 static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const TonemappingPassConstants& tonemappingConstants)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const RenderView& renderView = viewSpec.GetRenderView();
-
-	const lib::MTHandle<TonemappingDS> tonemappingDS = graphBuilder.CreateDescriptorSet<TonemappingDS>(RENDERER_RESOURCE_NAME("TonemappingDS"));
-	tonemappingDS->u_tonemappingConstants = tonemappingConstants;
 
 	const math::Vector2u resolution = renderView.GetOutputRes();
 
@@ -490,8 +482,8 @@ static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Tonemapping And Gamma"),
 						  TonemappingPSO::ldr,
 						  dispatchGroupsNum,
-						  rg::BindDescriptorSets(tonemappingDS,
-												 renderView.GetRenderViewDS()));
+						  rg::EmptyDescriptorSets(),
+						  tonemappingConstants);
 }
 
 } // tonemapping

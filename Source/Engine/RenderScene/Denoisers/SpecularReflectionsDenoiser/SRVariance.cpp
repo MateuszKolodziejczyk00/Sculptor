@@ -76,7 +76,7 @@ void ComputeTemporalVariance(rg::RenderGraphBuilder& graphBuilder, const Tempora
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{} SR Compute Variance", params.debugName.AsString()),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 4u)),
-						  rg::BindDescriptorSets(std::move(ds), params.renderView.GetRenderViewDS()));
+						  rg::BindDescriptorSets(std::move(ds)));
 }
 
 
@@ -140,7 +140,7 @@ void EstimateVariance(rg::RenderGraphBuilder& graphBuilder, const VarianceEstima
 		graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{} SR Estimate Variance (Horizontal Pass)", params.debugName.AsString()),
 							  horizontalPipeline,
 							  math::Utils::DivideCeil(resolution, math::Vector2u(16u, 16u)),
-							  rg::BindDescriptorSets(std::move(ds), params.renderView.GetRenderViewDS()));
+							  rg::BindDescriptorSets(std::move(ds)));
 	}
 
 	{
@@ -159,7 +159,7 @@ void EstimateVariance(rg::RenderGraphBuilder& graphBuilder, const VarianceEstima
 		graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{} SR Estimate Variance (Vertical Pass)", params.debugName.AsString()),
 							  verticalPipeline,
 							  math::Utils::DivideCeil(resolution, math::Vector2u(16u, 16u)),
-							  rg::BindDescriptorSets(std::move(ds), params.renderView.GetRenderViewDS()));
+							  rg::BindDescriptorSets(std::move(ds)));
 	}
 }
 

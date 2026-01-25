@@ -675,6 +675,7 @@ void LightsRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, co
 	{
 		if (viewSpec->SupportsStage(ERenderStage::GlobalIllumination))
 		{
+			const rg::BindDescriptorSetsScope rendererDSScope(graphBuilder, rg::BindDescriptorSets(viewSpec->GetRenderView().GetRenderViewDS()));
 			viewSpec->GetRenderStageEntries(ERenderStage::GlobalIllumination).GetPreRenderStage().AddRawMember(this, &LightsRenderSystem::CacheGlobalLightsDS);
 		}
 
@@ -721,8 +722,6 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 
 	if (lightsRenderingData.HasAnyLocalLightsToRender())
 	{
-		RenderView& renderView = viewSpec.GetRenderView();
-
 		const math::Vector3u dispatchZClustersGroupsNum = math::Vector3u(lightsRenderingData.zClustersNum, 1, 1);
 		graphBuilder.Dispatch(RG_DEBUG_NAME("BuildLightsZClusters"),
 							  BuildLightZClustersPSO::pso,
@@ -733,7 +732,7 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("GenerateLightsDrawCommands"),
 							  GenerateLightsDrawCommandsPSO::pso,
 							  dispatchLightsGroupsNum,
-							  rg::BindDescriptorSets(lightsRenderingData.generateLightsDrawCommnadsDS, viewContext.depthCullingDS, renderView.GetRenderViewDS()));
+							  rg::BindDescriptorSets(lightsRenderingData.generateLightsDrawCommnadsDS, viewContext.depthCullingDS));
 
 		const math::Vector2u renderingArea = lightsRenderingData.tilesNum;
 
@@ -751,7 +750,7 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 
 		graphBuilder.RenderPass(RG_DEBUG_NAME("Build Lights Tiles"),
 								lightsTilesRenderPassDef,
-								rg::BindDescriptorSets(lightsRenderingData.buildLightTilesDS, renderView.GetRenderViewDS()),
+								rg::BindDescriptorSets(lightsRenderingData.buildLightTilesDS),
 								std::tie(passIndirectParams),
 								[this, passIndirectParams, maxPointLightDrawsCount, maxSpotLightDrawsCount, renderingArea](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 								{

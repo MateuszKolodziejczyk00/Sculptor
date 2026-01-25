@@ -133,7 +133,7 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Downsample Geometry Textures"),
 						  pipeline,
 						  math::Utils::DivideCeil(halfRes, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds), renderView.GetRenderViewDS()));
+						  rg::BindDescriptorSets(std::move(ds)));
 
 	if (resourcesUsageInfo.useLinearDepthHalfRes)
 	{

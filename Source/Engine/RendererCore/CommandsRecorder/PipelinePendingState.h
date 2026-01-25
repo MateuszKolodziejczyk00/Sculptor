@@ -52,6 +52,8 @@ public:
 	void BindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state);
 	void UnbindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state);
 
+	void BindShaderParams(Uint32 heapOffset);
+
 private:
 
 	using DynamicOffsetsArray = lib::DynamicArray<Uint32>;
@@ -91,9 +93,7 @@ private:
 
 	lib::DynamicArray<BoundDescriptorSetState> m_boundDescriptorSetStates;
 
-	//lib::DynamicArray<Bool> m_dirtyGfxDescriptorSets;
-	//lib::DynamicArray<Bool> m_dirtyComputeDescriptorSets;
-	//lib::DynamicArray<Bool> m_dirtyRayTracingDescriptorSets;
+	Uint32 m_pendingShaderParamsOffset = idxNone<Uint32>;
 
 	PipelineDescriptorsState m_gfxPipelineDescriptorsState;
 	PipelineDescriptorsState m_computePipelineDescriptorsState;

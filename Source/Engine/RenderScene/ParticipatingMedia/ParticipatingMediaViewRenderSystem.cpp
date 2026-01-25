@@ -159,8 +159,6 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RenderView& renderView = viewSpec.GetRenderView();
-
 	RenderParticipatingMediaParams pariticipatingMediaParams;
 	pariticipatingMediaParams.constantFogAlbedo     = parameters::consantFogAlbedo;
 	pariticipatingMediaParams.constantFogDensity    = parameters::constantFogDensity;
@@ -178,7 +176,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Participating Media"),
 						  renderParticipatingMediaPipeline,
 						  dispatchSize,
-						  rg::BindDescriptorSets(participatingMediaDS, fogRenderingParams.volumetricFogDS, renderView.GetRenderViewDS()));
+						  rg::BindDescriptorSets(participatingMediaDS, fogRenderingParams.volumetricFogDS));
 }
 
 } // participating_media
@@ -215,8 +213,6 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 
 	const AtmosphereRenderSystem& atmosphereRenderSystem = renderScene.GetRenderSystemChecked<AtmosphereRenderSystem>();
 
-	const RenderView& renderView = viewSpec.GetRenderView();
-
 	const ViewSpecShadingParameters& shadingParams = viewSpec.GetBlackboard().Get<ViewSpecShadingParameters>();
 
 	const clouds::CloudsTransmittanceMap* transmittanceMap = atmosphereRenderSystem.AreVolumetricCloudsEnabled() ? &atmosphereRenderSystem.GetCloudsTransmittanceMap() : nullptr;
@@ -250,7 +246,6 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 						  dispatchSize,
 						  rg::BindDescriptorSets(std::move(ds),
 												 fogRenderingParams.volumetricFogDS,
-												 renderView.GetRenderViewDS(),
 												 shadingParams.shadingInputDS));
 }
 
@@ -298,8 +293,6 @@ static Bool Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 
 	const math::Vector3u indirectInScatteringRes = fogParams.indirectInScatteringTextureView->GetResolution();
 
-	const RenderView& renderView = viewSpec.GetRenderView();
-
 	IndirectInScatteringConstants indirectInScatteringConstants;
 	indirectInScatteringConstants.indirectGridRes = indirectInScatteringRes.cast<Real32>();
 
@@ -316,7 +309,6 @@ static Bool Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 						  dispatchSize,
 						  rg::BindDescriptorSets(indirectInScatteringDS,
 												 fogRenderingParams.volumetricFogDS,
-												 renderView.GetRenderViewDS(),
 												 std::move(ddgiDS)));
 
 	return true;
@@ -355,8 +347,6 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RenderView& renderView = viewSpec.GetRenderView();
-
 	const ViewSpecShadingParameters& shadingParams = viewSpec.GetBlackboard().Get<ViewSpecShadingParameters>();
 
 	const Bool hasValidIndirectInScattering = indirect::Render(graphBuilder, renderScene, viewSpec, fogParams, fogRenderingParams);
@@ -385,7 +375,6 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 						  dispatchSize,
 						  rg::BindDescriptorSets(computeInScatteringDS,
 												 fogRenderingParams.volumetricFogDS,
-												 renderView.GetRenderViewDS(),
 												 shadingParams.shadingInputDS));
 }
 

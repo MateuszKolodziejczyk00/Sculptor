@@ -90,6 +90,8 @@ void StaticMeshShadowMapRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBu
 
 	for (ViewRenderingSpec* viewSpec : viewSpecs)
 	{
+		const rg::BindDescriptorSetsScope rendererDSScope(graphBuilder, rg::BindDescriptorSets(viewSpec->GetRenderView().GetRenderViewDS()));
+
 		RenderView& renderView = viewSpec->GetRenderView();
 		const ShadowMapViewComponent& viewShadowMapData = renderView.GetBlackboard().Get<ShadowMapViewComponent>();
 
@@ -137,8 +139,7 @@ void StaticMeshShadowMapRenderer::RenderToShadowMap(rg::RenderGraphBuilder& grap
 
 		graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
 								rg::BindDescriptorSets(batch.batchDS,
-													   batch.perFaceData[viewShadowMapData.faceIdx].drawDS,
-													   renderView.GetRenderViewDS()),
+													   batch.perFaceData[viewShadowMapData.faceIdx].drawDS),
 								std::tie(drawParams),
 								[maxDrawCallsNum = batch.batchedSubmeshesNum, faceIdx = viewShadowMapData.faceIdx, pipelineID = GetPipelineStateForBatch(batch), drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 								{

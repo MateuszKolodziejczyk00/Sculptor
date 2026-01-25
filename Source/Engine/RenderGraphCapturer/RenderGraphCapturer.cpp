@@ -11,7 +11,6 @@
 
 SPT_DEFINE_LOG_CATEGORY(RGCapturer, true);
 
-
 namespace spt::rg::capture
 {
 
@@ -234,8 +233,8 @@ void RGCapturerDecorator::AddDependenciesToPass(RenderGraphBuilder& graphBuilder
 		}
 
 		const Bool isWritable = bufferAccess.access == ERGBufferAccess::Write || bufferAccess.access == ERGBufferAccess::ReadWrite;
-		const Bool shouldCreatenewVersion = capturedBuffer->versions.empty() || isWritable;
-		if (shouldCreatenewVersion)
+		const Bool shouldCreateNewVersion = capturedBuffer->versions.empty() || isWritable;
+		if (shouldCreateNewVersion)
 		{
 			CapturedBuffer::Version& newVersion = *capturedBuffer->versions.emplace_back(std::make_unique<CapturedBuffer::Version>());
 			newVersion.owningBuffer  = capturedBuffer;
@@ -270,6 +269,15 @@ void RGCapturerDecorator::AddDependenciesToPass(RenderGraphBuilder& graphBuilder
 
 				newVersion.downloadedBuffer = captureBuffer;
 			}
+		}
+		else if (boundBuffer && boundBuffer->AllowsHostAccess())
+		{
+			// If buffer is writable from host, it could have been updated since saving last version. Let's update bound part
+			CapturedBuffer::Version& bufferVersion = *capturedBuffer->versions.back();
+
+			const lib::SharedPtr<rdr::Buffer>& buffer = boundBufferView->GetBuffer()->GetResource();
+			const rhi::RHIMappedByteBuffer mappedBuffer(buffer->GetRHI());
+			std::memcpy(bufferVersion.bufferData.data() + boundBufferView->GetOffset(), mappedBuffer.GetPtr() + boundBufferView->GetOffset(), boundBufferView->GetSize());
 		}
 
 		const CapturedBuffer::Version& bufferVersion = *capturedBuffer->versions.back();

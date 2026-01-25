@@ -44,6 +44,8 @@ lib::SharedPtr<DescriptorHeap> descriptorHeap;
 
 lib::UniquePtr<DescriptorManager> descriptorsManager;
 
+lib::SharedPtr<DescriptorSetLayout> shaderParamsDSLayout;
+
 };
 
 static RendererData g_data;
@@ -101,6 +103,16 @@ void Renderer::Initialize()
 
 	DescriptorSetStateLayoutsRegistry::Get().CreateRegisteredLayouts();
 
+	rhi::DescriptorSetBindingDefinition bindingDef;
+	bindingDef.bindingIdx      = 0u;
+	bindingDef.descriptorType  = rhi::EDescriptorType::UniformBuffer;
+	bindingDef.descriptorCount = 1u;
+	bindingDef.shaderStages    = rhi::EShaderStageFlags::All;
+
+	rhi::DescriptorSetDefinition layoutDef;
+	layoutDef.bindings.emplace_back(bindingDef);
+	priv::g_data.shaderParamsDSLayout = rdr::ResourcesManager::CreateDescriptorSetLayout(RENDERER_RESOURCE_NAME("Shader Params Layout"), layoutDef);
+
 	priv::InitializeSamplerDescriptors();
 }
 
@@ -109,6 +121,8 @@ void Renderer::Uninitialize()
 	SPT_PROFILER_FUNCTION();
 
 	WaitIdle();
+
+	priv::g_data.shaderParamsDSLayout.reset();
 
 	DescriptorSetStateLayoutsRegistry::Get().ReleaseRegisteredLayouts();
 
@@ -176,6 +190,11 @@ DescriptorManager& Renderer::GetDescriptorManager()
 	SPT_CHECK(!!priv::g_data.descriptorsManager);
 
 	return *priv::g_data.descriptorsManager;
+}
+
+const lib::SharedPtr<DescriptorSetLayout>& Renderer::GetShaderParamsDSLayout()
+{
+	return priv::g_data.shaderParamsDSLayout;
 }
 
 void Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry entry)

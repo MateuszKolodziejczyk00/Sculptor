@@ -23,6 +23,7 @@ class Window;
 class RenderContext;
 class DescriptorHeap;
 class DescriptorManager;
+class DescriptorSetLayout;
 
 
 using OnRendererCleanupDelegate = lib::ThreadSafeMulticastDelegate<void()>;
@@ -57,6 +58,8 @@ public:
 
 	static DescriptorHeap&						GetDescriptorHeap();
 	static DescriptorManager&					GetDescriptorManager();
+
+	static const lib::SharedPtr<DescriptorSetLayout>&	GetShaderParamsDSLayout();
 
 	static void									ReleaseDeferred(GPUReleaseQueue::ReleaseEntry entry);
 	static void									ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags flags = EDeferredReleasesFlushFlags::Default);

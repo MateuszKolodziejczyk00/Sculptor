@@ -53,7 +53,7 @@ void ComputeCameraMotion(rg::RenderGraphBuilder& graphBuilder, const RenderView&
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Camera Motion"),
 						  pipeline,
 						  math::Vector3u(dispatchGroups.x(), dispatchGroups.y(), 1u),
-						  rg::BindDescriptorSets(renderView.GetRenderViewDS(), cameraMotionDS));
+						  rg::BindDescriptorSets(cameraMotionDS));
 }
 
 } // camera_motion

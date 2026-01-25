@@ -78,7 +78,7 @@ gfx::UnifiedDenoisingParams PrepareGuidingTextures(rg::RenderGraphBuilder& graph
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Prepare Unified Denoising Guiding Textures"),
 						  pipeline,
 						  math::Vector2u(math::Utils::DivideCeil(resolution.x(), 8u), math::Utils::DivideCeil(resolution.y(), 8u)),
-						  rg::BindDescriptorSets(prepareGuidingTexturesDS, renderView.GetRenderViewDS()));
+						  rg::BindDescriptorSets(prepareGuidingTexturesDS));
 
 	const RTReflectionsViewData& reflectionsViewData = viewSpec.GetBlackboard().Get<RTReflectionsViewData>();
 

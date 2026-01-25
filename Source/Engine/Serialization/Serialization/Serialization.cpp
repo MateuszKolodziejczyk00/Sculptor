@@ -84,7 +84,8 @@ void Serializer::Serialize(const char* name, lib::HashedString& value)
 	}
 	else
 	{
-		value = lib::HashedString(GetImpl<lib::String>(name));
+		const lib::String str = GetImpl<lib::String>(name);
+		value = str.empty() ? lib::HashedString() : lib::HashedString(std::move(str));
 	}
 }
 

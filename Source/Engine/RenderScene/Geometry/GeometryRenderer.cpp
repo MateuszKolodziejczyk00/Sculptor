@@ -590,14 +590,10 @@ static void RenderGeometryVisPass(rg::RenderGraphBuilder& graphBuilder, const Vi
 {
 	SPT_PROFILER_FUNCTION();
 
-	const ViewRenderingSpec& viewSpec = visPassParams.viewSpec;
-	const RenderView& renderView      = viewSpec.GetRenderView();
-
 	const lib::MTHandle<VisCullingDS> cullingDS = CreateCullingDS(visPassParams.hiZ, visPassParams.historyHiZ);
 
 	const rg::BindDescriptorSetsScope geometryCullingDSScope(graphBuilder,
-															 rg::BindDescriptorSets(renderView.GetRenderViewDS(),
-																					cullingDS));
+															 rg::BindDescriptorSets(cullingDS));
 
 	const lib::DynamicArray<VisBatchGPUData> gpuBatches = BuildGPUBatches(graphBuilder, visPassParams);
 
@@ -782,14 +778,10 @@ static void RenderGeometryVisPass(rg::RenderGraphBuilder& graphBuilder, const Ge
 {
 	SPT_PROFILER_FUNCTION();
 
-	const ViewRenderingSpec& viewSpec = oitPassParams.viewSpec;
-	const RenderView& renderView      = viewSpec.GetRenderView();
-
 	const lib::MTHandle<VisCullingDS> cullingDS = CreateCullingDS(oitPassParams.hiZ, nullptr);
 
 	const rg::BindDescriptorSetsScope geometryCullingDSScope(graphBuilder,
-															 rg::BindDescriptorSets(renderView.GetRenderViewDS(),
-																					cullingDS));
+															 rg::BindDescriptorSets(cullingDS));
 
 	SPT_CHECK(oitPassParams.geometryPassData.geometryBatches.size() == 1u);
 

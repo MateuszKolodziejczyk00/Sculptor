@@ -1,8 +1,8 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(TonemappingDS)]]
 [[descriptor_set(RenderViewDS)]]
 
+[[shader_params(TonemappingPassConstants, u_tonemappingConstants)]]
 
 #include "Utils/Exposure.hlsli"
 #include "Utils/TonemappingOperators.hlsli"

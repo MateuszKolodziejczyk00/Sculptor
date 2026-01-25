@@ -68,8 +68,7 @@ static rg::RGTextureViewHandle DOFGenerateCoC(rg::RenderGraphBuilder& graphBuild
 	graphBuilder.Dispatch(RG_DEBUG_NAME("DOF Generate CoC"),
 						  geenrateCoCPipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector3u(8u, 8u, 1u)),
-						  rg::BindDescriptorSets(cocDS,
-												 params.viewDS));
+						  rg::BindDescriptorSets(cocDS));
 
 	return cocTexture;
 }

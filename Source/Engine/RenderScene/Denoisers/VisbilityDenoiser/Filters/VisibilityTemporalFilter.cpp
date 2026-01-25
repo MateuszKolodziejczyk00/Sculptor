@@ -78,8 +78,7 @@ void ApplyTemporalFilter(rg::RenderGraphBuilder& graphBuilder, const TemporalFil
 	graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("{}: Denoise Temporal Filter", params.name.Get().ToString())),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector3u(8u, 8u, 1u)),
-						  rg::BindDescriptorSets(std::move(ds),
-												 params.renderView.GetRenderViewDS()));
+						  rg::BindDescriptorSets(std::move(ds)));
 }
 
 } // spt::rsc::visibility_denoiser::temporal_accumulation

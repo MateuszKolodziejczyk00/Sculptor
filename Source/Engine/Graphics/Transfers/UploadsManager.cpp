@@ -187,7 +187,7 @@ void UploadsManager::EnqueueUploadImpl(const lib::SharedRef<rdr::Buffer>& destBu
 		m_bufferCommands.emplace_back(command);
 	
 		m_currentStagingBufferOffset += dataSize;
-		math::Utils::RoundUp(m_currentStagingBufferOffset, rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment());
+		m_currentStagingBufferOffset = math::Utils::RoundUp(m_currentStagingBufferOffset, std::max<Uint64>(rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment(), 4u));
 
 		++m_copiesInProgressNum;
 	}
@@ -240,7 +240,7 @@ void UploadsManager::EnqueueUploadToTextureImpl(const Byte* data, Uint64 dataSiz
 		m_copyToTextureCommands.emplace_back(command);
 	
 		m_currentStagingBufferOffset += dataSize;
-		math::Utils::RoundUp(m_currentStagingBufferOffset, rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment());
+		m_currentStagingBufferOffset = math::Utils::RoundUp(m_currentStagingBufferOffset, std::max<Uint64>(rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment(), 4u));
 
 		++m_copiesInProgressNum;
 	}

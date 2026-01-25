@@ -201,7 +201,6 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 						   sharc_passes::SharcUpdatePSO::pso,
 						   tracesNum,
 						   rg::BindDescriptorSets(std::move(updateDS),
-												  renderView.GetRenderViewDS(),
 												  ddgiSubsystem.GetDDGISceneDS(),
 												  lightsRenderSystem.GetGlobalLightsDS(),
 												  viewContext.cloudscapeProbesDS));
@@ -217,7 +216,7 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Resolve Sharc GI Cache"),
 						  sharcResolvePipeline,
 						  math::Utils::DivideCeil(m_entriesNum, 64u),
-						  rg::BindDescriptorSets(std::move(resolveDS), renderView.GetRenderViewDS()));
+						  rg::BindDescriptorSets(std::move(resolveDS)));
 
 	SharcCacheConstants sharcCacheConstants;
 	sharcCacheConstants.entriesNum = m_entriesNum;

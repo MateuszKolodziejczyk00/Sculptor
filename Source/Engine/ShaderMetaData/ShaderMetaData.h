@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "../Serialization/Serialization/Serialization.h"
+#include "Serialization.h"
 
 namespace spt::srl
 {
@@ -22,6 +22,8 @@ public:
 
 	void SetDescriptorSetStateTypeID(SizeType setIdx, SizeType typeID);
 
+	void SetShaderParamsTypeName(const lib::HashedString& name);
+
 	void Append(const ShaderMetaData& other);
 
 	// Queries ====================================================
@@ -34,6 +36,8 @@ public:
 	
 	SizeType GetDescriptorSetStateTypeID(SizeType setIdx) const;
 
+	const lib::HashedString& GetShaderParamsType() const;
+
 	// Serialization =============================================
 
 	void Serialize(srl::Serializer& serializer);
@@ -43,7 +47,7 @@ private:
 	/** Hash of descriptor set state types used to create ds in shader */
 	lib::DynamicArray<SizeType>	m_dsStateTypeIDs;
 
-	friend srl::TypeSerializer<ShaderMetaData>;
+	lib::HashedString m_shaderParamsTypeName;
 };
 
 
@@ -61,6 +65,12 @@ inline void ShaderMetaData::SetDescriptorSetStateTypeID(SizeType setIdx, SizeTyp
 	}
 }
 
+inline void ShaderMetaData::SetShaderParamsTypeName(const lib::HashedString& name)
+{
+	SPT_CHECK(!m_shaderParamsTypeName.IsValid());
+	m_shaderParamsTypeName = name;
+}
+
 inline void ShaderMetaData::Append(const ShaderMetaData& other)
 {
 	const SizeType dsNum = std::max(m_dsStateTypeIDs.size(), other.m_dsStateTypeIDs.size());
@@ -76,6 +86,15 @@ inline void ShaderMetaData::Append(const ShaderMetaData& other)
 		{
 			SPT_CHECK_MSG(m_dsStateTypeIDs[idx] == other.m_dsStateTypeIDs[idx], "Not matching Descriptor States at idx {}", idx);
 		}
+	}
+
+	if (!m_shaderParamsTypeName.IsValid())
+	{
+		m_shaderParamsTypeName = other.m_shaderParamsTypeName;
+	}
+	else
+	{
+		SPT_CHECK(!other.m_shaderParamsTypeName.IsValid() || other.m_shaderParamsTypeName == m_shaderParamsTypeName);
 	}
 
 	SPT_CHECK_MSG(GetDescriptorSetStateTypeID(0u) == idxNone<Uint64>, "Bindless shaders cannot be used with explicit descriptor set at idx 0");
@@ -104,9 +123,15 @@ inline SizeType ShaderMetaData::GetDescriptorSetStateTypeID(SizeType setIdx) con
 	return m_dsStateTypeIDs[setIdx];
 }
 
+inline const lib::HashedString& ShaderMetaData::GetShaderParamsType() const
+{
+	return m_shaderParamsTypeName;
+}
+
 inline void ShaderMetaData::Serialize(srl::Serializer& serializer)
 {
 	serializer.Serialize("DescriptorSets", m_dsStateTypeIDs);
+	serializer.Serialize("ShaderParamsTypeName", m_shaderParamsTypeName);
 }
 
 } // spt::smd

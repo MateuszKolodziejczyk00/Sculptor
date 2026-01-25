@@ -104,8 +104,7 @@ static rg::RGBufferViewHandle CreateLuminanceHistogram(rg::RenderGraphBuilder& g
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Luminance Histogram"),
 						  pipelineState,
 						  dispatchGroupsNum,
-						  rg::BindDescriptorSets(luminanceHistogramDS,
-												 viewSpec.GetRenderView().GetRenderViewDS()));
+						  rg::BindDescriptorSets(luminanceHistogramDS));
 
 	return luminanceHistogramBuffer;
 }

@@ -118,7 +118,7 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilte
 	graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("{}: Denoise Spatial A-Trous Filter (Iteration {})", filterParams.name.Get().ToString(), passParams.iterationIdx)),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds), filterParams.renderView.GetRenderViewDS()));
+						  rg::BindDescriptorSets(std::move(ds)));
 }
 
 } // spt::rsc::sr_denoiser

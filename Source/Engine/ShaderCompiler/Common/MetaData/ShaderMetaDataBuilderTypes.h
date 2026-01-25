@@ -43,12 +43,15 @@ public:
 		return m_dsMetaData.size();
 	}
 
-	const rhi::SamplerDefinition& GetImmutableSamplerDefinition(Uint32 descriptorSetIdx, Uint32 bindingIdx) const
+	void SetShaderParamsTypeName(const lib::HashedString& name)
 	{
-		const SizeType properDSIdx = static_cast<SizeType>(descriptorSetIdx);
+		SPT_CHECK(!m_shaderParamsTypeName.IsValid());
+		m_shaderParamsTypeName = name;
+	}
 
-		SPT_CHECK(properDSIdx < m_dsMetaData.size());
-		return m_dsMetaData[properDSIdx].bindingToImmutableSampler.at(bindingIdx);
+	const lib::HashedString& GetShaderParamsTypeName() const
+	{
+		return m_shaderParamsTypeName;
 	}
 
 #if SPT_SHADERS_DEBUG_FEATURES
@@ -81,6 +84,8 @@ public:
 private:
 
 	lib::DynamicArray<sc::DescriptorSetCompilationMetaData> m_dsMetaData;
+
+	lib::HashedString m_shaderParamsTypeName;
 
 #if SPT_SHADERS_DEBUG_FEATURES
 	ShaderDebugMetaData debugMetaData;

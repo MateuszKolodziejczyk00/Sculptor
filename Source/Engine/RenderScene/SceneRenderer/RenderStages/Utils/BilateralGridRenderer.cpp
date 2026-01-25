@@ -72,8 +72,6 @@ BilateralGridInfo RenderBilateralGrid(rg::RenderGraphBuilder& graphBuilder, cons
 	const rg::RGTextureViewHandle bilateralGrid           = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Bilateral Grid"), rg::TextureDef(gridResolution, constants::gridFormat));
 	const rg::RGTextureViewHandle downsampledLogLuminance = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Downsampled Log Luminance"), rg::TextureDef(downsampleLogLuminanceResolution, rhi::EFragmentFormat::R16_S_Float));
 
-	const RenderView& renderView = parameters.viewSpec.GetRenderView();
-
 	BilateralGridRenderingConstants shaderConstants;
 	shaderConstants.inputTextureResolution   = inputTexture->GetResolution2D();
 	shaderConstants.minLogLuminance          = parameters.minLogLuminance;
@@ -91,8 +89,7 @@ BilateralGridInfo RenderBilateralGrid(rg::RenderGraphBuilder& graphBuilder, cons
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Bilateral Grid"),
 						  pipeline,
 						  bilateralGrid->GetResolution2D(),
-						  rg::BindDescriptorSets(std::move(bilateralGridDS),
-												 renderView.GetRenderViewDS()));
+						  rg::BindDescriptorSets(std::move(bilateralGridDS)));
 
 	return { bilateralGrid, downsampledLogLuminance, GetGridTileSize() };
 }

@@ -21,6 +21,8 @@ static void BuildShaderMetaData(const ShaderCompilationMetaData& compilationMeta
 		const SizeType dsTypeID = compilationMetaData.GetDSTypeID(dsIdx);
 		outShaderMetaData.SetDescriptorSetStateTypeID(dsIdx, dsTypeID);
 	}
+
+	outShaderMetaData.SetShaderParamsTypeName(compilationMetaData.GetShaderParamsTypeName());
 }
 
 } // priv

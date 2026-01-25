@@ -89,13 +89,6 @@ BEGIN_SHADER_STRUCT(ScreenSpaceShadowsConstants)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(ScreenSpaceShadowsDS, rg::RGDescriptorSetState<ScreenSpaceShadowsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<ScreenSpaceShadowsConstants>),             u_constants)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),  u_linearSampler)
-DS_END();
-
-
 BEGIN_SHADER_STRUCT(ScreenSpaceShadowsPermutation)
 	SHADER_STRUCT_FIELD(rdr::DebugFeature, DEBUG_RAY)
 END_SHADER_STRUCT();
@@ -145,13 +138,12 @@ static void TraceShadowRays(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 	constants.stepsNum               = params::screenSpaceShadowsSteps;
 	constants.traceDistance          = params::screenSpaceShadowsDistance;
 
-	const lib::MTHandle<ScreenSpaceShadowsDS> ds = graphBuilder.CreateDescriptorSet<ScreenSpaceShadowsDS>(RENDERER_RESOURCE_NAME("Screen Space Shadows DS"));
-	ds->u_constants = constants;
 
 	graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SS Shadows"),
 								  params::enableScreenSpaceDebug ? ScreenSpaceShadowsPSO::debug : ScreenSpaceShadowsPSO::pso,
 								  tracesAllocation.dispatchIndirectArgs, 0u,
-								  rg::BindDescriptorSets(renderView.GetRenderViewDS(), std::move(ds)));
+								  rg::EmptyDescriptorSets(),
+								  constants);
 
 	tracesAllocation.rayTraceCommands     = rtTraceCommands;
 	tracesAllocation.tracingIndirectArgs  = rtTraceIndirectArgs;
@@ -298,8 +290,6 @@ static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuil
 		screen_space::TraceShadowRays(graphBuilder, viewSpec, tracingContext, tracesAllocation, shadowMaskTexture);
 	}
 
-	const RenderView& renderView = viewSpec.GetRenderView();
-
 	const lib::MTHandle<TraceShadowRaysDS> traceShadowRaysDS = graphBuilder.CreateDescriptorSet<TraceShadowRaysDS>(RENDERER_RESOURCE_NAME("Trace Shadow Rays DS"));
 	traceShadowRaysDS->u_depthTexture    = tracingContext.depthTexture;
 	traceShadowRaysDS->u_normalsTexture  = tracingContext.normalsTexture;
@@ -322,8 +312,7 @@ static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuil
 								   ShadowsRayTracingPSO::pso,
 								   tracesAllocation.tracingIndirectArgs, 0,
 								   rg::BindDescriptorSets(traceShadowRaysDS,
-														  directionalLightShadowMaskDS,
-														  renderView.GetRenderViewDS()));
+														  directionalLightShadowMaskDS));
 
 	const rg::RGTextureViewHandle resolvedShadowMaskTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Directional Light Shadow Mask (Post VRT Resolve)"), rg::TextureDef(tracingContext.resolution, rhi::EFragmentFormat::R16_UN_Float));
 

@@ -163,7 +163,6 @@ void ExecuteMaterialRenderCommands(rg::RenderGraphBuilder& graphBuilder, const M
 	SPT_PROFILER_FUNCTION();
 
 	const ViewRenderingSpec& viewSpec = passParams.viewSpec;
-	const RenderView& renderView = viewSpec.GetRenderView();
 
 	const ShadingViewContext& shadingContext = viewSpec.GetShadingViewContext();
 	
@@ -206,8 +205,7 @@ void ExecuteMaterialRenderCommands(rg::RenderGraphBuilder& graphBuilder, const M
 
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Materials Pass"),
 							renderPassDef,
-							rg::BindDescriptorSets(renderView.GetRenderViewDS(),
-												   emitGBufferDS),
+							rg::BindDescriptorSets(emitGBufferDS),
 							[resolution, groupsPerMaterial, commands = std::move(renderCommands)](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
 								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), resolution.cast<Real32>()), 0.f, 1.f);

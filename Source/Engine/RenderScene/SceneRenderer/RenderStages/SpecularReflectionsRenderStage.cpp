@@ -124,8 +124,6 @@ RayDirections GenerateRayDirections(rg::RenderGraphBuilder& graphBuilder, const 
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RenderView& renderView = viewSpec.GetRenderView();
-
 	const math::Vector2u resolution = params.resolution;
 
 	rhi::BufferDefinition rayDirectionsBufferDef;
@@ -159,7 +157,7 @@ RayDirections GenerateRayDirections(rg::RenderGraphBuilder& graphBuilder, const 
 	graphBuilder.DispatchIndirect(RG_DEBUG_NAME("Generate Ray Directions"),
 								  generateRayDirectionsPipeline,
 								  tracesAllocation.dispatchIndirectArgs, 0,
-								  rg::BindDescriptorSets(std::move(generateRayDirectionsDS), renderView.GetRenderViewDS(), viewSpec.GetShadingViewContext().sharcCacheDS));
+								  rg::BindDescriptorSets(std::move(generateRayDirectionsDS), viewSpec.GetShadingViewContext().sharcCacheDS));
 
 	return RayDirections{ rayDirectionsBuffer, rayPdfsBuffer };
 }
@@ -268,8 +266,6 @@ static void ShadeMissRays(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RenderView& renderView = viewSpec.GetRenderView();
-
 	const ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
 
 	static const rdr::PipelineStateID missRaysShadingPipeline = CreateMissRaysShadingPipeline();
@@ -278,8 +274,7 @@ static void ShadeMissRays(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 								  missRaysShadingPipeline,
 								  shadingParams.shadingIndirectArgs, ComputeMissShadingIndirectArgsOffset(),
 								  rg::BindDescriptorSets(std::move(shadingDS),
-														 shadingViewContext.cloudscapeProbesDS,
-														 renderView.GetRenderViewDS()));
+														 shadingViewContext.cloudscapeProbesDS));
 }
 
 } // miss_rays
@@ -330,8 +325,6 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RenderView& renderView = viewSpec.GetRenderView();
-
 	const ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
 
 	const LightsRenderSystem& lightsRenderSystem = renderScene.GetRenderSystemChecked<LightsRenderSystem>();
@@ -345,7 +338,6 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene
 								   useSharc ? HitRayShadingPSO::sharc : HitRayShadingPSO::ddgi,
 								   shadingParams.shadingIndirectArgs, ComputeHitShadingIndirectArgsOffset(),
 								   rg::BindDescriptorSets(std::move(shadingDS),
-														  renderView.GetRenderViewDS(),
 														  std::move(ddgiDS),
 														  shadingViewContext.sharcCacheDS,
 														  lightsRenderSystem.GetGlobalLightsDS()));
@@ -481,8 +473,6 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, rg::RenderG
 
 	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, lib::String("Generate Reservoirs ") + debugName.AsString());
 
-	const RenderView& renderView = viewSpec.GetRenderView();
-
 	// Phase (1) Generate Ray Directions
 
 	const auto [rayDirections, rayPdfs] = ray_directions::GenerateRayDirections(graphBuilder, renderScene, viewSpec, params, traceParams.tracesAllocation);
@@ -533,8 +523,7 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, rg::RenderG
 	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("Specular Reflections Trace Rays"),
 								   SpecularReflectionsTracePSO::pso,
 								   traceParams.tracesAllocation.tracingIndirectArgs, 0u,
-								   rg::BindDescriptorSets(std::move(traceRaysDS),
-														  renderView.GetRenderViewDS()));
+								   rg::BindDescriptorSets(std::move(traceRaysDS)));
 
 	// Phase (3) Shade Rays
 

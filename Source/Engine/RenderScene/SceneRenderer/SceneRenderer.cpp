@@ -41,6 +41,8 @@ void ProcessRenderStage(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene
 	{
 		if (viewSpec->SupportsStage(TRenderStage::GetStageEnum()))
 		{
+			const rg::BindDescriptorSetsScope viewDSScope(graphBuilder, rg::BindDescriptorSets(viewSpec->GetRenderView().GetRenderViewDS()));
+
 			TRenderStage& stageInstance = viewSpec->GetRenderStageChecked<TRenderStage>();
 
 			stageInstance.Render(graphBuilder, scene, *viewSpec, settings);

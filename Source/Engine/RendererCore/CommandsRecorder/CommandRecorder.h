@@ -90,6 +90,8 @@ public:
 	void									BindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state);
 	void									UnbindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state);
 
+	void									BindShaderParams(Uint32 heapOffset);
+
 	template<typename TDescriptorSetStatesRange>
 	void									BindDescriptorSetStates(TDescriptorSetStatesRange&& states);
 

@@ -135,8 +135,7 @@ static rg::RGTextureViewHandle RenderSkyViewLUT(rg::RenderGraphBuilder& graphBui
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Atmosphere Sky View LUT"),
 						  pipeline,
 						  math::Utils::DivideCeil(skyViewLUTResolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds),
-												 viewSpec.GetRenderView().GetRenderViewDS()));
+						  rg::BindDescriptorSets(std::move(ds)));
 
 	return skyViewLUT;
 }
@@ -221,8 +220,6 @@ static rg::RGTextureViewHandle RenderAerialPerspective(rg::RenderGraphBuilder& g
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RenderView& renderView = viewSpec.GetRenderView();
-
 	const AtmosphereContext& atmosphere = atmosphereSubsystem.GetAtmosphereContext();
 	const AtmosphereParams& atmosphereParams = atmosphereSubsystem.GetAtmosphereParams();
 
@@ -248,7 +245,7 @@ static rg::RGTextureViewHandle RenderAerialPerspective(rg::RenderGraphBuilder& g
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Aerial Perspective"),
 						  pipeline,
 						  math::Vector2u(apRes.x(), apRes.y()),
-						  rg::BindDescriptorSets(std::move(ds), renderView.GetRenderViewDS()));
+						  rg::BindDescriptorSets(std::move(ds)));
 
 	return aerialPerspective;
 }
@@ -291,6 +288,9 @@ void AtmosphereRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder
 	for (ViewRenderingSpec* viewSpec : viewSpecs)
 	{
 		SPT_CHECK(!!viewSpec);
+
+		const rg::BindDescriptorSetsScope viewDSScope(graphBuilder, rg::BindDescriptorSets(viewSpec->GetRenderView().GetRenderViewDS()));
+
 		RenderPerView(graphBuilder, renderScene, *viewSpec);
 	}
 

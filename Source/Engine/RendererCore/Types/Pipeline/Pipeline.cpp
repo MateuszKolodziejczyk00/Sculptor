@@ -51,8 +51,7 @@ rhi::PipelineLayoutDefinition Pipeline::CreateLayoutDefinition() const
 		}
 	}
 
-	const Bool isBindless = true;
-	if (isBindless)
+	// Bindless
 	{
 		SPT_CHECK(m_metaData.GetDescriptorSetStateTypeID(0u) == idxNone<Uint64>);
 
@@ -65,6 +64,11 @@ rhi::PipelineLayoutDefinition Pipeline::CreateLayoutDefinition() const
 
 		const lib::SharedPtr<DescriptorSetLayout>& bindlessLayout = Renderer::GetDescriptorManager().GetBindlessLayout();
 		layoutDefinition.descriptorSetLayouts[0] = bindlessLayout->GetRHI();
+	}
+
+	if(m_metaData.GetShaderParamsType().IsValid())
+	{
+		layoutDefinition.descriptorSetLayouts.emplace_back(rdr::Renderer::GetShaderParamsDSLayout()->GetRHI());
 	}
 	
 	return layoutDefinition;

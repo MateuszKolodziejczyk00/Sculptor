@@ -124,7 +124,6 @@ void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const Tempo
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds),
-												 params.renderView.GetRenderViewDS(),
 												 ddgiSubsystem.GetDDGISceneDS(),
 												 params.sharcCacheDS));
 }

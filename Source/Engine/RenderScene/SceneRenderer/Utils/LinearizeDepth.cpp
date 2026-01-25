@@ -58,7 +58,7 @@ rg::RGTextureViewHandle ExecuteLinearizeDepth(rg::RenderGraphBuilder& graphBuild
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Linearize Depth"),
 						  linearizeDepthPipeline,
 						  math::Utils::DivideCeil(resolution, groupSize),
-						  rg::BindDescriptorSets(std::move(linearizeDepthDS), renderView.GetRenderViewDS()));
+						  rg::BindDescriptorSets(std::move(linearizeDepthDS)));
 
 	return linearDepthTexture;
 }
