@@ -50,7 +50,7 @@ lib::SharedPtr<DescriptorSetLayout> shaderParamsDSLayout;
 
 static RendererData g_data;
 
-void InitializeSamplerDescriptors()
+static void InitializeSamplerDescriptors()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -81,6 +81,19 @@ void InitializeSamplerDescriptors()
 	}
 }
 
+static void InitializeShaderParamsDSLayout()
+{
+	rhi::DescriptorSetBindingDefinition bindingDef;
+	bindingDef.bindingIdx      = 0u;
+	bindingDef.descriptorType  = rhi::EDescriptorType::UniformBuffer;
+	bindingDef.descriptorCount = 1u;
+	bindingDef.shaderStages    = rhi::EShaderStageFlags::All;
+
+	rhi::DescriptorSetDefinition layoutDef;
+	layoutDef.bindings.emplace_back(bindingDef);
+	priv::g_data.shaderParamsDSLayout = rdr::ResourcesManager::CreateDescriptorSetLayout(RENDERER_RESOURCE_NAME("Shader Params Layout"), layoutDef);
+}
+
 } // priv
 
 void Renderer::Initialize()
@@ -103,15 +116,7 @@ void Renderer::Initialize()
 
 	DescriptorSetStateLayoutsRegistry::Get().CreateRegisteredLayouts();
 
-	rhi::DescriptorSetBindingDefinition bindingDef;
-	bindingDef.bindingIdx      = 0u;
-	bindingDef.descriptorType  = rhi::EDescriptorType::UniformBuffer;
-	bindingDef.descriptorCount = 1u;
-	bindingDef.shaderStages    = rhi::EShaderStageFlags::All;
-
-	rhi::DescriptorSetDefinition layoutDef;
-	layoutDef.bindings.emplace_back(bindingDef);
-	priv::g_data.shaderParamsDSLayout = rdr::ResourcesManager::CreateDescriptorSetLayout(RENDERER_RESOURCE_NAME("Shader Params Layout"), layoutDef);
+	priv::InitializeShaderParamsDSLayout();
 
 	priv::InitializeSamplerDescriptors();
 }

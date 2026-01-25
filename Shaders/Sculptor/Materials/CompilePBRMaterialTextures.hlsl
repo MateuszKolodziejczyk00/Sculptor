@@ -16,8 +16,8 @@ void CompilePBRMaterialTexturesCS(CS_INPUT input)
 
 	if (u_constants.rwBaseColor.IsValid())
 	{
-		const float3 color = u_constants.loadedBaseColor.Load(coords).xyz;
-		u_constants.rwBaseColor.Store(coords, float4(color, 1.f));
+		const float4 color = u_constants.loadedBaseColor.Load(coords);
+		u_constants.rwBaseColor.Store(coords, color);
 	}
 
 	if (u_constants.rwMetallicRoughness.IsValid())
