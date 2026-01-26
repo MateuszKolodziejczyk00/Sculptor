@@ -6,6 +6,7 @@
 #include "RGResources/RGResources.h"
 #include "RHICore/RHIShaderTypes.h"
 #include "ShaderStructs/ShaderStructs.h"
+#include "Containers/DynamicPushArray.h"
 
 
 namespace spt::rg
@@ -16,7 +17,7 @@ class RenderGraphBuilder;
 
 struct RGTextureAccessDef
 {
-	RGTextureViewHandle textureView;
+	RGTextureView*       textureView;
 	ERGTextureAccess    access;
 	rhi::EPipelineStage pipelineStages;
 };
@@ -24,7 +25,7 @@ struct RGTextureAccessDef
 
 struct RGBufferAccessDef
 {
-	RGBufferViewHandle  resource;
+	RGBufferView*       resource;
 	ERGBufferAccess     access;
 	rhi::EPipelineStage pipelineStages;
 
@@ -38,15 +39,18 @@ struct RGBufferAccessDef
 
 struct RGDependeciesContainer
 {
-	RGDependeciesContainer() = default;
+	RGDependeciesContainer(lib::MemoryArena& arena)
+		: textureAccesses(arena)
+		, bufferAccesses(arena)
+	{ }
 
 	Bool HasAnyDependencies() const
 	{
-		return !textureAccesses.empty() || !bufferAccesses.empty();
+		return !textureAccesses.IsEmpty() || !bufferAccesses.IsEmpty();
 	}
 
-	lib::DynamicArray<RGTextureAccessDef> textureAccesses;
-	lib::DynamicArray<RGBufferAccessDef>  bufferAccesses;
+	lib::DynamicPushArray<RGTextureAccessDef> textureAccesses;
+	lib::DynamicPushArray<RGBufferAccessDef>  bufferAccesses;
 };
 
 

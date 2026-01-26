@@ -38,6 +38,12 @@ RGNode::RGNode(RenderGraphBuilder& owningGraphBuilder, const RenderGraphDebugNam
 	, m_name(name)
 	, m_id(id)
 	, m_type(type)
+	, m_texturesToAcquire(owningGraphBuilder.GetMemoryArena())
+	, m_texturesToRelease(owningGraphBuilder.GetMemoryArena())
+	, m_buffersToAcquire(owningGraphBuilder.GetMemoryArena())
+	, m_buffersToRelease(owningGraphBuilder.GetMemoryArena())
+	, m_textureViewsToAcquire(owningGraphBuilder.GetMemoryArena())
+	, m_dsStates(owningGraphBuilder.GetMemoryArena())
 	, m_executed(false)
 { }
 
@@ -85,49 +91,44 @@ const RGDiagnosticsRecord& RGNode::GetDiagnosticsRecord() const
 }
 #endif // RG_ENABLE_DIAGNOSTICS
 
-void RGNode::AddTextureToAcquire(RGTextureHandle texture)
+void RGNode::AddTextureToAcquire(RGTexture& texture)
 {
-	SPT_CHECK(texture.IsValid());
-	SPT_CHECK(!texture->GetAcquireNode().IsValid());
+	SPT_CHECK(!texture.GetAcquireNode().IsValid());
 
-	texture->SetAcquireNode(this);
-	m_texturesToAcquire.emplace_back(texture);
+	texture.SetAcquireNode(this);
+	m_texturesToAcquire.EmplaceBack(&texture);
 }
 
-void RGNode::AddTextureToRelease(RGTextureHandle texture)
+void RGNode::AddTextureToRelease(RGTexture& texture)
 {
-	SPT_CHECK(texture.IsValid());
-	SPT_CHECK(!texture->GetReleaseNode().IsValid());
+	SPT_CHECK(!texture.GetReleaseNode().IsValid());
 
-	texture->SetReleaseNode(this);
-	m_texturesToRelease.emplace_back(texture);
+	texture.SetReleaseNode(this);
+	m_texturesToRelease.EmplaceBack(&texture);
 }
 
-void RGNode::AddTextureViewToAcquire(RGTextureViewHandle textureView)
+void RGNode::AddTextureViewToAcquire(RGTextureView& textureView)
 {
-	SPT_CHECK(textureView.IsValid());
-	SPT_CHECK(!textureView->GetAcquireNode().IsValid());
+	SPT_CHECK(!textureView.GetAcquireNode().IsValid());
 
-	textureView->SetAcquireNode(this);
-	m_textureViewsToAcquire.emplace_back(textureView);
+	textureView.SetAcquireNode(this);
+	m_textureViewsToAcquire.EmplaceBack(&textureView);
 }
 
-void RGNode::AddBufferToAcquire(RGBufferHandle buffer)
+void RGNode::AddBufferToAcquire(RGBuffer& buffer)
 {
-	SPT_CHECK(buffer.IsValid());
-	SPT_CHECK(!buffer->GetAcquireNode().IsValid());
+	SPT_CHECK(!buffer.GetAcquireNode().IsValid());
 
-	buffer->SetAcquireNode(this);
-	m_buffersToAcquire.emplace_back(buffer);
+	buffer.SetAcquireNode(this);
+	m_buffersToAcquire.EmplaceBack(&buffer);
 }
 
-void RGNode::AddBufferToRelease(RGBufferHandle buffer)
+void RGNode::AddBufferToRelease(RGBuffer& buffer)
 {
-	SPT_CHECK(buffer.IsValid());
-	SPT_CHECK(!buffer->GetReleaseNode().IsValid());
+	SPT_CHECK(!buffer.GetReleaseNode().IsValid());
 
-	buffer->SetReleaseNode(this);
-	m_buffersToRelease.emplace_back(buffer);
+	buffer.SetReleaseNode(this);
+	m_buffersToRelease.EmplaceBack(&buffer);
 }
 
 void RGNode::AddPreExecutionBarrier(rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess)
@@ -137,7 +138,7 @@ void RGNode::AddPreExecutionBarrier(rhi::EPipelineStage sourceStage, rhi::EAcces
 
 void RGNode::AddDescriptorSetState(lib::MTHandle<rdr::DescriptorSetState> dsState)
 {
-	m_dsStates.emplace_back(std::move(dsState));
+	m_dsStates.EmplaceBack(std::move(dsState));
 }
 
 void RGNode::SetShaderParamsDescriptors(const rhi::RHIDescriptorRange& range)
@@ -270,8 +271,9 @@ void RGNode::ReleaseBuffers()
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RGSubpass =====================================================================================
 
-RGSubpass::RGSubpass(const RenderGraphDebugName& name)
-	: m_name(name)
+RGSubpass::RGSubpass(lib::MemoryArena& memoryArena, const RenderGraphDebugName& name)
+	: m_dsStatesToBind(memoryArena)
+	, m_name(name)
 { }
 
 const RenderGraphDebugName& RGSubpass::GetName() const
@@ -281,7 +283,7 @@ const RenderGraphDebugName& RGSubpass::GetName() const
 
 void RGSubpass::BindDSState(lib::MTHandle<rdr::DescriptorSetState> ds)
 {
-	m_dsStatesToBind.emplace_back(std::move(ds));
+	m_dsStatesToBind.EmplaceBack(std::move(ds));
 }
 
 void RGSubpass::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context)
@@ -307,11 +309,20 @@ void RGSubpass::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext,
 RGRenderPassNodeBase::RGRenderPassNodeBase(RenderGraphBuilder& owningGraphBuilder, const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type, const RGRenderPassDefinition& renderPassDef)
 	: Super(owningGraphBuilder, name, id, type)
 	, m_renderPassDef(renderPassDef)
+	, m_subpasses(owningGraphBuilder.GetMemoryArena())
 { }
+
+RGRenderPassNodeBase::~RGRenderPassNodeBase()
+{
+	for (RGSubpassHandle subpass : m_subpasses)
+	{
+		subpass->~RGSubpass();
+	}
+}
 
 void RGRenderPassNodeBase::AppendSubpass(RGSubpassHandle subpass)
 {
-	m_subpasses.emplace_back(subpass);
+	m_subpasses.EmplaceBack(subpass);
 }
 
 void RGRenderPassNodeBase::OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context)

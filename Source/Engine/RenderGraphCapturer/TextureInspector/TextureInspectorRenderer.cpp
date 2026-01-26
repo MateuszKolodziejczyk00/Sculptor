@@ -38,6 +38,7 @@ static rdr::PipelineStateID CompileTextureViewerFilterPipeline()
 // ViewedTextureRenderer =========================================================================
 
 TextureInspectorRenderer::TextureInspectorRenderer()
+	: m_memoryArena("Texture Inspector Renderer Arena", 1024u * 1024u, 8u * 1024u * 1024u)
 { }
 
 void TextureInspectorRenderer::SetParameters(const TextureInspectorFilterParams& parameters)
@@ -55,7 +56,9 @@ void TextureInspectorRenderer::Render(const lib::SharedRef<rdr::TextureView>& in
 {
 	SPT_PROFILER_FUNCTION();
 
-	rg::RenderGraphBuilder graphBuilder(m_resourcesPool);
+	m_memoryArena.Reset();
+
+	rg::RenderGraphBuilder graphBuilder(m_memoryArena, m_resourcesPool);
 
 	const math::Vector2u resolution = outputTexture->GetResolution2D();
 

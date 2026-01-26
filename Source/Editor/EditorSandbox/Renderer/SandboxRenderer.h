@@ -132,6 +132,8 @@ private:
 	math::Vector2f m_cameraDeltaRotation[2];
 
 	Bool m_shaderDebugMousePressedLastFrame = false;
+
+	lib::MemoryArena m_memoryArena;
 };
 
 } // spt::ed

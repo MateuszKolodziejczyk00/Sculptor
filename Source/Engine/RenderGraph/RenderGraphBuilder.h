@@ -62,7 +62,7 @@ class RENDER_GRAPH_API RenderGraphBuilder
 {
 public:
 
-	RenderGraphBuilder(RenderGraphResourcesPool& resourcesPool);
+	RenderGraphBuilder(lib::MemoryArena& memoryArena, RenderGraphResourcesPool& resourcesPool);
 	~RenderGraphBuilder();
 
 	// Utility ================================================
@@ -117,6 +117,8 @@ public:
 	TType* Allocate(TArgs&&... args);
 
 	RGAllocator& GetAllocator() { return m_allocator; }
+
+	lib::MemoryArena& GetMemoryArena() { return m_memoryArena; }
 
 	template<typename TDSType>
 	lib::MTHandle<TDSType> CreateDescriptorSet(const rdr::RendererResourceName& name);
@@ -253,8 +255,10 @@ private:
 
 	rdr::DescriptorSetStateParams BuildDesctiptorSetStateParams();
 
-	lib::DynamicArray<RGTextureHandle> m_textures;
-	lib::DynamicArray<RGBufferHandle> m_buffers;
+	lib::DynamicPushArray<RGTexture>     m_textures;
+	lib::DynamicPushArray<RGTextureView> m_textureViews;
+	lib::DynamicPushArray<RGBuffer>      m_buffers;
+	lib::DynamicPushArray<RGBufferView>  m_bufferViews;
 
 	lib::HashMap<lib::SharedPtr<rdr::Texture>, RGTextureHandle> m_externalTextures;
 	lib::HashMap<lib::SharedPtr<rdr::Buffer>, RGBufferHandle> m_externalBuffers;
@@ -262,7 +266,8 @@ private:
 	lib::DynamicArray<RGTextureHandle> m_extractedTextures;
 	lib::DynamicArray<RGBufferHandle> m_extractedBuffers;
 
-	lib::DynamicArray<RGNodeHandle> m_nodes;
+	lib::DynamicPushArray<RGNodeHandle> m_nodes;
+	RGNodeID m_nodeCounter = 0u;
 
 	lib::DynamicArray<lib::MTHandle<RGDescriptorSetStateBase>> m_boundDSStates;
 
@@ -289,6 +294,8 @@ private:
 	rdr::DescriptorStackAllocator m_dsAllocator;
 
 	RGAllocator m_allocator;
+
+	lib::MemoryArena& m_memoryArena;
 };
 
 template<typename TType, typename... TArgs>
@@ -336,7 +343,7 @@ void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr:
 	node.SetDebugMetaData(debugMetaData);
 #endif // DEBUG_RENDER_GRAPH
 
-	RGDependeciesContainer dependencies;
+	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::ComputeShader);
 	
 	AssignDescriptorSetsToNode(node, GetPipelineObject(computePipelineID), { dsStatesRange }, dependenciesBuilder);
@@ -367,7 +374,7 @@ void RenderGraphBuilder::DispatchIndirect(const RenderGraphDebugName& dispatchNa
 	node.SetDebugMetaData(debugMetaData);
 #endif // DEBUG_RENDER_GRAPH
 
-	RGDependeciesContainer dependencies;
+	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::ComputeShader);
 
 	AssignDescriptorSetsToNode(node, GetPipelineObject(computePipelineID), { dsStatesRange }, dependenciesBuilder);
@@ -390,7 +397,7 @@ void RenderGraphBuilder::RenderPass(const RenderGraphDebugName& renderPassName, 
 {
 	RGNode& node = CreateRenderPassNodeInternal(renderPassName, renderPassDef, dsStatesRange, std::forward<TCallable>(callable));
 
-	RGDependeciesContainer dependencies;
+	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::ALL_GRAPHICS_SHADERS);
 	
 	AssignDescriptorSetsToNode(node, nullptr, { dsStatesRange }, dependenciesBuilder);
@@ -412,9 +419,9 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 {
 	SPT_CHECK(!!m_lastRenderPassNode);
 
-	using CallableType	= std::remove_cvref_t<TCallable>;
-	using SubpassType	= RGLambdaSubpass<CallableType>;
-	RGSubpassHandle subpass = m_allocator.Allocate<SubpassType>(subpassName, std::forward<TCallable>(callable));
+	using CallableType = std::remove_cvref_t<TCallable>;
+	using SubpassType  = RGLambdaSubpass<CallableType>;
+	RGSubpassHandle subpass = m_memoryArena.AllocateType<SubpassType>(m_memoryArena, subpassName, std::forward<TCallable>(callable));
 
 	for (const lib::MTHandle<rdr::DescriptorSetState>& dsState : dsStatesRange)
 	{
@@ -431,7 +438,7 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 	
 	m_lastRenderPassNode->AppendSubpass(subpass);
 
-	RGDependeciesContainer subpassDependencies;
+	RGDependeciesContainer subpassDependencies(m_memoryArena);
 	RGDependenciesBuilder subpassDependenciesBuilder(*this, subpassDependencies, rhi::EPipelineStage::ALL_GRAPHICS_SHADERS);
 	
 	BuildParametersDependencies(parameters, subpassDependenciesBuilder);
@@ -457,7 +464,7 @@ void RenderGraphBuilder::TraceRays(const RenderGraphDebugName& traceName, rdr::P
 
 	NodeType& node = AllocateNode<NodeType>(traceName, ERenderGraphNodeType::TraceRays, std::move(executeLambda));
 
-	RGDependeciesContainer dependencies;
+	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::RayTracingShader);
 	
 	AssignDescriptorSetsToNode(node, GetPipelineObject(rayTracingPipelineID), { dsStatesRange }, dependenciesBuilder);
@@ -480,7 +487,7 @@ void RenderGraphBuilder::TraceRaysIndirect(const RenderGraphDebugName& traceName
 
 	NodeType& node = AllocateNode<NodeType>(traceName, ERenderGraphNodeType::TraceRays, std::move(executeLambda));
 
-	RGDependeciesContainer dependencies;
+	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::RayTracingShader);
 
 	dependenciesBuilder.AddBufferAccess(indirectArgsBuffer, ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect);
@@ -498,7 +505,7 @@ void RenderGraphBuilder::AddLambdaPass(const RenderGraphDebugName& passName, con
 
 	NodeType& node = AllocateNode<NodeType>(passName, ERenderGraphNodeType::Generic, std::move(callable));
 
-	RGDependeciesContainer dependencies;
+	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::None);
 
 	BuildParametersDependencies(parameters, dependenciesBuilder);
@@ -509,9 +516,9 @@ void RenderGraphBuilder::AddLambdaPass(const RenderGraphDebugName& passName, con
 template<typename TNodeType, typename... TArgs>
 TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& name, ERenderGraphNodeType type, TArgs&&... args)
 {
-	const RGNodeID nodeID = m_nodes.size();
-	
-	TNodeType* allocatedNode = m_allocator.Allocate<TNodeType>(*this, name, nodeID, type, std::forward<TArgs>(args)...);
+	const RGNodeID nodeID = m_nodeCounter++;
+
+	TNodeType* allocatedNode = m_memoryArena.AllocateType<TNodeType>(*this, name, nodeID, type, std::forward<TArgs>(args)...);
 	SPT_CHECK(!!allocatedNode);
 
 	return *allocatedNode;

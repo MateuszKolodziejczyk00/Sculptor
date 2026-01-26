@@ -71,6 +71,7 @@ SandboxRenderer::SandboxRenderer()
 	, m_wantsCaptureNextFrame(false)
 	, m_wantsToCreateScreenshot(false)
 	, m_captureSourceContext(lib::MakeShared<rg::capture::RGCaptureSourceContext>())
+	, m_memoryArena("Sandbox Renderer Arena", 4 * 1024 * 1024, 32 * 1024 * 1024)
 {
 	InitializeRenderScene();
 }
@@ -194,6 +195,8 @@ void SandboxRenderer::UpdatePreRender(engn::FrameContext& frame)
 void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr::TextureView> output)
 {
 	SPT_PROFILER_FUNCTION();
+
+	m_memoryArena.Reset();
 	
 	UpdatePreRender(frame);
 
@@ -203,7 +206,7 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 
 	const lib::SharedRef<rdr::GPUStatisticsCollector> gpuStatisticsCollector = lib::MakeShared<rdr::GPUStatisticsCollector>();
 
-	rg::RenderGraphBuilder graphBuilder(m_resourcesPool);
+	rg::RenderGraphBuilder graphBuilder(m_memoryArena, m_resourcesPool);
 	graphBuilder.BindGPUStatisticsCollector(gpuStatisticsCollector);
 
 	rg::capture::RGCaptureSourceInfo captureSource;

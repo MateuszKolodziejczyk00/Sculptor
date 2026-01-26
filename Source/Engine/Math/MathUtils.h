@@ -52,7 +52,6 @@ public:
 		return RoundUpToPowerOf2(value) >> 1;
 	}
 
-	
 	/** Based on Paul R answer: https://stackoverflow.com/questions/2679815/previous-power-of-2 */
 	template<typename TType> requires std::is_integral_v<TType>
 	static constexpr TType RoundDownToPowerOf2(TType value)
@@ -71,6 +70,13 @@ public:
 			value = value | (value >> 64);
 		}
 		return value - (value >> 1);
+	}
+
+	template<typename TType> requires std::is_integral_v<TType>
+	static constexpr TType AlignUpPow2(TType value, TType alignment)
+	{
+		SPT_CHECK(IsPowerOf2(alignment));
+		return (value + alignment - 1) & ~(alignment - 1);
 	}
 
 	template<typename TType> requires std::is_floating_point_v<TType>
@@ -202,7 +208,7 @@ public:
 	}
 
 	template<std::floating_point TType>
-	static void ComputeGaussianBlurWeights(lib::Span<TType> OUT weights, TType sigma)
+	static void ComputeGaussianBlurWeights(TType* weights, Uint32 weightsNum, TType sigma)
 	{
 		const TType sigmaSquared = Square(sigma);
 		const TType denominator  = static_cast<TType>(std::sqrt(2.0 * pi<TType> * sigmaSquared));
@@ -210,7 +216,7 @@ public:
 		const TType rcpSigmaSquared = static_cast<TType>(1.0 / sigmaSquared);
 		const TType rcpDenominator  = static_cast<TType>(1.0 / denominator);
 
-		for (SizeType i = 0; i < weights.size(); ++i)
+		for (Uint32 i = 0; i < weightsNum; ++i)
 		{
 			const TType sampleIdx = static_cast<TType>(i);
 			weights[i] = static_cast<TType>(std::exp(-0.5 * Square(sampleIdx) * rcpSigmaSquared) * rcpDenominator);

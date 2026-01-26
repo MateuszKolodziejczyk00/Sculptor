@@ -117,7 +117,7 @@ void EstimateVariance(rg::RenderGraphBuilder& graphBuilder, const VarianceEstima
 	const math::Vector2u resolution = params.inOutVarianceTexture->GetResolution2D();
 
 	math::Array4f weights;
-	math::Utils::ComputeGaussianBlurWeights<Real32>(OUT { weights.data(), static_cast<SizeType>(weights.size()) }, params.gaussianBlurSigma);
+	math::Utils::ComputeGaussianBlurWeights<Real32>(weights.data(), static_cast<Uint32>(weights.size()), params.gaussianBlurSigma);
 
 	SREstimateVarianceConstants shaderConstants;
 	shaderConstants.resolution    = resolution;

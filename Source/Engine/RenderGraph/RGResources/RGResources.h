@@ -32,7 +32,7 @@ struct RGResourceDef
 };
 
 
-class RGResource abstract : public RGTrackedObject
+class RGResource abstract
 {
 public:
 

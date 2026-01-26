@@ -7,7 +7,7 @@
 #include "MaterialTypes.h"
 #include "MaterialsSubsystem.h"
 
-#pragma optimize("", off)
+
 namespace spt::rg::capture
 {
 

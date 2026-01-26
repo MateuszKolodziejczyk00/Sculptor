@@ -10,6 +10,7 @@
 #include "Pipelines/PipelineState.h"
 #include "RGDiagnostics.h"
 #include "RHIBridge/RHIDependencyImpl.h"
+#include "Containers/DynamicPushArray.h"
 
 
 namespace spt::rhi
@@ -49,11 +50,12 @@ struct RGNodeComputeDebugMetaData
 using RGNodeDebugMetaData = std::variant<RGNodeNullDebugMetaData, RGNodeComputeDebugMetaData>;
 
 
-class RENDER_GRAPH_API RGNode : public RGTrackedObject
+class RENDER_GRAPH_API RGNode
 {
 public:
 
 	RGNode(RenderGraphBuilder& owningGraphBuilder, const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type);
+	virtual ~RGNode() = default;
 
 	RenderGraphBuilder&			GetOwningGraphBuilder() const;
 	RGNodeID					GetID() const;
@@ -70,14 +72,14 @@ public:
 	const RGDiagnosticsRecord& GetDiagnosticsRecord() const;
 #endif // RG_ENABLE_DIAGNOSTICS
 
-	void AddTextureToAcquire(RGTextureHandle texture);
-	void AddTextureToRelease(RGTextureHandle texture);
+	void AddTextureToAcquire(RGTexture& texture);
+	void AddTextureToRelease(RGTexture& texture);
 
 	// texture views are not reused so they don't need to be released after acquire
-	void AddTextureViewToAcquire(RGTextureViewHandle textureView);
+	void AddTextureViewToAcquire(RGTextureView& textureView);
 
-	void AddBufferToAcquire(RGBufferHandle buffer);
-	void AddBufferToRelease(RGBufferHandle buffer);
+	void AddBufferToAcquire(RGBuffer& buffer);
+	void AddBufferToRelease(RGBuffer& buffer);
 
 	void AddPreExecutionBarrier(rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess);
 
@@ -121,17 +123,17 @@ private:
 
 	ERenderGraphNodeType m_type;
 
-	lib::DynamicArray<RGTextureHandle> m_texturesToAcquire;
-	lib::DynamicArray<RGTextureHandle> m_texturesToRelease;
+	lib::DynamicPushArray<RGTexture*> m_texturesToAcquire;
+	lib::DynamicPushArray<RGTexture*> m_texturesToRelease;
 
-	lib::DynamicArray<RGBufferHandle> m_buffersToAcquire;
-	lib::DynamicArray<RGBufferHandle> m_buffersToRelease;
+	lib::DynamicPushArray<RGBuffer*> m_buffersToAcquire;
+	lib::DynamicPushArray<RGBuffer*> m_buffersToRelease;
 	
-	lib::DynamicArray<RGTextureViewHandle> m_textureViewsToAcquire;
+	lib::DynamicPushArray<RGTextureView*> m_textureViewsToAcquire;
 
 	rhi::RHIDependency m_preExecuteDependency;
 
-	lib::DynamicArray<lib::MTHandle<rdr::DescriptorSetState>> m_dsStates;
+	lib::DynamicPushArray<lib::MTHandle<rdr::DescriptorSetState>> m_dsStates;
 
 	Uint32 m_shaderParamsDescriptorHeapOffset = idxNone<Uint32>;
 
@@ -176,11 +178,12 @@ private:
 };
 
 
-class RENDER_GRAPH_API RGSubpass : public RGTrackedObject
+class RENDER_GRAPH_API RGSubpass
 {
 public:
 
-	explicit RGSubpass(const RenderGraphDebugName& name);
+	explicit RGSubpass(lib::MemoryArena& memoryArena, const RenderGraphDebugName& name);
+	virtual ~RGSubpass() = default;
 	
 	const RenderGraphDebugName& GetName() const;
 
@@ -194,7 +197,7 @@ protected:
 
 private:
 
-	lib::DynamicArray<lib::MTHandle<rdr::DescriptorSetState>> m_dsStatesToBind;
+	lib::DynamicPushArray<lib::MTHandle<rdr::DescriptorSetState>> m_dsStatesToBind;
 
 	RenderGraphDebugName m_name;
 };
@@ -209,8 +212,8 @@ protected:
 
 public:
 
-	explicit RGLambdaSubpass(const RenderGraphDebugName& name, TCallable callable)
-		: Super(name)
+	explicit RGLambdaSubpass(lib::MemoryArena& memoryArena, const RenderGraphDebugName& name, TCallable callable)
+		: Super(memoryArena, name)
 		, m_callable(callable)
 	{ }
 
@@ -223,7 +226,7 @@ protected:
 
 private:
 
-	TCallable				m_callable;
+	TCallable m_callable;
 };
 
 
@@ -236,6 +239,7 @@ protected:
 public:
 
 	explicit RGRenderPassNodeBase(RenderGraphBuilder& owningGraphBuilder, const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type, const RGRenderPassDefinition& renderPassDef);
+	virtual ~RGRenderPassNodeBase();
 
 	void AppendSubpass(RGSubpassHandle subpass);
 
@@ -249,7 +253,7 @@ private:
 
 	RGRenderPassDefinition m_renderPassDef;
 
-	lib::DynamicArray<RGSubpassHandle> m_subpasses;
+	lib::DynamicPushArray<RGSubpassHandle> m_subpasses;
 };
 
 

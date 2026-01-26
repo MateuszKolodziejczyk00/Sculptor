@@ -28,6 +28,8 @@ private:
 	rg::RenderGraphResourcesPool m_resourcesPool;
 
 	std::optional<SaveTextureParams> m_saveTextureParams;
+
+	lib::MemoryArena m_memoryArena;
 };
 
 } // spt::rg::capture

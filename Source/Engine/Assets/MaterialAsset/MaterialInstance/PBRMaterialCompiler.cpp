@@ -111,6 +111,8 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 {
 	SPT_PROFILER_FUNCTION();
 
+	lib::MemoryArena tempArena("PBR Material Compilation Arena", 1024u * 1024u, 64u * 1024u * 1024u);
+
 	PBRMaterialDataHeader headerData;
 	headerData.baseColorFactor = compilationInput.baseColorFactor;
 	headerData.metallicFactor  = compilationInput.metallicFactor;
@@ -127,7 +129,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 	if (usesAnyTexture)
 	{
 		rg::RenderGraphResourcesPool renderResourcesPool;
-		rg::RenderGraphBuilder graphBuilder(renderResourcesPool);
+		rg::RenderGraphBuilder graphBuilder(tempArena, renderResourcesPool);
 
 		math::Vector2u maxDimentions = math::Vector2u::Zero();
 

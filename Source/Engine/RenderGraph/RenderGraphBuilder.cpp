@@ -20,10 +20,16 @@ SPT_DEFINE_LOG_CATEGORY(RenderGraph, true);
 namespace spt::rg
 {
 
-RenderGraphBuilder::RenderGraphBuilder(RenderGraphResourcesPool& resourcesPool)
-	: m_onGraphExecutionFinished(js::CreateEvent("Render Graph Execution Finished Event"))
+RenderGraphBuilder::RenderGraphBuilder(lib::MemoryArena& memoryArena, RenderGraphResourcesPool& resourcesPool)
+	: m_textures(memoryArena)
+	, m_textureViews(memoryArena)
+	, m_buffers(memoryArena)
+	, m_bufferViews(memoryArena)
+	, m_nodes(memoryArena)
+	, m_onGraphExecutionFinished(js::CreateEvent("Render Graph Execution Finished Event"))
 	, m_resourcesPool(resourcesPool)
 	, m_dsAllocator(1024u * 1024u)
+	, m_memoryArena(memoryArena)
 {
 	m_resourcesPool.Prepare();
 }
@@ -31,6 +37,11 @@ RenderGraphBuilder::RenderGraphBuilder(RenderGraphResourcesPool& resourcesPool)
 RenderGraphBuilder::~RenderGraphBuilder()
 {
 	m_allocator.Deallocate();
+
+	for (RGNodeHandle node : m_nodes)
+	{
+		node->~RGNode();
+	}
 
 #if SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME
 	for (const auto& ds : m_allocatedDSStates)
@@ -68,10 +79,7 @@ RGTextureHandle RenderGraphBuilder::AcquireExternalTexture(const lib::SharedPtr<
 		RGResourceDef definition;
 		definition.name = name;
 		definition.flags = lib::Flags(ERGResourceFlags::Default, ERGResourceFlags::External);
-
-		textureHandle = m_allocator.Allocate<RGTexture>(definition, texture);
-
-		m_textures.emplace_back(textureHandle);
+		textureHandle = &m_textures.EmplaceBack(definition, texture);
 	}
 
 	return textureHandle;
@@ -95,9 +103,7 @@ RGTextureViewHandle RenderGraphBuilder::AcquireExternalTextureView(lib::SharedPt
 	RGResourceDef definition;
 	definition.name = name;
 	definition.flags = lib::Flags(ERGResourceFlags::Default, ERGResourceFlags::External);
-	const RGTextureViewHandle rgTextureView = m_allocator.Allocate<RGTextureView>(definition, textureHandle, lib::Ref(std::move(textureView)));
-
-	return rgTextureView;
+	return &m_textureViews.EmplaceBack(definition, textureHandle, lib::Ref(std::move(textureView)));
 }
 
 RGTextureHandle RenderGraphBuilder::CreateTexture(const RenderGraphDebugName& name, const TextureDef& textureDefinition, const std::optional<rhi::RHIAllocationInfo>& allocationInfo /*= std::nullopt*/, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
@@ -106,11 +112,7 @@ RGTextureHandle RenderGraphBuilder::CreateTexture(const RenderGraphDebugName& na
 	definition.name = name;
 	definition.flags = flags;
 
-	const RGTextureHandle textureHandle = m_allocator.Allocate<RGTexture>(definition, textureDefinition, allocationInfo);
-
-	m_textures.emplace_back(textureHandle);
-
-	return textureHandle;
+	return &m_textures.EmplaceBack(definition, textureDefinition, allocationInfo);
 }
 
 RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebugName& name, RGTextureHandle texture, const rhi::TextureViewDefinition& viewDefinition /*= rhi::TextureViewDefinition()*/, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
@@ -119,9 +121,7 @@ RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebug
 	definition.name = name;
 	definition.flags = flags;
 
-	RGTextureViewHandle textureViewHandle = m_allocator.Allocate<RGTextureView>(definition, texture, viewDefinition);
-
-	return textureViewHandle;
+	return &m_textureViews.EmplaceBack(definition, texture, viewDefinition);
 }
 
 RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebugName& name, const TextureDef& textureDefinition, const std::optional<rhi::RHIAllocationInfo>& allocationInfo /*= std::nullopt*/, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
@@ -185,8 +185,7 @@ RGBufferHandle RenderGraphBuilder::AcquireExternalBuffer(const lib::SharedPtr<rd
 		resourceDefinition.name = name;
 		resourceDefinition.flags = lib::Flags(ERGResourceFlags::Default, ERGResourceFlags::External);
 
-		bufferHandle = m_allocator.Allocate<RGBuffer>(resourceDefinition, buffer);
-		m_buffers.emplace_back(bufferHandle);
+		bufferHandle = &m_buffers.EmplaceBack(resourceDefinition, buffer);
 	}
 	SPT_CHECK(bufferHandle.IsValid());
 
@@ -207,9 +206,7 @@ RGBufferViewHandle RenderGraphBuilder::AcquireExternalBufferView(lib::SharedPtr<
 	resourceDefinition.name = name;
 	resourceDefinition.flags = lib::Flags(ERGResourceFlags::Default, ERGResourceFlags::External);
 
-	const RGBufferViewHandle bufferViewHandle = m_allocator.Allocate<RGBufferView>(resourceDefinition, owningBufferHandle, std::move(bufferView));
-
-	return bufferViewHandle;
+	return &m_bufferViews.EmplaceBack(resourceDefinition, owningBufferHandle, std::move(bufferView));
 }
 
 RGBufferHandle RenderGraphBuilder::CreateBuffer(const RenderGraphDebugName& name, const rhi::BufferDefinition& bufferDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
@@ -223,10 +220,7 @@ RGBufferHandle RenderGraphBuilder::CreateBuffer(const RenderGraphDebugName& name
 	modifiedBufferDefinition.usage = lib::Flags(modifiedBufferDefinition.usage, rhi::EBufferUsage::TransferSrc);
 #endif // SPT_DEBUG || SPT_DEVELOPMENT
 
-	const RGBufferHandle bufferHandle = m_allocator.Allocate<RGBuffer>(resourceDefinition, modifiedBufferDefinition, allocationInfo);
-	m_buffers.emplace_back(bufferHandle);
-	
-	return bufferHandle;
+	return &m_buffers.EmplaceBack(resourceDefinition, modifiedBufferDefinition, allocationInfo);
 }
 
 RGBufferViewHandle RenderGraphBuilder::CreateBufferView(const RenderGraphDebugName& name, RGBufferHandle buffer, Uint64 offset, Uint64 size, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
@@ -235,7 +229,7 @@ RGBufferViewHandle RenderGraphBuilder::CreateBufferView(const RenderGraphDebugNa
 	resourceDefinition.name = name;
 	resourceDefinition.flags = flags;
 	
-	return m_allocator.Allocate<RGBufferView>(resourceDefinition, buffer, offset, size);
+	return &m_bufferViews.EmplaceBack(resourceDefinition, buffer, offset, size);
 }
 
 RGBufferViewHandle RenderGraphBuilder::CreateBufferView(const RenderGraphDebugName& name, const rhi::BufferDefinition& bufferDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
@@ -305,7 +299,7 @@ void RenderGraphBuilder::FillBuffer(const RenderGraphDebugName& commandName, RGB
 
 	NodeType& node = AllocateNode<NodeType>(commandName, ERenderGraphNodeType::Transfer, std::move(executeLambda));
 
-	RGDependeciesContainer dependencies;
+	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
 	dependenciesBuilder.AddBufferAccess(bufferView, ERGBufferAccess::Write, canFillOnHost ? rhi::EPipelineStage::Host : rhi::EPipelineStage::Transfer);
 
@@ -353,7 +347,7 @@ void RenderGraphBuilder::CopyBuffer(const RenderGraphDebugName& commandName, RGB
 
 	NodeType& node = AllocateNode<NodeType>(commandName, ERenderGraphNodeType::Transfer, std::move(executeLambda));
 
-	RGDependeciesContainer dependencies;
+	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
 	dependenciesBuilder.AddBufferAccess(sourceBufferView, ERGBufferAccess::Read, rhi::EPipelineStage::Transfer);
 	dependenciesBuilder.AddBufferAccess(destBufferView, ERGBufferAccess::Write, rhi::EPipelineStage::Transfer);
@@ -465,7 +459,7 @@ void RenderGraphBuilder::CopyTexture(const RenderGraphDebugName& copyName, RGTex
 
 	NodeType& node = AllocateNode<NodeType>(copyName, ERenderGraphNodeType::Transfer, std::move(executeLambda));
 
-	RGDependeciesContainer dependencies;
+	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
 	dependenciesBuilder.AddTextureAccess(sourceRGTextureView, ERGTextureAccess::ShaderRead);
 	dependenciesBuilder.AddTextureAccess(destRGTextureView, ERGTextureAccess::ShaderWrite);
@@ -520,7 +514,7 @@ void RenderGraphBuilder::BlitTexture(const RenderGraphDebugName& blitName, rg::R
 	using NodeType = RGLambdaNode<LambdaType>;
 	NodeType& node = AllocateNode<NodeType>(blitName, ERenderGraphNodeType::Transfer, std::move(executeLambda));
 
-	RGDependeciesContainer dependencies;
+	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
 	dependenciesBuilder.AddTextureAccess(source, ERGTextureAccess::ShaderRead);
 	dependenciesBuilder.AddTextureAccess(dest, ERGTextureAccess::ShaderWrite);
@@ -581,7 +575,7 @@ void RenderGraphBuilder::CopyTextureToBuffer(const RenderGraphDebugName& copyNam
 
 	NodeType& node = AllocateNode<NodeType>(copyName, ERenderGraphNodeType::Transfer, std::move(executeLambda));
 
-	RGDependeciesContainer dependencies;
+	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
 	dependenciesBuilder.AddTextureAccess(sourceRGTextureView, ERGTextureAccess::ShaderRead);
 	dependenciesBuilder.AddBufferAccess(destBufferView, ERGBufferAccess::Write, rhi::EPipelineStage::Transfer);
@@ -604,8 +598,6 @@ void RenderGraphBuilder::CopyBufferToFullTexture(const RenderGraphDebugName& cop
 
 	SPT_CHECK(mipLevelsNum == 1u);
 	SPT_CHECK(arrayLayersNum == 1u);
-
-	const math::Vector3u resolution = destRGTextureView->GetResolution();
 
 	const auto executeLambda = [=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
@@ -638,7 +630,7 @@ void RenderGraphBuilder::CopyBufferToFullTexture(const RenderGraphDebugName& cop
 
 	NodeType& node = AllocateNode<NodeType>(copyName, ERenderGraphNodeType::Transfer, std::move(executeLambda));
 
-	RGDependeciesContainer dependencies;
+	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
 	dependenciesBuilder.AddBufferAccess(sourceBufferView, ERGBufferAccess::Read, rhi::EPipelineStage::Transfer);
 	dependenciesBuilder.AddTextureAccess(destRGTextureView, ERGTextureAccess::ShaderWrite);
@@ -667,7 +659,7 @@ void RenderGraphBuilder::ClearTexture(const RenderGraphDebugName& clearName, RGT
 
 	NodeType& node = AllocateNode<NodeType>(clearName, ERenderGraphNodeType::Transfer, std::move(executeLambda));
 
-	RGDependeciesContainer dependencies;
+	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
 	dependenciesBuilder.AddTextureAccess(textureView, ERGTextureAccess::ShaderWrite);
 
@@ -767,7 +759,7 @@ void RenderGraphBuilder::AddNodeInternal(RGNode& node, RGDependeciesContainer& d
 {
 	ResolveNodeDependecies(node, dependencies);
 
-	m_nodes.emplace_back(&node);
+	m_nodes.EmplaceBack(&node);
 
 	PostNodeAdded(node, dependencies);
 }
@@ -809,20 +801,20 @@ void RenderGraphBuilder::ResolveNodeTextureAccesses(RGNode& node, const RGDepend
 
 	for (const RGTextureAccessDef& textureAccessDef : dependencies.textureAccesses)
 	{
-		const RGTextureViewHandle accessedTextureView					= textureAccessDef.textureView;
-		const RGTextureHandle accessedTexture							= accessedTextureView->GetTexture();
-		const rhi::TextureSubresourceRange& accessedSubresourceRange	= accessedTextureView->GetSubresourceRange();
+		RGTextureView* accessedTextureView     = textureAccessDef.textureView;
+		const RGTextureHandle& accessedTexture = accessedTextureView->GetTexture();
+		const rhi::TextureSubresourceRange& accessedSubresourceRange = accessedTextureView->GetSubresourceRange();
 
 		accessedTexture->AddUsageForAccess(textureAccessDef.access);
 
 		if (!accessedTexture->IsExternal() && !accessedTexture->HasAcquireNode())
 		{
-			node.AddTextureToAcquire(accessedTexture);
+			node.AddTextureToAcquire(*accessedTexture);
 		}
 		
 		if (!accessedTextureView->IsExternal() && !accessedTextureView->HasAcquireNode())
 		{
-			node.AddTextureViewToAcquire(accessedTextureView);
+			node.AddTextureViewToAcquire(*accessedTextureView);
 		}
 
 		const rhi::BarrierTextureTransitionDefinition& transitionTarget = GetTransitionDefForAccess(&node, accessedTexture, textureAccessDef.access);
@@ -935,15 +927,15 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 {
 	for (const RGBufferAccessDef& bufferAccess : dependencies.bufferAccesses)
 	{
-		const RGBufferViewHandle accessedBufferView = bufferAccess.resource;
-		SPT_CHECK(accessedBufferView.IsValid());
+		RGBufferView* accessedBufferView = bufferAccess.resource;
+		SPT_CHECK(!!accessedBufferView);
 
 		const RGBufferHandle accessedBuffer = accessedBufferView->GetBuffer();
 		SPT_CHECK(accessedBuffer.IsValid());
 
 		if (!accessedBuffer->IsExternal() && !accessedBuffer->GetAcquireNode().IsValid())
 		{
-			node.AddBufferToAcquire(accessedBuffer);
+			node.AddBufferToAcquire(*accessedBuffer);
 		}
 			
 		const ERGBufferAccess nextAccess			= bufferAccess.access;
@@ -1106,7 +1098,7 @@ void RenderGraphBuilder::ExecuteGraph()
 	checkpointValidator.AddCheckpoint(*commandRecorder, "RENDER GRAPH BEGIN");
 #endif // SPT_ENABLE_RENDER_GRAPH_CHECKPOINTS_VALIDATION
 
-	for (const RGNodeHandle node : m_nodes)
+	for (RGNodeHandle node : m_nodes)
 	{
 #if RG_ENABLE_DIAGNOSTICS
 		diagnosticsPlayback.Playback(*commandRecorder, m_statisticsCollector, node->GetDiagnosticsRecord());
@@ -1142,29 +1134,29 @@ void RenderGraphBuilder::ExecuteGraph()
 void RenderGraphBuilder::AddReleaseResourcesNode()
 {
 	RGEmptyNode& barrierNode = AllocateNode<RGEmptyNode>(RG_DEBUG_NAME("ExtractionBarrierNode"), ERenderGraphNodeType::None);
-	RGDependeciesContainer deps{};
+	RGDependeciesContainer deps(m_memoryArena);
 	AddNodeInternal(barrierNode, deps);
 
-	for (RGTextureHandle texture : m_textures)
+	for (RGTexture& texture : m_textures)
 	{
-		const rhi::BarrierTextureTransitionDefinition* transitionTarget = texture->GetReleaseTransitionTarget();
+		const rhi::BarrierTextureTransitionDefinition* transitionTarget = texture.GetReleaseTransitionTarget();
 		if (transitionTarget)
 		{
-			const rhi::EFragmentFormat textureFormat = texture->GetTextureDefinition().format;
+			const rhi::EFragmentFormat textureFormat = texture.GetTextureDefinition().format;
 			const rhi::TextureSubresourceRange transitionRange(rhi::GetFullAspectForFormat(textureFormat));
 
-			AppendTextureTransitionToNode(barrierNode, texture, transitionRange, *transitionTarget);
+			AppendTextureTransitionToNode(barrierNode, &texture, transitionRange, *transitionTarget);
 		}
 		else
 		{
-			RGTextureAccessState& accessState = texture->GetAccessState();
+			RGTextureAccessState& accessState = texture.GetAccessState();
 			if (!accessState.IsFullResource())
 			{
 				// This transition may result in disabling resource reuse (last access will be at the end of render graph
 				// Alternative is to add this barrier immediately after last use, but this might decrease performance on GPU
-				const rhi::EFragmentFormat textureFormat = texture->GetTextureDefinition().format;
+				const rhi::EFragmentFormat textureFormat = texture.GetTextureDefinition().format;
 				const rhi::TextureSubresourceRange transitionRange(rhi::GetFullAspectForFormat(textureFormat));
-				AppendTextureTransitionToNode(barrierNode, texture, transitionRange, rhi::TextureTransition::ShaderRead);
+				AppendTextureTransitionToNode(barrierNode, &texture, transitionRange, rhi::TextureTransition::ShaderRead);
 				accessState.SetSubresourcesAccess(RGTextureSubresourceAccessState(ERGTextureAccess::ShaderWrite, &barrierNode), transitionRange);
 			}
 		}
@@ -1179,11 +1171,11 @@ void RenderGraphBuilder::ResolveResourceProperties()
 
 void RenderGraphBuilder::ResolveTextureProperties()
 {
-	for (RGTextureHandle texture : m_textures)
+	for (RGTexture& texture : m_textures)
 	{
-		if (!texture->IsExternal() && !texture->IsExtracted())
+		if (!texture.IsExternal() && !texture.IsExtracted())
 		{
-			RGTextureAccessState& textureAccesses = texture->GetAccessState();
+			RGTextureAccessState& textureAccesses = texture.GetAccessState();
 
 			RGNodeHandle lastAccessNode;
 
@@ -1209,7 +1201,7 @@ void RenderGraphBuilder::ResolveTextureProperties()
 			{
 				lastAccessNode->AddTextureToRelease(texture);
 
-				texture->SelectAllocationStrategy();
+				texture.SelectAllocationStrategy();
 			}
 		}
 	}
@@ -1219,11 +1211,11 @@ void RenderGraphBuilder::ResolveBufferReleases()
 {
 	SPT_PROFILER_FUNCTION();
 
-	for (RGBufferHandle buffer : m_buffers)
+	for (RGBuffer& buffer : m_buffers)
 	{
-		if (!buffer->IsExternal() && !buffer->IsExtracted())
+		if (!buffer.IsExternal() && !buffer.IsExtracted())
 		{
-			const RGNodeHandle lastAccessNode = buffer->GetLastAccessNode();
+			const RGNodeHandle lastAccessNode = buffer.GetLastAccessNode();
 			SPT_CHECK(lastAccessNode.IsValid());
 
 			lastAccessNode->AddBufferToRelease(buffer);

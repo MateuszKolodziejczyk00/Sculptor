@@ -14,13 +14,13 @@ RGDependenciesBuilder::RGDependenciesBuilder(RenderGraphBuilder& graphBuilder, R
 
 void RGDependenciesBuilder::AddTextureAccess(RGTextureViewHandle texture, ERGTextureAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
 {
-	if (lib::ContainsPred(m_dependeciesRef.textureAccesses, [texture](const RGTextureAccessDef& access) { return access.textureView == texture; }))
+	if (lib::ContainsPred(m_dependeciesRef.textureAccesses, [texture](const RGTextureAccessDef& access) { return access.textureView == texture.Get(); }))
 	{
 		return;
 	}
 
 	const rhi::EPipelineStage accessStages = dependencyStages.shouldUseDefaultStages ? m_defaultStages : dependencyStages.pipelineStages;
-	m_dependeciesRef.textureAccesses.emplace_back(RGTextureAccessDef{ texture, access, accessStages });
+	m_dependeciesRef.textureAccesses.EmplaceBack(RGTextureAccessDef{ texture.Get(), access, accessStages });
 }
 
 void RGDependenciesBuilder::AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
@@ -72,21 +72,21 @@ void RGDependenciesBuilder::AddBufferAccess(const lib::SharedPtr<rdr::Buffer>& b
 
 void RGDependenciesBuilder::AddBufferAccess(RGBufferViewHandle buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
 {
-	if (lib::ContainsPred(m_dependeciesRef.bufferAccesses, [buffer](const RGBufferAccessDef& access) { return access.resource == buffer; }))
+	if (lib::ContainsPred(m_dependeciesRef.bufferAccesses, [buffer](const RGBufferAccessDef& access) { return access.resource == buffer.Get(); }))
 	{
 		return;
 	}
 
 	const rhi::EPipelineStage accessStages = dependencyStages.shouldUseDefaultStages ? m_defaultStages : dependencyStages.pipelineStages;
 
-	RGBufferAccessDef accessDef{ buffer, access.access, accessStages };
+	RGBufferAccessDef accessDef{ buffer.Get(), access.access, accessStages };
 #if DEBUG_RENDER_GRAPH
 	accessDef.structTypeName = access.structTypeName;
 	accessDef.elementsNum    = access.elementsNum;
 	accessDef.namedBuffer    = access.namedBuffer;
 #endif // DEBUG_RENDER_GRAPH
 
-	m_dependeciesRef.bufferAccesses.emplace_back(std::move(accessDef));
+	m_dependeciesRef.bufferAccesses.EmplaceBack(std::move(accessDef));
 }
 
 void RGDependenciesBuilder::AddBufferAccess(const lib::SharedPtr<rdr::BindableBufferView>& buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
