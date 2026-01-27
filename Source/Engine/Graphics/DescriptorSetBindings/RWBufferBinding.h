@@ -46,11 +46,13 @@ public:
 			accessInfo.access = accessType;
 			if constexpr (!std::is_same_v<TStruct, Byte>)
 			{
+#if DEBUG_RENDER_GRAPH
 				if (IsValid())
 				{
 					accessInfo.structTypeName = rdr::shader_translator::GetTypeName<TStruct>();
 					accessInfo.elementsNum    = static_cast<Uint32>(m_boundBuffer.GetBoundBufferSize() / sizeof(rdr::HLSLStorage<TStruct>));
 				}
+#endif // DEBUG_RENDER_GRAPH
 			}
 			m_boundBuffer.AddRGDependency(builder, accessInfo);
 		}

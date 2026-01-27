@@ -716,7 +716,7 @@ Bool RenderGraphBuilder::AssignShaderParamsToNodeInternal(RGNode& node, const li
 {
 	if (!pipeline)
 	{
-		SPT_LOG_WARN(RenderGraph, "RenderGraphBuilder::AssignShaderParamsToNodeInternal: Trying to assign shader params to a node with invalid PSO. Node name: {}", node.GetName().AsString());
+		SPT_LOG_WARN(RenderGraph, "RenderGraphBuilder::AssignShaderParamsToNodeInternal: Trying to assign shader params to a node with invalid PSO. Node name: {}", node.GetName().ToString());
 		return false;
 	}
 
@@ -724,13 +724,13 @@ Bool RenderGraphBuilder::AssignShaderParamsToNodeInternal(RGNode& node, const li
 	const lib::HashedString expectedParamsType = metaData.GetShaderParamsType();
 	if (!expectedParamsType.IsValid())
 	{
-		SPT_LOG_WARN(RenderGraph, "RenderGraphBuilder::AssignShaderParamsToNodeInternal: Trying to assign shader params to a node with PSO that does not define shader params. Node name: {}", node.GetName().AsString());
+		SPT_LOG_WARN(RenderGraph, "RenderGraphBuilder::AssignShaderParamsToNodeInternal: Trying to assign shader params to a node with PSO that does not define shader params. Node name: {}", node.GetName().ToString());
 		return false;
 	}
 
 	if (paramsType != expectedParamsType)
 	{
-		SPT_LOG_ERROR(RenderGraph, "RenderGraphBuilder::AssignShaderParamsToNodeInternal: Mismatched shader params type. Expected: {}, got: {}. Node name: {}", expectedParamsType.ToString(), paramsType.ToString(), node.GetName().AsString());
+		SPT_LOG_ERROR(RenderGraph, "RenderGraphBuilder::AssignShaderParamsToNodeInternal: Mismatched shader params type. Expected: {}, got: {}. Node name: {}", expectedParamsType.ToString(), paramsType.ToString(), node.GetName().ToString());
 		return false;
 	}
 

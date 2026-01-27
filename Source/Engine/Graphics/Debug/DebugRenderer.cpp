@@ -103,6 +103,7 @@ GPUDebugGeometryData CreateDebugGeometryData(Uint32 verticesNum, Uint32 maxNum)
 {
 	GPUDebugGeometryData data;
 
+	SPT_MAYBE_UNUSED
 	const char* debugGeometryName = TDebugGeometry::GetStructName();
 
 	const rhi::BufferDefinition geometriesBufferDef(sizeof(rdr::HLSLStorage<TDebugGeometry>) * maxNum, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst));

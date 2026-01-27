@@ -92,7 +92,7 @@ void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 
 	m_capture->passes.emplace_back(std::make_unique<CapturedPass>());
 	CapturedPass& pass = *m_capture->passes.back();
-	pass.name = node.GetName().AsString();
+	pass.name = node.GetName().ToString();
 
 	if (node.GetType() == ERenderGraphNodeType::Dispatch)
 	{

@@ -57,9 +57,14 @@ RGNodeID RGNode::GetID() const
 	return m_id;
 }
 
-const RenderGraphDebugName& RGNode::GetName() const
+const lib::HashedString& RGNode::GetName() const
 {
-	return m_name;
+#if DEBUG_RENDER_GRAPH
+	return m_name.Get();
+#else
+	static lib::HashedString dummyName("Unknown");
+	return dummyName;
+#endif // DEBUG_RENDER_GRAPH
 }
 
 ERenderGraphNodeType RGNode::GetType() const
@@ -148,12 +153,12 @@ void RGNode::SetShaderParamsDescriptors(const rhi::RHIDescriptorRange& range)
 
 void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context)
 {
-	SPT_PROFILER_SCOPE(GetName().Get().GetData());
-	SPT_GPU_DEBUG_REGION(recorder, GetName().Get().GetData(), lib::Color(static_cast<Uint32>(GetName().Get().GetKey())));
-	SPT_GPU_STATISTICS_SCOPE_FLAGS(recorder, context.statisticsCollector, GetName().Get().GetData(), helpers::GetQueryFlags(GetType()));
+	SPT_PROFILER_SCOPE(GetName().GetData());
+	SPT_GPU_DEBUG_REGION(recorder, GetName().GetData(), lib::Color(static_cast<Uint32>(GetName().GetKey())));
+	SPT_GPU_STATISTICS_SCOPE_FLAGS(recorder, context.statisticsCollector, GetName().GetData(), helpers::GetQueryFlags(GetType()));
 
 #if SPT_ENABLE_GPU_CRASH_DUMPS
-	recorder.SetDebugCheckpoint(GetName().Get());
+	recorder.SetDebugCheckpoint(GetName());
 #endif // SPT_ENABLE_GPU_CRASH_DUMPS
 
 	SPT_CHECK(!m_executed);
@@ -276,9 +281,14 @@ RGSubpass::RGSubpass(lib::MemoryArena& memoryArena, const RenderGraphDebugName& 
 	, m_name(name)
 { }
 
-const RenderGraphDebugName& RGSubpass::GetName() const
+const lib::HashedString& RGSubpass::GetName() const
 {
-	return m_name;
+#if DEBUG_RENDER_GRAPH
+	return m_name.Get();
+#else
+	static lib::HashedString dummyName("Unknown Subpass");
+	return dummyName;
+#endif // DEBUG_RENDER_GRAPH
 }
 
 void RGSubpass::BindDSState(lib::MTHandle<rdr::DescriptorSetState> ds)
@@ -290,8 +300,8 @@ void RGSubpass::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext,
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_GPU_DEBUG_REGION(recorder, GetName().Get().GetData(), lib::Color::Blue);
-	SPT_GPU_STATISTICS_SCOPE(recorder, context.statisticsCollector, GetName().Get().GetData());
+	SPT_GPU_DEBUG_REGION(recorder, GetName().GetData(), lib::Color::Blue);
+	SPT_GPU_STATISTICS_SCOPE(recorder, context.statisticsCollector, GetName().GetData());
 
 	for(const lib::MTHandle<rdr::DescriptorSetState>& ds : m_dsStatesToBind)
 	{

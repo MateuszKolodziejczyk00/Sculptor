@@ -13,7 +13,7 @@ TextureLiveCapturer::TextureLiveCapturer(const LiveCaptureDestTexture& destTextu
 
 void TextureLiveCapturer::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode& node, const RGDependeciesContainer& dependencies)
 {
-	if (node.GetName().Get() == m_destTexture.passName)
+	if (node.GetName() == m_destTexture.passName)
 	{
 		for (const RGTextureAccessDef& textureAccess : dependencies.textureAccesses)
 		{

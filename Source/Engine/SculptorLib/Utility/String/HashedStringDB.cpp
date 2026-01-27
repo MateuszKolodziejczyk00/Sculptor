@@ -55,9 +55,7 @@ HashedStringDB::KeyType HashedStringDB::GetRecord(String&& inString, StringView&
 			newRecord = inString;
 		}
 
-		outView = newRecord;
-
-		CreateRecord(key, std::move(newRecord));
+		outView = CreateRecord(key, std::move(newRecord));
 	}
 
 	return key;
@@ -81,9 +79,7 @@ HashedStringDB::KeyType HashedStringDB::GetRecord(StringView inString, StringVie
 			newRecord.reserve(requiredSizeToDisableSSO);
 		}
 
-		outView = newRecord;
-
-		CreateRecord(key, std::move(newRecord));
+		outView = CreateRecord(key, std::move(newRecord));
 	}
 
 	return key;
@@ -113,11 +109,17 @@ Bool HashedStringDB::FindRecord(KeyType key, StringView& outView)
 	return false;
 }
 
-void HashedStringDB::CreateRecord(KeyType key, String&& newRecord)
+String& HashedStringDB::CreateRecord(KeyType key, String&& newRecord)
 {
 	const WriteLockGuard addRecordLock(db::GetInstance().recordsMutex);
 
-	db::GetInstance().records.emplace(key, std::forward<String>(newRecord));
+	String& recordRef = db::GetInstance().records[key];
+	if (recordRef.empty())
+	{
+		recordRef = std::move(newRecord);
+	}
+
+	return recordRef;
 }
 
 }

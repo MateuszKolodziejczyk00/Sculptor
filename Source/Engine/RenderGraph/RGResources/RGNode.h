@@ -57,10 +57,10 @@ public:
 	RGNode(RenderGraphBuilder& owningGraphBuilder, const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type);
 	virtual ~RGNode() = default;
 
-	RenderGraphBuilder&			GetOwningGraphBuilder() const;
-	RGNodeID					GetID() const;
-	const RenderGraphDebugName& GetName() const;
-	ERenderGraphNodeType		GetType() const;
+	RenderGraphBuilder&      GetOwningGraphBuilder() const;
+	RGNodeID                 GetID() const;
+	const lib::HashedString& GetName() const;
+	ERenderGraphNodeType     GetType() const;
 
 #if DEBUG_RENDER_GRAPH
 	void                       SetDebugMetaData(RGNodeDebugMetaData metaData);
@@ -185,7 +185,7 @@ public:
 	explicit RGSubpass(lib::MemoryArena& memoryArena, const RenderGraphDebugName& name);
 	virtual ~RGSubpass() = default;
 	
-	const RenderGraphDebugName& GetName() const;
+	const lib::HashedString& GetName() const;
 
 	void BindDSState(lib::MTHandle<rdr::DescriptorSetState> ds);
 

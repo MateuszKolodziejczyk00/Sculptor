@@ -16,6 +16,7 @@ namespace priv
 
 Uint32 GetTypeSize(lib::HashedString typeName)
 {
+#if SHADER_STRUCTS_RTTI
 	const rdr::ShaderStructMetaData* structMetaData = rdr::ShaderStructsRegistry::GetStructMetaData(typeName);
 	if (structMetaData)
 	{
@@ -93,6 +94,9 @@ Uint32 GetTypeSize(lib::HashedString typeName)
 	{
 		return 0u;
 	}
+#endif // SHADER_STRUCTS_RTTI
+
+	return 0u;
 }
 
 } // priv
@@ -117,6 +121,7 @@ void BufferInspector::BuildDefaultLayout(ImGuiID dockspaceID)
 
 void BufferInspector::DrawUI()
 {
+#if SHADER_STRUCTS_RTTI
 	SPT_PROFILER_FUNCTION();
 
 	Super::DrawUI();
@@ -227,10 +232,13 @@ void BufferInspector::DrawUI()
 	}
 
 	ImGui::End();
+
+#endif // SHADER_STRUCTS_RTTI
 }
 
 void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeName, lib::Span<const Byte> data, Uint32 currentOffset)
 {
+#if SHADER_STRUCTS_RTTI
 	const RGCapture& capture = m_parentNodeViewer.GetCapture();
 
 	ImGui::PushID(currentOffset);
@@ -569,6 +577,7 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 	}
 
 	ImGui::PopID();
+#endif // SHADER_STRUCTS_RTTI
 }
 
 } // spt::rg::capture

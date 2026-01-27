@@ -32,7 +32,7 @@ private:
 
 	static Bool FindRecord(KeyType key, StringView& outView);
 
-	static void CreateRecord(KeyType key, String&& newRecord);
+	static String& CreateRecord(KeyType key, String&& newRecord);
 };
 
 } // spt::lib
