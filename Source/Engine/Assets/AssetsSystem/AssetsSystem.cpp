@@ -466,12 +466,14 @@ Bool AssetsSystem::CompileAssetImpl(const AssetHandle& asset)
 	SPT_PROFILER_FUNCTION();
 
 	m_compilationInputCache.OnCompilationStarted();
+	SPT_LOG_INFO(AssetsSystem, "Compiling asset: {}", ResolvePath(asset->GetResourcePathID()).GetPath().string());
 
 	const Bool compilationResult = asset->Compile();
 
 	if (compilationResult)
 	{
 		m_assetsDB.SaveAssetDescriptor(ResolvePath(asset->GetResourcePathID()), AssetDescriptor{ .assetTypeKey = asset->GetTypeKey() });
+		SPT_LOG_INFO(AssetsSystem, "Successfully compiled asset: {}", ResolvePath(asset->GetResourcePathID()).GetPath().string());
 	}
 	else
 	{

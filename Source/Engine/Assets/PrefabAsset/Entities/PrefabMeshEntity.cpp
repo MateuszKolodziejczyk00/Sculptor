@@ -13,9 +13,7 @@ namespace spt::as
 
 struct CompiledMeshEntity
 {
-	math::Vector3f    location = math::Vector3f::Zero();
-	math::Quaternionf rotation = math::Quaternionf::Identity();
-	math::Vector3f    scale    = math::Vector3f::Ones();
+	math::Affine3f transform = math::Affine3f::Identity();
 
 	ResourcePathID mesh = InvalidResourcePathID;
 	Uint32 materialsNum = 0u;
@@ -28,9 +26,10 @@ lib::DynamicArray<Byte> PrefabMeshEntity::Compile(PrefabCompiler& compiler) cons
 	const Uint32 materialsDataSize = materialsNum * sizeof(ResourcePathID);
 
 	CompiledMeshEntity compiledEntity;
-	compiledEntity.location = location;
-	compiledEntity.rotation = math::Utils::EulerToQuaternionDegrees(rotation.x(), rotation.y(), rotation.z());
-	compiledEntity.scale    = scale;
+	compiledEntity.transform = math::Affine3f::Identity();
+	compiledEntity.transform.prescale(scale);
+	compiledEntity.transform.prerotate(math::Utils::EulerToRotationMatrixDegrees(rotation.x(), rotation.y(), rotation.z()));
+	compiledEntity.transform.pretranslate(location);
 
 	compiledEntity.mesh = prefab_compiler_api::CreateAssetDependency(compiler, mesh);
 
@@ -66,10 +65,7 @@ void PrefabMeshEntity::Spawn(const PrefabSpawningContext& context, lib::Span<con
 
 	const lib::Span<const ResourcePathID> materials(reinterpret_cast<const ResourcePathID*>(compiledData.data() + sizeof(CompiledMeshEntity)), compiledMesh.materialsNum);
 
-	math::Affine3f localTransform = math::Affine3f::Identity();
-	localTransform.prescale(compiledMesh.scale);
-	localTransform.prerotate(compiledMesh.rotation);
-	localTransform.pretranslate(compiledMesh.location);
+	const math::Affine3f localTransform = compiledMesh.transform;
 
 	math::Affine3f transform = context.transform * localTransform;
 

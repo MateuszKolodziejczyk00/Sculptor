@@ -32,6 +32,10 @@ struct GLTFImportParams
 
 	lib::Path srcGLTFPath;
 	lib::Path dstContentPath;
+
+	// If true, prefab will just reference source gltf, so when GLTF is changed, prefab will reflect those changes
+	// If false, prefab will have all hierarchy expanded so it won't reflect changes in source gltf (although, it will still reference source gltf for mesh and material data)
+	Bool importPrefabAsGLTF = true;
 };
 
 void PREFAB_ASSET_API ImportGLTF(const GLTFImportParams& params);
