@@ -58,11 +58,20 @@ CreateResult AssetsSystem::CreateAsset(const AssetInitializer& initializer)
 			return CreateResult(ECreateError::AlreadyExists);
 		}
 
+		const ResourcePathID pathID = initializer.path.GetID();
+
+		// It might happen that there used to be a compiled asset with the same path. In that case, remove it's compiled data
+		if (IsAssetCompiled(pathID))
+		{
+			m_ddc.DeleteDerivedData(AssetDerivedDataKey(pathID));
+			m_assetsDB.DeleteAssetDescriptor(pathID);
+		}
+
 		assetInstance = CreateAssetInstance(AssetInstanceDefinition
 											{
 												.type   = initializer.type,
 												.name   = initializer.path.GetName(),
-												.pathID = initializer.path.GetID()
+												.pathID = pathID
 											});
 
 		if (!assetInstance.IsValid())
@@ -79,7 +88,7 @@ CreateResult AssetsSystem::CreateAsset(const AssetInitializer& initializer)
 
 		SaveAssetImpl(assetInstance);
 
-		m_loadedAssets[initializer.path.GetID()] = assetInstance.Get();
+		m_loadedAssets[pathID] = assetInstance.Get();
 
 		SPT_CHECK(!IsAssetCompiled(assetInstance->GetResourcePathID()));
 		if (IsCompiledOnlyMode())
@@ -309,6 +318,45 @@ void AssetsSystem::UnloadPermanentAssets()
 		{
 			SPT_CHECK_NO_ENTRY_MSG("Not all assets were unloaded before shutdown!");
 		}
+	}
+}
+
+void AssetsSystem::RemoveAssetCompiledData(ResourcePathID pathID)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!IsCompiledOnlyMode());
+
+	m_assetsDB.DeleteAssetDescriptor(pathID);
+	m_ddc.DeleteDerivedData(AssetDerivedDataKey(pathID));
+}
+
+void AssetsSystem::RemoveAssetsCompiledDataByType(AssetType type)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!IsCompiledOnlyMode());
+
+	const lib::DynamicArray<AssetMetaData> assets = m_assetsDB.GetAllAssetsDescriptors();
+	for (const AssetMetaData& assetMeta : assets)
+	{
+		if (assetMeta.descriptor.assetTypeKey == type.GetKey())
+		{
+			RemoveAssetCompiledData(assetMeta.pathID);
+		}
+	}
+}
+
+void AssetsSystem::RemoveAllAssetsCompiledData()
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!IsCompiledOnlyMode());
+
+	const lib::DynamicArray<AssetMetaData> assets = m_assetsDB.GetAllAssetsDescriptors();
+	for (const AssetMetaData& assetMeta : assets)
+	{
+		RemoveAssetCompiledData(assetMeta.pathID);
 	}
 }
 

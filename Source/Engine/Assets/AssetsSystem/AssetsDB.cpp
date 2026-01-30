@@ -135,7 +135,7 @@ void AssetsDB::SaveAssetDescriptor(const ResourcePath& assetPath, const AssetDes
 	m_pathsDDCHandle.FlushWrites();
 }
 
-void AssetsDB::DeleteAssetDescriptor(const ResourcePath& assetPath)
+void AssetsDB::DeleteAssetDescriptor(ResourcePathID pathID)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -143,7 +143,7 @@ void AssetsDB::DeleteAssetDescriptor(const ResourcePath& assetPath)
 
 	const lib::WriteLockGuard lock(m_lock);
 
-	const auto it = m_descriptors.find(assetPath.GetID());
+	const auto it = m_descriptors.find(pathID);
 	if (it == m_descriptors.end())
 	{
 		return;
@@ -165,7 +165,7 @@ void AssetsDB::DeleteAssetDescriptor(const ResourcePath& assetPath)
 	m_descriptors.erase(it);
 	m_assetsDDCHandle.FlushWrites();
 
-	m_paths.erase(assetPath.GetID());
+	m_paths.erase(pathID);
 	m_pathsDDCHandle.FlushWrites();
 }
 
@@ -180,6 +180,23 @@ std::optional<AssetDescriptor> AssetsDB::GetAssetDescriptor(ResourcePathID pathI
 		if (it != m_descriptors.end())
 		{
 			result = it->second.descriptor;
+		}
+	}
+
+	return result;
+}
+
+lib::DynamicArray<AssetMetaData> AssetsDB::GetAllAssetsDescriptors() const
+{
+	lib::DynamicArray<AssetMetaData> result;
+
+	{
+		const lib::ReadLockGuard lock(m_lock);
+
+		result.reserve(m_descriptors.size());
+		for (const auto& [pathID, runtimeDescriptor] : m_descriptors)
+		{
+			result.emplace_back(AssetMetaData{ .pathID = pathID, .descriptor = runtimeDescriptor.descriptor });
 		}
 	}
 

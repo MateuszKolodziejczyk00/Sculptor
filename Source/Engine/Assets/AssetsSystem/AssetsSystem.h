@@ -130,6 +130,10 @@ public:
 
 	void UnloadPermanentAssets();
 
+	void RemoveAssetCompiledData(ResourcePathID pathID);
+	void RemoveAssetsCompiledDataByType(AssetType type);
+	void RemoveAllAssetsCompiledData();
+
 	lib::DynamicArray<AssetHandle> GetLoadedAssetsList() const;
 
 	const lib::Path& GetContentPath() const { return m_contentPath; }

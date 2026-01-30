@@ -23,6 +23,13 @@ struct AssetsDBInitInfo
 };
 
 
+struct AssetMetaData
+{
+	ResourcePathID pathID;
+	AssetDescriptor descriptor;
+};
+
+
 class AssetsDB
 {
 	struct AssetsDBHeader
@@ -57,9 +64,11 @@ public:
 	void Shutdown();
 
 	void SaveAssetDescriptor(const ResourcePath& assetPath, const AssetDescriptor& descriptor);
-	void DeleteAssetDescriptor(const ResourcePath& assetPath);
+	void DeleteAssetDescriptor(ResourcePathID pathID);
 
 	std::optional<AssetDescriptor> GetAssetDescriptor(ResourcePathID pathID) const;
+
+	lib::DynamicArray<AssetMetaData> GetAllAssetsDescriptors() const;
 
 	Bool ContainsAsset(ResourcePathID pathID) const;
 

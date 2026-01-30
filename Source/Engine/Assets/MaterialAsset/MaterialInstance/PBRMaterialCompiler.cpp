@@ -233,10 +233,9 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 
 				textureDef.mipLevels[mipIdx] = MaterialTextureMipDefinition{.dataOffset = mipsOffset, .dataSize = mipSize};
 
-				mipsOffset += static_cast<Uint32>(mipSize);
+				mipsOffset            += static_cast<Uint32>(mipSize);
+				accumulatedDataOffset += static_cast<Uint32>(mipSize);
 			}
-
-			accumulatedDataOffset += mipsOffset;
 		};
 
 		accmulateTextureOffset(headerData.baseColorTexture, baseColorMipsData);
