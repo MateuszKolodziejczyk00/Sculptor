@@ -81,12 +81,13 @@ MaterialEvaluationOutput EvaluateMat(in RTMaterialEvaluationParams evalParams)
 		normal = -normal;
 	}
 
-	float2 uv = 0.f;
+	float2 normalizedUV = 0.f;
 	[unroll]
 	for (uint idx = 0; idx < 3; ++idx)
 	{
-		uv += UGB().LoadUV(instanceData.uvsDataUGBOffset, indices[idx]) * barycentricCoords[idx];;
+		normalizedUV += UGB().LoadNormalizedUV(instanceData.uvsDataUGBOffset, indices[idx]) * barycentricCoords[idx];
 	}
+	const float2 uv = instanceData.uvsMin + normalizedUV * instanceData.uvsRange;
 
 	const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(instanceData.materialDataHandle);
 
@@ -116,12 +117,13 @@ CustomOpacityOutput EvaluateOpacity(in RTMaterialEvaluationParams evalParams)
 		indices[idx] = UGB().LoadVertexIndex(instanceData.indicesDataUGBOffset, evalParams.triangleIdx * 3 + idx);
 	}
 
-	float2 uv = 0.f;
+	float2 normalizedUV = 0.f;
 	[unroll]
 	for (uint idx = 0; idx < 3; ++idx)
 	{
-		uv += UGB().LoadUV(instanceData.uvsDataUGBOffset, indices[idx]) * barycentricCoords[idx];;
+		normalizedUV += UGB().LoadNormalizedUV(instanceData.uvsDataUGBOffset, indices[idx]) * barycentricCoords[idx];
 	}
+	const float2 uv = instanceData.uvsMin + normalizedUV * instanceData.uvsRange;
 
 	const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(instanceData.materialDataHandle);
 

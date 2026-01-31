@@ -25,11 +25,13 @@ struct RayTracingGeometryDefinition
 	 */
 	Uint32 geometryDataID;
 
-
 	Uint32 indicesDataUGBOffset   = 0u;
 	Uint32 locationsDataUGBOffset = 0u;
 	Uint32 uvsDataUGBOffset       = 0u;
 	Uint32 normalsDataUGBOffset   = 0u;
+
+	math::Vector2f uvsMin   = math::Vector2f::Zero();
+	math::Vector2f uvsRange = math::Vector2f::Zero();
 };
 
 
@@ -72,6 +74,8 @@ BEGIN_SHADER_STRUCT(RTInstanceData)
 	SHADER_STRUCT_FIELD(Uint32,                  locationsDataUGBOffset)
 	SHADER_STRUCT_FIELD(Uint32,                  uvsDataUGBOffset)
 	SHADER_STRUCT_FIELD(Uint32,                  normalsDataUGBOffset)
+	SHADER_STRUCT_FIELD(math::Vector2f,          uvsMin)
+	SHADER_STRUCT_FIELD(math::Vector2f,          uvsRange)
 END_SHADER_STRUCT();
 
 

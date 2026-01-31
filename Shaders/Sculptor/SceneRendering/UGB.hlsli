@@ -44,10 +44,14 @@ struct UGBInterface : SceneGeometryData
 		return float4(tangent, handedness);
 	}
 
-	float2 LoadUV(in uint ugbOffset, in uint vertex)
+	float2 LoadNormalizedUV(in uint ugbOffset, in uint vertex)
 	{
-		const uint vertexOffset = vertex * 8;
-		return ugb.geometryData.Load<float2>(ugbOffset + vertexOffset);
+		const uint vertexOffset = vertex * 4;
+		const uint packedUV = ugb.geometryData.Load<uint>(ugbOffset + vertexOffset);
+		return float2(
+			(packedUV & 0xFFFF) / 65535.0f,
+			((packedUV >> 16) & 0xFFFF) / 65535.0f
+		);
 	}
 };
 

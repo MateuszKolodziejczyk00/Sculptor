@@ -100,6 +100,8 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 				rtInstance.locationsDataUGBOffset = rtGeometry.locationsDataUGBOffset;
 				rtInstance.uvsDataUGBOffset       = rtGeometry.uvsDataUGBOffset;
 				rtInstance.normalsDataUGBOffset   = rtGeometry.normalsDataUGBOffset;
+				rtInstance.uvsMin                 = rtGeometry.uvsMin;
+				rtInstance.uvsRange               = rtGeometry.uvsRange;
 
 				mat::RTHitGroupPermutation hitGroupPermutation;
 				hitGroupPermutation.SHADER = materialProxy.params.shader;

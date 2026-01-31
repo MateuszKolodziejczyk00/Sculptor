@@ -147,7 +147,8 @@ VertexData ProcessVertex(in RenderEntityGPUData entityData, in const SubmeshGPUD
 		}
 	}
 
-	vertexData.uv = UGB().LoadUV(submesh.uvsOffset, globalVertexIdx);
+	const float2 normalizedUV = UGB().LoadNormalizedUV(submesh.uvsOffset, globalVertexIdx);
+	vertexData.uv = submesh.uvsMin + normalizedUV * submesh.uvsRange;
 
 	return vertexData;
 }
@@ -269,7 +270,10 @@ GBufferOutput EmitGBuffer_FS(in OutputVertex vertexInput)
 		gBufferData.emissive  = evaluatedMaterial.emissiveColor;
 
 		output = EncodeGBuffer(gBufferData);
+
+		debug::WriteDebugPixel(pixelCoord, gBufferData.normal * 0.5f + 0.5f);
 	}
 
 	return output;
 }
+[[meta(debug_features)]]

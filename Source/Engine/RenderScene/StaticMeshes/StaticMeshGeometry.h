@@ -52,12 +52,19 @@ using MeshletsGPUSpan = gfx::GPUNamedElemsSpan<MeshletsArray, MeshletGPUData>;
 BEGIN_SHADER_STRUCT(SubmeshGPUData)
 	SHADER_STRUCT_FIELD(Uint32,          indicesOffset)
 	SHADER_STRUCT_FIELD(Uint32,          indicesNum)
+
 	SHADER_STRUCT_FIELD(Uint32,          locationsOffset)
 	SHADER_STRUCT_FIELD(Uint32,          normalsOffset)
+
 	SHADER_STRUCT_FIELD(Uint32,          tangentsOffset)
 	SHADER_STRUCT_FIELD(Uint32,          uvsOffset)
+
 	SHADER_STRUCT_FIELD(Uint32,          meshletsPrimitivesDataOffset)
 	SHADER_STRUCT_FIELD(Uint32,          meshletsVerticesDataOffset)
+
+	SHADER_STRUCT_FIELD(math::Vector2f,  uvsMin)
+	SHADER_STRUCT_FIELD(math::Vector2f,  uvsRange)
+
 	SHADER_STRUCT_FIELD(MeshletsGPUSpan, meshlets)
 	SHADER_STRUCT_FIELD(math::Vector3f,  boundingSphereCenter)
 	SHADER_STRUCT_FIELD(Real32,          boundingSphereRadius)

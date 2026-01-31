@@ -58,7 +58,8 @@ VS_OUTPUT SMDepthOnly_VS(VS_INPUT input)
 #if FRAGMENT_SHADER_NEEDS_MATERIAL
     output.materialDataID = uint(u_batchElements[drawCall.batchElementIdx].materialDataHandle.id);
 
-    const float2 vertexUV = UGB().LoadUV(submesh.uvsOffset, vertexIdx);
+    const float2 normalizedUV = UGB().LoadNormalizedUV(submesh.uvsOffset, vertexIdx);
+    const float2 vertexUV = submesh.uvsMin + normalizedUV * submesh.uvsRange;
     output.uv = vertexUV;
 #endif // FRAGMENT_SHADER_NEEDS_MATERIAL
 

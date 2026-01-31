@@ -43,6 +43,9 @@ struct SubmeshDefinition
 	Uint32          meshletsNum                  = 0u;
 	Uint32          padding                      = 0u;
 
+	math::Vector2f  uvsMin                      = math::Vector2f::Zero();
+	math::Vector2f  uvsRange                    = math::Vector2f::Zero();
+
 	math::Vector3f  boundingSphereCenter         = {};
 	Real32          boundingSphereRadius         = 0.f;
 };

@@ -17,6 +17,8 @@ namespace mesh_encoding
 
 void EncodeMeshNormals(lib::Span<Uint32> outEncoded, lib::Span<const math::Vector3f> normals)
 {
+	SPT_PROFILER_FUNCTION();
+
 	for (SizeType normalIdx = 0; normalIdx < normals.size(); ++normalIdx)
 	{
 		const math::Vector2f encodedNormal = math::Utils::OctahedronEncodeNormal(normals[normalIdx]);
@@ -27,6 +29,8 @@ void EncodeMeshNormals(lib::Span<Uint32> outEncoded, lib::Span<const math::Vecto
 
 void EncodeMeshTangents(lib::Span<Uint32> outEncoded, lib::Span<const math::Vector4f> tangents)
 {
+	SPT_PROFILER_FUNCTION();
+
 	for (SizeType tangentIdx = 0; tangentIdx < tangents.size(); ++tangentIdx)
 	{
 		const math::Vector2f encodedTangent = math::Utils::OctahedronEncodeNormal(math::Vector3f(tangents[tangentIdx].x(), tangents[tangentIdx].y(), tangents[tangentIdx].z()));
@@ -39,6 +43,37 @@ void EncodeMeshTangents(lib::Span<Uint32> outEncoded, lib::Span<const math::Vect
 	}
 }
 
+void EncodeMeshUVs(lib::Span<Uint32> outEncoded, lib::Span<const math::Vector2f> uvs, math::Vector2f& outMinUVs, math::Vector2f& outUVsRange)
+{
+	SPT_PROFILER_FUNCTION();
+
+	math::Vector2f minUVs = math::Vector2f::Constant(999999.f);
+	math::Vector2f maxUVs = math::Vector2f::Constant(-999999.f);
+
+	for (SizeType uvIdx = 0; uvIdx < uvs.size(); ++uvIdx)
+	{
+		minUVs.x() = std::min(minUVs.x(), uvs[uvIdx].x());
+		minUVs.y() = std::min(minUVs.y(), uvs[uvIdx].y());
+
+		maxUVs.x() = std::max(maxUVs.x(), uvs[uvIdx].x());
+		maxUVs.y() = std::max(maxUVs.y(), uvs[uvIdx].y());
+	}
+
+	const math::Vector2f uvsRange = maxUVs - minUVs;
+	const math::Vector2f rcpUVsRange = math::Vector2f(uvsRange.x() != 0.f ? 1.f / uvsRange.x() : 0.f, uvsRange.y() != 0.f ? 1.f / uvsRange.y() : 0.f);
+
+	outMinUVs   = minUVs;
+	outUVsRange = uvsRange;
+
+	for (SizeType uvIdx = 0; uvIdx < uvs.size(); ++uvIdx)
+	{
+		const math::Vector2f normalizedUV = (uvs[uvIdx] - minUVs).cwiseProduct(rcpUVsRange);
+
+		const Uint32 packedUV = (static_cast<Uint32>(normalizedUV.x() * 65535.f) & 0xFFFFu) | ((static_cast<Uint32>(normalizedUV.y() * 65535.f) & 0xFFFFu) << 16u);
+		outEncoded[uvIdx] = packedUV;
+	}
+}
+
 } // mesh_encoding
 
 MeshBuilder::MeshBuilder(const MeshBuildParameters& parameters)
@@ -47,23 +82,6 @@ MeshBuilder::MeshBuilder(const MeshBuildParameters& parameters)
 	, m_parameters(parameters)
 {
 	m_geometryData.reserve(1024 * 1024 * 8);
-}
-
-lib::MTHandle<RenderMesh> MeshBuilder::EmitMeshGeometry()
-{
-	SPT_PROFILER_FUNCTION();
-
-	Build();
-
-	lib::MTHandle<RenderMesh> renderMesh = new RenderMesh();
-	renderMesh->Initialize(CreateMeshDefinition());
-
-	if (GetParameters().blasBuilder)
-	{
-		renderMesh->BuildBLASes(*GetParameters().blasBuilder);
-	}
-
-	return renderMesh;
 }
 
 void MeshBuilder::Build()
@@ -236,7 +254,7 @@ void MeshBuilder::OptimizeSubmesh(SubmeshDefinition& submesh)
 	if (submesh.uvsOffset != idxNone<Uint32>)
 	{
 		math::Vector2f* uvs = GetGeometryDataMutable<math::Vector2f>(submesh.uvsOffset);
-		meshopt_remapVertexBuffer(uvs, uvs, vertexCount, sizeof(math::Vector2f), remapArray.data());
+		meshopt_remapVertexBuffer(uvs, uvs, vertexCount, sizeof(Uint32), remapArray.data());
 	}
 
 	if (submesh.normalsOffset != idxNone<Uint32>)

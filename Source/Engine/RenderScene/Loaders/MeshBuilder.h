@@ -22,6 +22,7 @@ namespace mesh_encoding
 
 void EncodeMeshNormals(lib::Span<Uint32> outEncoded, lib::Span<const math::Vector3f> normals);
 void EncodeMeshTangents(lib::Span<Uint32> outEncoded, lib::Span<const math::Vector4f> tangents);
+void EncodeMeshUVs(lib::Span<Uint32> outEncoded, lib::Span<const math::Vector2f> uvs, math::Vector2f& outMinUVs, math::Vector2f& outUVsRange);
 
 } // mesh_encoding
 
@@ -44,8 +45,6 @@ class MeshBuilder abstract
 public:
 
 	explicit MeshBuilder(const MeshBuildParameters& parameters);
-
-	lib::MTHandle<RenderMesh> EmitMeshGeometry();
 
 	void Build();
 

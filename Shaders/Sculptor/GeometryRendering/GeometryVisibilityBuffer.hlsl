@@ -490,8 +490,8 @@ void GeometryVisibility_MS(
 		localVerticesCS[(meshletVertexIdx >= MS_GROUP_SIZE)] = vertexCS;
 
 #if MATERIAL_CAN_DISCARD
-		const float2 vertexUV = UGB().LoadUV(submesh.uvsOffset, vertexIdx);
-		outVerts[meshletVertexIdx].uv = vertexUV;
+		const float2 normalizedUV = UGB().LoadNormalizedUV(submesh.uvsOffset, vertexIdx);
+		outVerts[meshletVertexIdx].uv = submesh.uvsMin + normalizedUV * submesh.uvsRange;
 #endif // MATERIAL_CAN_DISCARD
 	}
 

@@ -43,6 +43,8 @@ void RenderMesh::Initialize(const MeshDefinition& meshDef)
 		gpuSubmesh.uvsOffset                    = submesh.uvsOffset;
 		gpuSubmesh.meshletsPrimitivesDataOffset = submesh.meshletsPrimitivesDataOffset;
 		gpuSubmesh.meshletsVerticesDataOffset   = submesh.meshletsVerticesDataOffset;
+		gpuSubmesh.uvsMin                       = submesh.uvsMin;
+		gpuSubmesh.uvsRange	                    = submesh.uvsRange;
 		gpuSubmesh.meshlets                     = MeshletsGPUSpan(submesh.firstMeshletIdx * sizeof(MeshletGPUData), submesh.meshletsNum);
 		gpuSubmesh.boundingSphereCenter         = submesh.boundingSphereCenter;
 		gpuSubmesh.boundingSphereRadius         = submesh.boundingSphereRadius;
@@ -97,6 +99,9 @@ void RenderMesh::Initialize(const MeshDefinition& meshDef)
 		rtGeoDef.locationsDataUGBOffset = submeshesData[submeshIdx].locationsOffset;
 		rtGeoDef.uvsDataUGBOffset       = submeshesData[submeshIdx].uvsOffset;
 		rtGeoDef.normalsDataUGBOffset   = submeshesData[submeshIdx].normalsOffset;
+		rtGeoDef.uvsMin                 = submeshesData[submeshIdx].uvsMin;
+		rtGeoDef.uvsRange               = submeshesData[submeshIdx].uvsRange;
+
 	}
 
 	SPT_CHECK(IsValid());

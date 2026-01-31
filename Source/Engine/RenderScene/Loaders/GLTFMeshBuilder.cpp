@@ -167,7 +167,16 @@ void GLTFMeshBuilder::BuildMesh(lib::MemoryArena& memoryArena, const tinygltf::M
 
 			const lib::Span<Real32> uvsVals = priv::CopyAccessorData<Real32>(memoryArena, *uvsAccessor, model);
 			const lib::Span<math::Vector2f> uvs = lib::Span<math::Vector2f>(reinterpret_cast<math::Vector2f*>(uvsVals.data()), uvsVals.size() / 2);
-			submesh.uvsOffset = AppendData(uvs);
+
+			const lib::Span<Uint32> encodedUVs = memoryArena.AllocateSpanUninitialized<Uint32>(uvs.size());
+
+			math::Vector2f minUVs;
+			math::Vector2f maxRange;
+			mesh_encoding::EncodeMeshUVs(encodedUVs, uvs, minUVs, maxRange);
+
+			submesh.uvsMin    = minUVs;
+			submesh.uvsRange  = maxRange;
+			submesh.uvsOffset = AppendData(encodedUVs);
 		}
 	}
 }
