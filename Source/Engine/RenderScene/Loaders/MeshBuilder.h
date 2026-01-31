@@ -16,6 +16,16 @@ class BLASBuilder;
 namespace spt::rsc
 {
 
+
+namespace mesh_encoding
+{
+
+void EncodeMeshNormals(lib::Span<Uint32> outEncoded, lib::Span<const math::Vector3f> normals);
+void EncodeMeshTangents(lib::Span<Uint32> outEncoded, lib::Span<const math::Vector4f> tangents);
+
+} // mesh_encoding
+
+
 struct MeshBuildParameters
 {
 	MeshBuildParameters()
@@ -45,13 +55,18 @@ protected:
 
 	const MeshBuildParameters& GetParameters() const;
 
-	void BeginNewSubmesh();
+	SubmeshDefinition& BeginNewSubmesh();
 	SubmeshDefinition& GetCurrentSubmesh();
 
 	Uint64 GetCurrentDataSize() const;
 
-	template<typename TDestType, typename TSourceType>
-	SizeType AppendData(const unsigned char* data, SizeType componentsNum, SizeType stride, SizeType count);
+	Uint32 AppendData(lib::Span<const Byte> data);
+
+	template<typename TType>
+	Uint32 AppendData(lib::Span<TType> data)
+	{
+		return AppendData(lib::Span<const Byte>(reinterpret_cast<const Byte*>(data.data()), data.size() * sizeof(TType)));
+	}
 
 private:
 	
@@ -92,37 +107,5 @@ private:
 
 	MeshBuildParameters m_parameters;
 };
-
-
-template<typename TDestType, typename TSourceType>
-SizeType MeshBuilder::AppendData(const unsigned char* sourceData, SizeType componentsNum, SizeType stride, SizeType count)
-{
-	const SizeType destDataSize = count * componentsNum * sizeof(TDestType);
-	Byte* destPtr = AppendData(destDataSize);
-
-	const SizeType offset = destPtr - m_geometryData.data();
-
-	if constexpr (std::is_same_v<TDestType, TSourceType>)
-	{
-		if (stride == sizeof(TDestType) * componentsNum)
-		{
-			memcpy(destPtr, sourceData, count * componentsNum * sizeof(TDestType));
-			return offset;
-		}
-	}
-
-	const SizeType destStride = sizeof(TDestType) * componentsNum;
-	for (SizeType sourceOffset = 0, destOffset = 0; destOffset < destDataSize; sourceOffset += stride, destOffset += destStride)
-	{
-		TDestType* dest = reinterpret_cast<TDestType*>(&destPtr[destOffset]);
-		const TSourceType* source = reinterpret_cast<const TSourceType*>(&sourceData[sourceOffset]);
-		for (SizeType componentIdx = 0; componentIdx < componentsNum; ++componentIdx)
-		{
-			dest[componentIdx] = static_cast<TDestType>(source[componentIdx]);
-		}
-	}
-
-	return offset;
-}
 
 } // spt::rsc

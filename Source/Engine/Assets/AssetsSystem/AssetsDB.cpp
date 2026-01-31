@@ -126,7 +126,9 @@ void AssetsDB::SaveAssetDescriptor(const ResourcePath& assetPath, const AssetDes
 
 	PersistentPathDescriptorData& pathPersistentDescriptor = m_ddcPaths[descriptorIdx];
 	const wchar_t* path = assetPath.GetPath().c_str();
-	std::memcpy(pathPersistentDescriptor.path, path, std::wcslen(path) * sizeof(wchar_t));
+	const SizeType pathLength = std::wcslen(path);
+	std::memcpy(pathPersistentDescriptor.path, path, pathLength * sizeof(wchar_t));
+	std::memset(pathPersistentDescriptor.path + pathLength, 0, PersistentPathDescriptorData::s_maxLength - pathLength * sizeof(wchar_t));
 
 	m_descriptors[assetPath.GetID()] = RuntimeAssetDescriptor{ .descriptor = descriptor, .ddcDescriptorIdx = descriptorIdx };
 	m_paths[assetPath.GetID()] = assetPath;
@@ -160,6 +162,11 @@ void AssetsDB::DeleteAssetDescriptor(ResourcePathID pathID)
 
 		const PersistentAssetDescriptorData& swappedDescriptor = m_ddcDescriptors[descriptorToDelete.ddcDescriptorIdx];
 		m_descriptors[swappedDescriptor.pathID].ddcDescriptorIdx = descriptorToDelete.ddcDescriptorIdx;
+	}
+	else
+	{
+		std::memset(&m_ddcDescriptors[descriptorToDelete.ddcDescriptorIdx], 0, sizeof(PersistentAssetDescriptorData));
+		std::memset(&m_ddcPaths[descriptorToDelete.ddcDescriptorIdx], 0, sizeof(PersistentPathDescriptorData));
 	}
 
 	m_descriptors.erase(it);

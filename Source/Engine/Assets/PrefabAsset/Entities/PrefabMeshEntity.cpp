@@ -8,6 +8,8 @@
 #include "StaticMeshes/RenderMesh.h"
 
 
+SPT_DEFINE_LOG_CATEGORY(PrefabMeshEntity, true);
+
 namespace spt::as
 {
 
@@ -55,11 +57,13 @@ void PrefabMeshEntity::Spawn(const PrefabSpawningContext& context, lib::Span<con
 	MeshAssetHandle meshAsset = context.assetsSystem.GetLoadedAsset<MeshAsset>(compiledMesh.mesh);
 	if (!meshAsset.IsValid())
 	{
+		SPT_LOG_ERROR(PrefabMeshEntity, "Failed to spawn PrefabMeshEntity - mesh asset ({}) is invalid. Resolved path: {}", compiledMesh.mesh, context.assetsSystem.ResolvePath(compiledMesh.mesh).GetPath().string());
 		return;
 	}
 
 	if (meshAsset->GetSubmeshesNum() != compiledMesh.materialsNum)
 	{
+		SPT_LOG_ERROR(PrefabMeshEntity, "Failed to spawn PrefabMeshEntity - number of materials ({}) does not match number of submeshes ({}) in mesh asset ({})", compiledMesh.materialsNum, meshAsset->GetSubmeshesNum(), compiledMesh.mesh);
 		return;
 	}
 

@@ -63,6 +63,22 @@ using LoadResult = lib::ValueOrError<TypedAssetHandle<TAssetType>, ELoadError>;
 
 
 
+inline const char* AssetLoadErrorToString(ELoadError error)
+{
+	switch (error)
+	{
+	case ELoadError::DoesNotExist:
+		return "Asset does not exist";
+	case ELoadError::FailedToCreateInstance:
+		return "Failed to create asset instance";
+	default:
+		SPT_CHECK_NO_ENTRY();
+		return "Unknown error";
+	}
+}
+
+
+
 class ASSETS_SYSTEM_API AssetsSystem
 {
 public:

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Containers/Span.h"
 #include "SculptorAliases.h"
 #include "SculptorLibMacros.h"
 #include "Utility/Threading/Lock.h"
@@ -62,6 +63,13 @@ public:
 	{
 		void* const ptr = (void*)Allocate(sizeof(TType), alignof(TType));
 		return new (ptr) TType(std::forward<TArgs>(args)...);
+	}
+
+	template<typename TType>
+	lib::Span<TType> AllocateSpanUninitialized(Uint64 elementsNum)
+	{
+		void* const ptr = (void*)Allocate(sizeof(TType) * elementsNum, alignof(TType));
+		return lib::Span<TType>(reinterpret_cast<TType*>(ptr), elementsNum);
 	}
 
 private:

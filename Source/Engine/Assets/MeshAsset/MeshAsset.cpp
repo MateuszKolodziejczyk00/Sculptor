@@ -130,9 +130,11 @@ Bool MeshAsset::Compile()
 		return false;
 	}
 
+	lib::MemoryArena memArena("Mesh Compilation Memory Arena", 8u * 1024u * 1024u, 2u * 1024u * 1024u * 1024u);
+
 	rsc::MeshBuildParameters meshBuildParams{};
 	rsc::GLTFMeshBuilder meshBuilder(meshBuildParams);
-	meshBuilder.BuildMesh(gltfModel->meshes[sourceDef.meshIdx], *gltfModel);
+	meshBuilder.BuildMesh(memArena, gltfModel->meshes[sourceDef.meshIdx], *gltfModel);
 	meshBuilder.Build();
 
 	rsc::MeshDefinition meshDef = meshBuilder.CreateMeshDefinition();

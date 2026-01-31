@@ -12,6 +12,35 @@ namespace spt::rsc
 
 SPT_DEFINE_LOG_CATEGORY(LogMeshBuilder, true);
 
+namespace mesh_encoding
+{
+
+void EncodeMeshNormals(lib::Span<Uint32> outEncoded, lib::Span<const math::Vector3f> normals)
+{
+	for (SizeType normalIdx = 0; normalIdx < normals.size(); ++normalIdx)
+	{
+		const math::Vector2f encodedNormal = math::Utils::OctahedronEncodeNormal(normals[normalIdx]);
+		const Uint32 packedNormal = (static_cast<Uint32>(encodedNormal.x() * 65535.f) & 0xFFFFu) | ((static_cast<Uint32>(encodedNormal.y() * 65535.f) & 0xFFFFu) << 16u);
+		outEncoded[normalIdx] = packedNormal;
+	}
+}
+
+void EncodeMeshTangents(lib::Span<Uint32> outEncoded, lib::Span<const math::Vector4f> tangents)
+{
+	for (SizeType tangentIdx = 0; tangentIdx < tangents.size(); ++tangentIdx)
+	{
+		const math::Vector2f encodedTangent = math::Utils::OctahedronEncodeNormal(math::Vector3f(tangents[tangentIdx].x(), tangents[tangentIdx].y(), tangents[tangentIdx].z()));
+
+		const Uint32 packedTangent = (static_cast<Uint32>(encodedTangent.x() * 32767.f) & 0x7FFFu) |
+									((static_cast<Uint32>(encodedTangent.y() * 32767.f) & 0x7FFFu) << 15u) |
+									(static_cast<Uint32>((tangents[tangentIdx].w() >= 0.f ? 1u : 0u)) << 30u);
+
+		outEncoded[tangentIdx] = packedTangent;
+	}
+}
+
+} // mesh_encoding
+
 MeshBuilder::MeshBuilder(const MeshBuildParameters& parameters)
 	: m_boundingSphereCenter(math::Vector3f::Zero())
 	, m_boundingSphereRadius(0.f)
@@ -108,7 +137,7 @@ const MeshBuildParameters& MeshBuilder::GetParameters() const
 	return m_parameters;
 }
 
-void MeshBuilder::BeginNewSubmesh()
+SubmeshDefinition& MeshBuilder::BeginNewSubmesh()
 {
 	SubmeshDefinition& submesh = m_submeshes.emplace_back();
 	submesh.indicesOffset                = idxNone<Uint32>;
@@ -118,6 +147,7 @@ void MeshBuilder::BeginNewSubmesh()
 	submesh.uvsOffset                    = idxNone<Uint32>;
 	submesh.meshletsPrimitivesDataOffset = idxNone<Uint32>;
 	submesh.meshletsVerticesDataOffset   = idxNone<Uint32>;
+	return submesh;
 }
 
 SubmeshDefinition& MeshBuilder::GetCurrentSubmesh()
@@ -131,10 +161,19 @@ Uint64 MeshBuilder::GetCurrentDataSize() const
 	return m_geometryData.size();
 }
 
+Uint32 MeshBuilder::AppendData(lib::Span<const Byte> data)
+{
+	const SizeType offset = m_geometryData.size();
+	SPT_CHECK(offset + data.size() <= maxValue<Uint32>);
+	m_geometryData.resize(offset + data.size());
+	std::memcpy(&m_geometryData[offset], data.data(), data.size());
+	return static_cast<Uint32>(offset);
+}
+
 #if SPT_DEBUG
 void MeshBuilder::ValidateSubmesh(SubmeshDefinition& submesh) const
 {
-	SPT_CHECK(submesh.vertexCount > 0);
+	SPT_CHECK(submesh.verticesNum > 0);
 	SPT_CHECK(submesh.indicesOffset != idxNone<Uint32>);
 	SPT_CHECK(submesh.locationsOffset != idxNone<Uint32>);
 }
@@ -202,14 +241,14 @@ void MeshBuilder::OptimizeSubmesh(SubmeshDefinition& submesh)
 
 	if (submesh.normalsOffset != idxNone<Uint32>)
 	{
-		math::Vector3f* normals = GetGeometryDataMutable<math::Vector3f>(submesh.normalsOffset);
-		meshopt_remapVertexBuffer(normals, normals, vertexCount, sizeof(math::Vector3f), remapArray.data());
+		Uint32* normals = GetGeometryDataMutable<Uint32>(submesh.normalsOffset);
+		meshopt_remapVertexBuffer(normals, normals, vertexCount, sizeof(Uint32), remapArray.data());
 	}
 
 	if (submesh.tangentsOffset != idxNone<Uint32>)
 	{
 		math::Vector4f* tangents = GetGeometryDataMutable<math::Vector4f>(submesh.tangentsOffset);
-		meshopt_remapVertexBuffer(tangents, tangents, vertexCount, sizeof(math::Vector4f), remapArray.data());
+		meshopt_remapVertexBuffer(tangents, tangents, vertexCount, sizeof(Uint32), remapArray.data());
 	}
 
 	submesh.verticesNum = static_cast<Uint32>(vertexCount);
@@ -249,11 +288,11 @@ void MeshBuilder::BuildMeshlets(SubmeshDefinition& submesh)
 																	meshletMaxTriangles,
 																	coneWeigth);
 
-	const SizeType meshletVertsOffset = AppendData<Uint32, Uint32>(reinterpret_cast<const unsigned char*>(meshletVertices.data()), 1, sizeof(Uint32), meshletVertices.size());
-	submesh.meshletsVerticesDataOffset = static_cast<Uint32>(meshletVertsOffset);
+	const Uint32 meshletVertsOffset = AppendData(lib::Span<Uint32>(meshletVertices));
+	submesh.meshletsVerticesDataOffset = meshletVertsOffset;
 
-	const SizeType meshletPrimsOffset = AppendData<Uint8, Uint8>(reinterpret_cast<const unsigned char*>(meshletPrimitives.data()), 1, sizeof(Uint8), meshletPrimitives.size());
-	submesh.meshletsPrimitivesDataOffset = static_cast<Uint32>(meshletPrimsOffset);
+	const Uint32 meshletPrimsOffset = AppendData(lib::Span<Uint8>(meshletPrimitives));
+	submesh.meshletsPrimitivesDataOffset = meshletPrimsOffset;
 
 	const SizeType submeshMeshletsBegin = m_meshlets.size();
 	submesh.firstMeshletIdx = static_cast<Uint32>(submeshMeshletsBegin);

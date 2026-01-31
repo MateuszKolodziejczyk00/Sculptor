@@ -3,6 +3,8 @@
 #include "Importers/GLTFImporter.h"
 
 
+SPT_DEFINE_LOG_CATEGORY(PrefabAsset, true);
+
 namespace spt::as
 {
 
@@ -170,6 +172,10 @@ void PrefabAsset::OnInitialize()
 		if (loadRes)
 		{
 			m_referencedAssets.emplace_back(loadRes.GetValue());
+		}
+		else
+		{
+			SPT_LOG_ERROR(PrefabAsset, "Failed to load referenced asset with path ID {}. Reason: {}", referencedAsset, AssetLoadErrorToString(loadRes.GetError()));
 		}
 	}
 

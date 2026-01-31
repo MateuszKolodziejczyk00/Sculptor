@@ -228,6 +228,35 @@ public:
 	{
 		return newMin + (((originalValue - originalMin) / (originalMax - originalMin)) * (newMax - newMin));
 	}
+
+	static Real32 SignNotZero(Real32 v)
+	{
+		return (v >= 0.f) ? 1.f : -1.f;
+	}
+
+	static math::Vector2f OctahedronEncodeNormal(math::Vector3f direction)
+	{
+		const Real32 l1norm = direction.cwiseAbs().dot(math::Vector3f::Ones());
+		math::Vector2f uv = direction.head<2>() * (1.f / l1norm);
+		if (direction.z() < 0.f)
+		{
+			uv = (math::Vector2f::Constant(1.f) - math::Vector2f(uv.y(), uv.x()).cwiseAbs()).cwiseProduct(math::Vector2f(SignNotZero(direction.x()), SignNotZero(direction.y())));
+		}
+		return uv * 0.5f + math::Vector2f::Constant(0.5f);
+	}
+	
+
+	static math::Vector3f OctahedronDecodeNormal(math::Vector2f coords)
+	{
+		coords = coords * 2.f - math::Vector2f::Constant(1.f);
+	
+		math::Vector3f direction = math::Vector3f(coords.x(), coords.y(), 1.f - abs(coords.x()) - abs(coords.y()));
+		if (direction.z() < 0.f)
+		{
+			direction.head<2>() = (math::Vector2f::Constant(1.f) - math::Vector2f(direction.y(), direction.x()).cwiseAbs()).cwiseProduct(math::Vector2f(SignNotZero(direction.x()), SignNotZero(direction.y())));
+		}
+		return direction.normalized();
+	}
 };
 
 } // spt::math
