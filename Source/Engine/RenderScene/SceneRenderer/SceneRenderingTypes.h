@@ -32,13 +32,13 @@ enum class ERenderStage : Flags32
 	VisibilityBuffer				= BIT(4),
 	MotionAndDepth					= BIT(5),
 	DownsampleGeometryTextures		= BIT(6),
-	AmbientOcclusion				= BIT(7),
+	AmbientOcclusion				= BIT(7), // not used
 	DirectionalLightsShadowMasks	= BIT(8),
 	ForwardOpaque					= BIT(9),
 	DeferredShading					= BIT(10),
 	SpecularReflections				= BIT(11),
 	CompositeLighting				= BIT(12),
-	Transparency				    = BIT(13),
+	Transparency					= BIT(13),
 	PostProcessPreAA				= BIT(14),
 	AntiAliasing					= BIT(15),
 	HDRResolve						= BIT(16),
@@ -46,7 +46,7 @@ enum class ERenderStage : Flags32
 	RayTracingRenderStages			= DirectionalLightsShadowMasks,
 
 	VisibilityBufferStages			= VisibilityBuffer | MotionAndDepth,
-	DeferredLightingStages			= GlobalIllumination | DownsampleGeometryTextures | AmbientOcclusion | DeferredShading | SpecularReflections | CompositeLighting | Transparency,
+	DeferredLightingStages			= GlobalIllumination | DownsampleGeometryTextures | DeferredShading | SpecularReflections | CompositeLighting | Transparency,
 	PostProcessStages				= PostProcessPreAA | HDRResolve,
 
 	// Presets

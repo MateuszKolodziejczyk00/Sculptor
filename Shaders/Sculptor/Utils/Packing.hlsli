@@ -184,4 +184,17 @@ half UnpackHalf(in uint16_t value)
 	return (half)f16tof32(packed);
 }
 
+float2 PackTangentNormalToXY(in float3 normal)
+{
+	normal = normalize(normal);
+	return normal.xy * 0.5f + 0.5f;
+}
+
+float3 UnpackTangentNormalFromXY(in float2 packedNormal)
+{
+	const float2 xy = packedNormal * 2.f - 1.f;
+	const float z = sqrt(saturate(1.f - dot(xy, xy)));
+	return float3(xy, z);
+}
+
 #endif // PACKING_HLSLI

@@ -1,6 +1,8 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(CompilePBRMaterialTexturesDS)]]
+[[shader_params(CompilePBRMaterialConstants, u_constants)]]
+
+#include "Utils/Packing.hlsli"
 
 
 struct CS_INPUT
@@ -17,19 +19,25 @@ void CompilePBRMaterialTexturesCS(CS_INPUT input)
 	if (u_constants.rwBaseColor.IsValid())
 	{
 		const float4 color = u_constants.loadedBaseColor.Load(coords);
-		u_constants.rwBaseColor.Store(coords, color);
+		u_constants.rwBaseColor.Store(coords, float4(color.rgb, 1.0f));
+
+		if (u_constants.rwAlpha.IsValid())
+		{
+			u_constants.rwAlpha.Store(coords, color.a);
+		}
 	}
 
 	if (u_constants.rwMetallicRoughness.IsValid())
 	{
 		const float2 metallicRoughness = u_constants.loadedMetallicRoughness.Load(coords);
-		u_constants.rwMetallicRoughness.Store(coords, metallicRoughness);
+		u_constants.rwMetallicRoughness.Store(coords, float4(metallicRoughness, 0.0f, 0.f));
 	}
 
 	if (u_constants.rwNormals.IsValid())
 	{
-		const float3 normals = u_constants.loadedNormals.Load(coords).xyz;
-		u_constants.rwNormals.Store(coords, normals);
+		float3 normal = u_constants.loadedNormals.Load(coords).xyz;
+		normal.xy = normal.xy * 2.f - 1.f;
+		u_constants.rwNormals.Store(coords, PackTangentNormalToXY(normal));
 	}
 
 	if (u_constants.rwEmissive.IsValid())

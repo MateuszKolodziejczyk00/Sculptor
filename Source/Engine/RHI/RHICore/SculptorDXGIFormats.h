@@ -69,10 +69,15 @@ DXGI_FORMAT RHI2DXGIFormat(rhi::EFragmentFormat rhiFormat)
 	case EFragmentFormat::A2B10G10R10_UN_Float: return DXGI_FORMAT_R10G10B10A2_UNORM;
 	case EFragmentFormat::RGB9E5_Float:         return DXGI_FORMAT_R9G9B9E5_SHAREDEXP;
 	case EFragmentFormat::RGBA8_UN_Float:       return DXGI_FORMAT_R8G8B8A8_UNORM;
+	case EFragmentFormat::RGBA8_sRGB_Float:     return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 	case EFragmentFormat::BGRA8_UN_Float:       return DXGI_FORMAT_B8G8R8A8_UNORM;
 	case EFragmentFormat::RGBA16_UN_Float:      return DXGI_FORMAT_R16G16B16A16_UNORM;
 	case EFragmentFormat::RGBA16_S_Float:       return DXGI_FORMAT_R16G16B16A16_FLOAT;
 	case EFragmentFormat::RGBA32_S_Float:       return DXGI_FORMAT_R32G32B32A32_FLOAT;
+	case EFragmentFormat::BC1_sRGB:             return DXGI_FORMAT_BC1_UNORM_SRGB;
+	case EFragmentFormat::BC1_UN:               return DXGI_FORMAT_BC1_UNORM;
+	case EFragmentFormat::BC4_UN:               return DXGI_FORMAT_BC4_UNORM;
+	case EFragmentFormat::BC5_UN:               return DXGI_FORMAT_BC5_UNORM;
 	case EFragmentFormat::D16_UN_Float:         return DXGI_FORMAT_D16_UNORM;
 	case EFragmentFormat::D32_S_Float:          return DXGI_FORMAT_D32_FLOAT;
 	default:

@@ -16,7 +16,10 @@ class ShaderMetaData
 {
 public:
 
-	ShaderMetaData() = default;
+	ShaderMetaData()
+	{
+		m_dsStateTypeIDs.emplace_back(idxNone<SizeType>); // reserve idx 0 for bindless descriptor set
+	}
 
 	// Initialization =============================================
 

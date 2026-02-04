@@ -606,7 +606,11 @@ void RHICommandBuffer::CopyTextureToBuffer(const RHITexture& texture, rhi::EText
 	SPT_CHECK(copyOffset.y() + copyExtent.y() <= mipResolution.y());
 	SPT_CHECK(copyOffset.z() + copyExtent.z() <= mipResolution.z());
 
-	SPT_CHECK(bufferOffset + buffer.GetSize() >= copyExtent.x() * copyExtent.y() * copyExtent.z() * rhi::GetFragmentSize(texture.GetFormat()));
+	[[maybe_unused]]
+	const rhi::TextureFragmentInfo fragmentInfo = texture.GetFragmentInfo();
+	SPT_CHECK(copyOffset.x() % fragmentInfo.blockWidth == 0u && copyExtent.x() % fragmentInfo.blockWidth == 0u);
+	SPT_CHECK(copyOffset.y() % fragmentInfo.blockHeight == 0u && copyExtent.y() % fragmentInfo.blockHeight == 0u);
+	SPT_CHECK(bufferOffset + buffer.GetSize() >= (copyExtent.x() * copyExtent.y() * copyExtent.z()) / (fragmentInfo.blockWidth * fragmentInfo.blockHeight) * fragmentInfo.bytesPerBlock);
 
 	const VkImageLayout layout = VK_IMAGE_LAYOUT_GENERAL;
 

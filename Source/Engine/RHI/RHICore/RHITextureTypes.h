@@ -90,35 +90,57 @@ enum class EFragmentFormat : Uint32
 	RGB9E5_Float,
 
 	RGBA8_UN_Float,
+	RGBA8_sRGB_Float,
 	BGRA8_UN_Float,
 	RGBA16_UN_Float,
 	RGBA16_S_Float,
 
 	RGBA32_S_Float,
+
+	BC1_UN,
+	BC1_sRGB,
+	BC4_UN,
+	BC5_UN,
 	
 	D16_UN_Float,
 	D32_S_Float
 };
 
 
-inline Uint64 GetFragmentSize(EFragmentFormat format)
+struct TextureFragmentInfo
+{
+	Uint32 blockWidth    = 0u;
+	Uint32 blockHeight   = 0u;
+	Uint32 bytesPerBlock = 0u;
+};
+
+
+namespace bc_info
+{
+static constexpr TextureFragmentInfo bc1 = TextureFragmentInfo{ 4u, 4u, 8u };
+static constexpr TextureFragmentInfo bc4 = TextureFragmentInfo{ 4u, 4u, 8u };
+static constexpr TextureFragmentInfo bc5 = TextureFragmentInfo{ 4u, 4u, 16u };
+} // bc_info
+
+
+inline TextureFragmentInfo GetFragmentInfo(EFragmentFormat format)
 {
 	switch (format)
 	{
 	case EFragmentFormat::R8_UN_Float:
 	case EFragmentFormat::R8_U_Int:
-		return 1u;
+		return { 1u, 1u, 1u };
 
 	case EFragmentFormat::R16_U_Int:
 	case EFragmentFormat::R16_UN_Float:
 	case EFragmentFormat::R16_S_Float:
 	case EFragmentFormat::D16_UN_Float:
 	case EFragmentFormat::RG8_UN_Float:
-		return 2u;
+		return { 1u, 1u, 2u };
 
 	case EFragmentFormat::RGB8_UN_Float:
 	case EFragmentFormat::BGR8_UN_Float:
-		return 3u;
+		return { 1u, 1u, 3u };
 
 	case EFragmentFormat::R32_S_Float:
 	case EFragmentFormat::R32_U_Int:
@@ -127,30 +149,40 @@ inline Uint64 GetFragmentSize(EFragmentFormat format)
 	case EFragmentFormat::RG16_SN_Float:
 	case EFragmentFormat::RG16_S_Float:
 	case EFragmentFormat::RGBA8_UN_Float:
+	case EFragmentFormat::RGBA8_sRGB_Float:
 	case EFragmentFormat::BGRA8_UN_Float:
 	case EFragmentFormat::RGB10A2_UN_Float:
 	case EFragmentFormat::B10G11R11_U_Float:
 	case EFragmentFormat::A2B10G10R10_UN_Float:
 	case EFragmentFormat::RGB9E5_Float:
 	case EFragmentFormat::D32_S_Float:
-		return 4u;
+		return { 1u, 1u, 4u };
 
 	case EFragmentFormat::RG32_S_Float:
 	case EFragmentFormat::RGB16_UN_Float:
 	case EFragmentFormat::RGBA16_UN_Float:
 	case EFragmentFormat::RGBA16_S_Float:
-		return 8u;
+		return { 1u, 1u, 8u };
 
 	case EFragmentFormat::RGB32_S_Float:
-		return 12u;
+		return { 1u, 1u, 12u };
 
+	case EFragmentFormat::BC1_UN:
+	case EFragmentFormat::BC1_sRGB:
+		return bc_info::bc1;
+
+	case EFragmentFormat::BC4_UN:
+		return bc_info::bc4;
+
+	case EFragmentFormat::BC5_UN:
+		return bc_info::bc5;
 
 	case EFragmentFormat::RGBA32_S_Float:
-		return 16u;
+		return { 1u, 1u, 16u };
 	}
 
 	SPT_CHECK_NO_ENTRY();
-	return 0u;
+	return {};
 }
 
 
@@ -173,6 +205,7 @@ inline lib::String GetFormatName(rhi::EFragmentFormat format)
 	case rhi::EFragmentFormat::RG16_S_Float:         return "RG16_S_Float";
 	case rhi::EFragmentFormat::RG32_S_Float:         return "RG32_S_Float";
 	case rhi::EFragmentFormat::RGB8_UN_Float:        return "RGB8_UN_Float";
+	case rhi::EFragmentFormat::RGBA8_sRGB_Float:	 return "RGBA8_sRGB_Float";
 	case rhi::EFragmentFormat::BGR8_UN_Float:        return "BGR8_UN_Float";
 	case rhi::EFragmentFormat::RGB16_UN_Float:       return "RGB16_UN_Float";
 	case rhi::EFragmentFormat::RGB32_S_Float:        return "RGB32_S_Float";
@@ -185,6 +218,10 @@ inline lib::String GetFormatName(rhi::EFragmentFormat format)
 	case rhi::EFragmentFormat::RGBA16_UN_Float:      return "RGBA16_UN_Float";
 	case rhi::EFragmentFormat::RGBA16_S_Float:       return "RGBA16_S_Float";
 	case rhi::EFragmentFormat::RGBA32_S_Float:       return "RGBA32_S_Float";
+	case rhi::EFragmentFormat::BC1_UN:               return "BC1_UN";
+	case rhi::EFragmentFormat::BC1_sRGB:             return "BC1_sRGB";
+	case rhi::EFragmentFormat::BC4_UN:               return "BC4_UN";
+	case rhi::EFragmentFormat::BC5_UN:               return "BC5_UN";
 	case rhi::EFragmentFormat::D16_UN_Float:         return "D16_UN_Float";
 	case rhi::EFragmentFormat::D32_S_Float:          return "D32_S_Float";
 	default:
@@ -286,6 +323,10 @@ inline rhi::EFragmentFormat GetFormatByName(lib::StringView name)
 	{
 		return rhi::EFragmentFormat::RGBA8_UN_Float;
 	}
+	else if (name == "RGBA8_sRGB_Float")
+	{
+		return rhi::EFragmentFormat::RGBA8_sRGB_Float;
+	}
 	else if (name == "BGRA8_UN_Float")
 	{
 		return rhi::EFragmentFormat::BGRA8_UN_Float;
@@ -301,6 +342,22 @@ inline rhi::EFragmentFormat GetFormatByName(lib::StringView name)
 	else if (name == "RGBA32_S_Float")
 	{
 		return rhi::EFragmentFormat::RGBA32_S_Float;
+	}
+	else if (name == "BC1_UN")
+	{
+		return rhi::EFragmentFormat::BC1_UN;
+	}
+	else if (name == "BC1_sRGB")
+	{
+		return rhi::EFragmentFormat::BC1_sRGB;
+	}
+	else if (name == "BC4_UN")
+	{
+		return rhi::EFragmentFormat::BC4_UN;
+	}
+	else if (name == "BC5_UN")
+	{
+		return rhi::EFragmentFormat::BC5_UN;
 	}
 	else if (name == "D16_UN_Float")
 	{
@@ -543,6 +600,7 @@ inline ETextureAspect GetFullAspectForFormat(EFragmentFormat format)
 	case EFragmentFormat::RGBA8_UN_Float:
 	case EFragmentFormat::BGRA8_UN_Float:
 	case EFragmentFormat::RGB8_UN_Float:
+	case EFragmentFormat::RGBA8_sRGB_Float:
 	case EFragmentFormat::BGR8_UN_Float:
 	case EFragmentFormat::B10G11R11_U_Float:
 	case EFragmentFormat::RGB10A2_UN_Float:
@@ -552,6 +610,10 @@ inline ETextureAspect GetFullAspectForFormat(EFragmentFormat format)
 	case EFragmentFormat::RGBA16_UN_Float:
 	case EFragmentFormat::RGBA16_S_Float:
 	case EFragmentFormat::RGBA32_S_Float:
+	case EFragmentFormat::BC1_UN:
+	case EFragmentFormat::BC1_sRGB:
+	case EFragmentFormat::BC4_UN:
+	case EFragmentFormat::BC5_UN:
 
 		return ETextureAspect::Color;
 

@@ -51,6 +51,7 @@ struct PBRMaterialDataHeader
 	MaterialTextureDefinition roughnessTexture;
 	MaterialTextureDefinition normalsTexture;
 	MaterialTextureDefinition emissiveTexture;
+	MaterialTextureDefinition alphaTexture;
 };
 
 class MaterialTextureUploadRequest : public gfx::GPUDeferredUploadRequest

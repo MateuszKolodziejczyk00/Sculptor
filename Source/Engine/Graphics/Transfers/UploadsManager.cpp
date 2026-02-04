@@ -11,6 +11,7 @@
 #include "RHIBridge/RHILimitsImpl.h"
 #include "Types/Texture.h"
 
+
 namespace spt::gfx
 {
 
@@ -60,50 +61,55 @@ void UploadsManager::EnqueueFill(const lib::SharedRef<rdr::Buffer>& buffer, Uint
 	command->dataSize = range;
 }
 
-void UploadsManager::EnqueUploadToTexture(const Byte* data, Uint64 dataSize, const lib::SharedRef<rdr::Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset /*= math::Vector3u::Zero()*/, Uint32 mipLevel /*= 0*/, Uint32 arrayLayer /*= 0*/)
+void UploadsManager::EnqueueUploadToTexture(const Byte* data, Uint64 dataSize, const lib::SharedRef<rdr::Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset /*= math::Vector3u::Zero()*/, Uint32 mipLevel /*= 0*/, Uint32 arrayLayer /*= 0*/)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const Uint64 fragmentSize = texture->GetRHI().GetFragmentSize();
-	const Uint64 rowDataSize  = copyExtent.x() * fragmentSize;
-	SPT_CHECK(rowDataSize <= stagingBufferSize);
+	const rhi::TextureFragmentInfo fragmentInfo = texture->GetRHI().GetFragmentInfo();
+	SPT_CHECK(copyOffset.x() % fragmentInfo.blockWidth == 0u && copyExtent.x() % fragmentInfo.blockWidth == 0u);
+	SPT_CHECK(copyOffset.y() % fragmentInfo.blockHeight == 0u && copyExtent.y() % fragmentInfo.blockHeight == 0u);
 
-	const Uint32 rowsNum   = copyExtent.y();
-	const Uint32 slicesNum = copyExtent.z();
+	const math::Vector3u blocksCopyExtent = math::Vector3u(copyExtent.x() / fragmentInfo.blockWidth, copyExtent.y() / fragmentInfo.blockHeight, copyExtent.z());
 
-	SPT_CHECK(rowDataSize * rowsNum * slicesNum == dataSize);
+	const Uint32 blocksRowDataSize  = blocksCopyExtent.x() * fragmentInfo.bytesPerBlock;
+	SPT_CHECK(blocksRowDataSize <= stagingBufferSize);
 
-	const Uint32 maxRowsInBatch   = static_cast<Uint32>(stagingBufferSize / rowDataSize);
+	const Uint32 blockRowsNum = blocksCopyExtent.y();
+	const Uint32 slicesNum    = blocksCopyExtent.z();
+
+	SPT_CHECK(blocksRowDataSize * blockRowsNum * slicesNum == dataSize);
+
+	const Uint32 maxRowsInBatch   = static_cast<Uint32>(stagingBufferSize / blocksRowDataSize);
 	SPT_CHECK(maxRowsInBatch > 0u);
 
-	Uint64 srcDataOffset = 0u;
-	Uint32 currentRow    = 0u;
-	Uint32 currentSlice  = 0u;
+	Uint64 srcDataOffset   = 0u;
+	Uint32 currentBlockRow = 0u;
+	Uint32 currentSlice    = 0u;
 
 	while (currentSlice < slicesNum)
 	{
-		currentRow = 0u;
-		while (currentRow < rowsNum)
+		currentBlockRow = 0u;
+		while (currentBlockRow < blockRowsNum)
 		{
-			const Uint32 rowsInCurrentBatch = std::min(maxRowsInBatch, rowsNum - currentRow);
+			const Uint32 rowsInCurrentBatch = std::min(maxRowsInBatch, blockRowsNum - currentBlockRow);
 
-			const math::Vector3u currentBatchExtent = math::Vector3u(copyExtent.x(), rowsInCurrentBatch, 1u);
-			const math::Vector3u currentBatchOffset = math::Vector3u(copyOffset.x(), copyOffset.y() + currentRow, copyOffset.z() + currentSlice);
+			const math::Vector3u currentBatchExtent = math::Vector3u(copyExtent.x(), rowsInCurrentBatch * fragmentInfo.blockHeight, 1u);
+			const math::Vector3u currentBatchOffset = math::Vector3u(copyOffset.x(), copyOffset.y() + currentBlockRow * fragmentInfo.blockHeight, copyOffset.z() + currentSlice);
 
-			const Uint64 dataSizeForCurrentBatch = rowsInCurrentBatch * rowDataSize;
+			const Uint64 dataSizeForCurrentBatch = rowsInCurrentBatch * blocksRowDataSize;
 			SPT_CHECK(srcDataOffset + dataSizeForCurrentBatch <= dataSize);
 
 			EnqueueUploadToTextureImpl(data + srcDataOffset, dataSizeForCurrentBatch, texture, aspect, currentBatchExtent, currentBatchOffset, mipLevel, arrayLayer);
-			currentRow += rowsInCurrentBatch;
+			currentBlockRow += rowsInCurrentBatch;
 			srcDataOffset += dataSizeForCurrentBatch;
 		}
 
 		++currentSlice;
 	}
 
-	SPT_CHECK(currentRow    == rowsNum);
-	SPT_CHECK(currentSlice  == slicesNum);
-	SPT_CHECK(srcDataOffset == dataSize);
+	SPT_CHECK(currentBlockRow == blockRowsNum);
+	SPT_CHECK(currentSlice    == slicesNum);
+	SPT_CHECK(srcDataOffset   == dataSize);
 }
 
 Bool UploadsManager::HasPendingUploads() const
@@ -187,7 +193,7 @@ void UploadsManager::EnqueueUploadImpl(const lib::SharedRef<rdr::Buffer>& destBu
 		m_bufferCommands.emplace_back(command);
 	
 		m_currentStagingBufferOffset += dataSize;
-		m_currentStagingBufferOffset = math::Utils::RoundUp(m_currentStagingBufferOffset, std::max<Uint64>(rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment(), 4u));
+		m_currentStagingBufferOffset = math::Utils::RoundUp(m_currentStagingBufferOffset, std::max<Uint64>(rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment(), 8u));
 
 		++m_copiesInProgressNum;
 	}
@@ -240,7 +246,7 @@ void UploadsManager::EnqueueUploadToTextureImpl(const Byte* data, Uint64 dataSiz
 		m_copyToTextureCommands.emplace_back(command);
 	
 		m_currentStagingBufferOffset += dataSize;
-		m_currentStagingBufferOffset = math::Utils::RoundUp(m_currentStagingBufferOffset, std::max<Uint64>(rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment(), 4u));
+		m_currentStagingBufferOffset = math::Utils::RoundUp(m_currentStagingBufferOffset, std::max<Uint64>(rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment(), 8u));
 
 		++m_copiesInProgressNum;
 	}

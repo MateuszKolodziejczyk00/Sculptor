@@ -3,6 +3,7 @@
 #include "JobSystem.h"
 #include "ResourcesManager.h"
 #include "CommandsRecorder/CommandRecorder.h"
+#include "Types/AccelerationStructure.h"
 #include "Types/Texture.h"
 #include "Renderer.h"
 #include "DeviceQueues/DeviceQueuesManager.h"

@@ -53,6 +53,7 @@ rhi::PipelineLayoutDefinition Pipeline::CreateLayoutDefinition() const
 
 	// Bindless
 	{
+		SPT_CHECK(m_metaData.GetDescriptorSetsNum() > 0u);
 		SPT_CHECK(m_metaData.GetDescriptorSetStateTypeID(0u) == idxNone<Uint64>);
 
 		if (layoutDefinition.descriptorSetLayouts.empty())

@@ -247,7 +247,9 @@ Bool SaveTextureImpl(math::Vector3u resolution, rhi::EFragmentFormat format, lib
 	lib::DynamicArray<Byte> outData(sizeof(dds::DDSHeader) + header.data_size());
 	std::memcpy(outData.data(), &header, sizeof(header));
 
-	const Uint64 pixelSize = rhi::GetFragmentSize(format);
+	const rhi::TextureFragmentInfo fragmentInfo = rhi::GetFragmentInfo(format);
+	SPT_CHECK(fragmentInfo.blockWidth == 1u && fragmentInfo.blockHeight == 1u);
+	const Uint64 pixelSize = fragmentInfo.bytesPerBlock;
 
 	const Uint64 srcRowSize   = resolution.x() * pixelSize;
 	const Uint64 srcSliceSize = srcRowSize * resolution.y();
@@ -389,7 +391,7 @@ lib::SharedPtr<rdr::Texture> TextureLoader::LoadTexture(lib::StringView path, co
 
 				const lib::Span<const Byte> data = dataView.GetSurfaceData(mipLevelIdx, arrayLayerIdx);
 
-				UploadsManager::Get().EnqueUploadToTexture(data.data(), data.size(), lib::Ref(loadedTexture), aspect, mipResolution,  math::Vector3u::Zero(), mipLevelIdx, arrayLayerIdx);
+				UploadsManager::Get().EnqueueUploadToTexture(data.data(), data.size(), lib::Ref(loadedTexture), aspect, mipResolution,  math::Vector3u::Zero(), mipLevelIdx, arrayLayerIdx);
 			}
 		}
 	};

@@ -2,16 +2,17 @@
 #define DEFAULT_PBR_HLSLI
 
 #include "SceneRendering/GPUScene.hlsli"
+#include "Utils/Packing.hlsli"
 
 
 CustomOpacityOutput EvaluateCustomOpacity(MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
 {
     CustomOpacityOutput output;
 
-    if(materialData.baseColorTexture.IsValid())
+    if(materialData.alphaTexture.IsValid())
     {
         float opacity = 1.f;
-        opacity = materialData.baseColorTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialLinear(), evalParams.uv).a;
+        opacity = materialData.alphaTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialLinear(), evalParams.uv);
         output.shouldDiscard = opacity < 0.8f;
     }
     else
@@ -30,7 +31,6 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
 	if (materialData.baseColorTexture.IsValid())
     {
         baseColor = materialData.baseColorTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialAniso(), evalParams.uv).rgb;
-        baseColor = pow(baseColor, 2.2f);
     }
 
     baseColor *= materialData.baseColorFactor;
@@ -41,20 +41,19 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
     if(materialData.metallicRoughnessTexture.IsValid())
     {
 		const float2 metallicRoughness = materialData.metallicRoughnessTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialAniso(), evalParams.uv);
-        metallic  *= metallicRoughness.x;
-        roughness *= metallicRoughness.y;
+		metallic *= metallicRoughness.x;
+		roughness *= metallicRoughness.y;
     }
 
     float3 shadingNormal;
     const float3 geometryNormal = normalize(evalParams.normal);
     if(evalParams.hasTangent && materialData.normalsTexture.IsValid())
     {
-		float3 textureNormal = materialData.normalsTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialAniso(), evalParams.uv);
+		const float2 textureNormal = materialData.normalsTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialAniso(), evalParams.uv);
 
-        textureNormal = textureNormal * 2.f - 1.f;
-        textureNormal.z = sqrt(1.f - saturate(Pow2(textureNormal.x) + Pow2(textureNormal.y)));
+		const float3 tangentNormal = UnpackTangentNormalFromXY(textureNormal);
         const float3x3 TBN = transpose(float3x3(normalize(evalParams.tangent), normalize(evalParams.bitangent), geometryNormal));
-        shadingNormal = normalize(mul(TBN, textureNormal));
+        shadingNormal = normalize(mul(TBN, tangentNormal));
     }
     else
     {

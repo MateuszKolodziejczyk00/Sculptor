@@ -74,13 +74,14 @@ DS_END();
 
 BEGIN_SHADER_STRUCT(CompositeRTReflectionsConstants)
 	SHADER_STRUCT_FIELD(Uint32, halfResInfluence)
+	SHADER_STRUCT_FIELD(Uint32, aoEnabled)
 END_SHADER_STRUCT();
 
 
 DS_BEGIN(CompositeRTReflectionsDS, rg::RGDescriptorSetState<CompositeRTReflectionsDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                    u_specularGI)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                    u_diffuseGI)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                            u_ambientOcclusion)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                    u_ambientOcclusion)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                     u_reflectionsInfluenceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                    u_brdfIntegrationLUT)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                    u_baseColorMetallicTexture)
@@ -190,13 +191,19 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 		compositeRTReflectionsDS = graphBuilder.CreateDescriptorSet<CompositeRTReflectionsDS>(RENDERER_RESOURCE_NAME("CompositeRTReflectionsDS"));
 		compositeRTReflectionsDS->u_specularGI                  = rtReflectionsData->finalSpecularGI;
 		compositeRTReflectionsDS->u_diffuseGI                   = rtReflectionsData->finalDiffuseGI;
-		compositeRTReflectionsDS->u_ambientOcclusion            = viewContext.ambientOcclusion;
 		compositeRTReflectionsDS->u_reflectionsInfluenceTexture = rtReflectionsData->reflectionsInfluenceTexture;
 		compositeRTReflectionsDS->u_brdfIntegrationLUT          = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
 		compositeRTReflectionsDS->u_baseColorMetallicTexture    = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
 		compositeRTReflectionsDS->u_roughnessTexture            = viewContext.gBuffer[GBuffer::Texture::Roughness];
 		compositeRTReflectionsDS->u_tangentFrameTexture         = viewContext.gBuffer[GBuffer::Texture::TangentFrame];
-		compositeRTReflectionsDS->u_rtReflectionsConstants      = rtReflectionsConstants;
+
+		if (viewContext.ambientOcclusion.IsValid())
+		{
+			compositeRTReflectionsDS->u_ambientOcclusion = viewContext.ambientOcclusion;
+			rtReflectionsConstants.aoEnabled = 1u;
+		}
+
+		compositeRTReflectionsDS->u_rtReflectionsConstants = rtReflectionsConstants;
 	}
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Composite Lighting"),

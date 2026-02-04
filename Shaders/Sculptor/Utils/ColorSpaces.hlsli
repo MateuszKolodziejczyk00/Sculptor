@@ -55,4 +55,17 @@ float3 LinearTosRGB(in float3 color)
     return clr;
 }
 
+float3 SRGBToLinear(in float3 color)
+{
+    float3 x = color / 12.92f;
+    float3 y = pow(max((color + 0.055f) / 1.055f, 0.0f), 2.4f);
+
+    float3 clr = color;
+    clr.r = color.r <= 0.04045f ? x.r : y.r;
+    clr.g = color.g <= 0.04045f ? x.g : y.g;
+    clr.b = color.b <= 0.04045f ? x.b : y.b;
+
+    return clr;
+}
+
 #endif // COLOR_SPACES_HLSLI

@@ -177,6 +177,15 @@ public:
 		return outputRange(0) + (outputRange(1) - outputRange(0)) * (clampedInput - inputRange(0)) / (inputRange(1) - inputRange(0));
 	}
 
+	static math::Vector2u ComputeMipResolution(const math::Vector2u& resolution, Uint32 mipLevel)
+	{
+		math::Vector2u mipResolution{};
+		mipResolution.x() = std::max<Uint32>(resolution.x() >> mipLevel, 1);
+		mipResolution.y() = std::max<Uint32>(resolution.y() >> mipLevel, 1);
+
+		return mipResolution;
+	}
+
 	static math::Vector3u ComputeMipResolution(const math::Vector3u& resolution, Uint32 mipLevel)
 	{
 		math::Vector3u mipResolution{};

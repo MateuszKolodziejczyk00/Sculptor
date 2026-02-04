@@ -58,7 +58,7 @@ public:
 	
 	const rhi::RHIAllocationInfo&	GetAllocationInfo() const;
 
-	Uint64							GetFragmentSize() const;
+	rhi::TextureFragmentInfo		GetFragmentInfo() const;
 	Uint64							GetMipSize(Uint32 mipIdx) const;
 
 	VkImage							GetHandle() const;

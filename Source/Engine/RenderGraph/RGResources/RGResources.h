@@ -211,7 +211,9 @@ public:
 	Uint64 GetMipSize(Uint32 mipLevel) const
 	{
 		const math::Vector3u mipResolution = GetMipResolution(mipLevel);
-		return mipResolution.x() * mipResolution.y() * mipResolution.z() * rhi::GetFragmentSize(GetFormat());
+
+		const rhi::TextureFragmentInfo fragmentInfo = rhi::GetFragmentInfo(GetFormat());
+		return (mipResolution.x() * mipResolution.y() * mipResolution.z()) / (fragmentInfo.blockWidth * fragmentInfo.blockHeight) * fragmentInfo.bytesPerBlock;
 	}
 
 	math::Vector2u GetResolution2D() const

@@ -270,10 +270,7 @@ GBufferOutput EmitGBuffer_FS(in OutputVertex vertexInput)
 		gBufferData.emissive  = evaluatedMaterial.emissiveColor;
 
 		output = EncodeGBuffer(gBufferData);
-
-		debug::WriteDebugPixel(pixelCoord, gBufferData.normal * 0.5f + 0.5f);
 	}
 
 	return output;
 }
-[[meta(debug_features)]]

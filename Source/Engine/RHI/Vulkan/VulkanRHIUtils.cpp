@@ -161,11 +161,17 @@ VkFormat RHIToVulkan::GetVulkanFormat(rhi::EFragmentFormat format)
 	case rhi::EFragmentFormat::RGB9E5_Float:	        return VK_FORMAT_E5B9G9R9_UFLOAT_PACK32;
 
 	case rhi::EFragmentFormat::RGBA8_UN_Float:			return VK_FORMAT_R8G8B8A8_UNORM;
+	case rhi::EFragmentFormat::RGBA8_sRGB_Float:		return VK_FORMAT_R8G8B8A8_SRGB;
 	case rhi::EFragmentFormat::BGRA8_UN_Float:			return VK_FORMAT_B8G8R8A8_UNORM;
 	case rhi::EFragmentFormat::RGBA16_UN_Float:			return VK_FORMAT_R16G16B16A16_UNORM;
 	case rhi::EFragmentFormat::RGBA16_S_Float:			return VK_FORMAT_R16G16B16A16_SFLOAT;
 
 	case rhi::EFragmentFormat::RGBA32_S_Float:			return VK_FORMAT_R32G32B32A32_SFLOAT;
+
+	case rhi::EFragmentFormat::BC1_UN:					return VK_FORMAT_BC1_RGB_UNORM_BLOCK;
+	case rhi::EFragmentFormat::BC1_sRGB:				return VK_FORMAT_BC1_RGB_SRGB_BLOCK;
+	case rhi::EFragmentFormat::BC4_UN:					return VK_FORMAT_BC4_UNORM_BLOCK;
+	case rhi::EFragmentFormat::BC5_UN:					return VK_FORMAT_BC5_UNORM_BLOCK;
 
 	case rhi::EFragmentFormat::D16_UN_Float:			return VK_FORMAT_D16_UNORM;
 	case rhi::EFragmentFormat::D32_S_Float:				return VK_FORMAT_D32_SFLOAT;

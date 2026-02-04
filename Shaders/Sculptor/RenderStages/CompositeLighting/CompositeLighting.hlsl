@@ -230,17 +230,19 @@ RTReflections ComputeRTReflectionsLuminance(in uint2 pixel, in float2 uv)
 	// reverse demodulate specular
 	specularLo *= max((specularColor * integratedBRDF.x + integratedBRDF.y), 0.01f);
 
-	const float ambientOcclusion = u_ambientOcclusion.Load(uint3(pixel, 0u));
+	float3 aoMultiplier = 1.f;
 
-	float3 aoMultiplier;
-
-	if(u_constants.enableColoredAO)
+	if (u_rtReflectionsConstants.aoEnabled)
 	{
-		aoMultiplier = lerp(diffuseColor, 1.f, ambientOcclusion);
-	}
-	else
-	{
-		aoMultiplier = ambientOcclusion;
+		const float ambientOcclusion = u_ambientOcclusion.Load(uint3(pixel, 0u));
+		if(u_constants.enableColoredAO)
+		{
+			aoMultiplier = lerp(diffuseColor, 1.f, ambientOcclusion);
+		}
+		else
+		{
+			aoMultiplier = ambientOcclusion;
+		}
 	}
 
 	diffuseLo *= Diffuse_Lambert(diffuseColor) * aoMultiplier;

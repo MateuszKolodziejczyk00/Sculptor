@@ -65,12 +65,17 @@ static rhi::EFragmentFormat GetRHIFormat(VkFormat format)
 	case VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:          return rhi::EFragmentFormat::RGB9E5_Float;
 
 	case VK_FORMAT_R8G8B8A8_UNORM:                  return rhi::EFragmentFormat::RGBA8_UN_Float;
+	case VK_FORMAT_R8G8B8A8_SRGB:                   return rhi::EFragmentFormat::RGBA8_sRGB_Float;
 	case VK_FORMAT_B8G8R8A8_UNORM:                  return rhi::EFragmentFormat::BGRA8_UN_Float;
 	case VK_FORMAT_R16G16B16A16_UNORM:              return rhi::EFragmentFormat::RGBA16_UN_Float;
 	case VK_FORMAT_R16G16B16A16_SFLOAT:             return rhi::EFragmentFormat::RGBA16_S_Float;
 
-														   
 	case VK_FORMAT_R32G32B32A32_SFLOAT:             return rhi::EFragmentFormat::RGBA32_S_Float;
+
+	case VK_FORMAT_BC1_RGB_UNORM_BLOCK:             return rhi::EFragmentFormat::BC1_UN;
+	case VK_FORMAT_BC1_RGB_SRGB_BLOCK:              return rhi::EFragmentFormat::BC1_sRGB;
+	case VK_FORMAT_BC4_UNORM_BLOCK:                 return rhi::EFragmentFormat::BC4_UN;
+	case VK_FORMAT_BC5_UNORM_BLOCK:                 return rhi::EFragmentFormat::BC5_UN;
 	
 	case VK_FORMAT_D16_UNORM:                       return rhi::EFragmentFormat::D16_UN_Float;
 	case VK_FORMAT_D32_SFLOAT:                      return rhi::EFragmentFormat::D32_S_Float;
@@ -476,10 +481,10 @@ const rhi::RHIAllocationInfo& RHITexture::GetAllocationInfo() const
 	return m_allocationInfo;
 }
 
-Uint64 RHITexture::GetFragmentSize() const
+rhi::TextureFragmentInfo RHITexture::GetFragmentInfo() const
 {
 	SPT_CHECK(IsValid());
-	return rhi::GetFragmentSize(GetFormat());
+	return rhi::GetFragmentInfo(GetFormat());
 }
 
 Uint64 RHITexture::GetMipSize(Uint32 mipIdx) const
@@ -487,8 +492,8 @@ Uint64 RHITexture::GetMipSize(Uint32 mipIdx) const
 	SPT_CHECK(IsValid());
 
 	const math::Vector3u mipResolution = GetMipResolution(mipIdx);
-
-	return GetFragmentSize() * mipResolution.x() * mipResolution.y() * mipResolution.z();
+	const rhi::TextureFragmentInfo fragmentInfo = GetFragmentInfo();
+	return (mipResolution.x() * mipResolution.y() * mipResolution.z()) / (fragmentInfo.blockWidth * fragmentInfo.blockHeight) * fragmentInfo.bytesPerBlock;
 }
 
 VkImage RHITexture::GetHandle() const
@@ -891,7 +896,10 @@ RHIMappedTexture::RHIMappedTexture(const RHITexture& texture)
 
 	m_mappedPointer = m_texture.MapPtr();
 
-	m_bytesPerFragment = static_cast<Uint32>(m_texture.GetFragmentSize());
+	const rhi::TextureFragmentInfo fragmentInfo = m_texture.GetFragmentInfo();
+	SPT_CHECK(fragmentInfo.blockWidth == 1u && fragmentInfo.blockHeight == 1u);
+
+	m_bytesPerFragment = fragmentInfo.bytesPerBlock;
 	m_aspect           = RHIToVulkan::GetAspectFlags(rhi::GetFullAspectForFormat(texture.GetFormat()));
 }
 
@@ -913,8 +921,8 @@ RHIMappedSurface RHIMappedTexture::GetSurface(Uint32 mipLevel, Uint32 arrayLayer
 
 	VkImageSubresource subresource{};
 	subresource.aspectMask = m_aspect;
-    subresource.mipLevel   = mipLevel;
-    subresource.arrayLayer = arrayLayer;
+	subresource.mipLevel   = mipLevel;
+	subresource.arrayLayer = arrayLayer;
 
 	vkGetImageSubresourceLayout(VulkanRHI::GetDeviceHandle(), m_texture.GetHandle(), OUT &subresource, OUT &layout);
 

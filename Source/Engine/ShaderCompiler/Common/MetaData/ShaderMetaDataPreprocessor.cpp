@@ -398,7 +398,7 @@ static void PreprocessShaderParams(lib::String& sourceCode, const ShaderPreproce
 		generatedCode += structName.GetView();
 		generatedCode += ")]]\n";
 		generatedCode += "[[vk::binding(0, ";
-		generatedCode += std::to_string(outMetaData.GetDescriptorSetsNum());
+		generatedCode += std::to_string(std::max(static_cast<Uint32>(outMetaData.GetDescriptorSetsNum()), 1u)); // 0u is reserved for bindless
 		generatedCode += ")]] ConstantBuffer<";
 		generatedCode += structName.GetView();
 		generatedCode += "> ";

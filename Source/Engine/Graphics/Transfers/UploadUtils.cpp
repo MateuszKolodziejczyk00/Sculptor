@@ -62,7 +62,7 @@ void GRAPHICS_API UploadDataToTexture(const Byte* data, Uint64 dataSize, const l
 {
 	SPT_PROFILER_FUNCTION();
 	
-	UploadsManager::Get().EnqueUploadToTexture(data, dataSize, texture, aspect, copyExtent, copyOffset, mipLevel, arrayLayer);
+	UploadsManager::Get().EnqueueUploadToTexture(data, dataSize, texture, aspect, copyExtent, copyOffset, mipLevel, arrayLayer);
 }
 
 void FlushPendingUploads()

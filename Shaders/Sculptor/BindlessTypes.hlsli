@@ -119,6 +119,14 @@ struct SRVTexture2D
 		return TReturn(texture.Gather(s, uv));
 	}
 
+	uint2 GetResolution()
+	{
+		Texture2D<T> texture = GetResource();
+		uint2 resolution;
+		texture.GetDimensions(resolution.x, resolution.y);
+		return resolution;
+	}
+
 	bool IsValid()
 	{
 		return descriptorIdx != IDX_NONE_32;
