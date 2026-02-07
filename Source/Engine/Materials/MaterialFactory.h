@@ -31,6 +31,8 @@ struct MaterialDataParameters
 {
 	rhi::RHIVirtualAllocation suballocation;
 	lib::HashedString         materialDataStructName;
+
+	MaterialFeatures features;
 };
 
 

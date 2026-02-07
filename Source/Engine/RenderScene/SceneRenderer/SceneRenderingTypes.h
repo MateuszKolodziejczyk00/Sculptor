@@ -116,7 +116,7 @@ private:
 };
 
 
-BEGIN_SHADER_STRUCT(VisibleGeometryData)
+BEGIN_SHADER_STRUCT(GPUGBuffer)
 	SHADER_STRUCT_FIELD(math::Vector2u,                    resolution)
 	SHADER_STRUCT_FIELD(math::Vector2f,                    pixelSize)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         depth)
@@ -178,7 +178,7 @@ public:
 
 	void Create(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolution, const GBufferExternalTextures& externalTextures = GBufferExternalTextures());
 
-	VisibleGeometryData GetVisibleGeometryData(rg::RGTextureViewHandle depth) const;
+	GPUGBuffer GetGPUGBuffer(rg::RGTextureViewHandle depth) const;
 
 	rg::RGTextureViewHandle operator[](Texture textureType) const
 	{

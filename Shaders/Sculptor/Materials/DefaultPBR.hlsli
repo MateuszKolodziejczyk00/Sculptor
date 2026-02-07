@@ -60,10 +60,10 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
         shadingNormal = geometryNormal;
     }
 
-    float3 emissiveColor = materialData.emissiveFactor;
-	if (materialData.emissiveTexture.IsValid())
+    float3 emissiveColor = materialData.emissiveData.emissiveFactor;
+	if (materialData.emissiveData.emissiveTexture.IsValid())
     {
-        emissiveColor *= materialData.emissiveTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialAniso(), evalParams.uv);
+        emissiveColor *= materialData.emissiveData.emissiveTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialAniso(), evalParams.uv);
     }
 
     MaterialEvaluationOutput output;

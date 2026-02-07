@@ -9,6 +9,7 @@
 #include "Common/ShaderCompilerTypes.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "Serialization.h"
+#include "MaterialFeatures.h"
 
 #include <variant>
 
@@ -40,6 +41,15 @@ struct MaterialDefaultShadersConfig
 };
 
 
+template<typename TMaterialData>
+MaterialFeatures ExtractMaterialFeaturesFromStruct()
+{
+	MaterialFeatures features;
+	features.emissiveDataID = GetMaterialFeatureID<TMaterialData, mat::EmissiveMaterialData>();
+	return features;
+}
+
+
 class MATERIALS_API MaterialsSubsystem
 {
 public:
@@ -62,7 +72,7 @@ private:
 
 	MaterialsSubsystem();
 
-	ecs::EntityHandle CreateMaterial(const MaterialDefinition& materialDef, ecs::EntityHandle shaderEntity, const Byte* materialData, Uint64 dataSize, lib::HashedString dataStructName);
+	ecs::EntityHandle CreateMaterial(const MaterialDefinition& materialDef, ecs::EntityHandle shaderEntity, const Byte* materialData, Uint64 dataSize, lib::HashedString dataStructName, const MaterialFeatures& features);
 
 	ecs::EntityHandle GetOrCreateShaderEntity(lib::HashedString materialDataStruct);
 
@@ -82,12 +92,14 @@ private:
 	lib::DynamicArray<lib::HashedString> m_materialDataStructNames;
 };
 
+
 template<typename TMaterialData>
 inline ecs::EntityHandle MaterialsSubsystem::CreateMaterial(const MaterialDefinition& materialDef, const TMaterialData& materialData, ecs::EntityHandle shaderEntity)
 {
 	const rdr::HLSLStorage<TMaterialData> shaderMaterialData = materialData;
-	return CreateMaterial(materialDef, shaderEntity, reinterpret_cast<const Byte*>(&shaderMaterialData), sizeof(rdr::HLSLStorage<TMaterialData>));
+	return CreateMaterial(materialDef, shaderEntity, reinterpret_cast<const Byte*>(&shaderMaterialData), sizeof(rdr::HLSLStorage<TMaterialData>), TMaterialData::GetStructName(), ExtractMaterialFeaturesFromStruct<TMaterialData>());
 }
+
 
 template<typename TMaterialData>
 inline ecs::EntityHandle MaterialsSubsystem::CreateMaterial(const MaterialDefinition& materialDef, const TMaterialData& materialData)
@@ -95,7 +107,7 @@ inline ecs::EntityHandle MaterialsSubsystem::CreateMaterial(const MaterialDefini
 	const lib::HashedString dataStructName = TMaterialData::GetStructName();
 	const ecs::EntityHandle shaderEntity = m_defaultShadersEntities.at(dataStructName);
 	const rdr::HLSLStorage<TMaterialData> shaderMaterialData = materialData;
-	return CreateMaterial(materialDef, shaderEntity, reinterpret_cast<const Byte*>(&shaderMaterialData), sizeof(rdr::HLSLStorage<TMaterialData>), dataStructName);
+	return CreateMaterial(materialDef, shaderEntity, reinterpret_cast<const Byte*>(&shaderMaterialData), sizeof(rdr::HLSLStorage<TMaterialData>), dataStructName, ExtractMaterialFeaturesFromStruct<TMaterialData>());
 }
 
 } // spt::mat

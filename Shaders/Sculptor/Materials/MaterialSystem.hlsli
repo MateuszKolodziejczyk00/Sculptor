@@ -47,7 +47,8 @@
 #include SPT_MATERIAL_SHADER_PATH
 #endif // SPT_MATERIAL_SHADER_PATH
 
-#define SPT_MATERIAL_DATA_ALIGNMENT 32
+#define SPT_MATERIAL_DATA_ALIGNMENT    32
+#define SPT_MATERIAL_FEATURE_ALIGNMENT 16
 
 #ifdef DS_RenderSceneDS
 
@@ -64,6 +65,14 @@ SPT_MATERIAL_DATA_TYPE LoadMaterialData(in MaterialDataHandle materialDataHandle
 	return LoadMaterialDataInternal<SPT_MATERIAL_DATA_TYPE>(materialDataHandle);
 }
 #endif // SPT_MATERIAL_DATA_TYPE
+
+template<typename TMaterialFeature>
+TMaterialFeature LoadMaterialFeature(in MaterialDataHandle materialDataHandle, in uint16_t featureID)
+{
+	const uint materialFeatureOffset = uint(materialDataHandle.id) * SPT_MATERIAL_DATA_ALIGNMENT + uint(featureID) * SPT_MATERIAL_FEATURE_ALIGNMENT;
+	return GPUMaterials().data.materialsData.Load<TMaterialFeature>(materialFeatureOffset);
+}
+
 #endif // DS_RenderSceneDS
 
 #endif // MATERIAL_SYSTEM_HLSLI

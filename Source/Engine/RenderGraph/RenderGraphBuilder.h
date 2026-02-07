@@ -160,11 +160,11 @@ public:
 	template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
 	void AddSubpass(const RenderGraphDebugName& subpassName, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable);
 
-	template<typename TDescriptorSetStatesRange>
-	void TraceRays(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, const WorkloadResolution& traceCount, TDescriptorSetStatesRange&& dsStatesRange);
+	template<typename TDescriptorSetStatesRange, typename TShaderParams = EmptyShaderParams>
+	void TraceRays(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, const WorkloadResolution& traceCount, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams = TShaderParams{});
 
-	template<typename TDescriptorSetStatesRange>
-	void TraceRaysIndirect(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, RGBufferViewHandle indirectArgsBuffer, Uint64 indirectArgsOffset, TDescriptorSetStatesRange&& dsStatesRange);
+	template<typename TDescriptorSetStatesRange, typename TShaderParams = EmptyShaderParams>
+	void TraceRaysIndirect(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, RGBufferViewHandle indirectArgsBuffer, Uint64 indirectArgsOffset, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams = TShaderParams{});
 
 	template<typename TPassParameters, typename TCallable>
 	void AddLambdaPass(const RenderGraphDebugName& passName, const TPassParameters& parameters, TCallable&& callable);
@@ -449,8 +449,8 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 	PostSubpassAdded(*m_lastRenderPassNode, subpassDependencies);
 }
 
-template<typename TDescriptorSetStatesRange>
-void RenderGraphBuilder::TraceRays(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, const WorkloadResolution& traceCount, TDescriptorSetStatesRange&& dsStatesRange)
+	template<typename TDescriptorSetStatesRange, typename TShaderParams /* = EmptyShaderParams */>
+void RenderGraphBuilder::TraceRays(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, const WorkloadResolution& traceCount, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams /* = TShaderParams{} */)
 {
 	const auto executeLambda = [ rayTracingPipelineID, traceCount ](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
@@ -469,11 +469,13 @@ void RenderGraphBuilder::TraceRays(const RenderGraphDebugName& traceName, rdr::P
 	
 	AssignDescriptorSetsToNode(node, GetPipelineObject(rayTracingPipelineID), { dsStatesRange }, dependenciesBuilder);
 
+	AssignShaderParamsToNode(node, GetPipelineObject(rayTracingPipelineID), shaderParams, dependenciesBuilder);
+
 	AddNodeInternal(node, dependencies);
 }
 
-template<typename TDescriptorSetStatesRange>
-void RenderGraphBuilder::TraceRaysIndirect(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, RGBufferViewHandle indirectArgsBuffer, Uint64 indirectArgsOffset, TDescriptorSetStatesRange&& dsStatesRange)
+	template<typename TDescriptorSetStatesRange, typename TShaderParams /* = EmptyShaderParams */>
+void RenderGraphBuilder::TraceRaysIndirect(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, RGBufferViewHandle indirectArgsBuffer, Uint64 indirectArgsOffset, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams /* = TShaderParams{} */)
 {
 	const auto executeLambda = [ rayTracingPipelineID, indirectArgsBuffer, indirectArgsOffset ](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
@@ -493,6 +495,8 @@ void RenderGraphBuilder::TraceRaysIndirect(const RenderGraphDebugName& traceName
 	dependenciesBuilder.AddBufferAccess(indirectArgsBuffer, ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect);
 	
 	AssignDescriptorSetsToNode(node, GetPipelineObject(rayTracingPipelineID), { dsStatesRange }, dependenciesBuilder);
+
+	AssignShaderParamsToNode(node, GetPipelineObject(rayTracingPipelineID), shaderParams, dependenciesBuilder);
 
 	AddNodeInternal(node, dependencies);
 }

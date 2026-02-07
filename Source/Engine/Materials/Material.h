@@ -28,10 +28,35 @@ struct MaterialShaderSourceComponent
 SPT_REGISTER_COMPONENT_TYPE(MaterialShaderSourceComponent, ecs::Registry);
 
 
+template<typename TMaterialData, typename TFeature>
+Uint8 GetMaterialFeatureID()
+{
+	constexpr Uint32 featureOffset = rdr::OffsetOfType<TMaterialData, TFeature>();
+	if constexpr (featureOffset == idxNone<Uint32>)
+	{
+		return idxNone<Uint8>;
+	}
+
+	static_assert(featureOffset % 16u == 0u, "Material feature offset is not 16-byte aligned");
+	constexpr Uint32 featureOffsetID = featureOffset / 16u;
+	static_assert(featureOffsetID < idxNone<Uint8>, "Material feature offset exceeds maximum allowed value");
+	return static_cast<Uint8>(featureOffsetID);
+}
+
+
+struct MaterialFeatures
+{
+	Uint8 emissiveDataID = idxNone<Uint8>;
+};
+
+
 struct MaterialStaticParameters
 {
 	MaterialStaticParameters()
 		: customOpacity(false)
+		, doubleSided(false)
+		, transparent(false)
+		, emissive(false)
 	{ }
 
 	Bool IsValidMaterial() const
@@ -41,9 +66,12 @@ struct MaterialStaticParameters
 
 	MaterialShader shader;
 
+	MaterialFeatures features;
+
 	Uint8 customOpacity : 1;
 	Uint8 doubleSided   : 1;
 	Uint8 transparent   : 1;
+	Uint8 emissive      : 1;
 };
 
 

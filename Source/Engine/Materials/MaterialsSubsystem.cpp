@@ -65,7 +65,7 @@ MaterialsSubsystem::MaterialsSubsystem()
 	}
 }
 
-ecs::EntityHandle MaterialsSubsystem::CreateMaterial(const MaterialDefinition& materialDef, ecs::EntityHandle shaderEntity, const Byte* materialData, Uint64 dataSize, lib::HashedString dataStructName)
+ecs::EntityHandle MaterialsSubsystem::CreateMaterial(const MaterialDefinition& materialDef, ecs::EntityHandle shaderEntity, const Byte* materialData, Uint64 dataSize, lib::HashedString dataStructName, const MaterialFeatures& features)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -74,8 +74,9 @@ ecs::EntityHandle MaterialsSubsystem::CreateMaterial(const MaterialDefinition& m
 	const rhi::RHIVirtualAllocation materialDataSuballocation = MaterialsUnifiedData::Get().CreateMaterialDataSuballocation(materialData, static_cast<Uint32>(dataSize));
 
 	MaterialDataParameters dataParameters;
-	dataParameters.suballocation			= materialDataSuballocation;
-	dataParameters.materialDataStructName	= dataStructName;
+	dataParameters.suballocation          = materialDataSuballocation;
+	dataParameters.materialDataStructName = dataStructName;
+	dataParameters.features               = features;
 
 	const ecs::EntityHandle materialEntity = m_materialFactory->CreateMaterial(materialDef, shaderEntity, dataParameters);
 

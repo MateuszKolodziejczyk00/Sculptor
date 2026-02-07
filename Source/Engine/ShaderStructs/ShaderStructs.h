@@ -438,6 +438,42 @@ public:
 	}
 };
 
+template<typename TShaderStructMemberMetaData, typename TMember>
+constexpr Uint32 OffsetOfTypeImpl()
+{
+	if constexpr (rdr::shader_translator::priv::IsHeadMember<TShaderStructMemberMetaData>())
+	{
+		return OffsetOfTypeImpl<typename TShaderStructMemberMetaData::PrevMemberMetaDataType, TMember>();
+	}
+	else
+	{
+		using MemberType = typename TShaderStructMemberMetaData::UnderlyingType;
+
+		if constexpr (std::is_same_v<MemberType, TMember>)
+		{
+			return TShaderStructMemberMetaData::GetHLSLOffset();
+		}
+		else
+		{
+			if constexpr (rdr::shader_translator::priv::IsTailMember<TShaderStructMemberMetaData>())
+			{
+				return idxNone<Uint32>;
+			}
+			else
+			{
+				return OffsetOfTypeImpl<typename TShaderStructMemberMetaData::PrevMemberMetaDataType, TMember>();
+			}
+		}
+	}
+}
+
+
+template<typename TStruct, typename TMember>
+constexpr Uint32 OffsetOfType()
+{
+	return OffsetOfTypeImpl<typename TStruct::HeadMemberMetaData, TMember>();
+}
+
 
 template<typename TShaderStructMemberMetaData>
 constexpr SizeType ComputeStructHashImpl(lib::Span<const Byte> domainData)

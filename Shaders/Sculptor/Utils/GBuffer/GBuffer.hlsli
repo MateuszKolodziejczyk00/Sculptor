@@ -2,6 +2,8 @@
 #define GBUFFER_HLSLI
 
 #include "Utils/Quaternion.hlsli"
+#include "Utils/SceneViewUtils.hlsli"
+#include "Shading/Shading.hlsli"
 
 
 #define GBUFFER_FLAG_TANGENT_FRAME_INVERSE_HANDEDNESS 0x1
@@ -102,5 +104,64 @@ GBufferOutput EncodeGBuffer(in GBufferData data)
 
 	return output;
 }
+
+
+struct SurfaceInfo
+{
+	float3 location;
+	float3 diffuseColor;
+	float3 specularColor;
+	float3 normal;
+	float3 tangent;
+	float3 bitangent;
+	float  roughness;
+	float3 emissive;
+};
+
+
+[[shader_struct(GPUGBuffer)]]
+
+#ifdef DS_RenderViewDS
+struct GBufferInterface : GPUGBuffer
+{
+	float3 GetWorldLocation(in uint2 coords)
+	{
+		const float2 uv = float2(coords + 0.5f) * pixelSize;
+		const float d = depth.Load(coords);
+		const float3 ndc = float3(uv * 2.f - 1.f, d);
+		return NDCToWorldSpace(ndc, u_sceneView);
+	}
+
+	GBufferData GetGBufferData(in uint2 coords)
+	{
+		GBufferInput inputTextures;
+		inputTextures.gBuffer0 = gBuffer0.GetResource();
+		inputTextures.gBuffer1 = gBuffer1.GetResource();
+		inputTextures.gBuffer2 = gBuffer2.GetResource();
+		inputTextures.gBuffer3 = gBuffer3.GetResource();
+		inputTextures.gBuffer4 = gBuffer4.GetResource();
+
+		return DecodeGBuffer(inputTextures, uint3(coords, 0u));
+	}
+
+	SurfaceInfo GetSurfaceInfo(in uint2 coords)
+	{
+		const GBufferData gBufferData = GetGBufferData(coords);
+
+		SurfaceInfo surfaceInfo;
+		surfaceInfo.location      = GetWorldLocation(coords);
+		surfaceInfo.normal        = gBufferData.normal;
+		surfaceInfo.tangent       = gBufferData.tangent;
+		surfaceInfo.bitangent     = gBufferData.bitangent;
+		surfaceInfo.roughness     = gBufferData.roughness;
+		surfaceInfo.emissive      = gBufferData.emissive;
+
+		ComputeSurfaceColor(gBufferData.baseColor, gBufferData.metallic, OUT surfaceInfo.diffuseColor, OUT surfaceInfo.specularColor);
+
+		return surfaceInfo;
+	}
+};
+
+#endif // DS_RenderViewDS
 
 #endif // GBUFFER_HLSLI

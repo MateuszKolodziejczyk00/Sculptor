@@ -101,15 +101,15 @@ void PBRMaterialInstance::Load(const AssetInstance& asset, lib::MTHandle<DDCLoad
 	m_materialData.baseColorFactor          = materialDataHeader.baseColorFactor;
 	m_materialData.metallicFactor           = materialDataHeader.metallicFactor;
 	m_materialData.roughnessFactor          = materialDataHeader.roughnessFactor;
-	m_materialData.emissiveFactor           = materialDataHeader.emissionFactor;
-	m_materialData.emissiveFactor           = materialDataHeader.emissionFactor;
 	m_materialData.baseColorTexture         = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "BaseColor"), materialDataHeader.baseColorTexture);
 	m_materialData.metallicRoughnessTexture = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "MetallicRoughness"), materialDataHeader.metallicRoughnessTexture);
 	m_materialData.normalsTexture           = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "Normals"), materialDataHeader.normalsTexture);
 	m_materialData.alphaTexture             = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "Alpha"), materialDataHeader.alphaTexture);
-	m_materialData.emissiveTexture          = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "Emissive"), materialDataHeader.emissiveTexture);
 
-	const Bool isEmissive = materialDataHeader.emissionFactor.x() > 0.f || materialDataHeader.emissionFactor.y() || materialDataHeader.emissionFactor.z();
+	m_materialData.emissiveData.emissiveFactor  = materialDataHeader.emissionFactor;
+	m_materialData.emissiveData.emissiveTexture = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "Emissive"), materialDataHeader.emissiveTexture);
+
+	const Bool isEmissive = materialDataHeader.emissionFactor.x() > 0.f || materialDataHeader.emissionFactor.y() > 0.f || materialDataHeader.emissionFactor.z() > 0.f;
 
 	mat::MaterialDefinition materialDefinition;
 	materialDefinition.name          = asset.GetName();
