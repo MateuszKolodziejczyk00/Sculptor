@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "RenderStage.h"
+#include "Utils/StochasticDIRenderer.h"
 
 
 namespace spt::rsc
@@ -18,6 +19,10 @@ public:
 	DeferredShadingRenderStage();
 
 	void OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext);
+
+protected:
+
+	stochastic_di::Renderer m_stochasticDIRenderer;
 };
 
 } // spt::rsc

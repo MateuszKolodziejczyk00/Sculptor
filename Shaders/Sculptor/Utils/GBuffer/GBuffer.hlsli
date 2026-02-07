@@ -124,6 +124,11 @@ struct SurfaceInfo
 #ifdef DS_RenderViewDS
 struct GBufferInterface : GPUGBuffer
 {
+	uint2 GetResolution()
+	{
+		return resolution;
+	}
+
 	float3 GetWorldLocation(in uint2 coords)
 	{
 		const float2 uv = float2(coords + 0.5f) * pixelSize;

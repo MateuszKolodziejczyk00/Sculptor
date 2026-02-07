@@ -109,7 +109,7 @@ class RngState
 	static RngState Create(in uint2 pixel, in uint frame)
 	{
 		RngState state;
-		state.seed = PCGHash(pixel.x + frame * 23u) + PCGHash(pixel.y + frame * 17u);
+		state.seed = pixel.x ^ PCGHash(pixel.y) ^ PCGHash(frame);
 		state.seed = PCGHash(state.seed);
 		return state;
 	}

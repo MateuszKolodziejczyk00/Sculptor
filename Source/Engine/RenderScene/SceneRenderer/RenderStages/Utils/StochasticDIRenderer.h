@@ -10,6 +10,12 @@ class RenderGraphBuilder;
 } // spt::rg
 
 
+namespace spt::rdr
+{
+class Buffer;
+} // spt::rdr
+
+
 namespace spt::rsc
 {
 
@@ -26,7 +32,17 @@ struct StochasticDIParams
 };
 
 
-void RenderDI(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const StochasticDIParams& diParams);
+class Renderer
+{
+public:
+	
+	void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const StochasticDIParams& diParams);
+
+private:
+
+	math::Vector2u              m_historyResolution;
+	lib::SharedPtr<rdr::Buffer> m_historyReservoirs;
+};
 
 } // stochastic_di
 

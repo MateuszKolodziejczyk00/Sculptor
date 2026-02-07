@@ -92,9 +92,6 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 		renderSystem->RenderPerFrame(graphBuilder, scene, viewSpecs, settings);
 	}
 
-	// Flush all writes that happened during prepare phrase
-	gfx::FlushPendingUploads();
-
 	renderer_utils::ProcessRenderStage<PreRenderingRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 
 	renderer_utils::ProcessRenderStage<GlobalIlluminationRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
@@ -138,6 +135,9 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	{
 		viewSpec->GetRenderView().EndFrame(scene);
 	}
+
+	// Flush all writes that happened during render graph recording
+	gfx::FlushPendingUploads();
 	
 	ViewRenderingSpec& mainViewSpec = *renderViewsSpecs[mainViewIdx];
 

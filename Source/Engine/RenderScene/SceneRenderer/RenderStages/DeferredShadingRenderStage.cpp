@@ -157,7 +157,7 @@ void DeferredShadingRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, 
 			.outputLuminance = luminance
 		};
 
-		stochastic_di::RenderDI(graphBuilder, renderScene, viewSpec, diParams);
+		m_stochasticDIRenderer.Render(graphBuilder, renderScene, viewSpec, diParams);
 	}
 	else
 	{

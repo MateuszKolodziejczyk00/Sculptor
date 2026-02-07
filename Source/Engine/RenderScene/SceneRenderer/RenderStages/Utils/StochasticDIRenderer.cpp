@@ -53,6 +53,42 @@ RT_PSO(DIInitialSamplingPSO)
 };
 
 
+RT_PSO(DISpatialResamplingPSO)
+{
+	RAY_GEN_SHADER("Sculptor/Lights/StochasticDI/DISpatialResampling.hlsl", DISpatialResamplingRTG);
+
+	MISS_SHADERS(SHADER_ENTRY("Sculptor/Lights/StochasticDI/DISpatialResampling.hlsl", GenericRTM));
+
+	HIT_GROUP
+	{
+		ANY_HIT_SHADER("Sculptor/Lights/StochasticDI/DISpatialResampling.hlsl", GenericAH);
+
+		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
+	};
+
+	PRESET(pso);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		const lib::DynamicArray<mat::RTHitGroupPermutation> materialPermutations = mat::MaterialsSubsystem::Get().GetRTHitGroups();
+
+		lib::DynamicArray<HitGroup> hitGroups;
+		hitGroups.reserve(materialPermutations.size());
+
+		for (const mat::RTHitGroupPermutation& permutation : materialPermutations)
+		{
+			HitGroup hitGroup;
+			hitGroup.permutation = permutation;
+			hitGroups.push_back(std::move(hitGroup));
+		}
+
+		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
+
+		pso = CompilePSO(compiler, psoDefinition, hitGroups);
+	}
+};
+
+
 BEGIN_SHADER_STRUCT(EmissiveElement)
 	SHADER_STRUCT_FIELD(RenderEntityGPUPtr,      entityPtr)
 	SHADER_STRUCT_FIELD(SubmeshGPUPtr,           submeshPtr)
@@ -121,34 +157,114 @@ static EmissivesSampler CreateEmissivesSampler(rg::RenderGraphBuilder& graphBuil
 	return sampler;
 }
 
-
-BEGIN_SHADER_STRUCT(StochasticDIInitialSamplingConstants)
-	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector4f>, outputLuminance)
-	SHADER_STRUCT_FIELD(GPUGBuffer,                           gBuffer)
-	SHADER_STRUCT_FIELD(EmissivesSampler,                     emissivesSampler)
+// TODO: this is temporary, reservoir should be "attached" to a sample, so it can detect sample that is not valid anymore. For now storing just location and normal is simpler because orded or emissive elements can change
+BEGIN_SHADER_STRUCT(DIPackedReservoir)
+	SHADER_STRUCT_FIELD(math::Vector3f, location)
+	SHADER_STRUCT_FIELD(Uint32,         packedLuminance)
+	SHADER_STRUCT_FIELD(math::Vector2f, hitNormal)
+	SHADER_STRUCT_FIELD(Real32,         weight)
+	SHADER_STRUCT_FIELD(Uint32,         MAndProps)
 END_SHADER_STRUCT();
 
 
-void RenderDI(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const StochasticDIParams& diParams)
+BEGIN_SHADER_STRUCT(StochasticDIInitialSamplingConstants)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>,     motion)
+	SHADER_STRUCT_FIELD(GPUGBuffer,                               gBuffer)
+	SHADER_STRUCT_FIELD(EmissivesSampler,                         emissivesSampler)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<DIPackedReservoir>,      historyReservoirs)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<DIPackedReservoir>, outReservoirs)
+	SHADER_STRUCT_FIELD(math::Vector2u,                           reservoirsResolution)
+END_SHADER_STRUCT();
+
+
+BEGIN_SHADER_STRUCT(StochasticDISpatialResamplingConstants)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector4f>,     outputLuminance)
+	SHADER_STRUCT_FIELD(GPUGBuffer,                               gBuffer)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<DIPackedReservoir>,   inReservoirs)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<DIPackedReservoir>, outReservoirs)
+	SHADER_STRUCT_FIELD(math::Vector2u,                           reservoirsResolution)
+END_SHADER_STRUCT();
+
+
+math::Vector2u ComputeReservoirsResolution(math::Vector2u resolution)
 {
-	SPT_PROFILER_FUNCTION();
+	return math::Vector2u(math::Utils::RoundUp(resolution.x(), 64u), math::Utils::RoundUp(resolution.y(), 64u));
+}
+
+rg::RGBufferViewHandle CreateDIReservoirs(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolution)
+{
+	const math::Vector2u reservoirsResolution = ComputeReservoirsResolution(resolution);
+
+	rhi::BufferDefinition bufferDef;
+	bufferDef.size  = reservoirsResolution.x() * reservoirsResolution.y() * sizeof(DIPackedReservoir);
+	bufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
+	return graphBuilder.CreateBufferView(RG_DEBUG_NAME("DI Reservoirs Buffer"), bufferDef, rhi::EMemoryUsage::GPUOnly);
+}
+
+
+void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const StochasticDIParams& diParams)
+{
+	const math::Vector2u resolution = diParams.outputLuminance->GetResolution2D();
+
+	Bool canReuseHistory = true;
+
+	if (resolution != m_historyResolution || !m_historyReservoirs)
+	{
+		const math::Vector2u reservoirsResolution = ComputeReservoirsResolution(resolution);
+
+		rhi::BufferDefinition bufferDef;
+		bufferDef.size  = reservoirsResolution.x() * reservoirsResolution.y() * sizeof(DIPackedReservoir);
+		bufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
+		m_historyReservoirs = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Stochastic DI History Reservoirs"), bufferDef, rhi::EMemoryUsage::GPUOnly);
+
+		m_historyResolution = resolution;
+		canReuseHistory = false;
+	}
+
+	rg::RGBufferViewHandle historyReservoirs = graphBuilder.AcquireExternalBufferView(m_historyReservoirs->GetFullView());
 
 	SPT_CHECK(diParams.outputLuminance.IsValid());
 	
-	const math::Vector2u resolution = diParams.outputLuminance->GetResolution2D();
-
 	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-	StochasticDIInitialSamplingConstants shaderConstants;
-	shaderConstants.outputLuminance  = diParams.outputLuminance;
-	shaderConstants.gBuffer          = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
-	shaderConstants.emissivesSampler = CreateEmissivesSampler(graphBuilder, renderScene);
+	const math::Vector2u reservoirsResolution = ComputeReservoirsResolution(resolution);
 
-	graphBuilder.TraceRays(RG_DEBUG_NAME("Initial Sampling"),
-						   DIInitialSamplingPSO::pso,
-						   resolution,
-						   rg::EmptyDescriptorSets(),
-						   shaderConstants);
+	rg::RGBufferViewHandle reservoirsBuffer = CreateDIReservoirs(graphBuilder, reservoirsResolution);
+
+	{
+		StochasticDIInitialSamplingConstants shaderConstants;
+		shaderConstants.motion               = viewContext.motion;
+		shaderConstants.gBuffer              = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
+		shaderConstants.emissivesSampler     = CreateEmissivesSampler(graphBuilder, renderScene);
+		shaderConstants.outReservoirs        = reservoirsBuffer;
+		shaderConstants.reservoirsResolution = reservoirsResolution;
+
+		if (canReuseHistory)
+		{
+			shaderConstants.historyReservoirs = historyReservoirs;
+		}
+
+		graphBuilder.TraceRays(RG_DEBUG_NAME("DI Initial Sampling"),
+							   DIInitialSamplingPSO::pso,
+							   resolution,
+							   rg::EmptyDescriptorSets(),
+							   shaderConstants);
+	}
+
+	{
+		StochasticDISpatialResamplingConstants shaderConstants;
+		shaderConstants.outputLuminance      = diParams.outputLuminance;
+		shaderConstants.gBuffer              = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
+		shaderConstants.inReservoirs         = reservoirsBuffer;
+		shaderConstants.outReservoirs        = historyReservoirs;
+		shaderConstants.reservoirsResolution = reservoirsResolution;
+
+		graphBuilder.TraceRays(RG_DEBUG_NAME("DI Spatial Resampling"),
+							   DISpatialResamplingPSO::pso,
+							   resolution,
+							   rg::EmptyDescriptorSets(),
+							   shaderConstants);
+	}
 }
 
 } // spt::rsc::stochastic_di
