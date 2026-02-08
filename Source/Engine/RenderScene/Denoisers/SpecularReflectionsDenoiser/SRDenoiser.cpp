@@ -296,6 +296,7 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	FireflySuppressionParams fireflySuppressionParams;
 	fireflySuppressionParams.debugName        = m_debugName;
 	fireflySuppressionParams.normal           = params.normalsTexture;
+	fireflySuppressionParams.depth            = params.currentDepthTexture;
 	fireflySuppressionParams.inSpecularY_SH2  = historySpecularY_SH2;
 	fireflySuppressionParams.inDiffuseY_SH2   = historyDiffuseY_SH2;
 	fireflySuppressionParams.inDiffSpecCoCg   = historyDiffSpecCoCg;

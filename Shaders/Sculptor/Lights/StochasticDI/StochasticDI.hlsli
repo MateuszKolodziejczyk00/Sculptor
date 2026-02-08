@@ -189,4 +189,26 @@ float3 UnshadowedPathContribution(in SurfaceInfo surface, in float3 V, in Emissi
 	return Li;
 }
 
+
+bool CanResampleSurface(in SurfaceInfo toSurface, in float3 fromLocation, in float3 fromNormal)
+{
+	const Plane dstSurfacePlane = Plane::Create(toSurface.normal, toSurface.location);
+	const float planeDistanceThreshold = 0.1f;
+
+	const float distance = abs(dstSurfacePlane.Distance(fromLocation));
+
+	if (distance > planeDistanceThreshold)
+	{
+		return false;
+	}
+
+	const float normalThreshold = 0.5f;
+	if (dot(toSurface.normal, fromNormal) < normalThreshold)
+	{
+		return false;
+	}
+
+	return true;
+}
+
 #endif // STOCHASTIC_DI_HLSLI

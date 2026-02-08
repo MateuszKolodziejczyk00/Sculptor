@@ -137,6 +137,11 @@ struct GBufferInterface : GPUGBuffer
 		return NDCToWorldSpace(ndc, u_sceneView);
 	}
 
+	float3 GetWorldNormal(in uint2 coords)
+	{
+		return DecodeGBufferNormal(gBuffer1.Load(uint3(coords, 0u)));
+	}
+
 	GBufferData GetGBufferData(in uint2 coords)
 	{
 		GBufferInput inputTextures;

@@ -104,9 +104,9 @@ void AssetsDB::SaveAssetDescriptor(const ResourcePath& assetPath, const AssetDes
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(IsWritable());
-
 	const lib::WriteLockGuard lock(m_lock);
+
+	SPT_CHECK(IsWritable());
 
 	const auto it = m_descriptors.find(assetPath.GetID());
 	if (it != m_descriptors.end())

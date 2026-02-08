@@ -4,6 +4,7 @@
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "RenderScene.h"
 #include "RenderSceneTypes.h"
+#include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "ShaderStructs.h"
 #include "Bindless/BindlessTypes.h"
 #include "Pipelines/PSOsLibraryTypes.h"
@@ -16,6 +17,11 @@
 
 namespace spt::rsc::stochastic_di
 {
+
+namespace renderer_params
+{
+RendererIntParameter risSamplesNum("RIS Samples Num", { "Stochastic DI" }, 2, 1, 20);
+} // renderer_params
 
 RT_PSO(DIInitialSamplingPSO)
 {
@@ -173,7 +179,10 @@ BEGIN_SHADER_STRUCT(StochasticDIInitialSamplingConstants)
 	SHADER_STRUCT_FIELD(EmissivesSampler,                         emissivesSampler)
 	SHADER_STRUCT_FIELD(gfx::TypedBuffer<DIPackedReservoir>,      historyReservoirs)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<DIPackedReservoir>, outReservoirs)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,                historyDepth)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>,        historyNormal)
 	SHADER_STRUCT_FIELD(math::Vector2u,                           reservoirsResolution)
+	SHADER_STRUCT_FIELD(Uint32,                                   risSamplesNum)
 END_SHADER_STRUCT();
 
 
@@ -204,6 +213,8 @@ rg::RGBufferViewHandle CreateDIReservoirs(rg::RenderGraphBuilder& graphBuilder, 
 
 void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const StochasticDIParams& diParams)
 {
+		SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Stochastic DI");
+
 	const math::Vector2u resolution = diParams.outputLuminance->GetResolution2D();
 
 	Bool canReuseHistory = true;
@@ -238,10 +249,13 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 		shaderConstants.emissivesSampler     = CreateEmissivesSampler(graphBuilder, renderScene);
 		shaderConstants.outReservoirs        = reservoirsBuffer;
 		shaderConstants.reservoirsResolution = reservoirsResolution;
+		shaderConstants.risSamplesNum        = renderer_params::risSamplesNum;
 
 		if (canReuseHistory)
 		{
 			shaderConstants.historyReservoirs = historyReservoirs;
+			shaderConstants.historyDepth      = viewContext.historyDepth;
+			shaderConstants.historyNormal     = viewContext.historyOctahedronNormals;
 		}
 
 		graphBuilder.TraceRays(RG_DEBUG_NAME("DI Initial Sampling"),

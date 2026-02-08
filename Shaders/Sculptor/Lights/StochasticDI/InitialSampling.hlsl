@@ -65,7 +65,7 @@ EmissiveSample GenerateSample(RngState rngState, EmissivesSampler sampler)
 	sample.luminance = materialData.emissiveFactor;
 	if (materialData.emissiveTexture.IsValid())
 	{
-		const float3 textureEmissive = materialData.emissiveTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::LinearClampEdge(), uv).rgb;
+		const float3 textureEmissive = materialData.emissiveTexture.SPT_MATERIAL_SAMPLE(SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, uv).rgb;
 		sample.luminance *= textureEmissive;
 	}
 
@@ -109,7 +109,7 @@ void InitialSamplingRTG()
 
 	DIReservoir reservoir = DIReservoir::Create();
 
-	for (uint i = 0u; i < 10u; ++i)
+	for (uint i = 0u; i < u_constants.risSamplesNum; ++i)
 	{
 		const EmissiveSample sample = GenerateSample(rngState, u_constants.emissivesSampler);
 
@@ -143,20 +143,28 @@ void InitialSamplingRTG()
 		if (all(saturate(reprojectedUV) == reprojectedUV))
 		{
 			const uint2 reprojectedCoords = uint2(reprojectedUV * u_constants.gBuffer.resolution);
-			const uint historyReservoirIdx = GetScreenReservoirIdx(reprojectedCoords, u_constants.reservoirsResolution);
 
-			DIReservoir historyReservoir = UnpackDIReservoir(u_constants.historyReservoirs.Load(historyReservoirIdx));
+			const float historyDepth = u_constants.historyDepth.Load(reprojectedCoords);
+			const float3 historyLocation = NDCToWorldSpace(float3(reprojectedUV * 2.f - 1.f, historyDepth), u_prevFrameSceneView);
+			const float3 historyNormal   = OctahedronDecodeNormal(u_constants.historyNormal.Load(reprojectedCoords));
 
-			if (historyReservoir.IsValid() && historyReservoir.age < 8u)
+			if (CanResampleSurface(surface, historyLocation, historyNormal))
 			{
-				float p_hat = Luminance(UnshadowedPathContribution(surface, V, historyReservoir.sample));
-				if (any(isnan(p_hat)))
-				{
-					p_hat = 0.f;
-				}
+				const uint historyReservoirIdx = GetScreenReservoirIdx(reprojectedCoords, u_constants.reservoirsResolution);
 
-				reservoir.Update(rngState.Next(), historyReservoir, p_hat);
-				reservoir.age = historyReservoir.age;
+				DIReservoir historyReservoir = UnpackDIReservoir(u_constants.historyReservoirs.Load(historyReservoirIdx));
+
+				if (historyReservoir.IsValid() && historyReservoir.age < 8u)
+				{
+					float p_hat = Luminance(UnshadowedPathContribution(surface, V, historyReservoir.sample));
+					if (any(isnan(p_hat)))
+					{
+						p_hat = 0.f;
+					}
+
+					reservoir.Update(rngState.Next(), historyReservoir, p_hat);
+					reservoir.age = historyReservoir.age;
+				}
 			}
 		}
 	}

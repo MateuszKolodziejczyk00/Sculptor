@@ -378,9 +378,7 @@ void ResampleTemporallyCS(CS_INPUT input)
 				for(uint sampleIdx = 0; sampleIdx < HISTORY_SAMPLE_COUNT; ++sampleIdx)
 				{
 					const float2 sampleUV = reprojectedUV - (u_sceneView.jitter - u_prevFrameSceneView.jitter) * sampleIdx;
-					//const float2 sampleUV = reprojectedUV;
 					const int2 samplePixel = ApplyTemporalPermutation(floor(sampleUV * u_resamplingConstants.resolution), u_resamplingConstants.frameIdx, u_resamplingConstants.resolution);
-					//const int2 samplePixel = floor(sampleUV * u_resamplingConstants.resolution);
 					
 					if(resampler.TrySelectHistorySample(samplePixel, INOUT rng))
 					{

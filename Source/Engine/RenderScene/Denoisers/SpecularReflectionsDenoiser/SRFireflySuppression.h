@@ -27,6 +27,7 @@ struct FireflySuppressionParams
 	rg::RenderGraphDebugName debugName;
 
 	rg::RGTextureViewHandle  normal;
+	rg::RGTextureViewHandle  depth;
 
 	rg::RGTextureViewHandle  inSpecularY_SH2;
 	rg::RGTextureViewHandle  inDiffuseY_SH2;

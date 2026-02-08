@@ -17,6 +17,12 @@
  * MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData);
  */
 
+#if defined(SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL)
+#define SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL BindlessSamplers::LinearRepeat()
+#else
+#define SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL BindlessSamplers::MaterialAniso()
+#endif // SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL
+
 
 #if defined(SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL)
 

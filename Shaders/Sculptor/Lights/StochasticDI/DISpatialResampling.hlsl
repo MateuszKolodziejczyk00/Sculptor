@@ -10,6 +10,11 @@
 #include "Utils/Random.hlsli"
 
 
+// Make sure that seed is same for whole warp, this will increase cache coherence
+// Idea from: https://github.com/EmbarkStudios/kajiya/blob/main/assets/shaders/rtdgi/restir_spatial.hlsl
+#define WAVE_COHERENT_SPATIAL_RESAMPLING 0
+
+
 [shader("raygeneration")]
 void DISpatialResamplingRTG()
 {
@@ -45,8 +50,22 @@ void DISpatialResamplingRTG()
 
 	for (uint i = 0u; i < samplesNum; ++i)
 	{
+#if WAVE_COHERENT_SPATIAL_RESAMPLING
+		const int2 offset = WaveReadLaneFirst((float2(rngState.Next(), rngState.Next()) * 2.f - 1.f) * radius);
+#else
 		const int2 offset = (float2(rngState.Next(), rngState.Next()) * 2.f - 1.f) * radius;
-		const uint2 sampleCoords = clamp(int2(coords) + offset, 0, gBuffer.GetResolution() - 1);
+#endif
+
+		int2 sampleCoords = abs(int2(coords) + offset);
+		if (sampleCoords.x >= u_constants.gBuffer.resolution.x)
+		{
+			sampleCoords.x = 2 * (u_constants.gBuffer.resolution.x - 1) - sampleCoords.x;
+		}
+		if (sampleCoords.y >= u_constants.gBuffer.resolution.y)
+		{
+			sampleCoords.y = 2 * (u_constants.gBuffer.resolution.y - 1) - sampleCoords.y;
+		}
+
 
 		const uint sampleReservoirIdx = GetScreenReservoirIdx(sampleCoords, u_constants.reservoirsResolution);
 		const DIReservoir sampleReservoir = UnpackDIReservoir(u_constants.inReservoirs.Load(sampleReservoirIdx));

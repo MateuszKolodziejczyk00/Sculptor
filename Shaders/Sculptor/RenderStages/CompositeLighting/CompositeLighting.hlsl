@@ -158,7 +158,7 @@ float3 CompositeVolumetricClouds(in uint2 coords, in float2 uv, in float2 pixelS
 
 	float4 volumetricClouds = u_volumetricClouds.Load(uint3(coords, 0u));
 
-	if(volumetricClouds.a == 1.f)
+	if(volumetricClouds.a == 1.f || any(isnan(volumetricClouds))) // NaNs here can be caused by upsampling using samples that were rejected due to occlusion. In practice this shoould be fixed in upsampling code
 	{
 		return background + backgroundInScattering;
 	}

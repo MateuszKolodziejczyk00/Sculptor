@@ -30,7 +30,7 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
     
 	if (materialData.baseColorTexture.IsValid())
     {
-        baseColor = materialData.baseColorTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialAniso(), evalParams.uv).rgb;
+        baseColor = materialData.baseColorTexture.SPT_MATERIAL_SAMPLE(SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv).rgb;
     }
 
     baseColor *= materialData.baseColorFactor;
@@ -40,7 +40,7 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
 
     if(materialData.metallicRoughnessTexture.IsValid())
     {
-		const float2 metallicRoughness = materialData.metallicRoughnessTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialAniso(), evalParams.uv);
+		const float2 metallicRoughness = materialData.metallicRoughnessTexture.SPT_MATERIAL_SAMPLE(SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
 		metallic *= metallicRoughness.x;
 		roughness *= metallicRoughness.y;
     }
@@ -49,7 +49,7 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
     const float3 geometryNormal = normalize(evalParams.normal);
     if(evalParams.hasTangent && materialData.normalsTexture.IsValid())
     {
-		const float2 textureNormal = materialData.normalsTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialAniso(), evalParams.uv);
+		const float2 textureNormal = materialData.normalsTexture.SPT_MATERIAL_SAMPLE(SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
 
 		const float3 tangentNormal = UnpackTangentNormalFromXY(textureNormal);
         const float3x3 TBN = transpose(float3x3(normalize(evalParams.tangent), normalize(evalParams.bitangent), geometryNormal));
@@ -63,7 +63,7 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
     float3 emissiveColor = materialData.emissiveData.emissiveFactor;
 	if (materialData.emissiveData.emissiveTexture.IsValid())
     {
-        emissiveColor *= materialData.emissiveData.emissiveTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialAniso(), evalParams.uv);
+        emissiveColor *= materialData.emissiveData.emissiveTexture.SPT_MATERIAL_SAMPLE(SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
     }
 
     MaterialEvaluationOutput output;

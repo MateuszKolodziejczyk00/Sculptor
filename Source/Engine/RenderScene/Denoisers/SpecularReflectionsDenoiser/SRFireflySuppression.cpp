@@ -25,6 +25,7 @@ DS_BEGIN(SRFireflySuppressionDS, rg::RGDescriptorSetState<SRFireflySuppressionDS
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<RTSphericalBasisType>),            u_inSpecularY_SH2)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                  u_inDiffSpecCoCg)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                  u_normals)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                          u_depth)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRFireflySuppressionConstants>), u_constants)
 DS_END();
 
@@ -41,6 +42,7 @@ void SuppressFireflies(rg::RenderGraphBuilder& graphBuilder, const FireflySuppre
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(params.normal.IsValid());
+	SPT_CHECK(params.depth.IsValid());
 	SPT_CHECK(params.inSpecularY_SH2.IsValid());
 	SPT_CHECK(params.inDiffuseY_SH2.IsValid());
 	SPT_CHECK(params.inDiffSpecCoCg.IsValid());
@@ -61,6 +63,7 @@ void SuppressFireflies(rg::RenderGraphBuilder& graphBuilder, const FireflySuppre
 	ds->u_inSpecularY_SH2  = params.inSpecularY_SH2;
 	ds->u_inDiffSpecCoCg   = params.inDiffSpecCoCg;
 	ds->u_normals          = params.normal;
+	ds->u_depth            = params.depth;
 	ds->u_constants        = shaderConstants;
 
 	static const rdr::PipelineStateID pipeline = CreateFireflySuppressionPipeline();
