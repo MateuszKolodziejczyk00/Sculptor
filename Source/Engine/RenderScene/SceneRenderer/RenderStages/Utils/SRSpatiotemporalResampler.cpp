@@ -421,20 +421,8 @@ RT_PSO(SRFinalVisibilityTestPSO)
 
 	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
 	{
-		const lib::DynamicArray<mat::RTHitGroupPermutation> materialPermutations = mat::MaterialsSubsystem::Get().GetRTHitGroups();
-
-		lib::DynamicArray<HitGroup> hitGroups;
-		hitGroups.reserve(materialPermutations.size());
-
-		for (const mat::RTHitGroupPermutation& permutation : materialPermutations)
-		{
-			HitGroup hitGroup;
-			hitGroup.permutation = permutation;
-			hitGroups.push_back(std::move(hitGroup));
-		}
-
+		const lib::DynamicArray<HitGroup> hitGroups = mat::MaterialsSubsystem::Get().GetRTHitGroups<HitGroup>();
 		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
-
 		fullRate     = CompilePSO(compiler, psoDefinition, hitGroups, { "FORCE_FULL_RATE=1" });
 		variableRate = CompilePSO(compiler, psoDefinition, hitGroups, { "FORCE_FULL_RATE=0" });
 	}
@@ -493,17 +481,7 @@ DS_BEGIN(ResolveReservoirsDS, rg::RGDescriptorSetState<ResolveReservoirsDS>)
 DS_END();
 
 
-COMPUTE_PSO(ResolveReservoirsPSO)
-{
-	COMPUTE_SHADER("Sculptor/SpecularReflections/ResolveReservoirs.hlsl", ResolveReservoirsCS);
-
-	PRESET(pso);
-
-	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
-	{
-		pso = CompilePSO(compiler, { });
-	}
-};
+SIMPLE_COMPUTE_PSO(ResolveReservoirsPSO, "Sculptor/SpecularReflections/ResolveReservoirs.hlsl", ResolveReservoirsCS);
 
 
 static void ResolveReservoirs(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const SRResamplingConstants& resamplingConstants, utils::ReservoirsState& reservoirsState)

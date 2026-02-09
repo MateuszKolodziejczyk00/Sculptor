@@ -68,8 +68,6 @@ SandboxRenderer::SandboxRenderer()
 	, m_farPlane(1000.f)
 	, m_cameraSpeed(5.f)
 	, m_renderScene(lib::MakeShared<rsc::RenderScene>())
-	, m_wantsCaptureNextFrame(false)
-	, m_wantsToCreateScreenshot(false)
 	, m_captureSourceContext(lib::MakeShared<rg::capture::RGCaptureSourceContext>())
 	, m_memoryArena("Sandbox Renderer Arena", 4 * 1024 * 1024, 32 * 1024 * 1024)
 {
@@ -212,12 +210,17 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 	rg::capture::RGCaptureSourceInfo captureSource;
 	captureSource.sourceContext = m_captureSourceContext;
 
-	rg::capture::RenderGraphCapturer capturer(captureSource);
+	rg::capture::CaptureParameters captureParams
+	{
+		.captureTextures = captureTextures,
+		.captureBuffers  = captureBuffers
+	};
+	rg::capture::RenderGraphCapturer capturer(captureParams, captureSource);
 
-	if (m_wantsCaptureNextFrame)
+	if (wantsCaptureNextFrame)
 	{
 		capturer.Capture(graphBuilder);
-		m_wantsCaptureNextFrame = false;
+		wantsCaptureNextFrame = false;
 	}
 
 	m_captureSourceContext->ExecuteOnSetupNewGraphBuilder(graphBuilder);
@@ -268,7 +271,7 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 
 	const rg::RGTextureViewHandle sceneUItextureView = graphBuilder.AcquireExternalTextureView(output);
 
-	if (m_wantsToCreateScreenshot)
+	if (wantsToCreateScreenshot)
 	{
 		const lib::String screenshotFileName = lib::File::Utils::CreateFileNameFromTime("png");
 		const lib::String screenshotFilePath = engn::Paths::Combine(engn::Paths::GetSavedPath(), engn::Paths::Combine("Screenshots", screenshotFileName));
@@ -291,7 +294,7 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 				   },
 				   js::Prerequisites(saveJob));
 
-		m_wantsToCreateScreenshot = false;
+		wantsToCreateScreenshot = false;
 	}
 
 	graphBuilder.CopyTexture(RG_DEBUG_NAME("Copy Scene Result Texture"),

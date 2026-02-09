@@ -23,6 +23,7 @@ namespace renderer_params
 RendererIntParameter risSamplesNum("RIS Samples Num", { "Stochastic DI" }, 2, 1, 20);
 } // renderer_params
 
+
 RT_PSO(DIInitialSamplingPSO)
 {
 	RAY_GEN_SHADER("Sculptor/Lights/StochasticDI/InitialSampling.hlsl", InitialSamplingRTG);
@@ -40,21 +41,8 @@ RT_PSO(DIInitialSamplingPSO)
 
 	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
 	{
-		const lib::DynamicArray<mat::RTHitGroupPermutation> materialPermutations = mat::MaterialsSubsystem::Get().GetRTHitGroups();
-
-		lib::DynamicArray<HitGroup> hitGroups;
-		hitGroups.reserve(materialPermutations.size());
-
-		for (const mat::RTHitGroupPermutation& permutation : materialPermutations)
-		{
-			HitGroup hitGroup;
-			hitGroup.permutation = permutation;
-			hitGroups.push_back(std::move(hitGroup));
-		}
-
 		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
-
-		pso = CompilePSO(compiler, psoDefinition, hitGroups);
+		pso = CompilePSO(compiler, psoDefinition, mat::MaterialsSubsystem::Get().GetRTHitGroups<HitGroup>());
 	}
 };
 
@@ -76,21 +64,8 @@ RT_PSO(DISpatialResamplingPSO)
 
 	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
 	{
-		const lib::DynamicArray<mat::RTHitGroupPermutation> materialPermutations = mat::MaterialsSubsystem::Get().GetRTHitGroups();
-
-		lib::DynamicArray<HitGroup> hitGroups;
-		hitGroups.reserve(materialPermutations.size());
-
-		for (const mat::RTHitGroupPermutation& permutation : materialPermutations)
-		{
-			HitGroup hitGroup;
-			hitGroup.permutation = permutation;
-			hitGroups.push_back(std::move(hitGroup));
-		}
-
 		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
-
-		pso = CompilePSO(compiler, psoDefinition, hitGroups);
+		pso = CompilePSO(compiler, psoDefinition, mat::MaterialsSubsystem::Get().GetRTHitGroups<HitGroup>());
 	}
 };
 

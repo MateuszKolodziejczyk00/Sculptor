@@ -23,6 +23,7 @@ void AccumulateVolumetricCloudsCS(CS_INPUT input)
     {
         u_rwAccumulatedCloudsDepth[coords] = -1.f;
         u_rwCloudsAge[coords] = 0u;
+		u_rwAccumulatedClouds[coords] = SPT_NAN;
         return;
     }
 
@@ -54,14 +55,15 @@ void AccumulateVolumetricCloudsCS(CS_INPUT input)
     if(all(lastFrameUV >= 0.f) && all(lastFrameUV <= 1.f))
     {
         float4 historyCloud;
-        if(all(abs(lastFrameUV - uv) < 0.001f))
-        {
+        // if(all(abs(lastFrameUV - uv) < 0.001f))
+        // {
             historyCloud = u_accumulatedCloudsHistory.SampleLevel(u_linearSampler, lastFrameUV, 0.f);
-        }
-        else
-        {
-            historyCloud = SampleCatmullRom(u_accumulatedCloudsHistory, u_linearSampler, lastFrameUV, u_passConstants.resolution);
-        }
+        //}
+        //else
+        //{
+        //    historyCloud = SampleCatmullRom(u_accumulatedCloudsHistory, u_linearSampler, lastFrameUV, u_passConstants.resolution);
+        //}
+
         historyCloud.xyz = HistoryExposedLuminanceToLuminance(historyCloud.xyz);
 
         const float2 lastFrameUVFrac = frac(lastFrameUV * u_passConstants.resolution);
@@ -108,7 +110,7 @@ void AccumulateVolumetricCloudsCS(CS_INPUT input)
         }
     }
     
-    if(historyAge == 0u)
+    if(historyAge == 0u || any(isnan(outCloud)))
     {
         outCloud      = tracedCloud;
         outCloudDepth = tracedCloudDepth;

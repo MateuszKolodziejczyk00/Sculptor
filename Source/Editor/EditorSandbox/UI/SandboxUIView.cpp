@@ -190,12 +190,16 @@ void SandboxUIView::DrawRendererSettings()
 
 	if (ImGui::Button("Capture Render Graph"))
 	{
-		m_renderer.CreateRenderGraphCapture();
+		m_renderer.wantsCaptureNextFrame = true;
 	}
+
+	ImGui::Checkbox("Capture Textures", &m_renderer.captureTextures);
+	ImGui::SameLine();
+	ImGui::Checkbox("Capture Buffers",  &m_renderer.captureBuffers);
 
 	if (ImGui::Button("Create Screenshot"))
 	{
-		m_renderer.CreateScreenshot();
+		m_renderer.wantsToCreateScreenshot = true;
 	}
 }
 

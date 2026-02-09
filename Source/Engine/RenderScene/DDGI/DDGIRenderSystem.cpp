@@ -138,21 +138,8 @@ RT_PSO(DDGITraceRaysPSO)
 
 	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
 	{
-		const lib::DynamicArray<mat::RTHitGroupPermutation> materialPermutations = mat::MaterialsSubsystem::Get().GetRTHitGroups();
-
-		lib::DynamicArray<HitGroup> hitGroups;
-		hitGroups.reserve(materialPermutations.size());
-
-		for (const mat::RTHitGroupPermutation& permutation : materialPermutations)
-		{
-			HitGroup hitGroup;
-			hitGroup.permutation = permutation;
-			hitGroups.push_back(std::move(hitGroup));
-		}
-
 		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
-
-		pso = CompilePSO(compiler, psoDefinition, hitGroups);
+		pso = CompilePSO(compiler, psoDefinition, mat::MaterialsSubsystem::Get().GetRTHitGroups<HitGroup>());
 	}
 };
 

@@ -1,5 +1,5 @@
 {
     "HighQualityShadowMaps": 4,
-    "LowQualityShadowMaps": 12,
-    "MediumQualityShadowMaps": 24
+    "LowQualityShadowMaps": 16,
+    "MediumQualityShadowMaps": 8
 }

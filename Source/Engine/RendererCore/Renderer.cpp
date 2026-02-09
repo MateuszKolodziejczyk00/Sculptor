@@ -46,6 +46,9 @@ lib::UniquePtr<DescriptorManager> descriptorsManager;
 
 lib::SharedPtr<DescriptorSetLayout> shaderParamsDSLayout;
 
+lib::Lock releaseQueueLock;
+lib::DynamicArray<GPUReleaseQueue::ReadyQueue> readyReleases;
+
 };
 
 static RendererData g_data;
@@ -211,7 +214,8 @@ void Renderer::ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags flags /
 {
 	auto flushLambda = [queue = std::move(priv::g_data.releasesQueue.Flush())]() mutable
 	{
-		queue.Broadcast();
+		lib::LockGuard lock(priv::g_data.releaseQueueLock);
+		priv::g_data.readyReleases.emplace_back(std::move(queue));
 	};
 
 	if (lib::HasAnyFlag(flags, EDeferredReleasesFlushFlags::Immediate))
@@ -219,6 +223,8 @@ void Renderer::ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags flags /
 		GetDeviceQueuesManager().FlushSubmittedWorkloads();
 
 		flushLambda();
+
+		FlushReadyReleases();
 	}
 	else
 	{
@@ -227,6 +233,23 @@ void Renderer::ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags flags /
 		GetDeviceQueuesManager().SignalAfterFlushingPendingWork(gpuFlushedEvent);
 
 		js::Launch("Flush Deferred Releases", std::move(flushLambda), js::Prerequisites(gpuFlushedEvent));
+	}
+}
+
+void Renderer::FlushReadyReleases()
+{
+	SPT_PROFILER_FUNCTION();
+
+	lib::DynamicArray<GPUReleaseQueue::ReadyQueue> readyReleases;
+
+	{
+		lib::LockGuard lock(priv::g_data.releaseQueueLock);
+		std::swap(readyReleases, priv::g_data.readyReleases);
+	}
+
+	for (GPUReleaseQueue::ReadyQueue& queue : readyReleases)
+	{
+		queue.Broadcast();
 	}
 }
 

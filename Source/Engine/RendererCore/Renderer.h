@@ -63,6 +63,7 @@ public:
 
 	static void									ReleaseDeferred(GPUReleaseQueue::ReleaseEntry entry);
 	static void									ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags flags = EDeferredReleasesFlushFlags::Default);
+	static void									FlushReadyReleases();
 
 	static void									FlushPendingEvents();
 

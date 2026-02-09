@@ -531,6 +531,18 @@ static inline spt::rdr::PSOPermutationsContainer<domain> s_permutations; \
 using PermutationDomainType = domain;
 
 
+#define SIMPLE_COMPUTE_PSO(PSOName, ComputeShaderPath, ComputeShaderEntry) \
+COMPUTE_PSO(PSOName) \
+{ \
+	COMPUTE_SHADER(ComputeShaderPath, ComputeShaderEntry) \
+	PRESET(pso); \
+	static void PrecachePSOs(spt::rdr::PSOCompilerInterface& compiler, const spt::rdr::PSOPrecacheParams& params) \
+	{ \
+		pso = CompilePSO(compiler, {}); \
+	} \
+};
+
+
 class DebugFeature
 {
 public:

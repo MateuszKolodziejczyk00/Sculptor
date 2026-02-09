@@ -20,6 +20,8 @@ void EditorFrameContext::DoStagesTransition(engn::EFrameStage::Type prevStage, e
 		rdr::Renderer::FlushCaches();
 
 		rdr::Renderer::ScheduleFlushDeferredReleases();
+
+		rdr::Renderer::FlushReadyReleases();
 	}
 
 	if (prevStage == engn::EFrameStage::UpdatingEnd)

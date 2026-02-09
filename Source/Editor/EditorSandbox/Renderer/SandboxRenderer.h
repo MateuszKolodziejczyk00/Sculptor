@@ -71,9 +71,6 @@ public:
 	
 	void SetViewportFocused(Bool isFocused);
 
-	void CreateRenderGraphCapture();
-	void CreateScreenshot();
-
 	Bool sunMovement = false;
 	Real32 sunMovementSpeed = 0.08f;
 
@@ -94,6 +91,12 @@ public:
 
 	Bool oneFrameDebugMousePosition = false;
 	Bool resetPersistentDebugs = false;
+
+	Bool wantsCaptureNextFrame = false;
+	Bool captureTextures = true;
+	Bool captureBuffers  = false;
+
+	Bool wantsToCreateScreenshot = false;
 
 private:
 
@@ -118,9 +121,6 @@ private:
 	rg::RenderGraphResourcesPool		m_resourcesPool;
 
 	rsc::RenderSceneEntityHandle m_directionalLightEntity;
-
-	Bool m_wantsCaptureNextFrame;
-	Bool m_wantsToCreateScreenshot;
 
 	Bool m_isViewportFocused;
 

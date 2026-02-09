@@ -66,6 +66,9 @@ public:
 	const lib::DynamicArray<RTHitGroupPermutation>& GetRTHitGroups() const;
 	Uint32 GetRTHitGroupIdx(const RTHitGroupPermutation& hitGroupPermutation) const;
 
+	template<typename THitGroup>
+	lib::DynamicArray<THitGroup> GetRTHitGroups() const;
+
 	const lib::DynamicArray<lib::HashedString>& GetMaterialDataStructNames() const;
 
 private:
@@ -108,6 +111,22 @@ inline ecs::EntityHandle MaterialsSubsystem::CreateMaterial(const MaterialDefini
 	const ecs::EntityHandle shaderEntity = m_defaultShadersEntities.at(dataStructName);
 	const rdr::HLSLStorage<TMaterialData> shaderMaterialData = materialData;
 	return CreateMaterial(materialDef, shaderEntity, reinterpret_cast<const Byte*>(&shaderMaterialData), sizeof(rdr::HLSLStorage<TMaterialData>), dataStructName, ExtractMaterialFeaturesFromStruct<TMaterialData>());
+}
+
+template<typename THitGroup>
+inline lib::DynamicArray<THitGroup> MaterialsSubsystem::GetRTHitGroups() const
+{
+	const lib::DynamicArray<RTHitGroupPermutation>& permutations = GetRTHitGroups();
+
+	lib::DynamicArray<THitGroup> hitGroups;
+	hitGroups.reserve(permutations.size());
+
+	for (const RTHitGroupPermutation& permutation : permutations)
+	{
+		hitGroups.emplace_back(THitGroup{ .permutation = permutation });
+	}
+
+	return hitGroups;
 }
 
 } // spt::mat

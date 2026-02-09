@@ -17,11 +17,19 @@ namespace impl
 class RGCapturerDecorator;
 } // impl
 
+
+struct CaptureParameters
+{
+	Bool captureTextures = true;
+	Bool captureBuffers  = true;
+};
+
+
 class RENDER_GRAPH_CAPTURER_API RenderGraphCapturer
 {
 public:
 
-	explicit RenderGraphCapturer(const RGCaptureSourceInfo& captureSource);
+	explicit RenderGraphCapturer(const CaptureParameters& params, const RGCaptureSourceInfo& captureSource);
 
 	void Capture(RenderGraphBuilder& graphBuilder);
 
@@ -33,6 +41,7 @@ private:
 	
 	lib::SharedPtr<impl::RGCapturerDecorator> m_debugDecorator;
 
+	CaptureParameters   m_captureParams;
 	RGCaptureSourceInfo m_captureSource;
 };
 

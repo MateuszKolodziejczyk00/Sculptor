@@ -51,14 +51,14 @@ void FrameContext::WaitUpdateEnded()
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_stageEndedEvents[EFrameStage::UpdatingEnd].Wait();
+	GetStageFinishedEvent(EFrameStage::UpdatingEnd).Wait();
 }
 
 void FrameContext::WaitRenderingEnded()
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_stageEndedEvents[EFrameStage::RenderingEnd].Wait();
+	GetStageFinishedEvent(EFrameStage::RenderingEnd).Wait();
 }
 
 void FrameContext::WaitFrameFinished()

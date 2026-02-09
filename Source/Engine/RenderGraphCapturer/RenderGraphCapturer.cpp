@@ -21,7 +21,7 @@ class RGCapturerDecorator : public RenderGraphDebugDecorator
 {
 public:
 
-	explicit RGCapturerDecorator(const RGCaptureSourceInfo& captureSource);
+	explicit RGCapturerDecorator(const CaptureParameters& params, const RGCaptureSourceInfo& captureSource);
 
 	// Begin RenderGraphDebugDecorator interface
 	virtual void PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode& node, const RGDependeciesContainer& dependencies) override;
@@ -33,6 +33,10 @@ public:
 private:
 
 	void AddDependenciesToPass(RenderGraphBuilder& graphBuilder, CapturedPass& pass, const RGDependeciesContainer& dependencies);
+	void AddTextureDependenciesToPass(RenderGraphBuilder& graphBuilder, CapturedPass& pass, const RGDependeciesContainer& dependencies);
+	void AddBufferDependenciesToPass(RenderGraphBuilder& graphBuilder, CapturedPass& pass, const RGDependeciesContainer& dependencies);
+
+	CaptureParameters m_captureParams;
 
 	lib::SharedRef<RGCapture> m_capture;
 
@@ -43,8 +47,9 @@ private:
 };
 
 
-RGCapturerDecorator::RGCapturerDecorator(const RGCaptureSourceInfo& captureSource)
-	: m_isAddingCaptureCopyNode(false)
+RGCapturerDecorator::RGCapturerDecorator(const CaptureParameters& params, const RGCaptureSourceInfo& captureSource)
+	: m_captureParams(params)
+	, m_isAddingCaptureCopyNode(false)
 	, m_capture(lib::MakeShared<RGCapture>())
 {
 	m_capture->captureSource = captureSource;
@@ -119,6 +124,19 @@ void RGCapturerDecorator::PostSubpassAdded(RenderGraphBuilder& graphBuilder, RGN
 }
 
 void RGCapturerDecorator::AddDependenciesToPass(RenderGraphBuilder& graphBuilder, CapturedPass& pass, const RGDependeciesContainer& dependencies)
+{
+	if (m_captureParams.captureTextures)
+	{
+		AddTextureDependenciesToPass(graphBuilder, pass, dependencies);
+	}
+
+	if (m_captureParams.captureBuffers)
+	{
+		AddBufferDependenciesToPass(graphBuilder, pass, dependencies);
+	}
+}
+
+void RGCapturerDecorator::AddTextureDependenciesToPass(RenderGraphBuilder& graphBuilder, CapturedPass& pass, const RGDependeciesContainer& dependencies)
 {
 	for (const RGTextureAccessDef& textureAccess : dependencies.textureAccesses)
 	{
@@ -214,7 +232,10 @@ void RGCapturerDecorator::AddDependenciesToPass(RenderGraphBuilder& graphBuilder
 			m_capture->descriptorIdxToTexture[uavDescriptorIdx] = capturedTexture;
 		}
 	}
+}
 
+void RGCapturerDecorator::AddBufferDependenciesToPass(RenderGraphBuilder& graphBuilder, CapturedPass& pass, const RGDependeciesContainer& dependencies)
+{
 	for (const RGBufferAccessDef& bufferAccess : dependencies.bufferAccesses)
 	{
 		const rg::RGBufferViewHandle boundBufferView = bufferAccess.resource;
@@ -314,8 +335,9 @@ const lib::SharedRef<RGCapture>& RGCapturerDecorator::GetCapture() const
 
 } // impl
 
-RenderGraphCapturer::RenderGraphCapturer(const RGCaptureSourceInfo& captureSource)
-	: m_captureSource(captureSource)
+RenderGraphCapturer::RenderGraphCapturer(const CaptureParameters& params, const RGCaptureSourceInfo& captureSource)
+	: m_captureParams(params)
+	, m_captureSource(captureSource)
 {
 }
 
@@ -323,7 +345,7 @@ void RenderGraphCapturer::Capture(RenderGraphBuilder& graphBuilder)
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_debugDecorator = lib::MakeShared<impl::RGCapturerDecorator>(m_captureSource);
+	m_debugDecorator = lib::MakeShared<impl::RGCapturerDecorator>(m_captureParams, m_captureSource);
 	graphBuilder.AddDebugDecorator(lib::Ref(m_debugDecorator));
 }
 

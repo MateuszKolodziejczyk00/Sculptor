@@ -9,11 +9,11 @@ namespace spt::rdr
 
 class GPUReleaseQueue
 {
-	using Queue = lib::MulticastDelegate<void()>;
-
 public:
 
-	using ReleaseEntry = Queue::Delegate;
+	using ReadyQueue = lib::MulticastDelegate<void()>;
+
+	using ReleaseEntry = ReadyQueue::Delegate;
 
 	void Enqueue(ReleaseEntry entry)
 	{
@@ -22,11 +22,11 @@ public:
 		m_queue.Add(std::move(entry));
 	}
 
-	Queue Flush()
+	ReadyQueue Flush()
 	{
 		const lib::LockGuard lock(m_lock);
 
-		Queue copy = std::move(m_queue);
+		ReadyQueue copy = std::move(m_queue);
 
 		SPT_CHECK(!m_queue.IsBound());
 
@@ -40,8 +40,8 @@ public:
 
 private:
 
-	Queue     m_queue;
-	lib::Lock m_lock;
+	ReadyQueue m_queue;
+	lib::Lock  m_lock;
 };
 
 } // spt::rdr
