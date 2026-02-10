@@ -1,6 +1,7 @@
 #include "LightsRenderSystem.h"
 #include "RenderScene.h"
 #include "LightTypes.h"
+#include "Shadows/ShadowMapsRenderSystem.h"
 #include "View/ViewRenderingSpec.h"
 #include "View/RenderView.h"
 #include "ResourcesManager.h"
@@ -13,10 +14,7 @@
 #include "RenderGraphBuilder.h"
 #include "Common/ShaderCompilationInput.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
-#include "EngineFrame.h"
 #include "ViewShadingInput.h"
-#include "SceneRenderer/RenderStages/DirectionalLightShadowMasksRenderStage.h"
-#include "Atmosphere/AtmosphereSceneSubsystem.h"
 #include "Shadows/CascadedShadowMapsViewRenderSystem.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 #include "Atmosphere/AtmosphereRenderSystem.h"
@@ -611,8 +609,8 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 	shadingInputDS->u_ambientOcclusionTexture = viewContext.ambientOcclusion;
 
-	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
-	const AtmosphereContext& atmosphereContext = atmosphereSubsystem.GetAtmosphereContext();
+	const AtmosphereRenderSystem& atmosphereSystem = renderScene.GetRenderSystemChecked<AtmosphereRenderSystem>();
+	const AtmosphereContext& atmosphereContext     = atmosphereSystem.GetAtmosphereContext();
 
 	shadingInputDS->u_transmittanceLUT = graphBuilder.AcquireExternalTextureView(atmosphereContext.transmittanceLUT);
 	shadingInputDS->u_atmosphereParams = atmosphereContext.atmosphereParamsBuffer->GetFullView();
@@ -632,7 +630,8 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // LightsRenderSystem ============================================================================
 
-LightsRenderSystem::LightsRenderSystem()
+LightsRenderSystem::LightsRenderSystem(RenderScene& owningScene)
+	: Super(owningScene)
 {
 	m_supportedStages = lib::Flags(ERenderStage::ForwardOpaque, ERenderStage::DeferredShading);
 	
@@ -656,9 +655,9 @@ void LightsRenderSystem::CollectRenderViews(const RenderScene& renderScene, cons
 
 	Super::CollectRenderViews(renderScene, mainRenderView, viewsCollector);
 
-	if (const lib::SharedPtr<ShadowMapsManagerSubsystem> shadowMapsManager = renderScene.GetSceneSubsystem<ShadowMapsManagerSubsystem>())
+	if (const lib::SharedPtr<ShadowMapsRenderSystem> shadowMapsRenderSystem = renderScene.FindRenderSystem<ShadowMapsRenderSystem>())
 	{
-		const lib::DynamicArray<RenderView*> shadowMapViewsToRender = shadowMapsManager->GetShadowMapViewsToUpdate();
+		const lib::DynamicArray<RenderView*> shadowMapViewsToRender = shadowMapsRenderSystem->GetShadowMapViewsToUpdate();
 		for (RenderView* renderView : shadowMapViewsToRender)
 		{
 			SPT_CHECK(!!renderView);

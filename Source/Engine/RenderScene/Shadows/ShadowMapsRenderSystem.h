@@ -1,17 +1,10 @@
 #pragma once
 
 #include "RenderSceneMacros.h"
-#include "SculptorCoreTypes.h"
-#include "RenderSceneSubsystem.h"
+#include "SceneRenderSystem.h"
 #include "RenderSceneRegistry.h"
 #include "View/RenderView.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
-#include "RHICore/RHISamplerTypes.h"
-#include "DescriptorSetBindings/ArrayOfSRVTexturesBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ShadowsRenderingTypes.h"
 
 
@@ -52,46 +45,23 @@ struct VisibleLightEntityInfo
 };
 
 
-BEGIN_SHADER_STRUCT(ShadowsSettings)
-	SHADER_STRUCT_FIELD(Uint32, highQualitySMEndIdx)
-	SHADER_STRUCT_FIELD(Uint32, mediumQualitySMEndIdx)
-	SHADER_STRUCT_FIELD(math::Vector2f, highQualitySMPixelSize)
-	SHADER_STRUCT_FIELD(math::Vector2f, mediumQualitySMPixelSize)
-	SHADER_STRUCT_FIELD(math::Vector2f, lowQualitySMPixelSize)
-	SHADER_STRUCT_FIELD(Real32, shadowViewsNearPlane)
-	SHADER_STRUCT_FIELD(Uint32, shadowMappingTechnique)
-END_SHADER_STRUCT();
-
-
-BEGIN_SHADER_STRUCT(ShadowMapTexture)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>, texture)
-END_SHADER_STRUCT();
-
-
-BEGIN_SHADER_STRUCT(ShadowMapsData)
-	SHADER_STRUCT_FIELD(ShadowsSettings,                        settings)
-	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<ShadowMapViewData>, shadowMapViews)
-	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<ShadowMapTexture>,  shadowMaps)
-END_SHADER_STRUCT();
-
-
-class RENDER_SCENE_API ShadowMapsManagerSubsystem : public RenderSceneSubsystem
+class RENDER_SCENE_API ShadowMapsRenderSystem : public SceneRenderSystem
 {
 protected:
 
-	using Super = RenderSceneSubsystem;
+	using Super = SceneRenderSystem;
 
 public:
 
-	explicit ShadowMapsManagerSubsystem(RenderScene& owningScene, const lib::SharedPtr<RenderView>& inMainView);
+	explicit ShadowMapsRenderSystem(RenderScene& owningScene, const lib::SharedPtr<RenderView>& inMainView);
 
-	ShadowMapsManagerSubsystem(const ShadowMapsManagerSubsystem& rhs) = delete;
-	ShadowMapsManagerSubsystem& operator=(const ShadowMapsManagerSubsystem& rhs) = delete;
+	ShadowMapsRenderSystem(const ShadowMapsRenderSystem& rhs) = delete;
+	ShadowMapsRenderSystem& operator=(const ShadowMapsRenderSystem& rhs) = delete;
 
-	// Begin PrimitivesSystem overrides
+	// Begin SceneRenderSystem overrides
 	virtual void Update() override;
 	virtual void UpdateGPUSceneData(RenderSceneConstants& sceneData) override;
-	// End PrimitivesSystem overrides
+	// End SceneRenderSystem overrides
 
 	void SetShadowMappingTechnique(EShadowMappingTechnique newTechnique);
 	EShadowMappingTechnique GetShadowMappingTechnique() const;

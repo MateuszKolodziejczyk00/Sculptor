@@ -11,7 +11,7 @@
 #include "Material.h"
 #include "MaterialsSubsystem.h"
 #include "StaticMeshes/RenderMesh.h"
-#include "StaticMeshes/StaticMeshRenderSceneSubsystem.h"
+#include "StaticMeshes/StaticMeshRenderingCommon.h"
 #include "Transfers/UploadUtils.h"
 
 
@@ -188,7 +188,7 @@ rg::RGBufferViewHandle CreateDIReservoirs(rg::RenderGraphBuilder& graphBuilder, 
 
 void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const StochasticDIParams& diParams)
 {
-		SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Stochastic DI");
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Stochastic DI");
 
 	const math::Vector2u resolution = diParams.outputLuminance->GetResolution2D();
 

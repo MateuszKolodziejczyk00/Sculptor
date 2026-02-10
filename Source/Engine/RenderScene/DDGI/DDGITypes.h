@@ -104,20 +104,6 @@ BEGIN_SHADER_STRUCT(DDGIRelitGPUParams)
 END_SHADER_STRUCT();
 
 
-namespace EDDGIDebugMode
-{
-enum Type
-{
-	None,
-	Illuminance,
-	HitDistance,
-	DebugRays,
-
-	NUM
-};
-} // EDDDGIProbesDebugMode
-
-
 // Needs additional padding because it's used in array (so size must be multiple of 16)
 BEGIN_SHADER_STRUCT(DDGILODDefinition)
 	SHADER_STRUCT_FIELD(Uint32, volumeIdx)

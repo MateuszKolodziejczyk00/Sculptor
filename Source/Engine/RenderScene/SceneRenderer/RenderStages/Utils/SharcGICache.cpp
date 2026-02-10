@@ -1,4 +1,5 @@
 #include "SharcGICache.h"
+#include "Atmosphere/AtmosphereRenderSystem.h"
 #include "ResourcesManager.h"
 #include "Types/Buffer.h"
 #include "ShaderStructs/ShaderStructs.h"
@@ -7,17 +8,11 @@
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "View/ViewRenderingSpec.h"
 #include "RenderGraphBuilder.h"
-#include "RayTracing/RayTracingRenderSceneSubsystem.h"
-#include "MaterialsUnifiedData.h"
-#include "GeometryManager.h"
-#include "StaticMeshes/StaticMeshGeometry.h"
 #include "RenderScene.h"
 #include "Lights/LightsRenderSystem.h"
-#include "DDGI/DDGISceneSubsystem.h"
-#include "Atmosphere/Clouds/VolumetricCloudsTypes.h"
-#include "Atmosphere/AtmosphereSceneSubsystem.h"
 #include "FileSystem/File.h"
 #include "Common/ShaderCompilationEnvironment.h"
+#include "DDGi/DDGIRenderSystem.h"
 #include "MaterialsSubsystem.h"
 
 
@@ -155,8 +150,8 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 	shaderConstants.frameIdx         = renderView.GetRenderedFrameIdx();
 	shaderConstants.sharcCapacity    = m_entriesNum;
 
-	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
-	const AtmosphereContext& atmosphereContext          = atmosphereSubsystem.GetAtmosphereContext();
+	const AtmosphereRenderSystem& atmosphereSystem = renderScene.GetRenderSystemChecked<AtmosphereRenderSystem>();
+	const AtmosphereContext& atmosphereContext     = atmosphereSystem.GetAtmosphereContext();
 
 	const math::Vector2u tracesNum = math::Utils::DivideCeil(resolution, math::Vector2u(5u, 5u));
 
@@ -182,13 +177,13 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 	updateDS->u_constants                = shaderConstants;
 
 	LightsRenderSystem& lightsRenderSystem = renderScene.GetRenderSystemChecked<LightsRenderSystem>();
-	const ddgi::DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<ddgi::DDGISceneSubsystem>();
+	const ddgi::DDGIRenderSystem& ddgiRenderSystem = renderScene.GetRenderSystemChecked<ddgi::DDGIRenderSystem>();
 
 	graphBuilder.TraceRays(RG_DEBUG_NAME("Update Sharc GI Cache"),
 						   sharc_passes::SharcUpdatePSO::pso,
 						   tracesNum,
 						   rg::BindDescriptorSets(std::move(updateDS),
-												  ddgiSubsystem.GetDDGISceneDS(),
+												  ddgiRenderSystem.GetDDGISceneDS(),
 												  lightsRenderSystem.GetGlobalLightsDS(),
 												  viewContext.cloudscapeProbesDS));
 

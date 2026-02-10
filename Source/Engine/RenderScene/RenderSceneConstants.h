@@ -5,7 +5,7 @@
 #include "ShaderStructs.h"
 #include "MaterialsUnifiedData.h"
 #include "RayTracing/RayTracingSceneTypes.h"
-#include "Shadows/ShadowMapsManagerSubsystem.h"
+#include "Shadows/ShadowsRenderingTypes.h"
 
 
 namespace spt::rsc

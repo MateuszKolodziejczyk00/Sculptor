@@ -4,7 +4,6 @@
 #include "RenderGraphBuilder.h"
 #include "DepthPrepassRenderStage.h"
 #include "Lights/ViewShadingInput.h"
-#include "Shadows/ShadowMapsManagerSubsystem.h"
 
 namespace spt::rsc
 {

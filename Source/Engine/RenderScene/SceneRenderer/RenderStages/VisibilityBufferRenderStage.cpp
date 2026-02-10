@@ -2,7 +2,7 @@
 #include "View/RenderView.h"
 #include "RenderGraphBuilder.h"
 #include "RenderScene.h"
-#include "StaticMeshes/StaticMeshRenderSceneSubsystem.h"
+#include "StaticMeshes/StaticMeshesRenderSystem.h"
 #include "Utils/hiZRenderer.h"
 #include "Utils/VisibilityBuffer/MaterialDepthRenderer.h"
 #include "Geometry/MaterialsRenderer.h"
@@ -103,8 +103,8 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 	
 	ShadingViewContext& shadingContext = viewSpec.GetShadingViewContext();
 
-	const StaticMeshRenderSceneSubsystem& staticMeshPrimsSystem = renderScene.GetSceneSubsystemChecked<StaticMeshRenderSceneSubsystem>();
-	const GeometryPassDataCollection& cachedGeometryPassData    = staticMeshPrimsSystem.GetCachedOpaqueGeometryPassData();
+	const StaticMeshesRenderSystem& staticMeshesSystem = renderScene.GetRenderSystemChecked<StaticMeshesRenderSystem>();
+	const GeometryPassDataCollection& cachedGeometryPassData    = staticMeshesSystem.GetCachedOpaqueGeometryPassData();
 	
 	const rg::RGTextureViewHandle depth        = graphBuilder.AcquireExternalTextureView(m_currentDepthTexture);
 	const rg::RGTextureViewHandle hiZ          = graphBuilder.AcquireExternalTextureView(m_currentHiZTexture);

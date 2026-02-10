@@ -1,34 +1,29 @@
 #include "DDGIRenderSystem.h"
+#include "Atmosphere/AtmosphereRenderSystem.h"
 #include "RenderScene.h"
-#include "DDGISceneSubsystem.h"
 #include "RenderGraphBuilder.h"
 #include "ResourcesManager.h"
 #include "Utils/BufferUtils.h"
-#include "RayTracing/RayTracingRenderSceneSubsystem.h"
 #include "Common/ShaderCompilationInput.h"
-#include "DescriptorSetBindings/AccelerationStructureBinding.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "DescriptorSetBindings/ConstantBufferRefBinding.h"
-#include "DescriptorSetBindings/ConditionalBinding.h"
-#include "DescriptorSetBindings/AppendConsumeBufferBinding.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
-#include "StaticMeshes/StaticMeshGeometry.h"
-#include "GeometryManager.h"
-#include "Lights/LightTypes.h"
 #include "Atmosphere/AtmosphereTypes.h"
-#include "Atmosphere/AtmosphereSceneSubsystem.h"
 #include "MaterialsSubsystem.h"
-#include "MaterialsUnifiedData.h"
 #include "Lights/LightsRenderSystem.h"
-#include "DescriptorSetBindings/ChildDSBinding.h"
 #include "DDGIVolume.h"
-#include "Atmosphere/Clouds/VolumetricCloudsTypes.h"
 #include "Pipelines/PSOsLibraryTypes.h"
+#include "ConfigUtils.h"
 
 
 namespace spt::rsc::ddgi
 {
+
+namespace renderer_params
+{
+RendererBoolParameter ddgiEnabled("Enable DDGI", {"DDGI"}, true);
+} // renderer_params
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Descriptor Sets ===============================================================================
@@ -192,7 +187,7 @@ static rdr::PipelineStateID CreateDDGIInvalidateProbesPipeline(math::Vector2u gr
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DDGIUpdateParameters ==========================================================================
 
-DDGIVolumeRelitParameters::DDGIVolumeRelitParameters(rg::RenderGraphBuilder& graphBuilder, const DDGIRelitGPUParams& relitParams, const DDGISceneSubsystem& ddgiSubsystem, const DDGIVolume& inVolume)
+DDGIVolumeRelitParameters::DDGIVolumeRelitParameters(rg::RenderGraphBuilder& graphBuilder, const DDGIRelitGPUParams& relitParams, const DDGIScene& ddgiScene, const DDGIVolume& inVolume)
 	: volume(inVolume)
 	, probesAverageLuminanceTextureView(graphBuilder.AcquireExternalTextureView(volume.GetProbesAverageLuminanceTexture()))
 	, relitParamsBuffer(rdr::utils::CreateConstantBufferView<DDGIRelitGPUParams>(RENDERER_RESOURCE_NAME("DDGIRelitGPUParams"), relitParams))
@@ -201,8 +196,7 @@ DDGIVolumeRelitParameters::DDGIVolumeRelitParameters(rg::RenderGraphBuilder& gra
 	, raysNumPerProbe(relitParams.raysNumPerProbe)
 	, probeIlluminanceDataWithBorderRes(volume.GetVolumeGPUParams().probeIlluminanceDataWithBorderRes)
 	, probeHitDistanceDataWithBorderRes(volume.GetVolumeGPUParams().probeHitDistanceDataWithBorderRes)
-	, ddgiSceneDS(ddgiSubsystem.GetDDGISceneDS())
-	, debugMode(ddgiSubsystem.GetDebugMode())
+	, ddgiSceneDS(ddgiScene.GetDDGIDS())
 {
 	const Uint32 probeDataTexturesNum = volume.GetProbeDataTexturesNum();
 
@@ -240,8 +234,14 @@ struct DDGIDebugRaysViewData
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DDGIRenderSystem ==============================================================================
 
-DDGIRenderSystem::DDGIRenderSystem()
+DDGIRenderSystem::DDGIRenderSystem(RenderScene& owningScene)
+	: Super(owningScene)
+	, m_ddgiScene(owningScene)
 {
+	engn::ConfigUtils::LoadConfigData(m_config, "DDGIConfig.json");
+
+	m_ddgiScene.Initialize(m_config);
+
 	m_supportedStages = lib::Flags(ERenderStage::GlobalIllumination, ERenderStage::DeferredShading);
 }
 
@@ -251,14 +251,18 @@ void DDGIRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, cons
 
 	Super::RenderPerFrame(graphBuilder, renderScene, viewSpecs, settings);
 
-	DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
-	ddgiSubsystem.UpdateDDGIScene(viewSpecs[0]->GetRenderView());
+	m_ddgiScene.Update(viewSpecs[0]->GetRenderView());
 
 	for (ViewRenderingSpec* view : viewSpecs)
 	{
 		SPT_CHECK(!!view);
 		RenderPerView(graphBuilder, renderScene, *view);
 	}
+}
+
+Bool DDGIRenderSystem::IsDDGIEnabled() const
+{
+	return renderer_params::ddgiEnabled;
 }
 
 void DDGIRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
@@ -271,17 +275,17 @@ void DDGIRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const
 	}
 }
 
-void DDGIRenderSystem::RelitScene(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIScene& scene, const RelitSettings& settings) const
+void DDGIRenderSystem::RelitScene(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RelitSettings& settings)
 {
 	SPT_PROFILER_FUNCTION();
 
-	InvalidateVolumes(graphBuilder, renderScene, viewSpec, ddgiSubsystem, scene, settings);
+	InvalidateVolumes(graphBuilder, renderScene, viewSpec, settings);
 
-	const SizeType relitBudget = settings.reset ? maxValue<SizeType> : ddgiSubsystem.GetConfig().relitVolumesBudget;
+	const SizeType relitBudget = settings.reset ? maxValue<SizeType> : m_config.relitVolumesBudget;
 
 	DDGIZonesCollector zonesCollector(relitBudget);
 
-	scene.CollectZonesToRelit(zonesCollector);
+	m_ddgiScene.CollectZonesToRelit(zonesCollector);
 
 	const lib::DynamicArray<DDGIRelitZone*>& zones = zonesCollector.GetZonesToRelit();
 
@@ -289,17 +293,17 @@ void DDGIRenderSystem::RelitScene(rg::RenderGraphBuilder& graphBuilder, const Re
 	{
 		SPT_CHECK(!!zone);
 
-		RelitZone(graphBuilder, renderScene, viewSpec, ddgiSubsystem, *zone);
+		RelitZone(graphBuilder, renderScene, viewSpec, *zone);
 	}
 
-	scene.PostRelit();
+	m_ddgiScene.PostRelit();
 }
 
-void DDGIRenderSystem::InvalidateVolumes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIScene& scene, const RelitSettings& settings) const
+void DDGIRenderSystem::InvalidateVolumes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RelitSettings& settings) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::DynamicArray<DDGIVolume*>& volumes = scene.GetVolumes();
+	const lib::DynamicArray<DDGIVolume*>& volumes = m_ddgiScene.GetVolumes();
 
 	for (DDGIVolume* volume : volumes)
 	{
@@ -312,13 +316,13 @@ void DDGIRenderSystem::InvalidateVolumes(rg::RenderGraphBuilder& graphBuilder, c
 	}
 }
 
-void DDGIRenderSystem::RelitZone(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIRelitZone& zone) const
+void DDGIRenderSystem::RelitZone(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, DDGIRelitZone& zone) const
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Relit Zone");
 
-	const DDGIVolumeRelitParameters relitParams(graphBuilder, CreateRelitParams(zone, ddgiSubsystem.GetConfig()), ddgiSubsystem, zone.GetVolume());
+	const DDGIVolumeRelitParameters relitParams(graphBuilder, CreateRelitParams(zone, m_config), m_ddgiScene, zone.GetVolume());
 
 	UpdateProbes(graphBuilder, renderScene, viewSpec, relitParams);
 
@@ -439,8 +443,8 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 
 	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
-	const AtmosphereContext& atmosphereContext = atmosphereSubsystem.GetAtmosphereContext();
+	const AtmosphereRenderSystem& atmosphereSystem = renderScene.GetRenderSystemChecked<AtmosphereRenderSystem>();
+	const AtmosphereContext& atmosphereContext     = atmosphereSystem.GetAtmosphereContext();
 
 	const lib::MTHandle<DDGITraceRaysDS> traceRaysDS = graphBuilder.CreateDescriptorSet<DDGITraceRaysDS>(RENDERER_RESOURCE_NAME("DDGITraceRaysDS"));
 	traceRaysDS->u_skyViewLUT             = viewContext.skyViewLUT;
@@ -463,22 +467,20 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 	return probesTraceResultTexture;
 }
 
-void DDGIRenderSystem::RenderGlobalIllumination(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context, RenderStageContextMetaDataHandle metaData) const
+void DDGIRenderSystem::RenderGlobalIllumination(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context, RenderStageContextMetaDataHandle metaData)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "GI Update");
 
-	DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
-
-	if (ddgiSubsystem.IsDDGIEnabled())
+	if (IsDDGIEnabled())
 	{
 		const RelitSettings relitSettings
 		{
 			.reset = context.rendererSettings.resetAccumulation
 		};
 
-		RelitScene(graphBuilder, renderScene, viewSpec, ddgiSubsystem, ddgiSubsystem.GetDDGIScene(), relitSettings);
+		RelitScene(graphBuilder, renderScene, viewSpec, relitSettings);
 	}
 }
 

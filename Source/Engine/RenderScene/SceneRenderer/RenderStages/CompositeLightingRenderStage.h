@@ -3,6 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "RenderStage.h"
 
+
 namespace spt::rsc
 {
 

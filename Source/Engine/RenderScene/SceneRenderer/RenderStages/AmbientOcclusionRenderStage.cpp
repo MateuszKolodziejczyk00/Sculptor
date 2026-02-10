@@ -5,15 +5,9 @@
 #include "DescriptorSetBindings/SamplerBinding.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/AccelerationStructureBinding.h"
-#include "Pipelines/PipelineState.h"
-#include "RayTracing/RayTracingRenderSceneSubsystem.h"
 #include "RenderScene.h"
 #include "Utility/Random.h"
 #include "MaterialsSubsystem.h"
-#include "StaticMeshes/StaticMeshGeometry.h"
-#include "GeometryManager.h"
-#include "MaterialsUnifiedData.h"
 #include "SceneRenderer/Utils/DepthBasedUpsampler.h"
 
 namespace spt::rsc

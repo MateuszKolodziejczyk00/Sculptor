@@ -4,8 +4,7 @@
 #include "RenderGraphBuilder.h"
 #include "Renderer.h"
 #include "RenderScene.h"
-#include "Lights/LightTypes.h"
-#include "Shadows/ShadowMapsManagerSubsystem.h"
+#include "Shadows/ShadowMapsRenderSystem.h"
 #include "ResourcesManager.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/SamplerBinding.h"
@@ -95,8 +94,8 @@ void ShadowMapRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const 
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
-	const ShadowMapsManagerSubsystem& shadowMapsManager = renderScene.GetSceneSubsystemChecked<ShadowMapsManagerSubsystem>();
-	const EShadowMappingTechnique defaultTechnique = shadowMapsManager.GetShadowMappingTechnique();
+	const ShadowMapsRenderSystem& shadowMapRenderSystem = renderScene.GetRenderSystemChecked<ShadowMapsRenderSystem>();
+	const EShadowMappingTechnique defaultTechnique = shadowMapRenderSystem.GetShadowMappingTechnique();
 
 	const ShadowMapViewComponent& shadowMapViewData = renderView.GetBlackboard().Get<ShadowMapViewComponent>();
 	

@@ -8,10 +8,9 @@
 #include "ResourcesManager.h"
 #include "RenderGraphBuilder.h"
 #include "View/RenderView.h"
-#include "DDGI/DDGITypes.h"
 #include "RenderScene.h"
 #include "EngineFrame.h"
-#include "DDGI/DDGISceneSubsystem.h"
+#include "DDGI/DDGIRenderSystem.h"
 #include "SceneRenderer/RenderStages/Utils/SharcGICache.h"
 #include "SRDenoiserTypes.h"
 
@@ -116,7 +115,7 @@ void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const Tempo
 	ds->u_baseColorMetallicTexture               = params.baseColorMetallic;
 	ds->u_constants                              = shaderConstants;
 
-	const ddgi::DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<ddgi::DDGISceneSubsystem>();
+	const ddgi::DDGIRenderSystem& ddgiRenderSystem = renderScene.GetRenderSystemChecked<ddgi::DDGIRenderSystem>();
 
 	const rdr::PipelineStateID pipeline = CreateTemporalAccumulationPipeline(params);
 
@@ -124,7 +123,7 @@ void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const Tempo
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds),
-												 ddgiSubsystem.GetDDGISceneDS(),
+												 ddgiRenderSystem.GetDDGISceneDS(),
 												 params.sharcCacheDS));
 }
 

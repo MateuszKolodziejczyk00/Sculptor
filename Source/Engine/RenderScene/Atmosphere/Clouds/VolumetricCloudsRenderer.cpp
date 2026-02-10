@@ -1,12 +1,10 @@
 #include "VolumetricCloudsRenderer.h"
+#include "Atmosphere/AtmosphereRenderSystem.h"
 #include "Loaders/TextureLoader.h"
 #include "CloudsNoiseTexturesGenerator.h"
-#include "Atmosphere/AtmosphereSceneSubsystem.h"
 #include "RenderScene.h"
 #include "RenderGraphBuilder.h"
 #include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/ConstantBufferRefBinding.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/SamplerBinding.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"
@@ -15,7 +13,6 @@
 #include "GlobalResources/GlobalResourcesRegistry.h"
 #include "EngineFrame.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
-#include "Lights/ViewShadingInput.h"
 
 
 SPT_DEFINE_LOG_CATEGORY(VolumetricCloudsRenderer, true);
@@ -863,9 +860,8 @@ CloudscapeContext VolumetricCloudsRenderer::CreateFrameCloudscapeContext(rg::Ren
 
 	const ViewRenderingSpec* mainView = viewSpecs[0];
 
-	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
-
-	const AtmosphereContext& atmosphere = atmosphereSubsystem.GetAtmosphereContext();
+	const AtmosphereRenderSystem& atmosphereSystem = renderScene.GetRenderSystemChecked<AtmosphereRenderSystem>();
+	const AtmosphereContext& atmosphereContext     = atmosphereSystem.GetAtmosphereContext();
 
 	const RenderView& renderView = mainView->GetRenderView();
 	const math::Vector3f viewLocation = renderView.GetLocation();
@@ -887,12 +883,12 @@ CloudscapeContext VolumetricCloudsRenderer::CreateFrameCloudscapeContext(rg::Ren
 	m_cloudscapeConstants.globalCoverageMultiplier     = renderer_params::globalCoverageMultiplier;
 	m_cloudscapeConstants.globalCloudsHeightMultiplier = renderer_params::cloudsHeightMultiplier;
 	m_cloudscapeConstants.time                         = renderScene.GetCurrentFrameRef().GetTime();
-	m_cloudscapeConstants.mainDirectionalLight         = *atmosphere.mainDirectionalLight;
+	m_cloudscapeConstants.mainDirectionalLight         = *atmosphereContext.mainDirectionalLight;
 
 	lib::MTHandle<CloudscapeDS> ds = graphBuilder.CreateDescriptorSet<CloudscapeDS>(RENDERER_RESOURCE_NAME("CloudscapeDS"));
 	ds->u_cloudscapeConstants = m_cloudscapeConstants;
-	ds->u_atmosphereConstants = atmosphere.atmosphereParamsBuffer->GetFullView();
-	ds->u_transmittanceLUT    = atmosphere.transmittanceLUT;
+	ds->u_atmosphereConstants = atmosphereContext.atmosphereParamsBuffer->GetFullView();
+	ds->u_transmittanceLUT    = atmosphereContext.transmittanceLUT;
 	ds->u_baseShapeNoise      = graphBuilder.AcquireExternalTextureView(m_baseShapeNoiseTexture);
 	ds->u_detailShapeNoise    = graphBuilder.AcquireExternalTextureView(m_detailShapeNoiseTexture);
 	ds->u_curlNoise           = graphBuilder.AcquireExternalTextureView(m_curlNoise);
@@ -901,7 +897,7 @@ CloudscapeContext VolumetricCloudsRenderer::CreateFrameCloudscapeContext(rg::Ren
 
 	const Bool resetAccumulation = settings.resetAccumulation;
 
-	CloudscapeContext context{ atmosphere, m_cloudscapeConstants, ds };
+	CloudscapeContext context{ atmosphereContext, m_cloudscapeConstants, ds };
 	context.resetAccumulation = resetAccumulation;
 	context.frameIdx          = renderView.GetRenderedFrameIdx();
 

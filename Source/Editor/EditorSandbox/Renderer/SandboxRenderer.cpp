@@ -1,37 +1,27 @@
 #include "Renderer/SandboxRenderer.h"
-#include "Common/ShaderCompilationInput.h"
 #include "Types/Texture.h"
 #include "Types/UIBackend.h"
 #include "Types/Window.h"
-#include "Types/RenderContext.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Renderer.h"
-#include "CommandsRecorder/RenderingDefinition.h"
-#include "Types/Sampler.h"
-#include "GPUDiagnose/Debug/GPUDebug.h"
 #include "JobSystem.h"
 #include "RenderGraphBuilder.h"
 #include "Engine.h"
 #include "Paths.h"
 #include "Transfers/UploadUtils.h"
-#include "StaticMeshes/StaticMeshRenderSceneSubsystem.h"
 #include "StaticMeshes/StaticMeshesRenderSystem.h"
 #include "Lights/LightsRenderSystem.h"
-#include "Shadows/ShadowMapsManagerSubsystem.h"
+#include "Shadows/ShadowMapsRenderSystem.h"
 #include "SceneRenderer/SceneRenderer.h"
 #include "InputManager.h"
-#include "Transfers/TransfersManager.h"
 #include "Lights/LightTypes.h"
-#include "RayTracing/RayTracingRenderSceneSubsystem.h"
+#include "RayTracing/RayTracingRenderSystem.h"
 #include "GPUDiagnose/Profiler/GPUStatisticsCollector.h"
 #include "EngineFrame.h"
 #include "Profiler/Profiler.h"
-#include "Vulkan/VulkanTypes/RHIQueryPool.h"
-#include "DDGI/DDGISceneSubsystem.h"
 #include "DDGI/DDGIRenderSystem.h"
 #include "Camera/CameraSettings.h"
 #include "Loaders/TextureLoader.h"
-#include "Atmosphere/AtmosphereSceneSubsystem.h"
 #include "Atmosphere/AtmosphereRenderSystem.h"
 #include "RenderGraphCapturer.h"
 #include "RenderGraphCaptureViewer.h"
@@ -443,12 +433,10 @@ void SandboxRenderer::InitializeRenderScene()
 		m_renderView->GetBlackboard().Create<rsc::CameraLensSettingsComponent>(cameraLensSettingsComponent);
 	}
 
-	m_renderScene->AddSceneSubsystem<rsc::StaticMeshRenderSceneSubsystem>();
-	m_renderScene->AddSceneSubsystem<rsc::ShadowMapsManagerSubsystem>(m_renderView);
-	m_renderScene->AddSceneSubsystem<rsc::AtmosphereSceneSubsystem>();
+	m_renderScene->AddRenderSystem<rsc::ShadowMapsRenderSystem>(m_renderView);
 	if (rdr::Renderer::IsRayTracingEnabled())
 	{
-		m_renderScene->AddSceneSubsystem<rsc::RayTracingRenderSceneSubsystem>();
+		m_renderScene->AddRenderSystem<rsc::RayTracingRenderSystem>();
 		
 		m_renderScene->AddRenderSystem<rsc::ddgi::DDGIRenderSystem>();
 		m_renderScene->AddSceneSubsystem<rsc::ddgi::DDGISceneSubsystem>();

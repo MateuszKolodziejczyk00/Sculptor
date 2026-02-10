@@ -44,11 +44,9 @@ void RenderScene::Update()
 {
 	SPT_PROFILER_FUNCTION();
 
-	const auto& sceneSubsystems = m_renderSceneSubsystems.GetSystems();
-
-	js::InlineParallelForEach("Update Render Scene Subsystems",
-							  sceneSubsystems,
-							  [](const lib::SharedPtr<RenderSceneSubsystem>& system)
+	js::InlineParallelForEach("Update Scene Render Systems",
+							  m_renderSystems.GetRenderSystems(),
+							  [](const lib::SharedPtr<SceneRenderSystem>& system)
 							  {
 								  system->Update();
 							  });
@@ -73,9 +71,9 @@ void RenderScene::Update()
 	sceneConstants.geometry  = geometryData;
 	sceneConstants.materials = gpuMaterials;
 
-	for (const lib::SharedPtr<RenderSceneSubsystem>& subsystem : sceneSubsystems)
+	for (const auto& system : m_renderSystems.GetRenderSystems())
 	{
-		subsystem->UpdateGPUSceneData(sceneConstants);
+		system->UpdateGPUSceneData(sceneConstants);
 	}
 
 	m_renderSceneDS->u_renderSceneConstants = sceneConstants;

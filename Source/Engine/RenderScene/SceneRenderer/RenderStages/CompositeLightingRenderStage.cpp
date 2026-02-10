@@ -1,4 +1,5 @@
 #include "CompositeLightingRenderStage.h"
+#include "Atmosphere/AtmosphereRenderSystem.h"
 #include "RenderGraphBuilder.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "RGDescriptorSetState.h"
@@ -13,7 +14,6 @@
 #include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 #include "Atmosphere/AtmosphereTypes.h"
 #include "Lights/LightTypes.h"
-#include "Atmosphere/AtmosphereSceneSubsystem.h"
 #include "RenderScene.h"
 #include "SceneRenderer/RenderStages/Utils/RTReflectionsTypes.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
@@ -158,11 +158,11 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	}
 
 	lib::MTHandle<CompositeAtmosphereDS> compositeAtmosphereDS;
-	if (lib::SharedPtr<AtmosphereSceneSubsystem> atmosphereSubsystem = renderScene.GetSceneSubsystem<AtmosphereSceneSubsystem>())
+	if (lib::SharedPtr<AtmosphereRenderSystem> atmosphereRenderSystem = renderScene.FindRenderSystem<AtmosphereRenderSystem>())
 	{
 		permutation.ATMOSPHERE_ENABLED = true;
 
-		const AtmosphereContext& atmosphereContext = atmosphereSubsystem->GetAtmosphereContext();
+		const AtmosphereContext& atmosphereContext = atmosphereRenderSystem->GetAtmosphereContext();
 
 		compositeAtmosphereDS = graphBuilder.CreateDescriptorSet<CompositeAtmosphereDS>(RENDERER_RESOURCE_NAME("CompositeAtmosphereDS"));
 		compositeAtmosphereDS->u_atmosphereParams      = atmosphereContext.atmosphereParamsBuffer->GetFullView();

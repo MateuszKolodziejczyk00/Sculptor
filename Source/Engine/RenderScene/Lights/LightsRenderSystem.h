@@ -1,7 +1,6 @@
 #pragma once
 
 #include "SceneRenderSystem.h"
-#include "Pipelines/PipelineState.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
@@ -50,7 +49,7 @@ protected:
 
 public:
 
-	LightsRenderSystem();
+	explicit LightsRenderSystem(RenderScene& owningScene);
 
 	// Begin SceneRenderSystem overrides
 	virtual void CollectRenderViews(const RenderScene& renderScene, const RenderView& mainRenderView, INOUT RenderViewsCollector& viewsCollector) override;

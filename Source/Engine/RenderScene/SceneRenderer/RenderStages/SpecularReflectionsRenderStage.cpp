@@ -1,20 +1,15 @@
 #include "SpecularReflectionsRenderStage.h"
+#include "Atmosphere/AtmosphereRenderSystem.h"
+#include "DDGI/DDGIRenderSystem.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/ConstantBufferRefBinding.h"
 #include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/ChildDSBinding.h"
-#include "RayTracing/RayTracingRenderSceneSubsystem.h"
 #include "RenderScene.h"
 #include "RenderGraphBuilder.h"
-#include "Atmosphere/AtmosphereSceneSubsystem.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "StaticMeshes/StaticMeshGeometry.h"
-#include "GeometryManager.h"
-#include "MaterialsUnifiedData.h"
 #include "SceneRenderer/SceneRenderingTypes.h"
 #include "Lights/LightsRenderSystem.h"
-#include "DDGI/DDGISceneSubsystem.h"
+#include "DDGI/DDGIRenderSystem.h"
 #include "SceneRenderer/Utils/DepthBasedUpsampler.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
@@ -25,7 +20,6 @@
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "SceneRenderer/RenderStages/Utils/RTReflectionsTypes.h"
 #include "SceneRenderer/Debug/Stats/RTReflectionsStatsView.h"
-#include "Atmosphere/Clouds/VolumetricCloudsTypes.h"
 #include "MaterialsSubsystem.h"
 
 
@@ -317,8 +311,8 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene
 
 	const LightsRenderSystem& lightsRenderSystem = renderScene.GetRenderSystemChecked<LightsRenderSystem>();
 
-	const ddgi::DDGISceneSubsystem& ddgiSceneSubsystem = renderScene.GetSceneSubsystemChecked<ddgi::DDGISceneSubsystem>();
-	lib::MTHandle<ddgi::DDGISceneDS> ddgiDS = ddgiSceneSubsystem.GetDDGISceneDS();
+	const ddgi::DDGIRenderSystem& ddgiRenderSystem = renderScene.GetRenderSystemChecked<ddgi::DDGIRenderSystem>();
+	lib::MTHandle<ddgi::DDGISceneDS> ddgiDS = ddgiRenderSystem.GetDDGISceneDS();
 
 	const Bool useSharc = renderer_params::useSharcAsRadianceCache && SharcGICache::IsSharcSupported();
 
@@ -339,8 +333,8 @@ static void ShadeRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
-	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
-	const AtmosphereContext& atmosphereContext          = atmosphereSubsystem.GetAtmosphereContext();
+	const AtmosphereRenderSystem& atmosphereSystem = renderScene.GetRenderSystemChecked<AtmosphereRenderSystem>();
+	const AtmosphereContext& atmosphereContext     = atmosphereSystem.GetAtmosphereContext();
 
 	const ParticipatingMediaViewRenderSystem& pmSystem = renderView.GetRenderSystem<ParticipatingMediaViewRenderSystem>();
 

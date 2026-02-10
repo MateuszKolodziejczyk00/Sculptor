@@ -4,8 +4,8 @@
 #include "MaterialAsset.h"
 #include "AssetsSystem.h"
 #include "RenderScene.h"
-#include "StaticMeshes/StaticMeshRenderSceneSubsystem.h"
 #include "StaticMeshes/RenderMesh.h"
+#include "StaticMeshes/StaticMeshRenderingCommon.h"
 
 
 SPT_DEFINE_LOG_CATEGORY(PrefabMeshEntity, true);

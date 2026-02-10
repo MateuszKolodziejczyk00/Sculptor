@@ -1,9 +1,9 @@
 #include "RenderSceneSettingsUIView.h"
 #include "RenderScene.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
-#include "Shadows/ShadowMapsManagerSubsystem.h"
-#include "DDGI/DDGISceneSubsystem.h"
+#include "Shadows/ShadowMapsRenderSystem.h"
 #include "ImGui/DockBuilder.h"
+
 
 namespace spt::rsc
 {
@@ -42,7 +42,7 @@ void RenderSceneSettingsUIView::DrawUIForScene(RenderScene& scene)
 {
 	rsc::RendererParamsRegistry::DrawParametersUI();
 
-	if (lib::SharedPtr<rsc::ShadowMapsManagerSubsystem> shadowMapsManger = scene.GetSceneSubsystem<rsc::ShadowMapsManagerSubsystem>())
+	if (lib::SharedPtr<rsc::ShadowMapsRenderSystem> shadowMapsManger = scene.FindRenderSystem<rsc::ShadowMapsRenderSystem>())
 	{
 		const char* shadowMappingTechniques[3] = { "None", "DPCF", "MSM" };
 
@@ -50,16 +50,6 @@ void RenderSceneSettingsUIView::DrawUIForScene(RenderScene& scene)
 		if (ImGui::Combo("Point Lights Shadow Mapping Technique", &currentTechnique, shadowMappingTechniques, SPT_ARRAY_SIZE(shadowMappingTechniques)))
 		{
 			shadowMapsManger->SetShadowMappingTechnique(static_cast<rsc::EShadowMappingTechnique>(currentTechnique));
-		}
-	}
-
-	if (lib::SharedPtr<rsc::ddgi::DDGISceneSubsystem> ddgiSubsystem = scene.GetSceneSubsystem<rsc::ddgi::DDGISceneSubsystem>())
-	{
-		const char* ddgiDebugModes[rsc::ddgi::EDDGIDebugMode::NUM] = { "None", "Illuminance", "Hit Distance", "Debug Rays"};
-		int ddgiDebugMode = ddgiSubsystem->GetDebugMode();
-		if (ImGui::Combo("DDGI Probes Visualization", &ddgiDebugMode, ddgiDebugModes, SPT_ARRAY_SIZE(ddgiDebugModes)))
-		{
-			ddgiSubsystem->SetDebugMode(static_cast<rsc::ddgi::EDDGIDebugMode::Type>(ddgiDebugMode));
 		}
 	}
 }

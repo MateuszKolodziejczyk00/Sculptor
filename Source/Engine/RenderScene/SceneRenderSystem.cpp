@@ -1,10 +1,12 @@
 #include "SceneRenderSystem.h"
 
+
 namespace spt::rsc
 {
 
-SceneRenderSystem::SceneRenderSystem()
+SceneRenderSystem::SceneRenderSystem(RenderScene& owningScene)
 	: m_supportedStages(ERenderStage::None)
+	, m_owningScene(owningScene)
 { }
 
 void SceneRenderSystem::Initialize(RenderScene& renderScene)

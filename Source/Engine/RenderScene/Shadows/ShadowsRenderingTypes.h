@@ -4,6 +4,7 @@
 #include "RenderSceneRegistry.h"
 #include "RHICore/RHITextureTypes.h"
 #include "ShaderStructs/ShaderStructs.h"
+#include "Bindless/BindlessTypes.h"
 
 
 namespace spt::rdr
@@ -65,11 +66,33 @@ BEGIN_SHADER_STRUCT(ShadowMapViewData)
 END_SHADER_STRUCT();
 
 
-
 struct ShadowMap
 {
 	lib::SharedPtr<rdr::TextureView> textureView;
 	ShadowMapViewData                viewData;
 };
+
+
+BEGIN_SHADER_STRUCT(ShadowsSettings)
+	SHADER_STRUCT_FIELD(Uint32, highQualitySMEndIdx)
+	SHADER_STRUCT_FIELD(Uint32, mediumQualitySMEndIdx)
+	SHADER_STRUCT_FIELD(math::Vector2f, highQualitySMPixelSize)
+	SHADER_STRUCT_FIELD(math::Vector2f, mediumQualitySMPixelSize)
+	SHADER_STRUCT_FIELD(math::Vector2f, lowQualitySMPixelSize)
+	SHADER_STRUCT_FIELD(Real32, shadowViewsNearPlane)
+	SHADER_STRUCT_FIELD(Uint32, shadowMappingTechnique)
+END_SHADER_STRUCT();
+
+
+BEGIN_SHADER_STRUCT(ShadowMapTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>, texture)
+END_SHADER_STRUCT();
+
+
+BEGIN_SHADER_STRUCT(ShadowMapsData)
+	SHADER_STRUCT_FIELD(ShadowsSettings,                        settings)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<ShadowMapViewData>, shadowMapViews)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<ShadowMapTexture>,  shadowMaps)
+END_SHADER_STRUCT();
 
 } // spt::rsc

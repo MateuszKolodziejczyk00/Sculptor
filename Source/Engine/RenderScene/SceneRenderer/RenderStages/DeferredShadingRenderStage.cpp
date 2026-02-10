@@ -5,11 +5,8 @@
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"
 #include "RenderScene.h"
-#include "Shadows/ShadowMapsManagerSubsystem.h"
-#include "Lights/ViewShadingInput.h"
 #include "GlobalResources/GlobalResources.h"
-#include "DDGI/DDGISceneSubsystem.h"
-#include "ParticipatingMedia/ParticipatingMediaTypes.h"
+#include "DDGI/DDGIRenderSystem.h"
 #include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 #include "Pipelines/PSOsLibraryTypes.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
@@ -123,8 +120,8 @@ void ExecuteDeferredShading(rg::RenderGraphBuilder& graphBuilder, const Deferred
 	lib::MTHandle<ddgi::DDGISceneDS> ddgiDS;
 	if (permutation.ENABLE_DDGI)
 	{
-		const ddgi::DDGISceneSubsystem& ddgiSceneSubsystem = shadingParams.renderScene.GetSceneSubsystemChecked<ddgi::DDGISceneSubsystem>();
-		ddgiDS = ddgiSceneSubsystem.GetDDGISceneDS();
+		const ddgi::DDGIRenderSystem& ddgiRenderSystem = shadingParams.renderScene.GetRenderSystemChecked<ddgi::DDGIRenderSystem>();
+		ddgiDS = ddgiRenderSystem.GetDDGISceneDS();
 	}
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Deferred Shading"),
@@ -164,6 +161,14 @@ void DeferredShadingRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, 
 		const deferred_shading::DeferredShadingParams params{ viewSpec, renderScene, luminance };
 
 		deferred_shading::ExecuteDeferredShading(graphBuilder, params);
+
+		// TEMP
+		const stochastic_di::StochasticDIParams diParams
+		{
+			.outputLuminance = luminance
+		};
+
+		m_stochasticDIRenderer.Render(graphBuilder, renderScene, viewSpec, diParams);
 	}
 
 	viewContext.luminance = luminance;

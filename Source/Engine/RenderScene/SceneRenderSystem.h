@@ -16,17 +16,22 @@ namespace spt::rsc
 
 class RenderScene;
 class RenderView;
+struct RenderSceneConstants;
 
 
 class RENDER_SCENE_API SceneRenderSystem : public std::enable_shared_from_this<SceneRenderSystem>
 {
 public:
 
-	SceneRenderSystem();
+	SceneRenderSystem(RenderScene& owningScene);
 	virtual ~SceneRenderSystem() = default;
 
 	void Initialize(RenderScene& renderScene);
 	void Deinitialize(RenderScene& renderScene);
+
+	virtual void Update() {};
+
+	virtual void UpdateGPUSceneData(RenderSceneConstants& sceneData) {}
 
 	virtual void CollectRenderViews(const RenderScene& renderScene, const RenderView& mainRenderView, INOUT RenderViewsCollector& viewsCollector) {};
 
@@ -41,7 +46,13 @@ protected:
 	virtual void OnInitialize(RenderScene& renderScene);
 	virtual void OnDeinitialize(RenderScene& renderScene);
 
+	RenderScene& GetOwningScene() const { return m_owningScene; }
+
 	ERenderStage m_supportedStages;
+
+private:
+
+	RenderScene& m_owningScene;
 };
 
 } // spt::rsc

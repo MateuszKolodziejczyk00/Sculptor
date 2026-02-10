@@ -1,11 +1,6 @@
 #include "MeshBuilder.h"
-#include "StaticMeshes/StaticMeshRenderSceneSubsystem.h"
-#include "RHICore/RHIAccelerationStructureTypes.h"
-#include "ResourcesManager.h"
-#include "Types/AccelerationStructure.h"
 
 #include "meshoptimizer.h"
-#include "RayTracing/RayTracingSceneTypes.h"
 
 namespace spt::rsc
 {

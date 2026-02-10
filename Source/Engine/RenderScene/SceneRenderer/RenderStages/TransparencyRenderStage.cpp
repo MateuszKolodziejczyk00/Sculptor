@@ -1,7 +1,7 @@
 #include "TransparencyRenderStage.h"
 #include "RenderGraphBuilder.h"
 #include "RenderScene.h"
-#include "StaticMeshes/StaticMeshRenderSceneSubsystem.h"
+#include "StaticMeshes/StaticMeshesRenderSystem.h"
 #include "View/RenderView.h"
 
 
@@ -20,8 +20,8 @@ void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene
 
 	const math::Vector2u transparencyRes = viewSpec.GetRenderingRes();
 
-	const StaticMeshRenderSceneSubsystem& staticMeshPrimsSystem = renderScene.GetSceneSubsystemChecked<StaticMeshRenderSceneSubsystem>();
-	const GeometryPassDataCollection& cachedGeometryPassData    = staticMeshPrimsSystem.GetCachedTransparentGeometryPassData();
+	const StaticMeshesRenderSystem& staticMeshesSystem       = renderScene.GetRenderSystemChecked<StaticMeshesRenderSystem>();
+	const GeometryPassDataCollection& cachedGeometryPassData = staticMeshesSystem.GetCachedTransparentGeometryPassData();
 
 	if (cachedGeometryPassData.materialBatches.empty())
 	{

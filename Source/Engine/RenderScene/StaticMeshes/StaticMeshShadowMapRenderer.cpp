@@ -1,16 +1,13 @@
 #include "StaticMeshShadowMapRenderer.h"
-#include "RenderScene.h"
-#include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "Lights/LightTypes.h"
+#include "RenderScene.h"
+#include "Shadows/ShadowMapsRenderSystem.h"
 #include "RenderGraphBuilder.h"
+#include "StaticMeshes/StaticMeshesRenderSystem.h"
 #include "Transfers/UploadUtils.h"
 #include "SceneRenderer/RenderStages/ShadowMapRenderStage.h"
 #include "Shadows/ShadowsRenderingTypes.h"
-#include "StaticMeshGeometry.h"
 #include "Common/ShaderCompilationInput.h"
-#include "GeometryManager.h"
-#include "MaterialsUnifiedData.h"
-#include "MaterialsSubsystem.h"
 
 namespace spt::rsc
 {
@@ -59,11 +56,11 @@ void StaticMeshShadowMapRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBu
 	m_pointLightBatches.clear();
 	m_globalShadowViewBatches.clear();
 
-	if (const lib::SharedPtr<ShadowMapsManagerSubsystem> shadowMapsManager = renderScene.GetSceneSubsystem<ShadowMapsManagerSubsystem>())
+	if (const lib::SharedPtr<ShadowMapsRenderSystem> shadowMapsRenderSystem = renderScene.FindRenderSystem<ShadowMapsRenderSystem>())
 	{
 		const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry();
 
-		const lib::DynamicArray<RenderSceneEntity>& pointLightsToUpdate = shadowMapsManager->GetPointLightsWithShadowMapsToUpdate();
+		const lib::DynamicArray<RenderSceneEntity>& pointLightsToUpdate = shadowMapsRenderSystem->GetPointLightsWithShadowMapsToUpdate();
 
 		m_pointLightBatches.reserve(pointLightsToUpdate.size());
 
@@ -72,10 +69,10 @@ void StaticMeshShadowMapRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBu
 			const PointLightData& pointLightData = sceneRegistry.get<PointLightData>(pointLight);
 			const PointLightShadowMapComponent& pointLightShadowMap = sceneRegistry.get<PointLightShadowMapComponent>(pointLight);
 
-			const StaticMeshRenderSceneSubsystem& staticMeshPrimsSystem = renderScene.GetSceneSubsystemChecked<StaticMeshRenderSceneSubsystem>();
-			const lib::DynamicArray<StaticMeshSMBatchDefinition> batchDefs = staticMeshPrimsSystem.BuildBatchesForPointLightSM(pointLightData);
+			const StaticMeshesRenderSystem& staticMeshesSystem = renderScene.GetRenderSystemChecked<StaticMeshesRenderSystem>();
+			const lib::DynamicArray<StaticMeshSMBatchDefinition> batchDefs = staticMeshesSystem.BuildBatchesForPointLightSM(pointLightData);
 
-			const lib::DynamicArray<RenderView*> shadowMapViews = shadowMapsManager->GetPointLightShadowMapViews(pointLightShadowMap);
+			const lib::DynamicArray<RenderView*> shadowMapViews = shadowMapsRenderSystem->GetPointLightShadowMapViews(pointLightShadowMap);
 			
 			lib::DynamicArray<SMShadowMapBatch>& pointLightBatches = m_pointLightBatches[pointLight];
 
@@ -97,8 +94,8 @@ void StaticMeshShadowMapRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBu
 
 		if (viewShadowMapData.shadowMapType == EShadowMapType::DirectionalLightCascade)
 		{
-			const StaticMeshRenderSceneSubsystem& staticMeshPrimsSystem = renderScene.GetSceneSubsystemChecked<StaticMeshRenderSceneSubsystem>();
-			const lib::DynamicArray<StaticMeshSMBatchDefinition>& batchDefs = staticMeshPrimsSystem.BuildBatchesForSMView(renderView);
+			const StaticMeshesRenderSystem& staticMeshesSystem = renderScene.GetRenderSystemChecked<StaticMeshesRenderSystem>();
+			const lib::DynamicArray<StaticMeshSMBatchDefinition>& batchDefs = staticMeshesSystem.BuildBatchesForSMView(renderView);
 
 			lib::DynamicArray<SMShadowMapBatch>& viewBatches = m_globalShadowViewBatches[&renderView];
 

@@ -6,7 +6,7 @@
 #include "RenderScene.h"
 #include "Lights/LightTypes.h"
 #include "EngineFrame.h"
-#include "DDGISceneSubsystem.h"
+#include "DDGIRenderSystem.h"
 
 namespace spt::rsc::ddgi
 {

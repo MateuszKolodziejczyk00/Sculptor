@@ -1,16 +1,12 @@
-#include "ShadowMapsManagerSubsystem.h"
+#include "ShadowMapsRenderSystem.h"
 #include "RHICore/RHITextureTypes.h"
 #include "ResourcesManager.h"
 #include "Types/Texture.h"
-#include "SceneRenderer/RenderStages/ShadowMapRenderStage.h"
 #include "RenderScene.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "Lights/LightTypes.h"
 #include "ShadowsRenderingTypes.h"
-#include "EngineTimer.h"
-#include "Engine.h"
 #include "ConfigUtils.h"
-#include "RendererSettings.h"
 #include "Transfers/UploadUtils.h"
 #include "EngineFrame.h"
 
@@ -59,7 +55,7 @@ const Real32 projectionNearPlane = 0.04f;
 } // constants
 
 
-ShadowMapsManagerSubsystem::ShadowMapsManagerSubsystem(RenderScene& owningScene, const lib::SharedPtr<RenderView>& inMainView)
+ShadowMapsRenderSystem::ShadowMapsRenderSystem(RenderScene& owningScene, const lib::SharedPtr<RenderView>& inMainView)
 	: Super(owningScene)
 	, m_highQualityShadowMapLightEndIdx(0)
 	, m_mediumQualityShadowMapsLightEndIdx(0)
@@ -69,7 +65,7 @@ ShadowMapsManagerSubsystem::ShadowMapsManagerSubsystem(RenderScene& owningScene,
 	CreateShadowMaps();
 }
 
-void ShadowMapsManagerSubsystem::Update()
+void ShadowMapsRenderSystem::Update()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -93,7 +89,7 @@ void ShadowMapsManagerSubsystem::Update()
 	}
 }
 
-void ShadowMapsManagerSubsystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
+void ShadowMapsRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
 {
 	Super::UpdateGPUSceneData(sceneData);
 
@@ -116,7 +112,7 @@ void ShadowMapsManagerSubsystem::UpdateGPUSceneData(RenderSceneConstants& sceneD
 	sceneData.shadows = data;
 }
 
-void ShadowMapsManagerSubsystem::SetShadowMappingTechnique(EShadowMappingTechnique newTechnique)
+void ShadowMapsRenderSystem::SetShadowMappingTechnique(EShadowMappingTechnique newTechnique)
 {
 	if (m_shadowMapTechnique != newTechnique)
 	{
@@ -126,27 +122,27 @@ void ShadowMapsManagerSubsystem::SetShadowMappingTechnique(EShadowMappingTechniq
 	}
 }
 
-EShadowMappingTechnique ShadowMapsManagerSubsystem::GetShadowMappingTechnique() const
+EShadowMappingTechnique ShadowMapsRenderSystem::GetShadowMappingTechnique() const
 {
 	return m_shadowMapTechnique;
 }
 
-Bool ShadowMapsManagerSubsystem::IsMainView(const RenderView& renderView) const
+Bool ShadowMapsRenderSystem::IsMainView(const RenderView& renderView) const
 {
 	return m_mainView.lock().get() == &renderView;
 }
 
-Bool ShadowMapsManagerSubsystem::CanRenderShadows() const
+Bool ShadowMapsRenderSystem::CanRenderShadows() const
 {
 	return !m_shadowMapViews.empty();
 }
 
-const lib::DynamicArray<RenderSceneEntity>& ShadowMapsManagerSubsystem::GetPointLightsWithShadowMapsToUpdate() const
+const lib::DynamicArray<RenderSceneEntity>& ShadowMapsRenderSystem::GetPointLightsWithShadowMapsToUpdate() const
 {
 	return m_lightsWithShadowMapsToUpdate;
 }
 
-lib::DynamicArray<RenderView*> ShadowMapsManagerSubsystem::GetShadowMapViewsToUpdate() const
+lib::DynamicArray<RenderView*> ShadowMapsRenderSystem::GetShadowMapViewsToUpdate() const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -170,7 +166,7 @@ lib::DynamicArray<RenderView*> ShadowMapsManagerSubsystem::GetShadowMapViewsToUp
 	return renderViewsToUpdate;
 }
 
-lib::DynamicArray<RenderView*> ShadowMapsManagerSubsystem::GetPointLightShadowMapViews(const PointLightShadowMapComponent& pointLightShadowMap) const
+lib::DynamicArray<RenderView*> ShadowMapsRenderSystem::GetPointLightShadowMapViews(const PointLightShadowMapComponent& pointLightShadowMap) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -185,7 +181,7 @@ lib::DynamicArray<RenderView*> ShadowMapsManagerSubsystem::GetPointLightShadowMa
 	return views;
 }
 
-void ShadowMapsManagerSubsystem::SetPointLightShadowMapsBeginIdx(RenderSceneEntity pointLightEntity, Uint32 shadowMapBeginIdx)
+void ShadowMapsRenderSystem::SetPointLightShadowMapsBeginIdx(RenderSceneEntity pointLightEntity, Uint32 shadowMapBeginIdx)
 {
 	RenderSceneRegistry& registry = GetOwningScene().GetRegistry();
 	registry.emplace<PointLightShadowMapComponent>(pointLightEntity, PointLightShadowMapComponent{ shadowMapBeginIdx });
@@ -193,7 +189,7 @@ void ShadowMapsManagerSubsystem::SetPointLightShadowMapsBeginIdx(RenderSceneEnti
 	m_updatePriorities.emplace_back(LightUpdatePriority{ pointLightEntity, 0.f });
 }
 
-Uint32 ShadowMapsManagerSubsystem::ResetPointLightShadowMap(RenderSceneEntity pointLightEntity)
+Uint32 ShadowMapsRenderSystem::ResetPointLightShadowMap(RenderSceneEntity pointLightEntity)
 {
 	Uint32 shadowMapFirstFaceIdx = idxNone<Uint32>;
 
@@ -218,7 +214,7 @@ Uint32 ShadowMapsManagerSubsystem::ResetPointLightShadowMap(RenderSceneEntity po
 	return shadowMapFirstFaceIdx;
 }
 
-EShadowMapQuality ShadowMapsManagerSubsystem::GetShadowMapQuality(SizeType pointLightIdx) const
+EShadowMapQuality ShadowMapsRenderSystem::GetShadowMapQuality(SizeType pointLightIdx) const
 {
 	if (pointLightIdx < m_highQualityShadowMapLightEndIdx)
 	{
@@ -232,18 +228,18 @@ EShadowMapQuality ShadowMapsManagerSubsystem::GetShadowMapQuality(SizeType point
 	return EShadowMapQuality::Low;
 }
 
-EShadowMapQuality ShadowMapsManagerSubsystem::GetShadowMapQuality(RenderSceneEntity light) const
+EShadowMapQuality ShadowMapsRenderSystem::GetShadowMapQuality(RenderSceneEntity light) const
 {
 	const auto foundPriority = m_pointLightsWithAssignedShadowMaps.find(light);
 	return foundPriority != std::cend(m_pointLightsWithAssignedShadowMaps) ? foundPriority->second : EShadowMapQuality::None;
 }
 
-void ShadowMapsManagerSubsystem::ReleaseShadowMap(EShadowMapQuality quality, Uint32 shadowMapIdx)
+void ShadowMapsRenderSystem::ReleaseShadowMap(EShadowMapQuality quality, Uint32 shadowMapIdx)
 {
 	m_availableShadowMaps[quality].emplace_back(shadowMapIdx);
 }
 
-Uint32 ShadowMapsManagerSubsystem::AcquireAvaialableShadowMap(EShadowMapQuality quality)
+Uint32 ShadowMapsRenderSystem::AcquireAvaialableShadowMap(EShadowMapQuality quality)
 {
 	Uint32 shadowMapIdx = idxNone<Uint32>;
 
@@ -257,7 +253,7 @@ Uint32 ShadowMapsManagerSubsystem::AcquireAvaialableShadowMap(EShadowMapQuality 
 	return shadowMapIdx;
 }
 
-void ShadowMapsManagerSubsystem::CreateShadowMaps()
+void ShadowMapsRenderSystem::CreateShadowMaps()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -316,7 +312,7 @@ void ShadowMapsManagerSubsystem::CreateShadowMaps()
 	gfx::UploadDataToBuffer(lib::Ref(m_shadowMapTexturesBuffer), 0, reinterpret_cast<const Byte*>(shadowMapTexturesHLSL.data()), shadowMapTexturesHLSL.size() * sizeof(rdr::HLSLStorage<ShadowMapTexture>));
 }
 
-void ShadowMapsManagerSubsystem::CreateShadowMapsRenderViews()
+void ShadowMapsRenderSystem::CreateShadowMapsRenderViews()
 {
 	SPT_PROFILER_FUNCTION();
 	
@@ -330,7 +326,7 @@ void ShadowMapsManagerSubsystem::CreateShadowMapsRenderViews()
 	}
 }
 
-void ShadowMapsManagerSubsystem::AssignShadowMaps()
+void ShadowMapsRenderSystem::AssignShadowMaps()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -490,7 +486,7 @@ void ShadowMapsManagerSubsystem::AssignShadowMaps()
 	}
 }
 
-void ShadowMapsManagerSubsystem::UpdateShadowMapRenderViews(RenderSceneEntity owningLight, const PointLightData& pointLight, Uint32 shadowMapBeginIdx)
+void ShadowMapsRenderSystem::UpdateShadowMapRenderViews(RenderSceneEntity owningLight, const PointLightData& pointLight, Uint32 shadowMapBeginIdx)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -530,7 +526,7 @@ void ShadowMapsManagerSubsystem::UpdateShadowMapRenderViews(RenderSceneEntity ow
 	}
 }
 
-void ShadowMapsManagerSubsystem::FindShadowMapsToUpdate()
+void ShadowMapsRenderSystem::FindShadowMapsToUpdate()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -590,7 +586,7 @@ void ShadowMapsManagerSubsystem::FindShadowMapsToUpdate()
 	}
 }
 
-void ShadowMapsManagerSubsystem::ReleaseAllShadowMaps()
+void ShadowMapsRenderSystem::ReleaseAllShadowMaps()
 {
 	for (const auto [entity, quality] : m_pointLightsWithAssignedShadowMaps)
 	{
@@ -599,7 +595,7 @@ void ShadowMapsManagerSubsystem::ReleaseAllShadowMaps()
 	m_pointLightsWithAssignedShadowMaps.clear();
 }
 
-Real32 ShadowMapsManagerSubsystem::ComputeLocalLightShadowMapPriority(const SceneView& view, RenderSceneEntity light) const
+Real32 ShadowMapsRenderSystem::ComputeLocalLightShadowMapPriority(const SceneView& view, RenderSceneEntity light) const
 {
 	const auto getLightCurrentQualityPriority = [](EShadowMapQuality currentQuality)
 	{
@@ -658,7 +654,7 @@ Real32 ShadowMapsManagerSubsystem::ComputeLocalLightShadowMapPriority(const Scen
 	return priority;
 }
 
-void ShadowMapsManagerSubsystem::RecreateShadowMaps()
+void ShadowMapsRenderSystem::RecreateShadowMaps()
 {
 	ReleaseAllShadowMaps();
 

@@ -1,15 +1,10 @@
 #pragma once
 
 #include "RenderSceneMacros.h"
-#include "SculptorCoreTypes.h"
-#include "RenderSceneSubsystem.h"
-#include "ShaderStructs/ShaderStructs.h"
-#include "Material.h"
-#include "RGDescriptorSetState.h"
+#include "SceneRenderSystem.h"
 #include "DescriptorSetBindings/AccelerationStructureBinding.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
-#include "Pipelines/PipelineState.h"
 #include "RayTracingSceneTypes.h"
+
 
 namespace spt::rdr
 {
@@ -29,15 +24,15 @@ enum class ETLASGeometryMask : Uint32
 };
 
 
-class RENDER_SCENE_API RayTracingRenderSceneSubsystem : public RenderSceneSubsystem
+class RENDER_SCENE_API RayTracingRenderSystem : public SceneRenderSystem
 {
 protected:
 
-	using Super = RenderSceneSubsystem;
+	using Super = SceneRenderSystem;
 
 public:
 
-	explicit RayTracingRenderSceneSubsystem(RenderScene& owningScene);
+	explicit RayTracingRenderSystem(RenderScene& owningScene);
 
 	// Begin RenderSceneSubsystem overrides
 	virtual void Update() override;

@@ -1,4 +1,4 @@
-#include "RayTracingRenderSceneSubsystem.h"
+#include "RayTracingRenderSystem.h"
 #include "RenderScene.h"
 #include "RayTracingSceneTypes.h"
 #include "Types/AccelerationStructure.h"
@@ -14,12 +14,12 @@
 namespace spt::rsc
 {
 
-RayTracingRenderSceneSubsystem::RayTracingRenderSceneSubsystem(RenderScene& owningScene)
+RayTracingRenderSystem::RayTracingRenderSystem(RenderScene& owningScene)
 	: Super(owningScene)
 	, m_isTLASDirty(false)
 { }
 
-void RayTracingRenderSceneSubsystem::Update()
+void RayTracingRenderSystem::Update()
 {
 	Super::Update();
 
@@ -34,7 +34,7 @@ void RayTracingRenderSceneSubsystem::Update()
 	}
 }
 
-void RayTracingRenderSceneSubsystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
+void RayTracingRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
 {
 	RTSceneData rtSceneData;
 	rtSceneData.tlas        = m_tlas;
@@ -43,17 +43,17 @@ void RayTracingRenderSceneSubsystem::UpdateGPUSceneData(RenderSceneConstants& sc
 	sceneData.rtScene = rtSceneData;
 }
 
-const lib::SharedPtr<rdr::Buffer>& RayTracingRenderSceneSubsystem::GetRTInstancesDataBuffer() const
+const lib::SharedPtr<rdr::Buffer>& RayTracingRenderSystem::GetRTInstancesDataBuffer() const
 {
 	return m_rtInstancesDataBuffer;
 }
 
-Bool RayTracingRenderSceneSubsystem::IsTLASDirty() const
+Bool RayTracingRenderSystem::IsTLASDirty() const
 {
 	return m_isTLASDirty;
 }
 
-void RayTracingRenderSceneSubsystem::UpdateTLAS()
+void RayTracingRenderSystem::UpdateTLAS()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -162,7 +162,7 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 	m_isTLASDirty = true;
 }
 
-lib::SharedPtr<rdr::Buffer> RayTracingRenderSceneSubsystem::BuildRTInstancesBuffer(const lib::DynamicArray<RTInstanceData>& instances) const
+lib::SharedPtr<rdr::Buffer> RayTracingRenderSystem::BuildRTInstancesBuffer(const lib::DynamicArray<RTInstanceData>& instances) const
 {
 	if (instances.empty())
 	{

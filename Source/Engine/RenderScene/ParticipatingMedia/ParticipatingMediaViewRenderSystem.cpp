@@ -3,7 +3,7 @@
 #include "SceneRenderer/SceneRenderingTypes.h"
 #include "View/ViewRenderingSpec.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
-#include "DDGI/DDGISceneSubsystem.h"
+#include "DDGI/DDGIRenderSystem.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
@@ -16,7 +16,6 @@
 #include "Lights/ViewShadingInput.h"
 #include "EngineFrame.h"
 #include "Sequences.h"
-#include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "SceneRenderer/Utils/GaussianBlurRenderer.h"
 #include "Atmosphere/Clouds/VolumetricCloudsTypes.h"
 #include "Atmosphere/AtmosphereRenderSystem.h"
@@ -282,8 +281,8 @@ static Bool Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::SharedPtr<ddgi::DDGISceneSubsystem> ddgiSubsystem = renderScene.GetSceneSubsystem<ddgi::DDGISceneSubsystem>();
-	lib::MTHandle<ddgi::DDGISceneDS> ddgiDS = ddgiSubsystem ? ddgiSubsystem->GetDDGISceneDS() : nullptr;
+	const lib::SharedPtr<ddgi::DDGIRenderSystem> ddgiRenderSystem = renderScene.FindRenderSystem<ddgi::DDGIRenderSystem>();
+	lib::MTHandle<ddgi::DDGISceneDS> ddgiDS = ddgiRenderSystem ? ddgiRenderSystem->GetDDGISceneDS() : nullptr;
 
 	if (!ddgiDS.IsValid())
 	{
