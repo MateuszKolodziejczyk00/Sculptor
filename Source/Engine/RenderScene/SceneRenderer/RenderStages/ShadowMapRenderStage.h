@@ -23,9 +23,15 @@ private:
 
 	void RenderDepth(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext, const rg::RGTextureViewHandle depthRenderTargetView);
 
+	void RenderCSM(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext, const rg::RGTextureHandle shadowMap);
 	void RenderDPCF(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext, const rg::RGTextureHandle shadowMap);
 	void RenderMSM(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext, const rg::RGTextureHandle shadowMap);
 	void RenderVSM(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext, const rg::RGTextureHandle shadowMap);
+
+private:
+
+	lib::SharedPtr<rdr::TextureView> m_currentHiZ;
+	lib::SharedPtr<rdr::TextureView> m_historyHiZ;
 };
 
 } // spt::rsc

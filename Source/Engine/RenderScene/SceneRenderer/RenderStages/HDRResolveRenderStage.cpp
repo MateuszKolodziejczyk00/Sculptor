@@ -398,7 +398,7 @@ static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& 
 
 	const math::Vector2u resolution = viewSpec.GetRenderView().GetOutputRes();
 
-	const Uint32 bloomPassesNum = std::max(math::Utils::ComputeMipLevelsNumForResolution(resolution), 6u) - 4u;
+	const Uint32 bloomPassesNum = std::max(rhi::texture_utils::ComputeMipLevelsNumForResolution(resolution), 6u) - 4u;
 
 	rg::TextureDef bloomTextureDef;
 	bloomTextureDef.resolution	= math::Vector3u(resolution.x() / 2, resolution.y() / 2, 1);

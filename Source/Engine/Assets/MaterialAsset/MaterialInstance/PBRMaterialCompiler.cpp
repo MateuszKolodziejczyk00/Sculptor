@@ -3,14 +3,11 @@
 #include "MathUtils.h"
 #include "Pipelines/PSOsLibraryTypes.h"
 #include "RenderGraphResourcesPool.h"
-#include "Transfers/TransfersManager.h"
 #include "Transfers/UploadUtils.h"
 #include "Types/Texture.h"
 #include "ResourcesManager.h"
 #include "RenderGraphBuilder.h"
 #include "Renderer.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "Loaders/TextureLoader.h"
 #include "Transfers/UploadsManager.h"
 #include "PBRMaterialInstance.h"
@@ -140,7 +137,7 @@ static lib::Span<lib::Span<Byte>> GenericDownloadMipsImpl(const DownloadMipFunc&
 
 	const math::Vector2u resolution = textureView->GetResolution2D();
 
-	lib::Span<lib::Span<Byte>> compressedMips = arena.AllocateSpanUninitialized<lib::Span<Byte>>(mipsData.size() - 2u);
+	lib::Span<lib::Span<Byte>> compressedMips = arena.AllocateSpanUninitialized<lib::Span<Byte>>(mipsData.size());
 
 	for (Uint32 mipIdx = 0u; mipIdx < compressedMips.size(); ++mipIdx)
 	{
@@ -248,6 +245,7 @@ struct PBRMaterialCompilationInput
 
 	Bool doubleSided   = true;
 	Bool customOpacity = false;
+	Bool transparent   = false;
 };
 
 
@@ -264,6 +262,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 	headerData.emissionFactor  = compilationInput.emissionFactor;
 	headerData.doubleSided     = compilationInput.doubleSided   ? 1u : 0u;
 	headerData.customOpacity   = compilationInput.customOpacity ? 1u : 0u;
+	headerData.transparent     = compilationInput.transparent   ? 1u : 0u;
 
 	lib::DynamicArray<Byte> compiledData;
 	compiledData.resize(sizeof(PBRMaterialDataHeader));
@@ -284,7 +283,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 				const rg::RGTextureViewHandle loadedTex = graphBuilder.AcquireExternalTextureView(texture);
 
 				const math::Vector2u resolution = loadedTex->GetResolution2D();
-				const Uint32 mipLevelsNum       = math::Utils::ComputeMipLevelsNumForResolution(resolution);
+				const Uint32 mipLevelsNum       = rhi::texture_utils::ComputeBlockCompressedMipsNumForResolution(resolution);
 				const rg::RGTextureViewHandle tex = graphBuilder.CreateTextureView(RG_DEBUG_NAME(texture->GetRHI().GetName()), rg::TextureDef(resolution, targetFormat).SetMipLevelsNum(mipLevelsNum));
 
 				maxDimentions = maxDimentions.cwiseMax(resolution);
@@ -319,7 +318,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 
 		CompilePBRMaterialTextures(graphBuilder, maxDimentions, compilationConstants);
 
-		const Uint32 maxMipLevelsNum = math::Utils::ComputeMipLevelsNumForResolution(maxDimentions);
+		const Uint32 maxMipLevelsNum = rhi::texture_utils::ComputeMipLevelsNumForResolution(maxDimentions);
 
 		const auto createTextureMipViews = [&](rg::RGTextureViewHandle texture) -> lib::ManagedSpan<rg::RGTextureViewHandle>
 		{
@@ -393,9 +392,15 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 
 		const auto stageMipsData = [&](const lib::Span<rg::RGTextureViewHandle>& mipViews) -> lib::ManagedSpan<lib::SharedPtr<rdr::Buffer>>
 		{
+			Uint32 firstValidMipIdx = 0u;
+			while (firstValidMipIdx < maxMipLevelsNum && !mipViews[firstValidMipIdx])
+			{
+				++firstValidMipIdx;
+			}
+
 			// Count valid mips (texture might have "empty" mips at the beginning if it's smaller than max texture size)
 			Uint32 mipsNum = 0u;
-			for (Uint32 mipIdx = 0u; mipIdx < maxMipLevelsNum; ++mipIdx)
+			for (Uint32 mipIdx = firstValidMipIdx; mipIdx < maxMipLevelsNum; ++mipIdx)
 			{
 				if (mipViews[mipIdx])
 				{
@@ -411,7 +416,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 
 				for (Uint32 mipIdx = 0u; mipIdx < mipsNum; ++mipIdx)
 				{
-					mipsData[mipIdx] = graphBuilder.DownloadTextureToBuffer(RG_DEBUG_NAME("Download Mip Data"), mipViews[mipIdx]);
+					mipsData[mipIdx] = graphBuilder.DownloadTextureToBuffer(RG_DEBUG_NAME("Download Mip Data"), mipViews[firstValidMipIdx + mipIdx]);
 				}
 			}
 
@@ -666,7 +671,8 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 		emissiveStrength = static_cast<Real32>(emissiveStrengthIter->second.Get("emissiveStrength").GetNumberAsDouble());
 	}
 
-	const Bool isMasked = srcMat->alphaMode == "MASK";
+	const Bool isMasked      = srcMat->alphaMode == "MASK";
+	const Bool isTransparent = srcMat->alphaMode == "BLEND";
 
 	PBRMaterialCompilationInput compilationInput;
 	compilationInput.baseColorTex         = LoadTexture(*gltfModel, srcMatPBR.baseColorTexture.index, false);
@@ -679,6 +685,7 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 	compilationInput.emissionFactor       = math::Map<const math::Vector3d>(srcMat->emissiveFactor.data()).cast<Real32>() * emissiveStrength;
 	compilationInput.doubleSided          = srcMat->doubleSided;
 	compilationInput.customOpacity        = isMasked;
+	compilationInput.transparent          = isTransparent;
 
 	gfx::FlushPendingUploads();
 

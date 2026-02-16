@@ -170,11 +170,11 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem(RenderScene& owningScene)
 	m_supportedStages = lib::Flags(ERenderStage::ForwardOpaque, ERenderStage::DepthPrepass, ERenderStage::ShadowMap);
 }
 
-void StaticMeshesRenderSystem::Update()
+void StaticMeshesRenderSystem::Update(const SceneUpdateContext& context)
 {
 	SPT_PROFILER_FUNCTION();
 
-	Super::Update();
+	Super::Update(context);
 
 	m_cachedSMBatches = CacheStaticMeshBatches();
 }
@@ -273,9 +273,6 @@ StaticMeshesRenderSystem::CachedSMBatches StaticMeshesRenderSystem::CacheStaticM
 
 	SMBatchesBuilder batchesBuilder(cachedBatches.batches);
 
-	GeometryDrawer opaqueGeometryDrawer(OUT cachedBatches.opaqueGeometryPassData);
-	GeometryDrawer transparentGeometryDrawer(OUT cachedBatches.transparentGeometryPassData);
-
 	const auto meshesView = GetOwningScene().GetRegistry().view<const StaticMeshInstanceRenderData, const EntityGPUDataHandle, const rsc::MaterialSlotsComponent>();
 	// Legacy (currently, shadows only)
 	for (const auto& [entity, staticMeshRenderData, entityGPUDataHandle, materialsSlots] : meshesView.each())
@@ -286,6 +283,9 @@ StaticMeshesRenderSystem::CachedSMBatches StaticMeshesRenderSystem::CacheStaticM
 		const RenderEntityGPUPtr entityPtr = entityGPUDataHandle.GetGPUDataPtr();
 		batchesBuilder.AppendMeshToBatch(entityPtr, *mesh, materialsSlots);
 	}
+
+	GeometryDrawer opaqueGeometryDrawer(OUT cachedBatches.opaqueGeometryPassData);
+	GeometryDrawer transparentGeometryDrawer(OUT cachedBatches.transparentGeometryPassData);
 
 	// New system
 	for (const auto& [entity, staticMeshRenderData, entityGPUDataHandle, materialsSlots] : meshesView.each())

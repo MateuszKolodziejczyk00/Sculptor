@@ -221,3 +221,16 @@ struct Hasher<HashedString>
 };
 
 } // spt::lib
+
+
+namespace std
+{
+	template<>
+	struct hash<spt::lib::HashedString>
+	{
+		std::size_t operator()(const spt::lib::HashedString& s) const noexcept
+		{
+			return static_cast<std::size_t>(s.GetKey());
+		}
+	};
+} // std

@@ -165,11 +165,6 @@ public:
 		return value - std::floor(value);
 	}
 
-	static Uint32 ComputeMipLevelsNumForResolution(math::Vector2u resolution)
-	{
-		return 1u + static_cast<Uint32>(std::log2(std::max(resolution.x(), resolution.y())));
-	}
-
 	template<std::floating_point TType>
 	static constexpr TType MapInputToOutputRange(TType input, math::Matrix<TType, 2, 1> inputRange, math::Matrix<TType, 2, 1> outputRange)
 	{

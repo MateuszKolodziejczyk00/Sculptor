@@ -35,8 +35,23 @@ public:
 
 protected:
 
+	MemoryArenaBase() = default;
+
 	Byte* AllocateImpl(priv::ThreadSafeExtension&    extension, Uint64 size, Uint64 alignment);
 	Byte* AllocateImpl(priv::NonThreadSafeExtension& extension, Uint64 size, Uint64 alignment);
+
+	template<typename TConcreteArena>
+	TConcreteArena CreateSubArenaImpl(const char* subArenaName, Byte* startPtr, Uint64 size)
+	{
+		TConcreteArena subArena;
+		subArena.m_arenaName      = subArenaName;
+		subArena.m_baseAddress    = reinterpret_cast<Uint64>(startPtr);
+		subArena.m_currentAddress = subArena.m_baseAddress;
+		subArena.m_commitedEnd    = subArena.m_baseAddress + size;
+		subArena.m_reservedEnd    = subArena.m_baseAddress + size;
+
+		return subArena;
+	}
 
 private:
 
@@ -82,6 +97,12 @@ public:
 			new (&element) TType();
 		}
 		return span;
+	}
+
+	ConcreteMemoryArena<false> CreateSubArena(const char* subArenaName, Uint64 size)
+	{
+		Byte* subArenaBaseAddress = Allocate(size);
+		return CreateSubArenaImpl<ConcreteMemoryArena<false>>(subArenaName, subArenaBaseAddress, size);
 	}
 
 private:

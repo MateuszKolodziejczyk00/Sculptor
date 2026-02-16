@@ -10,7 +10,7 @@
 
 [[descriptor_set(GeometryBatchDS)]]
 
-[[descriptor_set(VisCullingDS)]]
+[[descriptor_set(GeometryCullingDS)]]
 
 #if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
 [[descriptor_set(GeometryCullSubmeshes_VisibleGeometryPassDS)]]

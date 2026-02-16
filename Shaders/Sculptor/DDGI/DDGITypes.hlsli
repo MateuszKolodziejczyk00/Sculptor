@@ -422,7 +422,7 @@ template<typename TSampleContext>
 float3 DDGISampleLuminanceInternal(in const DDGISampleParams sampleParams, in const TSampleContext context, in const DDGIVolumeGPUParams volumeParams)
 {
 	DDGILuminanceSampleCallback callback;
-	return DDGISampleProbes<float3>(volumeParams, sampleParams, context, callback);
+	return DDGISampleProbes<float3>(volumeParams, sampleParams, context, callback) * 2.f; // multiply by 2 because of cosine-weighted hemisphere sampling
 }
 
 
@@ -532,7 +532,7 @@ float3 DDGISampleIlluminanceBlended(in DDGISampleParams sampleParams, in float r
 {
 	const float3 luminance = DDGISampleLuminanceBlended(sampleParams, random, context);
 
-	return luminance * 2.f * PI; // multiply by integration domain area
+	return luminance * PI; // multiply by integration domain area (2 * pi) and by expected value of cosine NoL (0.5f)
 }
 
 
@@ -541,7 +541,7 @@ float3 DDGISampleIlluminance(in DDGISampleParams sampleParams, in const TSampleC
 {
 	const float3 luminance = DDGISampleLuminance(sampleParams, context);
 
-	return luminance * 2.f * PI; // multiply by integration domain area
+	return luminance * PI; // multiply by integration domain area (2 * pi) and by expected value of cosine NoL (0.5f)
 }
 #endif // DS_DDGISceneDS
 

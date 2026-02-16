@@ -47,7 +47,7 @@ public:
 	void BeginFrame(const engn::FrameContext& frame);
 	void EndFrame();
 
-	void Update();
+	void Update(const SceneUpdateContext& context);
 
 	const engn::FrameContext& GetCurrentFrameRef() const;
 

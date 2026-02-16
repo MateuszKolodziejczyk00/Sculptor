@@ -84,8 +84,6 @@ float3 ShadeHitRay(in float3 hitLocation, in float3 rayDirection, in const RayHi
 
 	float3 luminance = CalcReflectedLuminance_Direct(surface, -rayDirection);
 
-	luminance += hitResult.emissive;
-
 	return luminance;
 }
 

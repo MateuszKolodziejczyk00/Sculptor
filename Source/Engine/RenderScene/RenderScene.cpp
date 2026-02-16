@@ -40,15 +40,15 @@ void RenderScene::EndFrame()
 	m_currentFrame.reset();
 }
 
-void RenderScene::Update()
+void RenderScene::Update(const SceneUpdateContext& context)
 {
 	SPT_PROFILER_FUNCTION();
 
 	js::InlineParallelForEach("Update Scene Render Systems",
 							  m_renderSystems.GetRenderSystems(),
-							  [](const lib::SharedPtr<SceneRenderSystem>& system)
+							  [&context](const lib::SharedPtr<SceneRenderSystem>& system)
 							  {
-								  system->Update();
+								  system->Update(context);
 							  });
 
 	const engn::FrameContext& frame = GetCurrentFrameRef();

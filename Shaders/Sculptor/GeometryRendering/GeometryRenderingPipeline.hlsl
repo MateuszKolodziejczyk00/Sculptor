@@ -1,10 +1,12 @@
 #include "SculptorShader.hlsli"
 #include "GeometryRendering/GeometryDefines.hlsli"
 
+
 [[descriptor_set(RenderSceneDS)]]
 [[descriptor_set(RenderViewDS)]]
-[[descriptor_set(VisCullingDS)]]
+[[descriptor_set(GeometryCullingDS)]]
 [[descriptor_set(GeometryBatchDS)]]
+
 
 #if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
 [[descriptor_set(GeometryDrawMeshes_VisibleGeometryPassDS)]]
@@ -29,15 +31,37 @@
 #define FRAGMENT_SHADER_NEEDS_MATERIAL 0
 #endif // SPT_MATERIAL_ENABLED && CUSTOM_OPACITY
 
-
 #define TS_GROUP_SIZE 32
+
+
+#if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
+	#define MESHLETS_SHARE_ENTITY 1
+#else
+	#define MESHLETS_SHARE_ENTITY 0
+#endif // GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
+
+
+#define GEOMETRY_PIPELINE_USE_MATERIAL MATERIAL_CAN_DISCARD
+
+
+#ifdef GEOMETRY_PIPELINE_SHADER
+#define GEOMETRY_PIPELINE_DEFINITIONS_PASS
+#include GEOMETRY_PIPELINE_SHADER
+#undef GEOMETRY_PIPELINE_DEFINITIONS_PASS
+#include "GeometryRendering/GeometryPipelineTypes.hlsli"
+#include GEOMETRY_PIPELINE_SHADER
+#else
+#error "Missing GEOMETRY_PIPELINE_SHADER definition."
+#endif
+
+
+groupshared MeshPayload s_payload;
 
 
 bool WasOccludedLastFrame(in Sphere sphere)
 {
 	const HiZCullingProcessor occlusionCullingProcessor = HiZCullingProcessor::Create(u_historyHiZTexture, u_visCullingParams.historyHiZResolution, u_hiZSampler, u_prevFrameSceneView);
 	return !occlusionCullingProcessor.DoCulling(sphere);
-	
 }
 
 
@@ -70,108 +94,6 @@ void AppendOccludedMeshlet(in OccludedMeshletData occludedMeshlet)
 #endif // DS_GeometryDrawMeshes_VisibleGeometryPassDS
 
 
-#if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
-	#define MESHLETS_SHARE_ENTITY 1
-#else
-	#define MESHLETS_SHARE_ENTITY 0
-#endif // GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
-
-
-#if !MESHLETS_SHARE_ENTITY
-	#define ENCODED_MESHLET_COMMAND_TYPE uint4
-#else
-	#define ENCODED_MESHLET_COMMAND_TYPE uint2
-#endif // !MESHLETS_SHARE_ENTITY
-
-
-struct MeshletRenderCommand
-{
-	ENCODED_MESHLET_COMMAND_TYPE Encode()
-	{
-		ENCODED_MESHLET_COMMAND_TYPE data;
-		data.x = localMeshletIdx;
-		data.y = visibleMeshletIdx;
-
-#if !MESHLETS_SHARE_ENTITY
-		data.z = batchElementIdx;
-#endif // !MESHLETS_SHARE_ENTITY
-
-		return data;
-	}
-
-	static MeshletRenderCommand Decode(ENCODED_MESHLET_COMMAND_TYPE data)
-	{
-		MeshletRenderCommand command;
-		command.localMeshletIdx   = data.x;
-		command.visibleMeshletIdx = data.y;
-
-#if !MESHLETS_SHARE_ENTITY
-		command.batchElementIdx = data.z;
-#endif // !MESHLETS_SHARE_ENTITY
-
-		return command;
-	}
-
-	uint localMeshletIdx;
-	uint visibleMeshletIdx;
-
-#if !MESHLETS_SHARE_ENTITY
-	uint batchElementIdx;
-#endif // !MESHLETS_SHARE_ENTITY
-};
-
-
-struct MeshPayload
-{
-
-#if MESHLETS_SHARE_ENTITY
-	uint batchElementIdx;
-
-	uint firstVisibleMeshletIdx;
-	uint firstLocalMeshletIdx;
-
-	uint validMeshletsMask;
-#else
-	ENCODED_MESHLET_COMMAND_TYPE commands[TS_GROUP_SIZE];
-	uint numCommands;
-#endif // MESHLETS_SHARE_ENTITY
-};
-
-
-groupshared MeshPayload s_payload;
-
-
-#if !MESHLETS_SHARE_ENTITY
-void AppendMeshletRenderCommand(in GPUVisibleMeshlet visibleMeshletInfo, in uint batchElementIdx, in uint localMeshletIdx)
-{
-	uint outputCommandIdx = 0;
-	const uint2 meshletVisibleBallot = WaveActiveBallot(true).xy;
-	const uint visibleMeshletsNum = countbits(meshletVisibleBallot.x) + countbits(meshletVisibleBallot.y);
-	uint visibleMeshletIdx = 0u;
-	if (WaveIsFirstLane())
-	{
-		InterlockedAdd(s_payload.numCommands, visibleMeshletsNum, outputCommandIdx);
-		InterlockedAdd(u_visibleMeshletsCount[0], visibleMeshletsNum, visibleMeshletIdx);
-	}
-	const uint localIdxOffset = GetCompactedIndex(meshletVisibleBallot, WaveGetLaneIndex());
-	outputCommandIdx = WaveReadLaneFirst(outputCommandIdx) + localIdxOffset;
-	visibleMeshletIdx = WaveReadLaneFirst(visibleMeshletIdx) + localIdxOffset;
-
-	u_visibleMeshlets[visibleMeshletIdx] = visibleMeshletInfo;
-
-	MeshletRenderCommand command;
-	command.localMeshletIdx   = localMeshletIdx;
-	command.visibleMeshletIdx = visibleMeshletIdx;
-	
-#if !MESHLETS_SHARE_ENTITY
-	command.batchElementIdx   = batchElementIdx;
-#endif // !MESHLETS_SHARE_ENTITY
-
-	s_payload.commands[outputCommandIdx] = command.Encode();
-}
-#endif // !MESHLETS_SHARE_ENTITY
-
-
 struct TSInput
 {
 	uint3 globalID : SV_DispatchThreadID;
@@ -182,7 +104,7 @@ struct TSInput
 
 
 [numthreads(TS_GROUP_SIZE, 1, 1)]
-void GeometryVisibility_TS(in TSInput input)
+void GeometryPipeline_TS(in TSInput input)
 {
 #if !MESHLETS_SHARE_ENTITY
 	s_payload.numCommands = 0;
@@ -282,42 +204,49 @@ void GeometryVisibility_TS(in TSInput input)
 #endif // GEOMETRY_PASS_IDX
 		}
 
+		uint compactedLocalVisibleIdx = 0xffffffff;
 		if(isMeshletVisible)
 		{
 #if MESHLETS_SHARE_ENTITY
 			const uint thisThreadVisibilityBit = 1u << input.localID.x;
 			const uint visibilityMask = WaveActiveBitOr(thisThreadVisibilityBit).x;
 			visibleMeshletsNum = countbits(visibilityMask);
-			const uint compactedVisibilityIdx = GetCompactedIndex(uint2(visibilityMask, 0), input.localID.x);
-			uint visibleMeshletIdx = 0u;
+			compactedLocalVisibleIdx = GetCompactedIndex(uint2(visibilityMask, 0), input.localID.x);
 			if (WaveIsFirstLane())
 			{
-				InterlockedAdd(u_visibleMeshletsCount[0], visibleMeshletsNum, visibleMeshletIdx);
-				s_payload.validMeshletsMask      = visibilityMask;
-				s_payload.firstVisibleMeshletIdx = visibleMeshletIdx;
-				s_payload.firstLocalMeshletIdx   = groupFirstLocalMesletIdx;
+				s_payload.validMeshletsMask    = visibilityMask;
+				s_payload.firstLocalMeshletIdx = groupFirstLocalMesletIdx;
 			}
-
-			visibleMeshletIdx = WaveReadLaneFirst(visibleMeshletIdx) + compactedVisibilityIdx;
-
-			GPUVisibleMeshlet visibleMeshletInfo;
-			visibleMeshletInfo.entityPtr          = batchElement.entityPtr;
-			visibleMeshletInfo.submeshPtr         = batchElement.submeshPtr;
-			visibleMeshletInfo.meshletPtr         = submesh.meshlets.GetElemPtr(localMeshletIdx);
-			visibleMeshletInfo.materialDataHandle = batchElement.materialDataHandle;
-			visibleMeshletInfo.materialBatchIdx  = batchElement.materialBatchIdx;
-
-			u_visibleMeshlets[visibleMeshletIdx] = visibleMeshletInfo;
 #else
-			GPUVisibleMeshlet visibleMeshletInfo;
-			visibleMeshletInfo.entityPtr          = batchElement.entityPtr;
-			visibleMeshletInfo.submeshPtr         = batchElement.submeshPtr;
-			visibleMeshletInfo.meshletPtr         = submesh.meshlets.GetElemPtr(localMeshletIdx);
-			visibleMeshletInfo.materialDataHandle = batchElement.materialDataHandle;
-			visibleMeshletInfo.materialBatchIdx   = batchElement.materialBatchIdx;
-			AppendMeshletRenderCommand(visibleMeshletInfo, batchElementIdx, localMeshletIdx);
+			const uint2 meshletVisibleBallot = WaveActiveBallot(true).xy;
+			const uint visibleMeshletsNum = countbits(meshletVisibleBallot.x) + countbits(meshletVisibleBallot.y);
+			uint outputCommandIdx = 0;
+			if (WaveIsFirstLane())
+			{
+				InterlockedAdd(s_payload.numCommands, visibleMeshletsNum, outputCommandIdx);
+			}
+			compactedLocalVisibleIdx = GetCompactedIndex(meshletVisibleBallot, WaveGetLaneIndex());
+			outputCommandIdx = WaveReadLaneFirst(outputCommandIdx) + compactedLocalVisibleIdx;
+
+			s_payload.localMeshletIdx[outputCommandIdx] = localMeshletIdx;
+			s_payload.batchElementIdx[outputCommandIdx] = batchElementIdx;
 #endif // MESHLETS_SHARE_ENTITY
 		}
+
+		MeshletDispatchContext meshletContext;
+		meshletContext.localID                  = input.localID.x;
+		meshletContext.batchElement             = batchElement;
+		meshletContext.submesh                  = submesh;
+		meshletContext.entityData               = entityData;
+		meshletContext.meshlet                  = meshlet;
+		meshletContext.localMeshletIdx          = localMeshletIdx;
+		meshletContext.isVisible                = isMeshletVisible;
+		meshletContext.compactedLocalVisibleIdx = compactedLocalVisibleIdx;
+#ifdef GEOMETRY_PIPELINE_CUSTOM_MESHLETS_DATA_TYPE
+		DispatchMeshlet(meshletContext, s_payload.customData);
+#else
+		DispatchMeshlet(meshletContext);
+#endif // GEOMETRY_PIPELINE_CUSTOM_MESHLETS_DATA_TYPE
 	}
 
 #if MESHLETS_SHARE_ENTITY
@@ -327,15 +256,6 @@ void GeometryVisibility_TS(in TSInput input)
 	DispatchMesh(s_payload.numCommands, 1, 1, s_payload);
 #endif // MESHLETS_SHARE_ENTITY
 }
-
-struct OutputVertex
-{
-	float4 locationCS : SV_Position;
-#if MATERIAL_CAN_DISCARD
-	float2 uv : UV;
-#endif // MATERIAL_CAN_DISCARD
-};
-
 
 uint PackTriangleVertices(in uint3 vertices, in uint triangleIdx)
 {
@@ -419,54 +339,34 @@ bool IsTriangleVisible(in MeshletTriangle tri, in TriangleCullingParams cullingP
 }
 
 
-struct PrimitiveOutput
-{
-	uint packedVisibilityInfo : PACKED_VISBILITY_INFO;
-
-#if MATERIAL_CAN_DISCARD
-	uint materialDataID : MATERIAL_DATA_ID;
-#endif // MATERIAL_CAN_DISCARD
-
-	// Fix for MeshShadingEXT capability not added to fragment shader
-#if SPT_MESH_SHADER
-	bool culled               : SV_CullPrimitive;
-#endif // SPT_MESH_SHADER
-};
-
-
 
 [outputtopology("triangle")]
 [numthreads(MS_GROUP_SIZE, 1, 1)]
-void GeometryVisibility_MS(
+void GeometryPipeline_MS(
 	in uint localID : SV_GroupIndex,
 	in uint3 groupID : SV_GroupID,
-	in payload MeshPayload payload,
-	out vertices OutputVertex outVerts[MAX_NUM_VERTS],
+	in payload MeshPayload inPayload,
+	out vertices PerVertexData outVerts[MAX_NUM_VERTS],
 	out indices uint3 outTriangles[MAX_NUM_PRIMS],
-	out primitives PrimitiveOutput outPrims[MAX_NUM_PRIMS]
+	out primitives PerPrimitiveData outPrims[MAX_NUM_PRIMS]
 	)
 {
 #if MESHLETS_SHARE_ENTITY
 	// Each lane computes which group should take care of this command (meshlet)
-	const uint groupIdxForCommands = ((1u << WaveGetLaneIndex()) & payload.validMeshletsMask) ? GetCompactedIndex(uint2(payload.validMeshletsMask, 0), WaveGetLaneIndex()) : MS_GROUP_SIZE;
+	const uint groupIdxForCommands = ((1u << WaveGetLaneIndex()) & inPayload.validMeshletsMask) ? GetCompactedIndex(uint2(inPayload.validMeshletsMask, 0), WaveGetLaneIndex()) : MS_GROUP_SIZE;
 	const uint commandIdx = WaveActiveMin(groupIdxForCommands == groupID.x ? WaveGetLaneIndex() : MS_GROUP_SIZE); // select only one command per group
 	SPT_CHECK_MSG(commandIdx <= MS_GROUP_SIZE, L"Invalid command Idx");
-	MeshletRenderCommand command;
-	command.localMeshletIdx   = payload.firstLocalMeshletIdx + commandIdx;
-	command.visibleMeshletIdx = payload.firstVisibleMeshletIdx + groupID.x;
+	const uint localMeshletIdx   = inPayload.firstLocalMeshletIdx + commandIdx;
+	const GeometryBatchElement batchElement = u_batchElements[inPayload.batchElementIdx];
 #else
-	const MeshletRenderCommand command = MeshletRenderCommand::Decode(payload.commands[groupID.x]);
-#endif // MESHLETS_SHARE_ENTITY
-
-#if MESHLETS_SHARE_ENTITY
-	const GeometryBatchElement batchElement = u_batchElements[payload.batchElementIdx];
-#else
-	const GeometryBatchElement batchElement = u_batchElements[command.batchElementIdx];
+	const uint localMeshletIdx   = inPayload.localMeshletIdx[groupID.x];
+	const uint batchElementIdx   = inPayload.batchElementIdx[groupID.x];
+	const GeometryBatchElement batchElement = u_batchElements[batchElementIdx];
 #endif // MESHLETS_SHARE_ENTITY
 
 	const RenderEntityGPUData entityData = batchElement.entityPtr.Load();
 	const SubmeshGPUData submesh         = batchElement.submeshPtr.Load();
-	const MeshletGPUData meshlet         = submesh.meshlets[command.localMeshletIdx];
+	const MeshletGPUData meshlet         = submesh.meshlets[localMeshletIdx];
 
 	SetMeshOutputCounts(meshlet.vertexCount, meshlet.triangleCount);
 
@@ -489,10 +389,10 @@ void GeometryVisibility_MS(
 		outVerts[meshletVertexIdx].locationCS = vertexCS;
 		localVerticesCS[(meshletVertexIdx >= MS_GROUP_SIZE)] = vertexCS;
 
-#if MATERIAL_CAN_DISCARD
+#if GEOMETRY_PIPELINE_USE_MATERIAL
 		const float2 normalizedUV = UGB().LoadNormalizedUV(submesh.uvsOffset, vertexIdx);
 		outVerts[meshletVertexIdx].uv = submesh.uvsMin + normalizedUV * submesh.uvsRange;
-#endif // MATERIAL_CAN_DISCARD
+#endif // GEOMETRY_PIPELINE_USE_MATERIAL
 	}
 
 	TriangleCullingParams cullingParams;
@@ -516,30 +416,47 @@ void GeometryVisibility_MS(
 			tri.verticesCS[i] = triangleVertices[i] < MS_GROUP_SIZE ? cs0 : cs1;
 		}
 
-		outPrims[meshletTriangleIdx].packedVisibilityInfo = PackVisibilityInfo(command.visibleMeshletIdx, meshletTriangleIdx);
+
+		PerPrimitiveData primData;
 #if SPT_MESH_SHADER
-		outPrims[meshletTriangleIdx].culled = groupTriangleIdx + localID >= meshlet.triangleCount || !IsTriangleVisible(tri, cullingParams);
+		primData.culled = groupTriangleIdx + localID >= meshlet.triangleCount || !IsTriangleVisible(tri, cullingParams);
 #endif // SPT_MESH_SHADER
-#if MATERIAL_CAN_DISCARD
-		outPrims[meshletTriangleIdx].materialDataID = uint(batchElement.materialDataHandle.id);
-#endif // MATERIAL_CAN_DISCARD
+#if GEOMETRY_PIPELINE_USE_MATERIAL
+		primData.materialDataID = uint(batchElement.materialDataHandle.id);
+#endif // GEOMETRY_PIPELINE_USE_MATERIAL
+
+		TriangleDispatchContext triDispatchContext;
+		triDispatchContext.groupID            = groupID.x;
+		triDispatchContext.localID            = localID.x;
+		triDispatchContext.entityData         = entityData;
+		triDispatchContext.submesh            = submesh;
+		triDispatchContext.meshlet            = meshlet;
+		triDispatchContext.meshletTriangleIdx = meshletTriangleIdx;
+#ifdef GEOMETRY_PIPELINE_CUSTOM_MESHLETS_DATA_TYPE
+		DispatchTriangle(triDispatchContext, inPayload.customData, primData);
+#else
+		DispatchTriangle(triDispatchContext, primData);
+#endif // GEOMETRY_PIPELINE_CUSTOM_MESHLETS_DATA_TYPE
+
+		outPrims[meshletTriangleIdx] = primData;
 	}
 }
 
 
-struct VIS_BUFFER_PS_OUT
-{
-	uint packedVisibilityInfo : SV_TARGET0;
-};
+#ifndef FRAGMENT_SHADER_OUTPUT_TYPE
+#define FRAGMENT_SHADER_OUTPUT_TYPE void
+#define DispatchFragment(...)
+#endif // FRAGMENT_SHADER_OUTPUT_TYPE
 
 
-VIS_BUFFER_PS_OUT GeometryVisibility_FS(in OutputVertex vertexInput, in PrimitiveOutput primData)
+FRAGMENT_SHADER_OUTPUT_TYPE GeometryPipeline_FS(in PerVertexData vertData, in PerPrimitiveData primData)
 {
+#if GEOMETRY_PIPELINE_USE_MATERIAL
+	const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(MaterialDataHandle(primData.materialDataID));
+
 #if MATERIAL_CAN_DISCARD
 	MaterialEvaluationParameters materialEvalParams;
-	materialEvalParams.uv = vertexInput.uv;
-
-	const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(MaterialDataHandle(primData.materialDataID));
+	materialEvalParams.uv = vertData.uv;
 
 	const CustomOpacityOutput opacityOutput = EvaluateCustomOpacity(materialEvalParams, materialData);
 	if(opacityOutput.shouldDiscard)
@@ -547,8 +464,14 @@ VIS_BUFFER_PS_OUT GeometryVisibility_FS(in OutputVertex vertexInput, in Primitiv
 		discard;
 	}
 #endif // MATERIAL_CAN_DISCARD
+#endif // GEOMETRY_PIPELINE_USE_MATERIAL
 
-	VIS_BUFFER_PS_OUT output;
-	output.packedVisibilityInfo = primData.packedVisibilityInfo;
-	return output;
+	FragmentDispatchContext fragDispatchContext;
+	fragDispatchContext.vertData = vertData;
+	fragDispatchContext.primData = primData;
+#if GEOMETRY_PIPELINE_USE_MATERIAL
+	fragDispatchContext.materialData = materialData;
+#endif // GEOMETRY_PIPELINE_USE_MATERIAL
+
+	return DispatchFragment(fragDispatchContext);
 }

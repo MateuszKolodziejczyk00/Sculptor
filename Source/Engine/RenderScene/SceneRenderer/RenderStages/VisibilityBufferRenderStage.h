@@ -2,7 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "RenderStage.h"
-#include "Geometry/GeometryRenderer.h"
+#include "Geometry/GeometryVisPassRenderer.h"
 
 
 namespace spt::rsc
@@ -50,7 +50,7 @@ private:
 
 	TextureWithHistory m_octahedronNormalsTexture;
 
-	GeometryRenderer m_geometryVisRenderer;
+	VisPassRenderer m_VisPassRenderer;
 };
 
 } // spt::rsc

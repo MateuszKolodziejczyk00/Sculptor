@@ -38,7 +38,9 @@ BEGIN_SHADER_STRUCT(HeightFogParams)
 	SHADER_STRUCT_FIELD(Real32,         density)
 	SHADER_STRUCT_FIELD(Real32,         extinction)
 	SHADER_STRUCT_FIELD(Real32,         heightFalloff)
-	SHADER_STRUCT_FIELD(Real32,         padding0)
+	// This paramter is a bit hacky. generally function for computing height fog transmittance assumes no scattering (only absorbtion).
+	// This paramter helps to recover some of the radiance that would be transmitted due to forward scattering
+	SHADER_STRUCT_FIELD(Real32,         absorptionPercentage)
 	SHADER_STRUCT_FIELD(Real32,         padding1)
 END_SHADER_STRUCT();
 

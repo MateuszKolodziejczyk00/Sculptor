@@ -26,11 +26,12 @@ namespace spt::rsc
 namespace parameters
 {
 
-RendererFloatParameter constantFogDensity("Constant Fog Density", { "Volumetric Fog" }, 0.72f, 0.f, 1.f);
-RendererFloatParameter constantFogExtinction("Constant Fog Extinction", { "Volumetric Fog" }, 0.001f, 0.f, 10.f);
+RendererFloatParameter constantFogDensity("Constant Fog Density", { "Volumetric Fog" }, 0.05f, 0.f, 1.f);
+RendererFloatParameter constantFogExtinction("Constant Fog Extinction", { "Volumetric Fog" }, 0.3f, 0.f, 10.f);
 RendererFloat3Parameter consantFogAlbedo("Constant Fox Albedo", { "Volumetric Fog" }, math::Vector3f::Constant(1.f), 0.f, 1.f);
 
 RendererFloatParameter fogHeightFalloff("Fog Height Falloff", { "Volumetric Fog" }, 0.012f, 0.f, 10.f);
+RendererFloatParameter fogHeightAbsorptionPercentage("Fog Height Absorption %", { "Volumetric Fog" }, 0.2f, 0.f, 1.f);
 
 RendererFloatParameter phaseFunctionAnisotrophy("Phase Function Aniso", { "Volumetric Fog" }, 0.3f, 0.f, 1.f);
 
@@ -459,10 +460,11 @@ const VolumetricFogParams& ParticipatingMediaViewRenderSystem::GetVolumetricFogP
 HeightFogParams ParticipatingMediaViewRenderSystem::GetHeightFogParams() const
 {
 	HeightFogParams heightFogParams;
-	heightFogParams.density       = parameters::constantFogDensity;
-	heightFogParams.extinction    = parameters::constantFogExtinction;
-	heightFogParams.albedo        = parameters::consantFogAlbedo;
-	heightFogParams.heightFalloff = parameters::fogHeightFalloff;
+	heightFogParams.density              = parameters::constantFogDensity;
+	heightFogParams.extinction           = parameters::constantFogExtinction;
+	heightFogParams.albedo               = parameters::consantFogAlbedo;
+	heightFogParams.heightFalloff        = parameters::fogHeightFalloff;
+	heightFogParams.absorptionPercentage = parameters::fogHeightAbsorptionPercentage;
 	return heightFogParams;
 }
 

@@ -109,8 +109,6 @@ void HitRaysShadingRTG()
 		}
 #endif // USE_DDGI
 
-		luminance += hitResult.emissive;
-
 		const GeneratedRayPDF rayPdf = LoadGeneratedRayPDF(u_rayPdfs, traceCommandIndex);
 
 		SRReservoir reservoir = SRReservoir::Create(hitLocation, hitResult.normal, luminance, rayPdf.pdf);
@@ -134,3 +132,4 @@ void ShadowRayRTM(inout ShadowRayPayload payload)
 {
 	payload.isShadowed = false;
 }
+[[meta(debug_features)]]

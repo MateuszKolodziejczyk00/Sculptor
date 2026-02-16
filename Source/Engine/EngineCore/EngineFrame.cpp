@@ -22,9 +22,12 @@ FrameContext::~FrameContext()
 	SPT_CHECK(m_currentStage == EFrameStage::Finished);
 }
 
-void FrameContext::BeginFrame(const FrameDefinition& definition, lib::SharedPtr<FrameContext> prevFrame)
+void FrameContext::BeginFrame(const FrameDefinition& definition, lib::SharedPtr<FrameContext> prevFrame, lib::MemoryArena& memArena)
 {
 	m_frameDefinition = definition;
+
+	m_frameMemArena = &memArena;
+	m_frameMemArena->Reset();
 
 	m_prevFrame = std::move(prevFrame);
 
@@ -227,7 +230,7 @@ void EngineFramesManager::BeginFrame(lib::SharedPtr<FrameContext> context)
 	def.deltaTime = deltaTime;
 	def.time      = time;
 
-	context->BeginFrame(def, std::move(m_lastFrame));
+	context->BeginFrame(def, std::move(m_lastFrame), m_perFrameMemArenas[frameIdx % tickableFramesNum]);
 
 	PluginsManager::GetInstance().BeginFrame(*context);
 

@@ -6,6 +6,7 @@
 #include "MaterialsUnifiedData.h"
 #include "RayTracing/RayTracingSceneTypes.h"
 #include "Shadows/ShadowsRenderingTypes.h"
+#include "Shadows/WorldShadowCacheTypes.h"
 
 
 namespace spt::rsc
@@ -36,6 +37,7 @@ BEGIN_SHADER_STRUCT(RenderSceneConstants)
 	SHADER_STRUCT_FIELD(SceneGeometryData, geometry)
 	SHADER_STRUCT_FIELD(GPUMaterialsData,  materials)
 	SHADER_STRUCT_FIELD(ShadowMapsData,    shadows)
+	SHADER_STRUCT_FIELD(wsc::WSCData,      wsc)
 END_SHADER_STRUCT();
 
 

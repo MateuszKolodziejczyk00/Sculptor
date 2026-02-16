@@ -114,7 +114,7 @@ void PBRMaterialInstance::Load(const AssetInstance& asset, lib::MTHandle<DDCLoad
 	mat::MaterialDefinition materialDefinition;
 	materialDefinition.name          = asset.GetName();
 	materialDefinition.customOpacity = materialDataHeader.customOpacity != 0u;
-	materialDefinition.transparent   = false;
+	materialDefinition.transparent   = materialDataHeader.transparent != 0u;
 	materialDefinition.doubleSided   = materialDataHeader.doubleSided != 0u;
 	materialDefinition.emissive      = isEmissive;
 

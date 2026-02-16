@@ -1,4 +1,7 @@
 #include "ShadowMapRenderStage.h"
+#include "Geometry/GeometryTypes.h"
+#include "Geometry/GeometryDepthOnlyRenderer.h"
+#include "StaticMeshes/StaticMeshesRenderSystem.h"
 #include "View/ViewRenderingSpec.h"
 #include "Shadows/ShadowsRenderingTypes.h"
 #include "RenderGraphBuilder.h"
@@ -14,6 +17,8 @@
 #include "Common/ShaderCompilationInput.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "Utils/TextureMipsBuilder.h"
+#include "Utils/hiZRenderer.h"
+
 
 namespace spt::rsc
 {
@@ -86,7 +91,8 @@ rhi::EFragmentFormat ShadowMapRenderStage::GetRenderedDepthFormat()
 }
 
 ShadowMapRenderStage::ShadowMapRenderStage()
-{ }
+{ 
+}
 
 void ShadowMapRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext)
 {
@@ -101,16 +107,20 @@ void ShadowMapRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const 
 	
 	const EShadowMappingTechnique technique = shadowMapViewData.techniqueOverride.value_or(defaultTechnique);
 
-	const rg::RGTextureHandle shadowMapTexture = graphBuilder.AcquireExternalTexture(shadowMapViewData.shadowMap);
+	const rg::RGTextureHandle shadowMap = graphBuilder.AcquireExternalTexture(shadowMapViewData.shadowMap);
 	
 	switch (technique)
 	{
+	case EShadowMappingTechnique::CSM:
+		RenderCSM(graphBuilder, renderScene, viewSpec, stageContext, shadowMap);
+		break;
+
 	case EShadowMappingTechnique::DPCF:
-		RenderDPCF(graphBuilder, renderScene, viewSpec, stageContext, shadowMapTexture);
+		RenderDPCF(graphBuilder, renderScene, viewSpec, stageContext, shadowMap);
 		break;
 	
 	case EShadowMappingTechnique::VSM:
-		RenderVSM(graphBuilder, renderScene, viewSpec, stageContext, shadowMapTexture);
+		RenderVSM(graphBuilder, renderScene, viewSpec, stageContext, shadowMap);
 		break;
 
 	default:
@@ -144,6 +154,40 @@ void ShadowMapRenderStage::RenderDepth(rg::RenderGraphBuilder& graphBuilder, con
 							});
 
 	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
+}
+
+void ShadowMapRenderStage::RenderCSM(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext, const rg::RGTextureHandle shadowMap)
+{
+	const RenderView& renderView = viewSpec.GetRenderView();
+
+	const math::Vector2u res = renderView.GetRenderingRes();
+	const HiZ::HiZSizeInfo hiZSizeInfo = HiZ::ComputeHiZSizeInfo(res);
+	if (!m_currentHiZ || m_currentHiZ->GetResolution2D() != hiZSizeInfo.resolution)
+	{
+		rhi::TextureDefinition hiZDef;
+		hiZDef.resolution = hiZSizeInfo.resolution;
+		hiZDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
+		hiZDef.format     = rhi::EFragmentFormat::D16_UN_Float;
+		hiZDef.mipLevels  = hiZSizeInfo.mipLevels;
+		m_currentHiZ = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("HiZ Texture"), hiZDef, rhi::EMemoryUsage::GPUOnly);
+	}
+
+	const rg::RGTextureViewHandle currentHiZ = graphBuilder.AcquireExternalTextureView(m_currentHiZ);
+	const rg::RGTextureViewHandle historyHiZ = graphBuilder.TryAcquireExternalTextureView(m_historyHiZ);
+
+	const StaticMeshesRenderSystem& staticMeshesSystem = renderScene.GetRenderSystemChecked<StaticMeshesRenderSystem>();
+	const GeometryPassDataCollection& cachedGeometryPassData = staticMeshesSystem.GetCachedOpaqueGeometryPassData();
+
+	const rg::RGTextureViewHandle shadowMapView = graphBuilder.CreateTextureMipView(shadowMap, 0u);
+
+	gp::GeometryPassParams geometryPassParams(viewSpec, cachedGeometryPassData);
+	geometryPassParams.historyHiZ = historyHiZ;
+	geometryPassParams.depth      = shadowMapView;
+	geometryPassParams.hiZ        = currentHiZ;
+
+	depth_only::RenderDepthOnly(graphBuilder, geometryPassParams);
+
+	std::swap(m_currentHiZ, m_historyHiZ);
 }
 
 void ShadowMapRenderStage::RenderDPCF(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext, const rg::RGTextureHandle shadowMap)

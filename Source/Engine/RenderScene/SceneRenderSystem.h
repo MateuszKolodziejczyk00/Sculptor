@@ -3,8 +3,8 @@
 #include "RenderSceneMacros.h"
 #include "SculptorCoreTypes.h"
 #include "SceneRenderer/SceneRenderingTypes.h"
-#include "RenderSceneRegistry.h"
 #include "View/ViewRenderingSpec.h"
+
 
 namespace spt::rg
 {
@@ -19,6 +19,13 @@ class RenderView;
 struct RenderSceneConstants;
 
 
+struct SceneUpdateContext
+{
+	const RenderView&            mainRenderView;
+	const SceneRendererSettings& rendererSettings;
+};
+
+
 class RENDER_SCENE_API SceneRenderSystem : public std::enable_shared_from_this<SceneRenderSystem>
 {
 public:
@@ -29,7 +36,7 @@ public:
 	void Initialize(RenderScene& renderScene);
 	void Deinitialize(RenderScene& renderScene);
 
-	virtual void Update() {};
+	virtual void Update(const SceneUpdateContext& context) {};
 
 	virtual void UpdateGPUSceneData(RenderSceneConstants& sceneData) {}
 

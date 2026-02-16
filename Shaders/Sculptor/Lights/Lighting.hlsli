@@ -4,6 +4,7 @@
 #include "Atmosphere/Atmosphere.hlsli"
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
 #include "RayTracing/RTScene.hlsli"
+#include "SceneRendering/WSC.hlsli"
 
 #ifdef DS_DDGISceneDS
 #include "DDGI/DDGITypes.hlsli"
@@ -281,9 +282,10 @@ float3 CalcReflectedLuminance_Direct(in ShadedSurface surface, in float3 viewDir
 			rayDesc.Origin      = surface.location + surface.geometryNormal * 0.03f;
 			rayDesc.Direction   = -directionalLight.direction;
 
-			if (RTScene().VisibilityTest(rayDesc))
+			const float visibility = WSC().SampleShadows(surface.location, surface.geometryNormal);
+			if (visibility > 0.f)
 			{
-				luminance += CalcLighting(surface, -directionalLight.direction, viewDir, lightIlluminance).sceneLuminance;
+				luminance += CalcLighting(surface, -directionalLight.direction, viewDir, lightIlluminance).sceneLuminance * visibility;
 			}
 		}
 	}

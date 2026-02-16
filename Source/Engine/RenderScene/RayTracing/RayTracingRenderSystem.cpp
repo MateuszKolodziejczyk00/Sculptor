@@ -19,9 +19,9 @@ RayTracingRenderSystem::RayTracingRenderSystem(RenderScene& owningScene)
 	, m_isTLASDirty(false)
 { }
 
-void RayTracingRenderSystem::Update()
+void RayTracingRenderSystem::Update(const SceneUpdateContext& context)
 {
-	Super::Update();
+	Super::Update(context);
 
 	m_isTLASDirty = false;
 

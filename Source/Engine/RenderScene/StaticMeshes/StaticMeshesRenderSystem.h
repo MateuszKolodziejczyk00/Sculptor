@@ -23,7 +23,7 @@ public:
 	explicit StaticMeshesRenderSystem(RenderScene& owningScene);
 
 	// Begin SceneRenderSystem overrides
-	virtual void Update() override;
+	virtual void Update(const SceneUpdateContext& context) override;
 	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings) override;
 	virtual void FinishRenderingFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) override;
 	// End SceneRenderSystem overrides

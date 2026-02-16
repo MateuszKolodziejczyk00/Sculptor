@@ -11,7 +11,7 @@
 #include "Pipelines/PSOsLibraryTypes.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "Utils/StochasticDIRenderer.h"
-
+#include "Lights/ViewShadingInput.h"
 
 namespace spt::rsc
 {
@@ -149,6 +149,9 @@ void DeferredShadingRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, 
 
 	if (renderer_params::enableStochasticLighting)
 	{
+		const deferred_shading::DeferredShadingParams params{ viewSpec, renderScene, luminance };
+		deferred_shading::ExecuteDeferredShading(graphBuilder, params);
+
 		const stochastic_di::StochasticDIParams diParams
 		{
 			.outputLuminance = luminance
@@ -161,14 +164,6 @@ void DeferredShadingRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, 
 		const deferred_shading::DeferredShadingParams params{ viewSpec, renderScene, luminance };
 
 		deferred_shading::ExecuteDeferredShading(graphBuilder, params);
-
-		// TEMP
-		const stochastic_di::StochasticDIParams diParams
-		{
-			.outputLuminance = luminance
-		};
-
-		m_stochasticDIRenderer.Render(graphBuilder, renderScene, viewSpec, diParams);
 	}
 
 	viewContext.luminance = luminance;

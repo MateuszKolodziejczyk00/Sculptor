@@ -43,7 +43,7 @@ struct PBRMaterialDataHeader
 
 	Uint8 doubleSided   = 0u;
 	Uint8 customOpacity = 0u;
-	Uint8 padding0      = 0u;
+	Uint8 transparent   = 0u;
 	Uint8 padding1      = 0u;
 
 	MaterialTextureDefinition baseColorTexture;

@@ -114,12 +114,12 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 	const rg::RGTextureViewHandle visibilityTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Visibility Texture"), rg::TextureDef(viewSpec.GetRenderingRes(), rhi::EFragmentFormat::R32_U_Int));
 
 	VisPassParams visPassParams{ viewSpec, cachedGeometryPassData };
-	visPassParams.historyHiZ        = historyHiZ;
-	visPassParams.depth             = depth;
-	visPassParams.hiZ               = hiZ;
-	visPassParams.visibilityTexture = visibilityTexture;
+	visPassParams.geometryPassParams.historyHiZ = historyHiZ;
+	visPassParams.geometryPassParams.depth      = depth;
+	visPassParams.geometryPassParams.hiZ        = hiZ;
+	visPassParams.visibilityTexture             = visibilityTexture;
 
-	const GeometryPassResult geometryPassesResult = m_geometryVisRenderer.RenderVisibility(graphBuilder, visPassParams);
+	const VisPassResult geometryPassesResult = m_VisPassRenderer.RenderVisibility(graphBuilder, visPassParams);
 
 	const rg::RGTextureViewHandle materialDepth = material_depth_renderer::CreateMaterialDepthTexture(graphBuilder, resolution);
 

@@ -35,7 +35,7 @@ public:
 	explicit RayTracingRenderSystem(RenderScene& owningScene);
 
 	// Begin RenderSceneSubsystem overrides
-	virtual void Update() override;
+	virtual void Update(const SceneUpdateContext& context) override;
 	virtual void UpdateGPUSceneData(RenderSceneConstants& sceneData) override;
 	// End RenderSceneSubsystem overrides
 

@@ -66,7 +66,6 @@ void DISpatialResamplingRTG()
 			sampleCoords.y = 2 * (u_constants.gBuffer.resolution.y - 1) - sampleCoords.y;
 		}
 
-
 		const uint sampleReservoirIdx = GetScreenReservoirIdx(sampleCoords, u_constants.reservoirsResolution);
 		const DIReservoir sampleReservoir = UnpackDIReservoir(u_constants.inReservoirs.Load(sampleReservoirIdx));
 
@@ -91,14 +90,12 @@ void DISpatialResamplingRTG()
 		rayDesc.TMax      = length(toSample) - 0.02f;
 		rayDesc.Origin    = surface.location + surface.normal * 0.01f;
 		rayDesc.Direction = normalize(toSample);
-		const bool isVsible = RTScene().VisibilityTest(rayDesc);
 
-		if (!isVsible)
+		if (!RTScene().VisibilityTest(rayDesc))
 		{
 			reservoir.weightSum = 0.f;
 		}
 	}
-
 
 	float3 luminance = 0.f;
 	if (reservoir.IsValid())
@@ -115,4 +112,3 @@ void DISpatialResamplingRTG()
 	const float3 prevLuminance = u_constants.outputLuminance.Load(coords).rgb;
 	u_constants.outputLuminance.Store(coords, float4(prevLuminance + LuminanceToExposedLuminance(luminance), 1.f));
 }
-

@@ -93,7 +93,7 @@ float EvaluateHeightBasedTransmittanceForSegment(in HeightFogParams fogParams, i
 		opticalDepth = exp(-falloff * z0) * density * extinction * segmentLenth;
 	}
 
-	const float transmittance = exp(-max(opticalDepth, 1e-6f));
+	const float transmittance = exp(-max(fogParams.absorptionPercentage * opticalDepth, 1e-6f));
 	return transmittance;
 }
 

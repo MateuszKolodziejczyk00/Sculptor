@@ -27,14 +27,13 @@
 #include "RenderGraphCaptureViewer.h"
 #include "RenderGraphCaptureSourceContext.h"
 #include "UIElements/ApplicationUI.h"
-#include "Shadows/CascadedShadowMapsViewRenderSystem.h"
 #include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 #include "FileSystem/File.h"
 #include "View/Systems/TemporalAAViewRenderSystem.h"
 #include "Techniques/TemporalAA/DLSSRenderer.h"
 #include "Techniques/TemporalAA/StandardTAARenderer.h"
 #include "IESProfileAsset.h"
-#include "Assets/MeshAsset/MeshAsset.h"
+#include "Shadows/WorldShadowCacheRenderSystem.h"
 #include "MaterialsSubsystem.h"
 #include "StaticMeshes/RenderMesh.h"
 #include "MaterialAsset.h"
@@ -418,9 +417,6 @@ void SandboxRenderer::InitializeRenderScene()
 	m_renderView->SetOutputRes(math::Vector2u(1920, 1080));
 	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane, m_farPlane);
 
-	rsc::ShadowCascadesParams cascadesParams;
-	cascadesParams.shadowsTechnique = rsc::EShadowMappingTechnique::DPCF;
-	m_renderView->AddRenderSystem<rsc::CascadedShadowMapsViewRenderSystem>(cascadesParams);
 	m_renderView->AddRenderSystem<rsc::ParticipatingMediaViewRenderSystem>();
 
 	if (lib::SharedPtr<rdr::Texture> lensDirtTexture = gfx::TextureLoader::LoadTexture(engn::Paths::Combine(engn::Paths::GetContentPath(), "Camera/LensDirt.jpeg"), lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest)))
@@ -439,11 +435,11 @@ void SandboxRenderer::InitializeRenderScene()
 		m_renderScene->AddRenderSystem<rsc::RayTracingRenderSystem>();
 		
 		m_renderScene->AddRenderSystem<rsc::ddgi::DDGIRenderSystem>();
-		m_renderScene->AddSceneSubsystem<rsc::ddgi::DDGISceneSubsystem>();
 	}
 	m_renderScene->AddRenderSystem<rsc::StaticMeshesRenderSystem>();
 	m_renderScene->AddRenderSystem<rsc::LightsRenderSystem>();
 	m_renderScene->AddRenderSystem<rsc::AtmosphereRenderSystem>();
+	m_renderScene->AddRenderSystem<rsc::wsc::WorldShadowCacheRenderSystem>();
 
 	{
 		const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();

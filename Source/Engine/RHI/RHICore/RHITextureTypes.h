@@ -673,4 +673,34 @@ inline rhi::ETextureType GetSelectedTextureType(const rhi::TextureDefinition& de
 	}
 }
 
+
+namespace texture_utils
+{
+
+inline Uint32 ComputeMipLevelsNumForResolution(math::Vector2u resolution)
+{
+	return 1u + static_cast<Uint32>(std::log2(std::max(resolution.x(), resolution.y())));
+}
+
+inline Bool CanBeBlockCompressed(math::Vector2u resolution)
+{
+	return (resolution.x() % 4u == 0) && (resolution.y() % 4u == 0);
+}
+
+inline Uint32 ComputeBlockCompressedMipsNumForResolution(math::Vector2u resolution)
+{
+	Uint32 mips = 0;
+	Uint32 width = resolution.x();
+	Uint32 height = resolution.y();
+	while (width > 0 && height > 0 && (width % 4 == 0) && (height % 4 == 0))
+	{
+		++mips;
+		width /= 2;
+		height /= 2;
+	}
+	return mips;
+}
+
+} // texture_utils
+
 } // spt::rhi

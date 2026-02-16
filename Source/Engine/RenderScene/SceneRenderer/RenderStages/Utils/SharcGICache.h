@@ -45,7 +45,7 @@ public:
 
 	SharcGICache();
 
-	void Update(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
+	void Update(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, Bool resetCache);
 
 private:
 

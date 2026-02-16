@@ -31,7 +31,7 @@ private:
 
 	void RenderVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext);
 
-	void UpdateSharcCache(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
+	void UpdateSharcCache(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext);
 
 	sr_restir::SpatiotemporalResampler m_resampler;
 	sr_denoiser::Denoiser m_denoiser;

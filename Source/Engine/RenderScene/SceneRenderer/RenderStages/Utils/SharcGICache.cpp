@@ -115,7 +115,7 @@ SharcGICache::SharcGICache()
 	m_prevVoxelData = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Voxel Data Buffer (2)"), voxelDataDef, rhi::EMemoryUsage::GPUOnly);
 }
 
-void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
+void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, Bool resetCache)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -131,7 +131,7 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 
 	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Sharc voxel data"), graphBuilder.AcquireExternalBufferView(m_voxelData->GetFullView()), 0u);
 
-	if (m_requresReset)
+	if (m_requresReset || resetCache)
 	{
 		graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Sharc prev voxel data"), graphBuilder.AcquireExternalBufferView(m_prevVoxelData->GetFullView()), 0u);
 		graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Sharc entries"), hashEntriesView, 0u);

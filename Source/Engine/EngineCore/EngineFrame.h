@@ -7,6 +7,7 @@
 #include "Event.h"
 #include "Utility/Threading/Waitable.h"
 #include "Engine.h"
+#include "Allocators/MemoryArena.h"
 
 
 namespace spt::engn
@@ -90,7 +91,7 @@ public:
 
 	// Frame Flow =====================================================
 
-	void BeginFrame(const FrameDefinition& definition, lib::SharedPtr<FrameContext> prevFrame);
+	void BeginFrame(const FrameDefinition& definition, lib::SharedPtr<FrameContext> prevFrame, lib::MemoryArena& memArena);
 
 	void WaitUpdateEnded();
 	void WaitRenderingEnded();
@@ -109,6 +110,8 @@ public:
 
 	EFrameState GetFrameState() const { return m_frameState; }
 
+	lib::MemoryArena& GetFrameMemoryArena() const { return *m_frameMemArena; }
+
 	void SetMaxFPS(Real32 fps);
 
 	// Frame Stages ===================================================
@@ -125,6 +128,8 @@ protected:
 private:
 
 	FrameDefinition m_frameDefinition;
+
+	lib::MemoryArena* m_frameMemArena = nullptr;
 
 	EFrameState m_frameState;
 
@@ -166,6 +171,15 @@ private:
 	static constexpr Uint32 tickableFramesNum = (Uint32)EFrameState::NUM_TICKABLE_FRAMES;
 
 	EngineFramesManager();
+
+	static constexpr Uint32 perFrameMemArenaSize         = 4 * 1024 * 1024;
+	static constexpr Uint32 perFrameMemArenaMaxAllocSize = 16u * 1024 * 1024;
+
+	lib::StaticArray<lib::MemoryArena, tickableFramesNum> m_perFrameMemArenas
+	{ 
+		lib::MemoryArena("Per Frame Mem Arena", perFrameMemArenaSize, perFrameMemArenaMaxAllocSize),
+		lib::MemoryArena("Per Frame Mem Arena", perFrameMemArenaSize, perFrameMemArenaMaxAllocSize)
+	};
 
 	OnFrameTick m_onFrameTick[tickableFramesNum];
 

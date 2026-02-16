@@ -15,7 +15,6 @@
 #include "Common/ShaderCompilationInput.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "ViewShadingInput.h"
-#include "Shadows/CascadedShadowMapsViewRenderSystem.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 #include "Atmosphere/AtmosphereRenderSystem.h"
 #include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
@@ -402,8 +401,6 @@ static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, 
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RenderView& renderView = viewSpec.GetRenderView();
-
 	const ViewDirectionalShadowMasksData* viewShadowMasks = viewSpec.GetBlackboard().Find<ViewDirectionalShadowMasksData>();
 
 	const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry(); 
@@ -415,10 +412,6 @@ static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, 
 	{
 		lib::DynamicArray<rdr::HLSLStorage<DirectionalLightGPUData>> directionalLightsData;
 		directionalLightsData.reserve(directionalLightsNum);
-
-		const auto cascadedSMSystem = renderView.FindRenderSystem<CascadedShadowMapsViewRenderSystem>();
-
-		lib::DynamicArray<rdr::HLSLStorage<ShadowMapViewData>> cascadeViewsData;
 
 		for (const auto& [entity, directionalLight, illuminance] : directionalLightsView.each())
 		{
@@ -434,31 +427,8 @@ static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, 
 					lightGPUData.shadowMaskIdx = shadowMaskIdx;
 				}
 			}
-			if (cascadedSMSystem)
-			{
-				const lib::DynamicArray<ShadowMap>& shadowMapViews = cascadedSMSystem->GetShadowCascadesViews(entity);
-
-				lightGPUData.firstShadowCascadeIdx = static_cast<Uint32>(cascadeViewsData.size());
-				lightGPUData.shadowCascadesNum     = static_cast<Uint32>(shadowMapViews.size());
-
-				for (const ShadowMap& shadowMap : shadowMapViews)
-				{
-					shadingInputDS->u_shadowMapCascades.BindTexture(lib::Ref(shadowMap.textureView));
-					cascadeViewsData.emplace_back(shadowMap.viewData);
-				}
-			}
 
 			directionalLightsData.emplace_back(lightGPUData);
-		}
-
-		if (!cascadeViewsData.empty())
-		{
-			const Uint64 cascadeViewsBufferSize = cascadeViewsData.size() * sizeof(rdr::HLSLStorage<ShadowMapViewData>);
-			const rhi::BufferDefinition cascadeViewsBufferDefinition(cascadeViewsBufferSize, rhi::EBufferUsage::Storage);
-			const lib::SharedRef<rdr::Buffer> shadowMapViewsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Cascade Views Data"), cascadeViewsBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
-			gfx::UploadDataToBuffer(shadowMapViewsBuffer, 0, reinterpret_cast<const Byte*>(cascadeViewsData.data()), cascadeViewsBufferSize);
-
-			shadingInputDS->u_shadowMapCascadeViews = graphBuilder.AcquireExternalBufferView(shadowMapViewsBuffer->GetFullView());
 		}
 
 		const Uint64 directionalLightsBufferSize = directionalLightsData.size() * sizeof(rdr::HLSLStorage<DirectionalLightGPUData>);

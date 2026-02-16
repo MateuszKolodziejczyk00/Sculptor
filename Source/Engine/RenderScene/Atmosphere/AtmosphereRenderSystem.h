@@ -18,7 +18,7 @@ public:
 	AtmosphereRenderSystem(RenderScene& owningScene);
 
 	// Begin SceneRenderSystem overrides
-	virtual void Update() override;
+	virtual void Update(const SceneUpdateContext& context) override;
 	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings) override;
 	// End SceneRenderSystem overrides
 

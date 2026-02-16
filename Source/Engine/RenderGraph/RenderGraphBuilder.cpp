@@ -239,6 +239,14 @@ RGBufferViewHandle RenderGraphBuilder::CreateBufferView(const RenderGraphDebugNa
 	return CreateBufferView(name, buffer, 0, bufferDefinition.size, flags);
 }
 
+RGBufferViewHandle RenderGraphBuilder::CreateStorageBufferView(const RenderGraphDebugName& name, Uint32 size, const rhi::RHIAllocationInfo& allocationInfo /* = rhi::EMemoryUsage::GPUOnly */)
+{
+	rhi::BufferDefinition bufferDefinition;
+	bufferDefinition.size  = size;
+	bufferDefinition.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::TransferSrc);
+	return CreateBufferView(name, bufferDefinition, allocationInfo, ERGResourceFlags::Default);
+}
+
 void RenderGraphBuilder::ExtractBuffer(RGBufferHandle buffer, lib::SharedPtr<rdr::Buffer>& extractDestination)
 {
 	SPT_CHECK(buffer.IsValid());
@@ -311,6 +319,13 @@ void RenderGraphBuilder::FillFullBuffer(const RenderGraphDebugName& commandName,
 	SPT_CHECK(bufferView.IsValid());
 
 	FillBuffer(commandName, bufferView, 0, bufferView->GetSize(), data);
+}
+
+void RenderGraphBuilder::MemZeroBuffer(RGBufferViewHandle bufferView)
+{
+	SPT_CHECK(bufferView.IsValid());
+
+	FillFullBuffer(RG_DEBUG_NAME("MemZero " + bufferView->GetName().ToString()), bufferView, 0u);
 }
 
 void RenderGraphBuilder::CopyFullBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle sourceBufferView, RGBufferViewHandle destBufferView)

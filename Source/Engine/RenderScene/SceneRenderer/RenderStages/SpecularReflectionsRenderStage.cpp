@@ -664,7 +664,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 	{
 		SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "RT Reflections");
 
-		UpdateSharcCache(graphBuilder, renderScene, viewSpec);
+		UpdateSharcCache(graphBuilder, renderScene, viewSpec, stageContext);
 
 		const RenderView& renderView = viewSpec.GetRenderView();
 
@@ -936,7 +936,7 @@ void SpecularReflectionsRenderStage::RenderVariableRateTexture(rg::RenderGraphBu
 	m_variableRateRenderer.Render(graphBuilder, nullptr, vrtShader, rg::BindDescriptorSets(vrtDS));
 }
 
-void SpecularReflectionsRenderStage::UpdateSharcCache(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
+void SpecularReflectionsRenderStage::UpdateSharcCache(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -953,7 +953,7 @@ void SpecularReflectionsRenderStage::UpdateSharcCache(rg::RenderGraphBuilder& gr
 			m_sharcCache = std::make_unique<SharcGICache>();
 		}
 
-		m_sharcCache->Update(graphBuilder, renderScene, viewSpec);
+		m_sharcCache->Update(graphBuilder, renderScene, viewSpec, stageContext.rendererSettings.resetAccumulation);
 	}
 	else
 	{

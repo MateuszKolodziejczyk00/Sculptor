@@ -286,11 +286,11 @@ AtmosphereRenderSystem::AtmosphereRenderSystem(RenderScene& owningScene)
 	m_supportedStages = rsc::ERenderStage::DeferredShading;
 }
 
-void AtmosphereRenderSystem::Update()
+void AtmosphereRenderSystem::Update(const SceneUpdateContext& context)
 {
 	SPT_PROFILER_FUNCTION();
 
-	Super::Update();
+	Super::Update(context);
 
 	m_isAtmosphereTextureDirty = false;
 

@@ -10,6 +10,7 @@
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 #include "Lights/Shadows.hlsli"
+#include "SceneRendering/WSC.hlsli"
 
 struct CS_INPUT
 {
@@ -30,14 +31,7 @@ float ComputeShadowTerm(in float3 worldLocation, in float3 toView, in float3 fro
 
 	const DirectionalLightGPUData directionalLight = u_directionalLights[0];
 
-	float visibility = 1.f;
-	if(directionalLight.shadowCascadesNum != 0)
-	{
-		const float3 beginSampleLocation = worldLocation + toView * (froxelDepthRange * 0.5f);
-		const float3 endSampleLocation   = worldLocation - toView * (froxelDepthRange * 0.5f);
-		const uint samplesNum = 2u;
-		visibility = EvaluateCascadedShadowsAtLine(beginSampleLocation, endSampleLocation, samplesNum, directionalLight.firstShadowCascadeIdx, directionalLight.shadowCascadesNum);
-	}
+	float visibility = visibility = WSC().SampleShadows(worldLocation);
 
 	const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(u_lightsData.heightFog, worldLocation, worldLocation - directionalLight.direction * 1500.f);
 	visibility *= fogTransmittance;

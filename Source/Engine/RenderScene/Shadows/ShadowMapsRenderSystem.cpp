@@ -65,11 +65,11 @@ ShadowMapsRenderSystem::ShadowMapsRenderSystem(RenderScene& owningScene, const l
 	CreateShadowMaps();
 }
 
-void ShadowMapsRenderSystem::Update()
+void ShadowMapsRenderSystem::Update(const SceneUpdateContext& context)
 {
 	SPT_PROFILER_FUNCTION();
 
-	Super::Update();
+	Super::Update(context);
 
 	AssignShadowMaps();
 

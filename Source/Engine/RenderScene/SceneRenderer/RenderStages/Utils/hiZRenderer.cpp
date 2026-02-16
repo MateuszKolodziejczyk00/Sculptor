@@ -43,7 +43,7 @@ HiZSizeInfo ComputeHiZSizeInfo(const math::Vector2u& resolution)
 {
 	HiZSizeInfo result;
 	result.resolution = math::Vector2u(math::Utils::PreviousPowerOf2(resolution.x()), math::Utils::PreviousPowerOf2(resolution.y()));
-	result.mipLevels = math::Utils::ComputeMipLevelsNumForResolution(result.resolution);
+	result.mipLevels = rhi::texture_utils::ComputeMipLevelsNumForResolution(result.resolution);
 	return result;
 }
 

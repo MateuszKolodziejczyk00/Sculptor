@@ -107,6 +107,8 @@ public:
 	/** Creates buffer and returns view of full buffer */
 	RGBufferViewHandle CreateBufferView(const RenderGraphDebugName& name, const rhi::BufferDefinition& bufferDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
 
+	RGBufferViewHandle CreateStorageBufferView(const RenderGraphDebugName& name, Uint32 size, const rhi::RHIAllocationInfo& allocationInfo = rhi::EMemoryUsage::GPUOnly);
+
 	void ExtractBuffer(RGBufferHandle buffer, lib::SharedPtr<rdr::Buffer>& extractDestination);
 	
 	// Utilities ==============================================
@@ -172,6 +174,8 @@ public:
 	void FillBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range, Uint32 data);
 
 	void FillFullBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint32 data);
+
+	void MemZeroBuffer(RGBufferViewHandle bufferView);
 
 	void CopyFullBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle sourceBufferView, RGBufferViewHandle destBufferView);
 
