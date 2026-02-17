@@ -130,6 +130,10 @@ PipelineStateID PipelinesCache::GetOrCreateComputePipeline(const RendererResourc
 				m_computePipelinesPendingFlush[stateID] = pipeline;
 
 #if WITH_SHADERS_HOT_RELOAD
+				ComputePipelineHotReloadData hotReloadData;
+				hotReloadData.shader = shader;
+				m_computePipelineHotReloadData[stateID] = hotReloadData;
+
 				m_shaderToPipelineStates[shader].emplace_back(stateID);
 #endif // WITH_SHADERS_HOT_RELOAD
 			}
@@ -274,12 +278,17 @@ void PipelinesCache::ClearCachedPipelines()
 }
 
 #if WITH_SHADERS_HOT_RELOAD
-void PipelinesCache::InvalidatePipelinesUsingShader(ShaderID shader)
+void PipelinesCache::InvalidatePipelinesUsingShaders(lib::Span<const ShaderID> shaders)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const lib::LockGuard invalidatedShadersLock(m_invalidatedShadersLock);
-	m_invalidatedShaders.emplace_back(shader);
+
+	m_invalidatedShaders.reserve(m_invalidatedShaders.size() + shaders.size());
+	for (ShaderID shader : shaders)
+	{
+		m_invalidatedShaders.emplace_back(shader);
+	}
 }
 #endif // WITH_SHADERS_HOT_RELOAD
 
@@ -362,44 +371,57 @@ void PipelinesCache::FlushPipelinesHotReloads()
 	const lib::LockGuard invalidatedShadersLock(m_invalidatedShadersLock);
 	const lib::WriteLockGuard hotReloadWriteGuard(m_hotReloadLock);
 
+	lib::DynamicArray<PipelineStateID> invalidatedPipelines;
+
 	for (ShaderID shader : m_invalidatedShaders)
 	{
 		const lib::SharedRef<Shader> shaderObject = Renderer::GetShadersManager().GetShader(shader);
 		const auto pipelinesToInvalidate = m_shaderToPipelineStates.find(shader);
+
 		if (pipelinesToInvalidate != std::cend(m_shaderToPipelineStates))
 		{
 			for (PipelineStateID pipelineID : pipelinesToInvalidate->second)
 			{
-				const auto computePipelineIt = m_cachedComputePipelines.find(pipelineID);
-				if (computePipelineIt != std::cend(m_cachedComputePipelines))
+				if (!lib::Contains(invalidatedPipelines, pipelineID))
 				{
-					lib::SharedPtr<ComputePipeline>& computePipeline = computePipelineIt->second;
-					computePipeline = CreateComputePipelineObject(RENDERER_RESOURCE_NAME(computePipeline->GetRHI().GetName()), shader);
-
-					SPT_LOG_INFO(PipelinesCache, "Hot reloaded compute pipeline: {}", computePipeline->GetRHI().GetName().GetData());
+					invalidatedPipelines.emplace_back(pipelineID);
 				}
-				else
-				{
-					const auto graphicsPipelineIt = m_cachedGraphicsPipelines.find(pipelineID);
-					if (graphicsPipelineIt != std::cend(m_cachedGraphicsPipelines))
-					{
-						const GfxPipelineHotReloadData& hotReloadData = m_graphicsPipelineHotReloadData[pipelineID];
+			}
+		}
+	}
 
-						lib::SharedPtr<GraphicsPipeline>& graphicsPipeline = graphicsPipelineIt->second;
-						graphicsPipeline = CreateGfxPipelineObject(RENDERER_RESOURCE_NAME(graphicsPipeline->GetRHI().GetName()), hotReloadData.shaders, hotReloadData.pipelineDef);
-					
-						SPT_LOG_INFO(PipelinesCache, "Hot reloaded graphics pipeline: {}", graphicsPipeline->GetRHI().GetName().GetData());
-					}
-					else
-					{
-						const RayTracingPipelineHotReloadData& hotReloadData = m_rayTracingPipelineHotReloadData[pipelineID];
+	for (PipelineStateID pipelineID : invalidatedPipelines)
+	{
+		const auto computePipelineIt = m_cachedComputePipelines.find(pipelineID);
+		if (computePipelineIt != std::cend(m_cachedComputePipelines))
+		{
+			const ComputePipelineHotReloadData& hotReloadData = m_computePipelineHotReloadData[pipelineID];
 
-						lib::SharedPtr<RayTracingPipeline>& rayTracingPipeline = m_cachedRayTracingPipelines[pipelineID];
-						rayTracingPipeline = CreateRayTracingPipelineObject(RENDERER_RESOURCE_NAME(rayTracingPipeline->GetRHI().GetName()), hotReloadData.shaders, hotReloadData.pipelineDef);
-					
-						SPT_LOG_INFO(PipelinesCache, "Hot reloaded ray tracing pipeline: {}", rayTracingPipeline->GetRHI().GetName().GetData());
-					}
-				}
+			lib::SharedPtr<ComputePipeline>& computePipeline = computePipelineIt->second;
+			computePipeline = CreateComputePipelineObject(RENDERER_RESOURCE_NAME(computePipeline->GetRHI().GetName()), hotReloadData.shader);
+
+			SPT_LOG_INFO(PipelinesCache, "Hot reloaded compute pipeline: {}", computePipeline->GetRHI().GetName().GetData());
+		}
+		else
+		{
+			const auto graphicsPipelineIt = m_cachedGraphicsPipelines.find(pipelineID);
+			if (graphicsPipelineIt != std::cend(m_cachedGraphicsPipelines))
+			{
+				const GfxPipelineHotReloadData& hotReloadData = m_graphicsPipelineHotReloadData[pipelineID];
+
+				lib::SharedPtr<GraphicsPipeline>& graphicsPipeline = graphicsPipelineIt->second;
+				graphicsPipeline = CreateGfxPipelineObject(RENDERER_RESOURCE_NAME(graphicsPipeline->GetRHI().GetName()), hotReloadData.shaders, hotReloadData.pipelineDef);
+			
+				SPT_LOG_INFO(PipelinesCache, "Hot reloaded graphics pipeline: {}", graphicsPipeline->GetRHI().GetName().GetData());
+			}
+			else
+			{
+				const RayTracingPipelineHotReloadData& hotReloadData = m_rayTracingPipelineHotReloadData[pipelineID];
+
+				lib::SharedPtr<RayTracingPipeline>& rayTracingPipeline = m_cachedRayTracingPipelines[pipelineID];
+				rayTracingPipeline = CreateRayTracingPipelineObject(RENDERER_RESOURCE_NAME(rayTracingPipeline->GetRHI().GetName()), hotReloadData.shaders, hotReloadData.pipelineDef);
+			
+				SPT_LOG_INFO(PipelinesCache, "Hot reloaded ray tracing pipeline: {}", rayTracingPipeline->GetRHI().GetName().GetData());
 			}
 		}
 	}

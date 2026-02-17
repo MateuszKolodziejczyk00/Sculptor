@@ -116,9 +116,20 @@ lib::SharedRef<Shader> ShadersManager::GetShader(ShaderID shader) const
 #if WITH_SHADERS_HOT_RELOAD
 void ShadersManager::HotReloadShaders()
 {
+	struct ShaderHotReloadState
+	{
+		lib::DynamicArray<ShaderID> invalidatedShaderIDs;
+		std::atomic<Uint32> invalidatedShadersNum = 0;
+		std::atomic<Int32> pendingCompilationsNum = 0;
+	};
+
+	lib::SharedPtr<ShaderHotReloadState> hotReloadState = lib::MakeShared<ShaderHotReloadState>();
+	hotReloadState->pendingCompilationsNum = static_cast<Int32>(m_compiledShadersHotReloadParams.size());
+	hotReloadState->invalidatedShaderIDs.resize(m_compiledShadersHotReloadParams.size());
+
 	js::ParallelForEach(SPT_GENERIC_JOB_NAME,
 						m_compiledShadersHotReloadParams,
-						[this](ShaderHotReloadParameters& params)
+						[this, hotReloadState](ShaderHotReloadParameters& params)
 						{
 							const lib::SharedPtr<rdr::Shader> shader = CompileShader(params.shaderRelativePath, params.shaderStageDef, params.compilationSettings, sc::EShaderCompilationFlags::UpdateOnly, params.flags);
 							if (shader)
@@ -131,7 +142,13 @@ void ShadersManager::HotReloadShaders()
 								}
 								
 								const ShaderID shaderID(params.shaderHash, RENDERER_RESOURCE_NAME(params.shaderRelativePath));
-								Renderer::GetPipelinesCache().InvalidatePipelinesUsingShader(shaderID);
+								hotReloadState->invalidatedShaderIDs[hotReloadState->invalidatedShadersNum++] = shaderID;
+							}
+
+							if (hotReloadState->pendingCompilationsNum.fetch_sub(1) == 1)
+							{
+								SPT_LOG_INFO(ShadersManager, "Finished hot reloading shaders. Invalidating pipelines using {} shaders...", hotReloadState->invalidatedShadersNum.load());
+								Renderer::GetPipelinesCache().InvalidatePipelinesUsingShaders(lib::Span<const ShaderID>(hotReloadState->invalidatedShaderIDs.data(), hotReloadState->invalidatedShadersNum.load()));
 							}
 						},
 						js::JobDef().SetPriority(js::EJobPriority::Low));

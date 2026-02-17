@@ -44,7 +44,7 @@ public:
 	void ClearCachedPipelines();
 
 #if WITH_SHADERS_HOT_RELOAD
-	void InvalidatePipelinesUsingShader(ShaderID shader);
+	void InvalidatePipelinesUsingShaders(lib::Span<const ShaderID> shaders);
 #endif // WITH_SHADERS_HOT_RELOAD
 	
 private:
@@ -90,6 +90,11 @@ private:
 	mutable lib::Lock					m_rayTracingPipelinesPendingFlushLock;
 
 #if WITH_SHADERS_HOT_RELOAD
+	struct ComputePipelineHotReloadData
+	{
+		ShaderID shader;
+	};
+
 	struct GfxPipelineHotReloadData
 	{
 		GraphicsPipelineShaders shaders;
@@ -103,6 +108,7 @@ private:
 	};
 
 	lib::HashMap<ShaderID, lib::DynamicArray<PipelineStateID>>		m_shaderToPipelineStates;
+	lib::HashMap<PipelineStateID, ComputePipelineHotReloadData>		m_computePipelineHotReloadData;
 	lib::HashMap<PipelineStateID, GfxPipelineHotReloadData>			m_graphicsPipelineHotReloadData;
 	lib::HashMap<PipelineStateID, RayTracingPipelineHotReloadData>	m_rayTracingPipelineHotReloadData;
 	mutable lib::ReadWriteLock										m_hotReloadLock;
