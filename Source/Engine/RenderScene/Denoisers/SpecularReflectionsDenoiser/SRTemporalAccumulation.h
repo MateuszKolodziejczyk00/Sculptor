@@ -70,8 +70,7 @@ struct TemporalAccumulationParameters : public denoising::DenoiserBaseParams
 
 	lib::MTHandle<SharcCacheDS> sharcCacheDS;
 
-	Bool enableStableHistoryBlend            = true;
-	Bool enableDisocclusionFixFromLightCache = true;
+	Bool enableStableHistoryBlend = true;
 };
 
 void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const TemporalAccumulationParameters& params);

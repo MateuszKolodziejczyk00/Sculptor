@@ -97,18 +97,22 @@ void DISpatialResamplingRTG()
 		}
 	}
 
-	float3 luminance = 0.f;
-	if (reservoir.IsValid())
-	{
-		luminance = UnshadowedPathContribution(surface, V, reservoir.sample) * reservoir.weightSum;
-		if (any(isnan(luminance)))
-		{
-			luminance = 0.f;
-		}
-	}
-
 	u_constants.outReservoirs.Store(reservoirIdx, PackDIReservoir(reservoir));
 
-	const float3 prevLuminance = u_constants.outputLuminance.Load(coords).rgb;
-	u_constants.outputLuminance.Store(coords, float4(prevLuminance + LuminanceToExposedLuminance(luminance), 1.f));
+	const StochasticDIShadingResult shadingResult = FinalDIShading(surface, V, reservoir.sample, reservoir.weightSum);
+
+	float3 diffuseLo = shadingResult.diffuse;
+	diffuseLo = LuminanceToExposedLuminance(diffuseLo);
+	diffuseLo /= max(surface.diffuseColor, SMALL_NUMBER);
+
+	const float NdotV = saturate(dot(surface.normal, V));
+	const float2 integratedBRDF = u_constants.brdfIntegrationLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), float2(NdotV, surface.roughness), 0);
+
+	float3 specularLo = shadingResult.specular;
+	specularLo = LuminanceToExposedLuminance(specularLo);
+	specularLo /= max((surface.specularColor * integratedBRDF.x + integratedBRDF.y), 0.01f);
+
+	u_constants.rwSpecularHitDist.Store(coords, float4(specularLo, shadingResult.hitDistance));
+	u_constants.rwDiffuse.Store(coords, diffuseLo);
+	u_constants.rwLightDirection.Store(coords, OctahedronEncodeNormal(shadingResult.lightDirection));
 }

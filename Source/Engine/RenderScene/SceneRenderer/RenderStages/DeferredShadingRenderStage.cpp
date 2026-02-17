@@ -22,7 +22,7 @@ namespace renderer_params
 {
 RendererBoolParameter enableTiledShadingDebug("Enable Tiled Shading Debug", { "Deferred Shading" }, false);
 
-RendererBoolParameter enableStochasticLighting("Enable Stochastic Lighting", { "Deferred Shading" }, false);
+RendererBoolParameter enableStochasticLighting("Enable Stochastic Lighting", { "Deferred Shading" }, true);
 } // renderer_params
 
 

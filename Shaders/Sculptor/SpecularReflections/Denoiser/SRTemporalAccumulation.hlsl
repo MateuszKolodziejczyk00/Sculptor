@@ -4,23 +4,9 @@
 #error "USE_STABLE_BLENDS must be defined"
 #endif // USE_STABLE_BLENDS
 
-#ifndef DISOCCLUSION_FIX_FROM_LIGHT_CACHE
-#error "DISOCCLUSION_FIX_FROM_LIGHT_CACHE must be defined"
-#endif // DISOCCLUSION_FIX_FROM_LIGHT_CACHE
-
 
 [[descriptor_set(RenderViewDS, 0)]]
 [[descriptor_set(SRTemporalAccumulationDS, 1)]]
-
-#define USE_DDGI 0
-
-#if DISOCCLUSION_FIX_FROM_LIGHT_CACHE
-#if USE_DDGI
-[[descriptor_set(DDGISceneDS, 2)]]
-#else
-[[descriptor_set(SharcCacheDS, 2)]]
-#endif //USE_DDGI
-#endif // DISOCCLUSION_FIX_FROM_LIGHT_CACHE
 
 
 #include "Utils/SceneViewUtils.hlsli"
@@ -29,11 +15,6 @@
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 #include "SpecularReflections/Denoiser/RTDenoising.hlsli"
 #include "SpecularReflections/SculptorSharcQuery.hlsli"
-
-#if defined(DS_DDGISceneDS)
-#include "DDGI/DDGITypes.hlsli"
-#elif defined(DS_SharcCacheDS)
-#endif // DS_SharcCacheDS
 
 
 
@@ -360,42 +341,8 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		}
 		else
 		{
-#if DISOCCLUSION_FIX_FROM_LIGHT_CACHE
-#if defined(DS_DDGISceneDS)
-			DDGISampleParams diffuseSampleParams = CreateDDGISampleParams(currentSampleWS, currentSampleNormal, u_sceneView.viewLocation);
-
-			float3 diffuseWorldCache = DDGISampleLuminance(diffuseSampleParams, DDGISampleContext::Create());
-			diffuseWorldCache = LuminanceToExposedLuminance(diffuseWorldCache);
-
-			float3 initialDiffuse = diffuse.rgb;
-				
-			initialDiffuse = LuminanceStableBlend(diffuseWorldCache, diffuse.rgb, 0.5f, 3.f);
-
-			u_rwDiffuseFastHistoryTexture[pixel] = initialDiffuse;
-			u_rwDiffuseTexture[pixel]  = float4(initialDiffuse, diffuse.w);
-#elif defined(DS_SharcCacheDS)
-			float3 initialDiffuse = diffuse.rgb;
-			float3 cachedLuminance = 0.f;
-			if(QueryCachedLuminance(u_sceneView.viewLocation, u_viewExposure.exposure, currentSampleWS, currentSampleWS, OUT cachedLuminance))
-			{
-				const float4 baseColorMetallic = u_baseColorMetallicTexture.Load(uint3(pixel, 0));
-				float3 diffuseColor;
-				float3 specularColor;
-				ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, OUT diffuseColor, OUT specularColor);
-
-				const float3 lambertTerm = Diffuse_Lambert(diffuseColor);
-				const float3 luminanceLightCache = LuminanceToExposedLuminance(cachedLuminance / max(lambertTerm, 0.001f));
-				
-				initialDiffuse = LuminanceStableBlend(luminanceLightCache, diffuse.rgb, 0.5f, 1.f);
-			}
-
-			u_rwDiffuseFastHistoryTexture[pixel] = initialDiffuse;
-			u_rwDiffuseTexture[pixel]            = float4(initialDiffuse, diffuse.w);
-#endif // defined(DS_SharcCacheDS)
-#else
 			outDiffuseY    = diffuseY;
 			outDiffuseCoCg = diffuseCoCg;
-#endif // DISOCCLUSION_FIX_FROM_LIGHT_CACHE
 			u_rwDiffuseFastHistoryTexture[pixel] = diffuse.rgb;
 		}
 

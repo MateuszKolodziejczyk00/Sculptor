@@ -1,7 +1,5 @@
 #include "StochasticDIRenderer.h"
 #include "RenderGraphBuilder.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "RenderScene.h"
 #include "RenderSceneTypes.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
@@ -13,6 +11,7 @@
 #include "StaticMeshes/RenderMesh.h"
 #include "StaticMeshes/StaticMeshRenderingCommon.h"
 #include "Transfers/UploadUtils.h"
+#include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 
 
 namespace spt::rsc::stochastic_di
@@ -162,11 +161,27 @@ END_SHADER_STRUCT();
 
 
 BEGIN_SHADER_STRUCT(StochasticDISpatialResamplingConstants)
-	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector4f>,     outputLuminance)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector4f>,     rwSpecularHitDist)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector3f>,     rwDiffuse)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector2f>,     rwLightDirection)
 	SHADER_STRUCT_FIELD(GPUGBuffer,                               gBuffer)
 	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<DIPackedReservoir>,   inReservoirs)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<DIPackedReservoir>, outReservoirs)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>,     brdfIntegrationLUT)
 	SHADER_STRUCT_FIELD(math::Vector2u,                           reservoirsResolution)
+END_SHADER_STRUCT();
+
+
+SIMPLE_COMPUTE_PSO(ResolveStochasticDIPSO, "Sculptor/Lights/StochasticDI/ResolveStochasticDI.hlsl", ResolveStochasticDICS);
+
+
+BEGIN_SHADER_STRUCT(ResolveStochasticDIConstants)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector3f>, specular)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector3f>, diffuse)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>, lightDirection)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector3f>, rwLuminance)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>, brdfIntegrationLUT)
+	SHADER_STRUCT_FIELD(GPUGBuffer,                           gBuffer)
 END_SHADER_STRUCT();
 
 
@@ -185,6 +200,11 @@ rg::RGBufferViewHandle CreateDIReservoirs(rg::RenderGraphBuilder& graphBuilder, 
 	return graphBuilder.CreateBufferView(RG_DEBUG_NAME("DI Reservoirs Buffer"), bufferDef, rhi::EMemoryUsage::GPUOnly);
 }
 
+
+Renderer::Renderer()
+	: m_denoiser(RG_DEBUG_NAME("Stochastic DI Denoiser"))
+{
+}
 
 void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const StochasticDIParams& diParams)
 {
@@ -240,12 +260,21 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 							   shaderConstants);
 	}
 
+	const rg::RGTextureViewHandle specularHitDist = graphBuilder.CreateTextureView(RG_DEBUG_NAME("DI Specular Hit Dist"), rg::TextureDef(resolution, rhi::EFragmentFormat::RGBA16_S_Float));
+	const rg::RGTextureViewHandle diffuse         = graphBuilder.CreateTextureView(RG_DEBUG_NAME("DI Diffuse"), rg::TextureDef(resolution, rhi::EFragmentFormat::RGBA16_S_Float));
+	const rg::RGTextureViewHandle lightDirection  = graphBuilder.CreateTextureView(RG_DEBUG_NAME("DI Light Direction"), rg::TextureDef(resolution, rhi::EFragmentFormat::RG16_UN_Float));
+
+	const rg::RGTextureViewHandle brdfIntegrationLUT = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
+
 	{
 		StochasticDISpatialResamplingConstants shaderConstants;
-		shaderConstants.outputLuminance      = diParams.outputLuminance;
+		shaderConstants.rwSpecularHitDist    = specularHitDist;
+		shaderConstants.rwDiffuse            = diffuse;
+		shaderConstants.rwLightDirection     = lightDirection;
 		shaderConstants.gBuffer              = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
 		shaderConstants.inReservoirs         = reservoirsBuffer;
 		shaderConstants.outReservoirs        = historyReservoirs;
+		shaderConstants.brdfIntegrationLUT   = brdfIntegrationLUT;
 		shaderConstants.reservoirsResolution = reservoirsResolution;
 
 		graphBuilder.TraceRays(RG_DEBUG_NAME("DI Spatial Resampling"),
@@ -253,6 +282,38 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 							   resolution,
 							   rg::EmptyDescriptorSets(),
 							   shaderConstants);
+	}
+
+	sr_denoiser::Denoiser::Params denoiserParams(viewSpec);
+	denoiserParams.currentDepthTexture      = viewContext.depth;
+	denoiserParams.historyDepthTexture      = viewContext.historyDepth;
+	denoiserParams.linearDepthTexture       = viewContext.linearDepth;
+	denoiserParams.motionTexture            = viewContext.motion;
+	denoiserParams.normalsTexture           = viewContext.octahedronNormals;
+	denoiserParams.historyNormalsTexture    = viewContext.historyOctahedronNormals;
+	denoiserParams.roughnessTexture         = viewContext.gBuffer[GBuffer::Texture::Roughness];
+	denoiserParams.historyRoughnessTexture  = viewContext.historyRoughness;
+	denoiserParams.specularTexture          = specularHitDist;
+	denoiserParams.diffuseTexture           = diffuse;
+	denoiserParams.baseColorMetallicTexture = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
+	denoiserParams.lightDirection           = lightDirection;
+	denoiserParams.resetAccumulation        = false;
+	const sr_denoiser::Denoiser::Result denoiserResult = m_denoiser.Denoise(graphBuilder, denoiserParams);
+
+	{
+		ResolveStochasticDIConstants shaderConstants;
+		shaderConstants.specular           = denoiserResult.denoisedSpecular;
+		shaderConstants.diffuse            = denoiserResult.denoisedDiffuse;
+		shaderConstants.lightDirection     = lightDirection;
+		shaderConstants.rwLuminance        = diParams.outputLuminance;
+		shaderConstants.brdfIntegrationLUT = brdfIntegrationLUT;
+		shaderConstants.gBuffer            = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
+
+		graphBuilder.Dispatch(RG_DEBUG_NAME("Resolve Stochastic DI"),
+							  ResolveStochasticDIPSO::pso,
+							  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
+							  rg::EmptyDescriptorSets(),
+							  shaderConstants);
 	}
 }
 

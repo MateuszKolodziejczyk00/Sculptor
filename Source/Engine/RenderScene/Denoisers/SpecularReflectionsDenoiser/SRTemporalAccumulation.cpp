@@ -64,7 +64,6 @@ static rdr::PipelineStateID CreateTemporalAccumulationPipeline(const TemporalAcc
 {
 	sc::ShaderCompilationSettings compilationSettings;
 	compilationSettings.AddMacroDefinition(sc::MacroDefinition("USE_STABLE_BLENDS", params.enableStableHistoryBlend ? "1" : "0"));
-	compilationSettings.AddMacroDefinition(sc::MacroDefinition("DISOCCLUSION_FIX_FROM_LIGHT_CACHE", params.enableDisocclusionFixFromLightCache ? "1" : "0"));
 	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/Denoiser/SRTemporalAccumulation.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "SRTemporalAccumulationCS"), compilationSettings);
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("Specular Reflections Temporal Accumulation Pipeline"), shader);
 }

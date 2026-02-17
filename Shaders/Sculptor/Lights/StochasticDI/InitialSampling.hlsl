@@ -155,6 +155,7 @@ void InitialSamplingRTG()
 
 	reservoir.Normalize();
 	reservoir.age += 1u;
+	reservoir.M = 1u;
 
 	const uint reservoirIdx = GetScreenReservoirIdx(coords, u_constants.reservoirsResolution);
 	u_constants.outReservoirs.Store(reservoirIdx, PackDIReservoir(reservoir));

@@ -49,8 +49,7 @@ RendererBoolParameter resampleOnlyFromTracedPixels("Resample Only From Traced Pi
 RendererBoolParameter enableHitDistanceBasedMaxAge("Enable Hit Distance Based Max Age", { "Specular Reflections" }, true);
 RendererIntParameter reservoirMaxAge("Reservoir Max Age", { "Specular Reflections" }, 10, 0, 30);
 RendererFloatParameter resamplingRangeStep("Resampling Range Step", { "Specular Reflections" }, 2.333f, 0.f, 10.f);
-RendererBoolParameter enableStableHistoryBlend("Enable Stable History Blend", { "Specular Reflections" }, true);
-RendererBoolParameter enableDisocclusionFixFromLightCache("Enable Disocclusion Fix From Light Cache", { "Specular Reflections" }, false);
+RendererBoolParameter enableStableHistoryBlend("Enable Stable History Blend", { "Specular Reflections" }, false);
 RendererIntParameter wideRadiusSpatialPassesNum("Wide Radius Spatial Passes Num", { "Specular Reflections" }, 0, 0, 5);
 RendererBoolParameter useSharcAsRadianceCache("Use Sharc As Radiance Cache", { "Specular Reflections" }, true);
 } // renderer_params
@@ -523,23 +522,22 @@ static sr_denoiser::Denoiser::Result Denoise(rg::RenderGraphBuilder& graphBuilde
 	SPT_PROFILER_FUNCTION();
 
 	sr_denoiser::Denoiser::Params denoiserParams(viewSpec);
-	denoiserParams.currentDepthTexture                 = params.depthTexture;
-	denoiserParams.historyDepthTexture                 = params.depthHistoryTexture;
-	denoiserParams.linearDepthTexture                  = params.linearDepthTexture;
-	denoiserParams.motionTexture                       = params.motionTexture;
-	denoiserParams.normalsTexture                      = params.normalsTexture;
-	denoiserParams.historyNormalsTexture               = params.historyNormalsTexture;
-	denoiserParams.roughnessTexture                    = params.roughnessTexture;
-	denoiserParams.historyRoughnessTexture             = params.historyRoughnessTexture;
-	denoiserParams.specularTexture                     = specularReflections;
-	denoiserParams.diffuseTexture                      = diffuseReflections;
-	denoiserParams.lightDirection                      = lightDirection;
-	denoiserParams.blurVarianceEstimate                = !renderer_params::forceFullRateTracingReflections && renderer_params::blurVarianceEstimate;
-	denoiserParams.enableStableHistoryBlend            = renderer_params::enableStableHistoryBlend;
-	denoiserParams.enableDisocclusionFixFromLightCache = renderer_params::enableDisocclusionFixFromLightCache;
-	denoiserParams.wideRadiusPassesNum                 = renderer_params::wideRadiusSpatialPassesNum;
-	denoiserParams.resetAccumulation                   = params.resetAccumulation;
-	denoiserParams.baseColorMetallicTexture            = params.baseColorTexture;
+	denoiserParams.currentDepthTexture      = params.depthTexture;
+	denoiserParams.historyDepthTexture      = params.depthHistoryTexture;
+	denoiserParams.linearDepthTexture       = params.linearDepthTexture;
+	denoiserParams.motionTexture            = params.motionTexture;
+	denoiserParams.normalsTexture           = params.normalsTexture;
+	denoiserParams.historyNormalsTexture    = params.historyNormalsTexture;
+	denoiserParams.roughnessTexture         = params.roughnessTexture;
+	denoiserParams.historyRoughnessTexture  = params.historyRoughnessTexture;
+	denoiserParams.specularTexture          = specularReflections;
+	denoiserParams.diffuseTexture           = diffuseReflections;
+	denoiserParams.lightDirection           = lightDirection;
+	denoiserParams.blurVarianceEstimate     = !renderer_params::forceFullRateTracingReflections && renderer_params::blurVarianceEstimate;
+	denoiserParams.enableStableHistoryBlend = renderer_params::enableStableHistoryBlend;
+	denoiserParams.wideRadiusPassesNum      = renderer_params::wideRadiusSpatialPassesNum;
+	denoiserParams.resetAccumulation        = params.resetAccumulation;
+	denoiserParams.baseColorMetallicTexture = params.baseColorTexture;
 
 	return denoiser.Denoise(graphBuilder, denoiserParams);
 }

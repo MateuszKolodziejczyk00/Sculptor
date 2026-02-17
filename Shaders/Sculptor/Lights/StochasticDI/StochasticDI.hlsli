@@ -190,6 +190,52 @@ float3 UnshadowedPathContribution(in SurfaceInfo surface, in float3 V, in Emissi
 }
 
 
+struct StochasticDIShadingResult
+{
+	float3 specular;
+	float3 diffuse;
+	float3 lightDirection;
+	float hitDistance;
+};
+
+
+StochasticDIShadingResult FinalDIShading(in SurfaceInfo surface, in float3 V, in EmissiveSample sample, in float weight)
+{
+	StochasticDIShadingResult result;
+	result.specular = 0.f;
+	result.diffuse  = 0.f;
+
+	const float3 toSample   = sample.location - surface.location;
+	const float r2          = dot(toSample, toSample);
+	const float hitDistance = sqrt(r2);
+	const float3 L          = toSample / hitDistance;
+
+	result.lightDirection = L;
+
+	const float G = GeometricTermNoVisibility(sample.normal, L, r2);
+
+	if (G < 1e-6f)
+	{
+		return result;
+	}
+
+	const float NdotL = max(dot(surface.normal, L), 0.f);
+
+	if (NdotL > 0.f)
+	{
+		const RTBRDF brdf = RT_EvaluateBRDF(surface.normal, V, L, surface.roughness, surface.specularColor, surface.diffuseColor);
+
+		const float3 Li = sample.luminance * NdotL * G * weight;
+		
+		result.diffuse     = brdf.diffuse  * Li;
+		result.specular    = brdf.specular * Li;
+		result.hitDistance = hitDistance;
+	}
+
+	return result;
+}
+
+
 bool CanResampleSurface(in SurfaceInfo toSurface, in float3 fromLocation, in float3 fromNormal)
 {
 	const Plane dstSurfacePlane = Plane::Create(toSurface.normal, toSurface.location);

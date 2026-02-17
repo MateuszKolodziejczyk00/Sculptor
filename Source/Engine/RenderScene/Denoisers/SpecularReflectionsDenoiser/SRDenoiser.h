@@ -65,8 +65,7 @@ public:
 
 		Bool blurVarianceEstimate = true;
 
-		Bool enableStableHistoryBlend            = true;
-		Bool enableDisocclusionFixFromLightCache = true;
+		Bool enableStableHistoryBlend = false;
 
 		Uint32 wideRadiusPassesNum = 0;
 
