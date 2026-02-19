@@ -439,6 +439,36 @@ public:
 		return compiler.CreateRayTracingPipeline(RENDERER_RESOURCE_NAME(name.Get()), shaders, pipelineDefinition);
 	}
 
+	template<typename THitGroup, typename TPermutationDomatin>
+	static PipelineStateID CompilePermutation(PSOCompilerInterface& compiler, const rhi::RayTracingPipelineDefinition& pipelineDefinition, const lib::DynamicArray<THitGroup>& hitGroups, const TPermutationDomatin& permutation)
+	{
+		sc::ShaderCompilationSettings compilationSettings;
+		rdr::permutations::BuildPermutationShaderCompilationSettings(permutation, INOUT compilationSettings);
+
+		const PipelineStateID pso = TConcrete::CompilePSO(compiler, pipelineDefinition, hitGroups, compilationSettings);
+
+		if constexpr (CPermutationsPSO<TConcrete>)
+		{
+			static_assert(std::is_same_v<typename TConcrete::PermutationDomainType, TPermutationDomatin>, "Wrong type of permutation domain!");
+			TConcrete::s_permutations.AddPermutation(permutation, pso);
+		}
+
+		return pso;
+	}
+
+	template<typename TPermutationDomatin>
+	static PipelineStateID GetPermutation(const TPermutationDomatin& permutation)
+	{
+		static_assert(CPermutationsPSO<TConcrete>, "This PSO does not support permutations!");
+
+		static_assert(std::is_same_v<typename TConcrete::PermutationDomainType, TPermutationDomatin>, "Wrong type of permutation domain!");
+
+		const PipelineStateID pso = TConcrete::s_permutations.GetPermutation(permutation);
+
+		SPT_CHECK_MSG(pso.IsValid(), "Invalid permutation! All RT PSOs must be precached!");
+		return pso;
+	}
+
 private:
 
 	struct Registrar

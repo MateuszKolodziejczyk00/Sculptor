@@ -3,7 +3,7 @@
 [[descriptor_set(RenderSceneDS)]]
 [[descriptor_set(RenderViewDS)]]
 
-[[shader_params(StochasticDISpatialResamplingConstants, u_constants)]]
+[[shader_params(DISpatialResamplingConstants , u_constants)]]
 
 #include "RayTracing/RayTracingHelpers.hlsli"
 #include "Lights/StochasticDI/StochasticDI.hlsli"
@@ -45,15 +45,15 @@ void DISpatialResamplingRTG()
 
 	RngState rngState = RngState::Create(coords, u_renderSceneConstants.gpuScene.frameIdx + 7u);
 
-	const int radius = 32;
-	const uint samplesNum = 3u;
+	const int range       = u_constants.spatialResamplingRange;
+	const uint samplesNum = u_constants.spatialSamplesNum;
 
 	for (uint i = 0u; i < samplesNum; ++i)
 	{
 #if WAVE_COHERENT_SPATIAL_RESAMPLING
-		const int2 offset = WaveReadLaneFirst((float2(rngState.Next(), rngState.Next()) * 2.f - 1.f) * radius);
+		const int2 offset = WaveReadLaneFirst((float2(rngState.Next(), rngState.Next()) * 2.f - 1.f) * range);
 #else
-		const int2 offset = (float2(rngState.Next(), rngState.Next()) * 2.f - 1.f) * radius;
+		const int2 offset = (float2(rngState.Next(), rngState.Next()) * 2.f - 1.f) * range;
 #endif
 
 		int2 sampleCoords = abs(int2(coords) + offset);
@@ -65,6 +65,14 @@ void DISpatialResamplingRTG()
 		{
 			sampleCoords.y = 2 * (u_constants.gBuffer.resolution.y - 1) - sampleCoords.y;
 		}
+
+#if ENABLE_SURFACE_CHECK
+		const SurfaceInfo sampleSurface = gBuffer.GetSurfaceInfo(sampleCoords);
+		if (!CanResampleSurface(surface, sampleSurface.location, sampleSurface.normal))
+		{
+			continue;
+		}
+#endif
 
 		const uint sampleReservoirIdx = GetScreenReservoirIdx(sampleCoords, u_constants.reservoirsResolution);
 		const DIReservoir sampleReservoir = UnpackDIReservoir(u_constants.inReservoirs.Load(sampleReservoirIdx));

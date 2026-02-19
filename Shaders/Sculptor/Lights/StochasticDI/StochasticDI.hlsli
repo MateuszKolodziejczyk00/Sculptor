@@ -112,7 +112,7 @@ DIPackedReservoir PackDIReservoir(in DIReservoir reservoir)
 	packed.packedLuminance   = EncodeRGBToLogLuv(reservoir.sample.luminance);
 	packed.hitNormal         = OctahedronEncodeNormal(reservoir.sample.normal);
 	packed.weight            = reservoir.weightSum;
-	packed.MAndProps         = (min(reservoir.M, 20u) & 0xFFu) | (reservoir.age << 8u);
+	packed.MAndProps         = (min(reservoir.M, 30u) & 0xFFu) | (reservoir.age << 8u);
 
 	return packed;
 }

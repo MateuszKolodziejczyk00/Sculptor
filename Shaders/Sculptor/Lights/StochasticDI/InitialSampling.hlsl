@@ -118,7 +118,7 @@ void InitialSamplingRTG()
 		}
 	}
 
-	if (u_constants.historyReservoirs.IsValid())
+	if (u_constants.historyReservoirs.IsValid() && u_constants.enableTemporalResampling)
 	{
 		const float2 uv = (float2(coords) + 0.5f) * u_constants.gBuffer.pixelSize;
 
@@ -138,7 +138,7 @@ void InitialSamplingRTG()
 
 				DIReservoir historyReservoir = UnpackDIReservoir(u_constants.historyReservoirs.Load(historyReservoirIdx));
 
-				if (historyReservoir.IsValid() && historyReservoir.age < 10u)
+				if (historyReservoir.IsValid() && historyReservoir.age < 16u)
 				{
 					float p_hat = Luminance(UnshadowedPathContribution(surface, V, historyReservoir.sample));
 					if (any(isnan(p_hat)))

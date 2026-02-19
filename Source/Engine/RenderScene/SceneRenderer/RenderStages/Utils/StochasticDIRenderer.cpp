@@ -20,53 +20,11 @@ namespace spt::rsc::stochastic_di
 namespace renderer_params
 {
 RendererIntParameter risSamplesNum("RIS Samples Num", { "Stochastic DI" }, 2, 1, 20);
+RendererBoolParameter enableTemporalResampling("Enable Temporal Resampling", { "Stochastic DI" }, true);
+RendererIntParameter spatialSamplesNum("Spatial Samples Num", { "Stochastic DI" }, 8, 1, 20);
+RendererIntParameter spatialResamplingRange("Spatial Resampling Range", { "Stochastic DI" }, 32, 1, 64);
+RendererBoolParameter enableSurfaceCheckDuringSpatialResampling("Enable Surface Check During Spatial Resampling", { "Stochastic DI" }, false);
 } // renderer_params
-
-
-RT_PSO(DIInitialSamplingPSO)
-{
-	RAY_GEN_SHADER("Sculptor/Lights/StochasticDI/InitialSampling.hlsl", InitialSamplingRTG);
-
-	MISS_SHADERS(SHADER_ENTRY("Sculptor/Lights/StochasticDI/InitialSampling.hlsl", GenericRTM));
-
-	HIT_GROUP
-	{
-		ANY_HIT_SHADER("Sculptor/Lights/StochasticDI/InitialSampling.hlsl", GenericAH);
-
-		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
-	};
-
-	PRESET(pso);
-
-	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
-	{
-		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
-		pso = CompilePSO(compiler, psoDefinition, mat::MaterialsSubsystem::Get().GetRTHitGroups<HitGroup>());
-	}
-};
-
-
-RT_PSO(DISpatialResamplingPSO)
-{
-	RAY_GEN_SHADER("Sculptor/Lights/StochasticDI/DISpatialResampling.hlsl", DISpatialResamplingRTG);
-
-	MISS_SHADERS(SHADER_ENTRY("Sculptor/Lights/StochasticDI/DISpatialResampling.hlsl", GenericRTM));
-
-	HIT_GROUP
-	{
-		ANY_HIT_SHADER("Sculptor/Lights/StochasticDI/DISpatialResampling.hlsl", GenericAH);
-
-		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
-	};
-
-	PRESET(pso);
-
-	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
-	{
-		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
-		pso = CompilePSO(compiler, psoDefinition, mat::MaterialsSubsystem::Get().GetRTHitGroups<HitGroup>());
-	}
-};
 
 
 BEGIN_SHADER_STRUCT(EmissiveElement)
@@ -146,6 +104,8 @@ BEGIN_SHADER_STRUCT(DIPackedReservoir)
 	SHADER_STRUCT_FIELD(Uint32,         MAndProps)
 END_SHADER_STRUCT();
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Initial Sampling ==============================================================================
 
 BEGIN_SHADER_STRUCT(StochasticDIInitialSamplingConstants)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>,     motion)
@@ -157,10 +117,41 @@ BEGIN_SHADER_STRUCT(StochasticDIInitialSamplingConstants)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>,        historyNormal)
 	SHADER_STRUCT_FIELD(math::Vector2u,                           reservoirsResolution)
 	SHADER_STRUCT_FIELD(Uint32,                                   risSamplesNum)
+	SHADER_STRUCT_FIELD(Bool,                                     enableTemporalResampling)
 END_SHADER_STRUCT();
 
 
-BEGIN_SHADER_STRUCT(StochasticDISpatialResamplingConstants)
+RT_PSO(DIInitialSamplingPSO)
+{
+	RAY_GEN_SHADER("Sculptor/Lights/StochasticDI/InitialSampling.hlsl", InitialSamplingRTG);
+
+	MISS_SHADERS(SHADER_ENTRY("Sculptor/Lights/StochasticDI/InitialSampling.hlsl", GenericRTM));
+
+	HIT_GROUP
+	{
+		ANY_HIT_SHADER("Sculptor/Lights/StochasticDI/InitialSampling.hlsl", GenericAH);
+
+		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
+	};
+
+	PRESET(pso);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
+		pso = CompilePSO(compiler, psoDefinition, mat::MaterialsSubsystem::Get().GetRTHitGroups<HitGroup>());
+	}
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Spatial Resampling ============================================================================
+
+BEGIN_SHADER_STRUCT(DISpatialResamplingPermutationDomain)
+	SHADER_STRUCT_FIELD(Bool, ENABLE_SURFACE_CHECK)
+END_SHADER_STRUCT();
+
+
+BEGIN_SHADER_STRUCT(DISpatialResamplingConstants)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector4f>,     rwSpecularHitDist)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector3f>,     rwDiffuse)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector2f>,     rwLightDirection)
@@ -169,8 +160,39 @@ BEGIN_SHADER_STRUCT(StochasticDISpatialResamplingConstants)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<DIPackedReservoir>, outReservoirs)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>,     brdfIntegrationLUT)
 	SHADER_STRUCT_FIELD(math::Vector2u,                           reservoirsResolution)
+	SHADER_STRUCT_FIELD(Uint32,                                   spatialSamplesNum)
+	SHADER_STRUCT_FIELD(Uint32,                                   spatialResamplingRange)
 END_SHADER_STRUCT();
 
+
+RT_PSO(DISpatialResamplingPSO)
+{
+	RAY_GEN_SHADER("Sculptor/Lights/StochasticDI/DISpatialResampling.hlsl", DISpatialResamplingRTG);
+	MISS_SHADERS(SHADER_ENTRY("Sculptor/Lights/StochasticDI/DISpatialResampling.hlsl", GenericRTM));
+
+	PERMUTATION_DOMAIN(DISpatialResamplingPermutationDomain);
+
+	HIT_GROUP
+	{
+		ANY_HIT_SHADER("Sculptor/Lights/StochasticDI/DISpatialResampling.hlsl", GenericAH);
+
+		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
+	};
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
+
+		const lib::DynamicArray<HitGroup> hitGroups = mat::MaterialsSubsystem::Get().GetRTHitGroups<HitGroup>();
+
+		CompilePermutation(compiler, psoDefinition, hitGroups, DISpatialResamplingPermutationDomain{ .ENABLE_SURFACE_CHECK = false });
+
+		CompilePermutation(compiler, psoDefinition, hitGroups, DISpatialResamplingPermutationDomain{ .ENABLE_SURFACE_CHECK = true });
+	}
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Resolve DI ====================================================================================
 
 SIMPLE_COMPUTE_PSO(ResolveStochasticDIPSO, "Sculptor/Lights/StochasticDI/ResolveStochasticDI.hlsl", ResolveStochasticDICS);
 
@@ -239,12 +261,13 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 
 	{
 		StochasticDIInitialSamplingConstants shaderConstants;
-		shaderConstants.motion               = viewContext.motion;
-		shaderConstants.gBuffer              = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
-		shaderConstants.emissivesSampler     = CreateEmissivesSampler(graphBuilder, renderScene);
-		shaderConstants.outReservoirs        = reservoirsBuffer;
-		shaderConstants.reservoirsResolution = reservoirsResolution;
-		shaderConstants.risSamplesNum        = renderer_params::risSamplesNum;
+		shaderConstants.motion                   = viewContext.motion;
+		shaderConstants.gBuffer                  = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
+		shaderConstants.emissivesSampler         = CreateEmissivesSampler(graphBuilder, renderScene);
+		shaderConstants.outReservoirs            = reservoirsBuffer;
+		shaderConstants.reservoirsResolution     = reservoirsResolution;
+		shaderConstants.risSamplesNum            = renderer_params::risSamplesNum;
+		shaderConstants.enableTemporalResampling = renderer_params::enableTemporalResampling;
 
 		if (canReuseHistory)
 		{
@@ -267,18 +290,23 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 	const rg::RGTextureViewHandle brdfIntegrationLUT = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
 
 	{
-		StochasticDISpatialResamplingConstants shaderConstants;
-		shaderConstants.rwSpecularHitDist    = specularHitDist;
-		shaderConstants.rwDiffuse            = diffuse;
-		shaderConstants.rwLightDirection     = lightDirection;
-		shaderConstants.gBuffer              = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
-		shaderConstants.inReservoirs         = reservoirsBuffer;
-		shaderConstants.outReservoirs        = historyReservoirs;
-		shaderConstants.brdfIntegrationLUT   = brdfIntegrationLUT;
-		shaderConstants.reservoirsResolution = reservoirsResolution;
+		DISpatialResamplingConstants shaderConstants;
+		shaderConstants.rwSpecularHitDist      = specularHitDist;
+		shaderConstants.rwDiffuse              = diffuse;
+		shaderConstants.rwLightDirection       = lightDirection;
+		shaderConstants.gBuffer                = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
+		shaderConstants.inReservoirs           = reservoirsBuffer;
+		shaderConstants.outReservoirs          = historyReservoirs;
+		shaderConstants.brdfIntegrationLUT     = brdfIntegrationLUT;
+		shaderConstants.reservoirsResolution   = reservoirsResolution;
+		shaderConstants.spatialSamplesNum      = renderer_params::spatialSamplesNum;
+		shaderConstants.spatialResamplingRange = renderer_params::spatialResamplingRange;
+
+		DISpatialResamplingPermutationDomain permutation;
+		permutation.ENABLE_SURFACE_CHECK = renderer_params::enableSurfaceCheckDuringSpatialResampling;
 
 		graphBuilder.TraceRays(RG_DEBUG_NAME("DI Spatial Resampling"),
-							   DISpatialResamplingPSO::pso,
+							   DISpatialResamplingPSO::GetPermutation(permutation),
 							   resolution,
 							   rg::EmptyDescriptorSets(),
 							   shaderConstants);
@@ -298,6 +326,7 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 	denoiserParams.baseColorMetallicTexture = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
 	denoiserParams.lightDirection           = lightDirection;
 	denoiserParams.resetAccumulation        = false;
+	denoiserParams.blurVarianceEstimate     = false;
 	const sr_denoiser::Denoiser::Result denoiserResult = m_denoiser.Denoise(graphBuilder, denoiserParams);
 
 	{
