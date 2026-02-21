@@ -1,4 +1,5 @@
 #include "Paths.h"
+#include "FileSystem/File.h"
 #include "Utils/CommandLineArguments.h"
 
 
@@ -23,6 +24,7 @@ static lib::String	g_gpuCrashDumpsPath;
 static lib::String	g_contentPath;
 static lib::String	g_imGuiConfigPath;
 static lib::String	g_executablePath;
+static lib::String	g_executableDirectory;
 
 } // priv
 
@@ -30,13 +32,14 @@ void Paths::Initialize(const CommandLineArguments& cmdLineArgs)
 {
 	priv::g_enginePath = cmdLineArgs.GetValue(params::enginePath).ToString();
 
-	priv::g_configsPath       = Combine(priv::g_enginePath, "Config");
-	priv::g_tracesPath        = Combine(priv::g_enginePath, "Saved/Traces");
-	priv::g_savedPath         = Combine(priv::g_enginePath, "Saved");
-	priv::g_gpuCrashDumpsPath = Combine(priv::g_enginePath, "Saved/GPUCrashDumps");
-	priv::g_contentPath       = Combine(priv::g_enginePath, "Content");
-	priv::g_imGuiConfigPath   = Combine(priv::g_configsPath, "ImGuiConfig.ini");
-	priv::g_executablePath    = platf::Platform::GetExecutablePath();
+	priv::g_configsPath         = Combine(priv::g_enginePath, "Config");
+	priv::g_tracesPath          = Combine(priv::g_enginePath, "Saved/Traces");
+	priv::g_savedPath           = Combine(priv::g_enginePath, "Saved");
+	priv::g_gpuCrashDumpsPath   = Combine(priv::g_enginePath, "Saved/GPUCrashDumps");
+	priv::g_contentPath         = Combine(priv::g_enginePath, "Content");
+	priv::g_imGuiConfigPath     = Combine(priv::g_configsPath, "ImGuiConfig.ini");
+	priv::g_executablePath      = platf::Platform::GetExecutablePath();
+	priv::g_executableDirectory = lib::Path(priv::g_executablePath).parent_path().string();
 }
 
 const lib::String& Paths::GetEnginePath()
@@ -80,9 +83,14 @@ const lib::StringView Paths::GetExtension(lib::StringView path)
 	return dotPosition != lib::StringView::npos ? lib::StringView(std::begin(path) + dotPosition + 1, std::end(path)) : lib::StringView();
 }
 
-const spt::lib::String& Paths::GetExecutablePath()
+const lib::String& Paths::GetExecutablePath()
 {
 	return priv::g_executablePath;
+}
+
+const lib::String& Paths::GetExecutableDirectory()
+{
+	return priv::g_executableDirectory;
 }
 
 void Paths::AppendPath(lib::String& path, lib::StringView pathToAppend)

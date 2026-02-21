@@ -132,6 +132,11 @@ public:
 	{
 		return RuntimeTypeInfo{ name, id };
 	}
+
+	constexpr operator TypeID() const
+	{
+		return id;
+	}
 };
 
 

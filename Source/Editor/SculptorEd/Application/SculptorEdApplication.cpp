@@ -131,6 +131,8 @@ void SculptorEdApplication::OnRun()
 
 	psoPrecachingJob.Wait();
 
+	engn::ModulesManager& modulesManager = engn::Engine::Get().GetModulesManager();
+
 	scui::ViewDefinition sandboxViewDef;
 	sandboxViewDef.name = "SandboxView";
 	sandboxViewDef.minimumSize = m_window->GetSwapchainSize();
@@ -159,6 +161,12 @@ void SculptorEdApplication::OnRun()
 		{
 			// At this point, window is updated, so we can safely present previous frame
 			readyForPresentEvent.Signal();
+		}
+
+		if (modulesManager.HasPendingReloads())
+		{
+			currentFrame->FlushPreviousFrames();
+			modulesManager.ProcessModuleReloads();
 		}
 
 		readyForPresentEvent = ExecuteFrame(*currentFrame);

@@ -6,6 +6,7 @@
 #include "Delegates/MulticastDelegate.h"
 #include "EngineTimer.h"
 #include "AssetsSystem.h"
+#include "Modules/Module.h"
 
 
 namespace spt::engn
@@ -40,6 +41,8 @@ public:
 
 	as::AssetsSystem& GetAssetsSystem() { return m_assetsSystem; }
 
+	ModulesManager& GetModulesManager() { return m_modulesManager; }
+
 private:
 
 	Engine() = default;
@@ -52,6 +55,8 @@ private:
 	OnBeginFrameDelegate m_onBeginFrameDelegate;
 
 	as::AssetsSystem m_assetsSystem;
+
+	ModulesManager m_modulesManager;
 };
 
 

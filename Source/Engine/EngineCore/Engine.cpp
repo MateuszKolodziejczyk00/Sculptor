@@ -22,6 +22,8 @@ void Engine::Initialize(const EngineInitializationParams& initializationParams)
 
 	Paths::Initialize(m_cmdLineArgs);
 
+	m_modulesManager.Initialize();
+
 	PluginsManager::GetInstance().PostEngineInit();
 }
 

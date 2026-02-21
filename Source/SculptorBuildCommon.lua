@@ -340,7 +340,7 @@ function Project:BuildConfiguration(configuration, platform)
         do
             prelinkcommands
             {
-                "{COPY} " .. self:GetEngineSourceRelativePath() .. copyCommand
+				"{COPY} " .. self:GetEngineSourceRelativePath() .. copyCommand .. " >nul 2>nul & ver >nul"
             }
         end
         projectToAdditionalRelativeCopyCommands[self.name][self.currentConfiguration] = {}
@@ -440,19 +440,19 @@ function Project:CopyProjectLibToOutputDir(libPath)
     else
         prelinkcommands
         {
-            {"{COPY} %{prj.location}" .. libPath .. "%{cfg.buildtarget.directory}"}
+            {"{COPY} %{prj.location}" .. libPath .. "%{cfg.buildtarget.directory}" .. " >nul 2>nul & ver >nul"}
         }
     end
 end
 
 function Project:CopyLibToOutputDir(libPath)
     if self.targetType == ETargetType.None then
-        localCommand = "{COPY} " .. libPath .. " " .. "%{cfg.buildtarget.directory}"
+        localCommand = "{COPY} " .. libPath .. " " .. "%{cfg.buildtarget.directory}" .. " >nul 2>nul & ver >nul"
         projectToAdditionalAbsoluteCopyCommands[self.name][self.currentConfiguration][localCommand] = true
     else
         prelinkcommands
         {
-            {"{COPY} " .. libPath .. " %{cfg.buildtarget.directory}"}
+            {"{COPY} " .. libPath .. " %{cfg.buildtarget.directory}" .. " >nul 2>nul & ver >nul"}
         }
     end
 end

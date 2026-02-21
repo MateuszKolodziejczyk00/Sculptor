@@ -36,6 +36,8 @@ public:
 
 	static const lib::String&		GetExecutablePath();
 
+	static const lib::String&		GetExecutableDirectory();
+
 	// Utils =============================================
 
 	static void AppendPath(lib::String& path, lib::StringView pathToAppend);
