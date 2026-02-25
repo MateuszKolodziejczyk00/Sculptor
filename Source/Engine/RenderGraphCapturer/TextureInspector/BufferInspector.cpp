@@ -14,10 +14,10 @@ namespace spt::rg::capture
 namespace priv
 {
 
-Uint32 GetTypeSize(lib::HashedString typeName)
+Uint32 GetTypeSize(const lib::HashedString typeName)
 {
 #if SHADER_STRUCTS_RTTI
-	const rdr::ShaderStructMetaData* structMetaData = rdr::ShaderStructsRegistry::GetStructMetaData(typeName);
+	const rdr::ShaderStructMetaData* structMetaData = rdr::ShaderStructsRegistry::GetStructMetaData(typeName.ToString());
 	if (structMetaData)
 	{
 		return structMetaData->GetRTTI().size;
@@ -257,7 +257,7 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 
 	const lib::String typeNameStr = typeName.ToString();
 
-	const rdr::ShaderStructMetaData* memberStructMetaData = rdr::ShaderStructsRegistry::GetStructMetaData(typeName);
+	const rdr::ShaderStructMetaData* memberStructMetaData = rdr::ShaderStructsRegistry::GetStructMetaData(typeNameStr);
 	if (typeName == lib::HashedString("MaterialDataHandle"))
 	{
 		if (ImGui::BeginPopup("Material Data Selection"))
@@ -325,7 +325,7 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 			}
 			else
 			{
-				DrawStruct(member.memberName.GetView(), member.memberTypeName, data.subspan(member.offset), currentOffset + member.offset);
+				DrawStruct(member.memberName, member.memberTypeName, data.subspan(member.offset), currentOffset + member.offset);
 			}
 		}
 		ImGui::Unindent();

@@ -33,7 +33,7 @@ void RGDependenciesBuilder::AddTextureAccess(rdr::ResourceDescriptorIdx textureD
 {
 	if (textureDescriptor != rdr::invalidResourceDescriptorIdx)
 	{
-		const rdr::DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+		const rdr::DescriptorManager& descriptorManager = rdr::GPUApi::GetDescriptorManager();
 
 		// try getting RG texture view that is associated with the descriptor
 		RGTextureViewHandle rgTextureView = reinterpret_cast<RGTextureView*>(descriptorManager.GetCustomDescriptorInfo(textureDescriptor));
@@ -99,7 +99,7 @@ void RGDependenciesBuilder::AddBufferAccess(rdr::ResourceDescriptorIdx bufferDes
 {
 	if (bufferDescriptor != rdr::invalidResourceDescriptorIdx)
 	{
-		const rdr::DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+		const rdr::DescriptorManager& descriptorManager = rdr::GPUApi::GetDescriptorManager();
 
 		// try getting RG texture view that is associated with the descriptor
 		RGBufferViewHandle rgBufferView = reinterpret_cast<RGBufferView*>(descriptorManager.GetCustomDescriptorInfo(bufferDescriptor));

@@ -43,7 +43,6 @@ public:
 protected:
 
 	// Begin Plugin overrides
-	virtual void OnPostEngineInit() override;
 	virtual void OnBeginFrame(engn::FrameContext& frameContext) override;
 	// End Plugin overrides
 
@@ -56,6 +55,7 @@ private:
 
 	lib::Spinlock m_requestsLock;
 
+	Bool m_hasRegisteredCleanup = false;
 
 	lib::DynamicArray<lib::UniquePtr<GPUDeferredUploadRequest>> m_uploadRequests;
 	lib::DynamicArray<lib::UniquePtr<GPUDeferredBLASBuildRequest>> m_blasBuildRequests;

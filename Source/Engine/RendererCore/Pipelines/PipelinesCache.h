@@ -33,6 +33,7 @@ public:
 	SPT_NODISCARD PipelineStateID GetOrCreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef);
 	
 	SPT_NODISCARD lib::SharedPtr<GraphicsPipeline>   GetGraphicsPipeline(PipelineStateID id) const;
+	
 	SPT_NODISCARD lib::SharedPtr<ComputePipeline>    GetComputePipeline(PipelineStateID id) const;
 	SPT_NODISCARD lib::SharedPtr<RayTracingPipeline> GetRayTracingPipeline(PipelineStateID id) const;
 

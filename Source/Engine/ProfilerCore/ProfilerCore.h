@@ -33,6 +33,9 @@ public:
 	void Initialize();
 	void Shutdown();
 
+	void          InitializeModule(ProfilerImpl* impl);
+	ProfilerImpl* GetProfiler() const { return m_impl; }
+
 	void BeginFrame()
 	{
 		if (m_impl)

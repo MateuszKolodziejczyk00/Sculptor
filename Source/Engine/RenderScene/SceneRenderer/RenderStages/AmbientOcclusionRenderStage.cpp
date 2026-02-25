@@ -142,7 +142,7 @@ void AmbientOcclusionRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder,
 
 	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-	if (rdr::Renderer::IsRayTracingEnabled())
+	if (rdr::GPUApi::IsRayTracingEnabled())
 	{
 		const RenderView& renderView = viewSpec.GetRenderView();
 

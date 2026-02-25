@@ -4,7 +4,7 @@
 #include "Types/Sampler.h"
 #include "Types/DescriptorSetLayout.h"
 #include "ResourcesManager.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "Types/DescriptorSetState/DescriptorManager.h"
 
 namespace spt::rdr
@@ -63,13 +63,13 @@ rhi::PipelineLayoutDefinition Pipeline::CreateLayoutDefinition() const
 
 		SPT_CHECK(!layoutDefinition.descriptorSetLayouts[0].IsValid());
 
-		const lib::SharedPtr<DescriptorSetLayout>& bindlessLayout = Renderer::GetDescriptorManager().GetBindlessLayout();
+		const lib::SharedPtr<DescriptorSetLayout>& bindlessLayout = GPUApi::GetDescriptorManager().GetBindlessLayout();
 		layoutDefinition.descriptorSetLayouts[0] = bindlessLayout->GetRHI();
 	}
 
 	if(m_metaData.GetShaderParamsType().IsValid())
 	{
-		layoutDefinition.descriptorSetLayouts.emplace_back(rdr::Renderer::GetShaderParamsDSLayout()->GetRHI());
+		layoutDefinition.descriptorSetLayouts.emplace_back(rdr::GPUApi::GetShaderParamsDSLayout()->GetRHI());
 	}
 	
 	return layoutDefinition;

@@ -5,6 +5,9 @@
 namespace spt::rhi
 {
 
+struct RHIModuleData {};
+
+
 struct RHIInitializationInfo
 {
 	RHIInitializationInfo()
@@ -12,6 +15,7 @@ struct RHIInitializationInfo
 
 	lib::DynamicArray<lib::StringView> extensions;
 };
+
 
 struct RHIWindowInitializationInfo
 {

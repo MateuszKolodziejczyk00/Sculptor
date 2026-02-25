@@ -10,6 +10,8 @@
 namespace spt::lib
 {
 
+struct HashedStringDBData {};
+
 class SCULPTOR_LIB_API HashedStringDB
 {
 public:
@@ -17,6 +19,10 @@ public:
 	using KeyType = SizeType;
 
 	static constexpr KeyType keyNone = idxNone<KeyType>;
+
+	static void                Initialize();
+	static void                InitializeModule(HashedStringDBData& db);
+	static HashedStringDBData* GetDBData();
 
 	static KeyType GetRecord(String&& inString, StringView& outView);
 	static KeyType GetRecord(StringView inString, StringView& outView);

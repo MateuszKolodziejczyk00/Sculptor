@@ -4,9 +4,9 @@
 namespace spt::sc
 {
 
-DescriptorSetCompilationDefRegistration::DescriptorSetCompilationDefRegistration(const lib::HashedString& dsName, lib::String dsCode, lib::String accessorsCode, const DescriptorSetCompilationMetaData& metaData)
+DescriptorSetCompilationDefRegistration::DescriptorSetCompilationDefRegistration(lib::String dsName, lib::String dsCode, lib::String accessorsCode, const DescriptorSetCompilationMetaData& metaData)
 {
-	DescriptorSetCompilationDefsRegistry::RegisterDSCompilationDef(dsName, DescriptorSetCompilationDef(std::move(dsCode), std::move(accessorsCode), metaData));
+	DescriptorSetCompilationDefsRegistry::RegisterDSCompilationDef(std::move(dsName), DescriptorSetCompilationDef(std::move(dsCode), std::move(accessorsCode), metaData));
 }
 
 } // spt::sc

@@ -118,7 +118,7 @@ private:
 	rhi::RHIDescriptorRange AllocateDescriptorRange() const;
 	void                    SwapDescriptorRange(rhi::RHIDescriptorRange newDescriptorRange);
 
-	const DSStateID	m_id;
+	const DSStateID m_id;
 
 	DSStateTypeID m_typeID;
 
@@ -307,7 +307,7 @@ public:
 		SetTypeID(GetStaticTypeID(), params);																					\
 		rdr::bindings_refl::InitializeBindings(GetBindingsBegin(), *this);														\
 	}																															\
-	static lib::HashedString GetDescriptorSetName()																				\
+	static const char* GetDescriptorSetName()																					\
 	{																															\
 		return #className;																										\
 	}																															\
@@ -318,8 +318,7 @@ public:
 	}																															\
 	static rdr::DSStateTypeID GetStaticTypeID()																					\
 	{																															\
-		static lib::HashedString staticName(#className);																		\
-		return rdr::DSStateTypeID(staticName.GetKey());																			\
+		return lib::TypeInfo<ThisClass>().id;																					\
 	}																															\
 	typedef rdr::bindings_refl::BindingHandle<void,	/*line ended in next macros */
 

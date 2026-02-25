@@ -171,6 +171,10 @@ function Project:SetupProject()
     language (self.language)
     staticruntime "off"
 
+	if (self.targetType == ETargetType.SharedLibrary) then
+		debugformat("c7")
+	end
+
     print("Setup " .. self.name)
 
     if self.projectType == EProjectType.ThirdParty then

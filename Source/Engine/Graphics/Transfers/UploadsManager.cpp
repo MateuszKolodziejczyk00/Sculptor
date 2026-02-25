@@ -1,6 +1,6 @@
 #include "UploadsManager.h"
 #include "RHICore/RHIAllocationTypes.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "Types/Buffer.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/RenderContext.h"
@@ -146,7 +146,7 @@ UploadsManager::UploadsManager()
 	}
 
 	// This is singleton object so we can capture this safely
-	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
+	rdr::GPUApi::GetOnRendererCleanupDelegate().AddLambda([this]
 															{
 																m_stagingBuffers.clear();
 															});

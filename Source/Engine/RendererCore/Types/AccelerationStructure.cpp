@@ -2,7 +2,7 @@
 #include "ResourcesManager.h"
 #include "Buffer.h"
 #include "CommandsRecorder/CommandRecorder.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "DescriptorSetState/DescriptorManager.h"
 
 namespace spt::rdr
@@ -48,15 +48,15 @@ TopLevelAS::~TopLevelAS()
 {
 	if (m_srvDescriptor.IsValid())
 	{
-		Renderer::GetDescriptorManager().ClearDescriptorInfo(m_srvDescriptor.Get());
+		GPUApi::GetDescriptorManager().ClearDescriptorInfo(m_srvDescriptor.Get());
 	}
 
-	Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda(
+	GPUApi::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda(
 	[releaseTicket = GetRHI().DeferredReleaseRHI(), srvDescriptor = std::move(m_srvDescriptor)]() mutable
 	{
 		if (srvDescriptor.IsValid())
 		{
-			Renderer::GetDescriptorManager().FreeResourceDescriptor(std::move(srvDescriptor));
+			GPUApi::GetDescriptorManager().FreeResourceDescriptor(std::move(srvDescriptor));
 		}
 
 		releaseTicket.ExecuteReleaseRHI();
@@ -70,7 +70,7 @@ void TopLevelAS::ReleaseInstancesBuildData()
 
 void TopLevelAS::InitializeSRVDescriptor()
 {
-	rdr::DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+	rdr::DescriptorManager& descriptorManager = rdr::GPUApi::GetDescriptorManager();
 
 	m_srvDescriptor = descriptorManager.AllocateResourceDescriptor();
 	SPT_CHECK(m_srvDescriptor.IsValid());

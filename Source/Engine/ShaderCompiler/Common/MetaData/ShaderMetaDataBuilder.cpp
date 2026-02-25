@@ -23,6 +23,13 @@ static void BuildShaderMetaData(const ShaderCompilationMetaData& compilationMeta
 	}
 
 	outShaderMetaData.SetShaderParamsTypeName(compilationMetaData.GetShaderParamsTypeName());
+
+#if WITH_SHADERS_HOT_RELOAD
+	for (const auto& [structName, versionHash] : compilationMetaData.shaderStructsVersionHashes)
+	{
+		outShaderMetaData.RegisterShaderStruct(structName, versionHash);
+	}
+#endif // WITH_SHADERS_HOT_RELOAD
 }
 
 } // priv

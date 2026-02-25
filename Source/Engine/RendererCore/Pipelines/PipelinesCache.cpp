@@ -1,6 +1,7 @@
 #include "PipelinesCache.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "Shaders/ShadersManager.h"
+#include "ResourcesManager.h"
 
 namespace spt::rdr
 {
@@ -300,36 +301,36 @@ lib::SharedRef<GraphicsPipeline> PipelinesCache::CreateGfxPipelineObject(const R
 
 	if (shaders.vertexShader.IsValid())
 	{
-		shadersDef.vertexShader = Renderer::GetShadersManager().GetShader(shaders.vertexShader);
+		shadersDef.vertexShader = GPUApi::GetShadersManager().GetShader(shaders.vertexShader);
 	}
 
 	if (shaders.taskShader.IsValid())
 	{
-		shadersDef.taskShader = Renderer::GetShadersManager().GetShader(shaders.taskShader);
+		shadersDef.taskShader = GPUApi::GetShadersManager().GetShader(shaders.taskShader);
 	}
 
 	if (shaders.meshShader.IsValid())
 	{
-		shadersDef.meshShader = Renderer::GetShadersManager().GetShader(shaders.meshShader);
+		shadersDef.meshShader = GPUApi::GetShadersManager().GetShader(shaders.meshShader);
 	}
 
 	SPT_CHECK(shaders.fragmentShader.IsValid());
-	shadersDef.fragmentShader	= Renderer::GetShadersManager().GetShader(shaders.fragmentShader);
+	shadersDef.fragmentShader	= GPUApi::GetShadersManager().GetShader(shaders.fragmentShader);
 
-	return lib::MakeShared<GraphicsPipeline>(nameInNotCached, shadersDef, pipelineDef);
+	return ResourcesManager::CreateGfxPipelineObject(nameInNotCached, shadersDef, pipelineDef);
 }
 
 lib::SharedRef<ComputePipeline> PipelinesCache::CreateComputePipelineObject(const RendererResourceName& nameInNotCached, const ShaderID& shader)
 {
-	const lib::SharedRef<Shader> shaderObject = Renderer::GetShadersManager().GetShader(shader);
-	return lib::MakeShared<ComputePipeline>(nameInNotCached, shaderObject);
+	const lib::SharedRef<Shader> shaderObject = GPUApi::GetShadersManager().GetShader(shader);
+	return ResourcesManager::CreateComputePipelineObject(nameInNotCached, shaderObject);
 }
 
 lib::SharedRef<RayTracingPipeline> PipelinesCache::CreateRayTracingPipelineObject(const RendererResourceName& nameInNotCached, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef)
 {
 	const auto getShaderObject = [](ShaderID shaderID)
 	{
-		return Renderer::GetShadersManager().GetShader(shaderID);
+		return GPUApi::GetShadersManager().GetShader(shaderID);
 	};
 
 	RayTracingPipelineShaderObjects shadersObjects;
@@ -362,7 +363,7 @@ lib::SharedRef<RayTracingPipeline> PipelinesCache::CreateRayTracingPipelineObjec
 				   std::back_inserter(shadersObjects.missShaders),
 				   getShaderObject);
 
-	return lib::MakeShared<RayTracingPipeline>(nameInNotCached, shadersObjects, pipelineDef);
+	return ResourcesManager::CreateRayTracingPipelineObject(nameInNotCached, shadersObjects, pipelineDef);
 }
 
 #if WITH_SHADERS_HOT_RELOAD
@@ -375,7 +376,7 @@ void PipelinesCache::FlushPipelinesHotReloads()
 
 	for (ShaderID shader : m_invalidatedShaders)
 	{
-		const lib::SharedRef<Shader> shaderObject = Renderer::GetShadersManager().GetShader(shader);
+		const lib::SharedRef<Shader> shaderObject = GPUApi::GetShadersManager().GetShader(shader);
 		const auto pipelinesToInvalidate = m_shaderToPipelineStates.find(shader);
 
 		if (pipelinesToInvalidate != std::cend(m_shaderToPipelineStates))

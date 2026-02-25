@@ -111,7 +111,7 @@ COMPUTE_PSO(CompositeLightingPSO)
 		perm.VOLUMETRIC_CLOUDS_ENABLED = true;
 		perm.ATMOSPHERE_ENABLED        = true;
 		perm.VOLUMETRIC_FOG_ENABLED    = true;
-		perm.RT_REFLECTIONS_ENABLED    = rdr::Renderer::IsRayTracingEnabled();
+		perm.RT_REFLECTIONS_ENABLED    = rdr::GPUApi::IsRayTracingEnabled();
 
 		CompilePermutation(compiler, perm);
 	}

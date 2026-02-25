@@ -2,7 +2,7 @@
 #include "RendererUtils.h"
 #include "GPUMemoryPool.h"
 #include "DescriptorSetState/DescriptorManager.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 
 
 namespace spt::rdr
@@ -54,12 +54,12 @@ BindableBufferView::~BindableBufferView()
 {
 	if (m_uavDescriptor.IsValid())
 	{
-		Renderer::GetDescriptorManager().ClearDescriptorInfo(m_uavDescriptor.Get());
+		GPUApi::GetDescriptorManager().ClearDescriptorInfo(m_uavDescriptor.Get());
 
-		Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda(
+		GPUApi::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda(
 		[uavDescriptor = std::move(m_uavDescriptor)]() mutable
 		{
-			Renderer::GetDescriptorManager().FreeResourceDescriptor(std::move(uavDescriptor));
+			GPUApi::GetDescriptorManager().FreeResourceDescriptor(std::move(uavDescriptor));
 		}));
 	}
 }
@@ -76,7 +76,7 @@ lib::SharedPtr<BindableBufferView> BindableBufferView::AsSharedPtr()
 
 void BindableBufferView::CreateDescriptors(BufferViewDescriptorsAllocation externalDescriptorsAllocation)
 {
-	DescriptorManager& descriptorManager = Renderer::GetDescriptorManager();
+	DescriptorManager& descriptorManager = GPUApi::GetDescriptorManager();
 
 	const rhi::RHIBuffer& rhiBuffer = GetBuffer()->GetRHI();
 

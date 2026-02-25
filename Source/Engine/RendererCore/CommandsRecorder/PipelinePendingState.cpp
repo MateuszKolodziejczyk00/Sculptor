@@ -1,5 +1,5 @@
 #include "PipelinePendingState.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "Types/Pipeline/GraphicsPipeline.h"
 #include "Types/Pipeline/ComputePipeline.h"
 #include "Types/Pipeline/RayTracingPipeline.h"
@@ -13,7 +13,7 @@ namespace spt::rdr
 {
 
 PipelinePendingState::PipelinePendingState()
-	: m_bindlessDescriptorsHeapOffset(Renderer::GetDescriptorManager().GetHeapOffset())
+	: m_bindlessDescriptorsHeapOffset(GPUApi::GetDescriptorManager().GetHeapOffset())
 {
 	m_boundDescriptorSetStates.reserve(16);
 }

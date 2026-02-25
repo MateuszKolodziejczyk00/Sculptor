@@ -11,7 +11,7 @@
 #include "Types/CommandBuffer.h"
 
 #include "ResourcesManager.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 
 #include "RenderGraphBuilder.h"
 #include "RGNodeParametersStruct.h"
@@ -326,7 +326,7 @@ Bool NGXInstance::Initialize()
 
 	m_isInitialized = true;
 
-	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda(
+	rdr::GPUApi::GetOnRendererCleanupDelegate().AddLambda(
 		[this]()
 		{
 			Uninitialize();
@@ -470,7 +470,7 @@ Bool SculptorDLSSVulkan::PrepareForRendering(const DLSSParams& params)
 
 		lib::SharedRef<rdr::GPUWorkload> workload = cmdRecorder->FinishRecording();
 
-		rdr::Renderer::GetDeviceQueuesManager().Submit(workload, rdr::EGPUWorkloadSubmitFlags::CorePipe);
+		rdr::GPUApi::GetDeviceQueuesManager().Submit(workload, rdr::EGPUWorkloadSubmitFlags::CorePipe);
 	}
 
 	return result;
@@ -674,7 +674,7 @@ void SculptorDLSSVulkan::ReleaseDLSSFeature()
 {
 	SPT_CHECK(!!m_dlssHandle);
 
-	rdr::Renderer::WaitIdle(false);
+	rdr::GPUApi::WaitIdle(false);
 	const NVSDK_NGX_Result result = NVSDK_NGX_VULKAN_ReleaseFeature(m_dlssHandle);
 
 	if (result == NVSDK_NGX_Result_Success)

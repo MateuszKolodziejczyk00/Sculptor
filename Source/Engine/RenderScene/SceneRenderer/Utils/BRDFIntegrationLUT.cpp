@@ -2,7 +2,7 @@
 #include "RendererUtils.h"
 #include "RenderGraphBuilder.h"
 #include "ResourcesManager.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"
 
@@ -77,7 +77,7 @@ rg::RGTextureViewHandle BRDFIntegrationLUT::CreateLUT(rg::RenderGraphBuilder& gr
 	lutDef.usage = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
 	m_lut = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("BRDF Integration LUT"), lutDef, rhi::EMemoryUsage::GPUOnly);
 
-	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
+	rdr::GPUApi::GetOnRendererCleanupDelegate().AddLambda([this]
 															{
 																m_lut.reset();
 															});

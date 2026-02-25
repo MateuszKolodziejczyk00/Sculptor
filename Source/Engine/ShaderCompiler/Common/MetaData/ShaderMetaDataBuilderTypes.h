@@ -81,6 +81,11 @@ public:
 	}
 #endif // WITH_SHADERS_HOT_RELOAD
 
+
+#if WITH_SHADERS_HOT_RELOAD
+	lib::HashMap<lib::String, Uint64> shaderStructsVersionHashes;
+#endif // WITH_SHADERS_HOT_RELOAD
+
 private:
 
 	lib::DynamicArray<sc::DescriptorSetCompilationMetaData> m_dsMetaData;
@@ -93,6 +98,7 @@ private:
 
 #if WITH_SHADERS_HOT_RELOAD
 	lib::DynamicArray<lib::String> m_fileDependencies;
+	lib::HashMap<lib::String, Uint64> m_shaderStructsVersionHashes;
 #endif // WITH_SHADERS_HOT_RELOAD
 };
 

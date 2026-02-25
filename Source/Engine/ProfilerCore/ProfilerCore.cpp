@@ -21,6 +21,11 @@ void ProfilerCore::Initialize()
 #endif
 }
 
+void ProfilerCore::InitializeModule(ProfilerImpl* impl)
+{
+	m_impl = impl;
+}
+
 void ProfilerCore::Shutdown()
 {
 	if (m_impl)

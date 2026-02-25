@@ -11,9 +11,9 @@ namespace spt::sc
 namespace priv
 {
 
-static lib::HashMap<lib::HashedString, DescriptorSetCompilationDef>& GetRegistryInstance()
+static lib::HashMap<lib::String, DescriptorSetCompilationDef>& GetRegistryInstance()
 {
-	static lib::HashMap<lib::HashedString, DescriptorSetCompilationDef> instance;
+	static lib::HashMap<lib::String, DescriptorSetCompilationDef> instance;
 	return instance;
 }
 
@@ -95,17 +95,17 @@ void DescriptorSetCompilationDef::BuildDSIdxPositionsArray()
 DescriptorSetCompilationDefsRegistry::DescriptorSetCompilationDefsRegistry()
 { }
 
-void DescriptorSetCompilationDefsRegistry::RegisterDSCompilationDef(const lib::HashedString& dsName, const DescriptorSetCompilationDef& definition)
+void DescriptorSetCompilationDefsRegistry::RegisterDSCompilationDef(lib::String dsName, const DescriptorSetCompilationDef& definition)
 {
-	priv::GetRegistryInstance().emplace(dsName, definition);
+	priv::GetRegistryInstance().emplace(std::move(dsName), definition);
 }
 
-const DescriptorSetCompilationDef& DescriptorSetCompilationDefsRegistry::GetDescriptorSetCompilationDef(const lib::HashedString& dsName)
+const DescriptorSetCompilationDef& DescriptorSetCompilationDefsRegistry::GetDescriptorSetCompilationDef(const lib::String& dsName)
 {
 	return priv::GetRegistryInstance().at(dsName);
 }
 
-lib::String DescriptorSetCompilationDefsRegistry::GetDescriptorSetShaderSourceCode(const lib::HashedString& dsName, Uint32 dsIdx)
+lib::String DescriptorSetCompilationDefsRegistry::GetDescriptorSetShaderSourceCode(const lib::String& dsName, Uint32 dsIdx)
 {
 	return GetDescriptorSetCompilationDef(dsName).GetShaderCode(dsIdx);
 }

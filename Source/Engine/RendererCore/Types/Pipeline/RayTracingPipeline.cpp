@@ -1,5 +1,5 @@
 #include "RayTracingPipeline.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "Types/Shader.h"
 
 namespace spt::rdr
@@ -55,7 +55,7 @@ RayTracingPipeline::~RayTracingPipeline()
 {
 	SPT_PROFILER_FUNCTION();
 
-	Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda([resource = std::move(m_shaderBindingTable.DeferredReleaseRHI())]() mutable
+	GPUApi::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda([resource = std::move(m_shaderBindingTable.DeferredReleaseRHI())]() mutable
 																		  {
 																			  resource.ExecuteReleaseRHI();
 																		  }));

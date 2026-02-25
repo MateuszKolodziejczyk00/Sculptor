@@ -6,7 +6,7 @@
 #include "ResourcesManager.h"
 #include "MathUtils.h"
 #include "RendererSettings.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "BufferBindingTypes.h"
 
 

@@ -1,5 +1,6 @@
 #include "SamplersCache.h"
 #include "Types/Sampler.h"
+#include "ResourcesManager.h"
 
 namespace spt::rdr
 {
@@ -53,7 +54,7 @@ lib::SharedRef<Sampler> SamplersCache::GetOrCreateSampler(const rhi::SamplerDefi
 	lib::SharedPtr<Sampler>& createdSampler = m_samplersPendingFlush[hash];
 	if (!createdSampler)
 	{
-		createdSampler = lib::MakeShared<Sampler>(def);
+		createdSampler = ResourcesManager::CreateSamplerObject(def);
 	}
 	SPT_CHECK(!!createdSampler);
 

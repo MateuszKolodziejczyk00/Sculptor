@@ -134,21 +134,21 @@ using RenderViewEntryDelegate = lib::MulticastDelegate<void(rg::RenderGraphBuild
 namespace RenderViewEntryDelegates
 {
 
-inline static const lib::HashedString RenderAerialPerspective = "RenderAerialPerspective";
+inline static const char* RenderAerialPerspective = "RenderAerialPerspective";
 struct RenderAerialPerspectiveData
 {
 	const VolumetricFogParams* fogParams = nullptr;
 };
 
-inline static const lib::HashedString CloudsTransmittanceMap  = "CloudsTransmittanceMap";
+inline static const char* CloudsTransmittanceMap  = "CloudsTransmittanceMap";
 
-inline static const lib::HashedString FillShadingDS           = "FillShadingDS";
+inline static const char* FillShadingDS           = "FillShadingDS";
 struct FillShadingDSData
 {
 	lib::MTHandle<ViewShadingInputDS> ds;
 };
 
-inline static const lib::HashedString VolumetricClouds        = "VolumetricClouds";
+inline static const char* VolumetricClouds        = "VolumetricClouds";
 
 struct RenderSceneDebugLayerData
 {

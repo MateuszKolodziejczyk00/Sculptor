@@ -1,5 +1,5 @@
 #include "GlobalResourcesRegistry.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "JobSystem.h"
 #include "Loaders/TextureLoader.h"
 #include "Paths.h"
@@ -61,7 +61,7 @@ void GlobalResourcesRegistry::InitializeAll()
 								  resource->Initialize();
 							  });
 
-	rdr::Renderer::GetOnRendererCleanupDelegate().AddRawMember(this, &GlobalResourcesRegistry::ReleaseAll);
+	rdr::GPUApi::GetOnRendererCleanupDelegate().AddRawMember(this, &GlobalResourcesRegistry::ReleaseAll);
 }
 
 void GlobalResourcesRegistry::ReleaseAll()

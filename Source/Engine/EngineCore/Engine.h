@@ -26,8 +26,8 @@ class ENGINE_CORE_API Engine
 public:
 
 	static Engine& Get();
-
-	void Initialize(const EngineInitializationParams& initializationParams);
+	static void Initialize(const EngineInitializationParams& initializationParams);
+	static void InitializeModule(Engine& engineInstance);
 
 	Real32 BeginFrame();
 

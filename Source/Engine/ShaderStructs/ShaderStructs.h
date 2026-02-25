@@ -5,6 +5,7 @@
 #include "MathUtils.h"
 #include "ShaderStructsRegistry.h"
 #include "Utility/Templates/TypeStorage.h"
+#include "Utility/Hash.h"
 
 
 namespace spt::rdr
@@ -375,6 +376,13 @@ consteval auto BuildShaderStructCode()
 } // shader_translator
 
 template<typename TStruct>
+constexpr SizeType ComputeShaderStructVersionHash()
+{
+	const lib::TypeInfo headTypeInfo = lib::TypeInfo<typename TStruct::HeadMemberMetaData>();
+	return headTypeInfo.id;
+}
+
+template<typename TStruct>
 class ShaderStructRegistration
 {
 public:
@@ -382,7 +390,7 @@ public:
 	explicit ShaderStructRegistration()
 	{
 
-		ShaderStructMetaData structMetaData(GetShaderSourceCode());
+		ShaderStructMetaData structMetaData(GetShaderSourceCode(), ComputeShaderStructVersionHash<TStruct>());
 
 #if SHADER_STRUCTS_RTTI
 		structMetaData.SetRTTI(shader_translator::priv::BuildRTTI<TStruct>());

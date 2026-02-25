@@ -69,11 +69,20 @@ class DescriptorSetLayout;
 class DescriptorSetStackAllocator;
 class Pipeline;
 class DescriptorHeap;
+class RayTracingPipeline;
+struct GraphicsPipelineShadersDefinition;
+struct RayTracingPipelineShaderObjects;
+
+
+struct GPUApiFactoryData {};
 
 
 class RENDERER_CORE_API ResourcesManager
 {
 public:
+
+	static GPUApiFactoryData* Initialize();
+	static void               InitializeModule(GPUApiFactoryData* data);
 
 	SPT_NODISCARD static lib::SharedRef<RenderContext> CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef = rhi::ContextDefinition());
 
@@ -98,21 +107,26 @@ public:
 	SPT_NODISCARD static ShaderID               GenerateShaderID(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings = sc::ShaderCompilationSettings(), EShaderFlags flags = EShaderFlags::None);
 	static ShaderID                             CreateShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings = sc::ShaderCompilationSettings(), EShaderFlags flags = EShaderFlags::None);
 	SPT_NODISCARD static lib::SharedRef<Shader> GetShaderObject(ShaderID shaderID);
-
+	SPT_NODISCARD static lib::SharedRef<Shader> CreateShaderObject(const RendererResourceName& name, const rhi::ShaderModuleDefinition& moduleDef, spt::smd::ShaderMetaData&& metaData);
 
 	SPT_NODISCARD static PipelineStateID GeneratePipelineID(const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef);
 	SPT_NODISCARD static PipelineStateID GeneratePipelineID(const ShaderID& shader);
 	SPT_NODISCARD static PipelineStateID GeneratePipelineID(const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef);
 
-	static PipelineStateID          CreateGfxPipeline(const RendererResourceName& nameInNotCached, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef);
-	static PipelineStateID          CreateComputePipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader);
-	static PipelineStateID          CreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef);
+	static PipelineStateID CreateGfxPipeline(const RendererResourceName& nameInNotCached, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef);
+	static PipelineStateID CreateComputePipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader);
+	static PipelineStateID CreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef);
 	SPT_NODISCARD static lib::SharedPtr<Pipeline> GetPipelineObject(PipelineStateID id);
+
+	static lib::SharedRef<GraphicsPipeline>   CreateGfxPipelineObject(const RendererResourceName& name, const GraphicsPipelineShadersDefinition& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef);
+	static lib::SharedRef<ComputePipeline>    CreateComputePipelineObject(const RendererResourceName& name, const lib::SharedRef<Shader>& shader);
+	static lib::SharedRef<RayTracingPipeline> CreateRayTracingPipelineObject(const RendererResourceName& name, const RayTracingPipelineShaderObjects& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef);
 	
 	SPT_NODISCARD static lib::SharedRef<BottomLevelAS> CreateBLAS(const RendererResourceName& name, const rhi::BLASDefinition& definition);
 	SPT_NODISCARD static lib::SharedRef<TopLevelAS>    CreateTLAS(const RendererResourceName& name, const rhi::TLASDefinition& definition);
 
 	SPT_NODISCARD static lib::SharedRef<Sampler> CreateSampler(const rhi::SamplerDefinition& def);
+	SPT_NODISCARD static lib::SharedRef<Sampler> CreateSamplerObject(const rhi::SamplerDefinition& def);
 
 	SPT_NODISCARD static lib::SharedRef<DescriptorHeap> CreateDescriptorHeap(const RendererResourceName& name, const rhi::DescriptorHeapDefinition& definition);
 

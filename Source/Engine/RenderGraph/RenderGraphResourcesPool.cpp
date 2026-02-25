@@ -1,6 +1,6 @@
 #include "RenderGraphResourcesPool.h"
 #include "ResourcesManager.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "Types/DescriptorSetState/DescriptorSetStateTypes.h"
 #include "Types/GPUMemoryPool.h"
 #include "Types/Texture.h"
@@ -31,7 +31,7 @@ void RenderGraphResourcesPool::Prepare()
 		}
 	}
 
-	const rdr::DeviceQueuesManager& queuesManager = rdr::Renderer::GetDeviceQueuesManager();
+	const rdr::DeviceQueuesManager& queuesManager = rdr::GPUApi::GetDeviceQueuesManager();
 	const rdr::GPUTimelineSection currentlyRecordedSection = queuesManager.GetRecordedSection();
 
 	if (m_lastRecordedSection != currentlyRecordedSection)

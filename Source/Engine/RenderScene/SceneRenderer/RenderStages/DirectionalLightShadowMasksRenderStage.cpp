@@ -30,7 +30,7 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(rdr::Renderer::IsRayTracingEnabled());
+	SPT_CHECK(rdr::GPUApi::IsRayTracingEnabled());
 
 	viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::CloudsTransmittanceMap).Broadcast(graphBuilder, renderScene, viewSpec, RenderViewEntryContext{});
 

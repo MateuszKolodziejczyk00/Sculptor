@@ -1,7 +1,7 @@
 #include "GeometryManager.h"
 #include "Transfers/UploadUtils.h"
 #include "ResourcesManager.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 
 
 namespace spt::rsc
@@ -38,7 +38,7 @@ rhi::RHIVirtualAllocation GeometryManager::CreateGeometry(Uint64 dataSize)
 GeometryManager::GeometryManager()
 {
 	rhi::EBufferUsage ugbUsage = lib::Flags(rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::Storage, rhi::EBufferUsage::DeviceAddress);
-	if (rdr::Renderer::IsRayTracingEnabled())
+	if (rdr::GPUApi::IsRayTracingEnabled())
 	{
 		lib::AddFlag(ugbUsage, rhi::EBufferUsage::ASBuildInputReadOnly);
 	}
@@ -51,7 +51,7 @@ GeometryManager::GeometryManager()
 	m_unifiedGeometryBuffer.geometryData = m_geometryBuffer->GetFullView();
 	
 	// This is singleton object so we can capture this safely
-	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
+	rdr::GPUApi::GetOnRendererCleanupDelegate().AddLambda([this]
 															{
 																DestroyResources();
 															});

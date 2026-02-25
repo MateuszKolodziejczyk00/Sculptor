@@ -55,7 +55,9 @@ class SHADER_COMPILER_API ShaderCompilationEnvironment
 {
 public:
 
-	static void						Initialize(const CompilationEnvironmentDef& environmentDef);
+	static void							Initialize(const CompilationEnvironmentDef& environmentDef);
+	static CompilationEnvironmentDef*	GetCompilationEnvironmentDef();
+	static void							InitializeModule(CompilationEnvironmentDef* mainEnvironmentDef);
 
 	static Bool						CanCompile();
 

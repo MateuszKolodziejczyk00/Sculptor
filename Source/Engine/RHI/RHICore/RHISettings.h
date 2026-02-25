@@ -22,23 +22,23 @@ public:
 
 private:
 
-	static inline const lib::HashedString enableValidationCmdArgName = "-EnableValidation";
+	static inline const char* enableValidationCmdArgName = "-EnableValidation";
 	Bool enableValidation = false;
 	
-	static inline const lib::HashedString enableStrictValidationCmdArgName = "-EnableStrictValidation";
+	static inline const char* enableStrictValidationCmdArgName = "-EnableStrictValidation";
 	Bool enableStrictValidation = false;
 	
-	static inline const lib::HashedString enableRayTracingCmdArgName = "-EnableRayTracing";
+	static inline const char* enableRayTracingCmdArgName = "-EnableRayTracing";
 	Bool enableRayTracing = false;
 
-	static inline const lib::HashedString enableGPUCrashDumpsCmdArgName = "-EnableGPUCrashDumps";
+	static inline const char* enableGPUCrashDumpsCmdArgName = "-EnableGPUCrashDumps";
 	Bool enableGPUCrashDumps = false;
 
 	/** 
 	 * If it's set, rhi objects debug names won't be reset. This allows to see the names in the debugger (f.e. Renderdoc).
 	 * @Warning: It will cause memory leaks
 	 */
-	static inline const lib::HashedString enablePersistentDebugNamesCmdArgName = "-RHIPersistentNames";
+	static inline const char* enablePersistentDebugNamesCmdArgName = "-RHIPersistentNames";
 	Bool enablePersistentDebugNames = false;
 };
 

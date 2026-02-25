@@ -5,7 +5,7 @@
 #include "TextureBindingTypes.h"
 #include "ShaderStructs/ShaderStructsTypes.h"
 #include "Utility/String/StringUtils.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "RendererSettings.h"
 #include "ShaderStructs/ShaderStructsTypes.h"
 

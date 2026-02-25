@@ -6,7 +6,7 @@
 #include "ResourcesManager.h"
 #include "MathUtils.h"
 #include "RendererSettings.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "DependenciesBuilder.h"
 #include "Bindless/NamedBuffers.h"
@@ -139,7 +139,7 @@ private:
 
 	Bool ShouldSwitchBufferOffsetOnChange() const
 	{
-		return rdr::Renderer::GetDeviceQueuesManager().GetRecordedSection() != m_lastDynamicOffsetChangeGPUSection;
+		return rdr::GPUApi::GetDeviceQueuesManager().GetRecordedSection() != m_lastDynamicOffsetChangeGPUSection;
 	}
 
 	void SwitchBufferMemoryIfNecessary()
@@ -155,7 +155,7 @@ private:
 				{
 					offset = 0;
 				}
-				m_lastDynamicOffsetChangeGPUSection = rdr::Renderer::GetDeviceQueuesManager().GetRecordedSection();
+				m_lastDynamicOffsetChangeGPUSection = rdr::GPUApi::GetDeviceQueuesManager().GetRecordedSection();
 
 				// If we don't use dynamic offset, we need to mark descriptor as dirty
 				if constexpr (type == EConstantBufferBindingType::StaticOffset)

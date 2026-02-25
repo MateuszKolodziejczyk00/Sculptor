@@ -56,7 +56,7 @@ public:
 	rhi::RHISettings            rhiSettings;
 };
 
-static VulkanInstanceData g_data;
+static VulkanInstanceData* g_data = nullptr;
 
 // Volk ==========================================================================================
 
@@ -76,7 +76,9 @@ void VolkLoadInstance(VkInstance instance)
 
 void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 {
-	priv::g_data.rhiSettings.Initialize();
+	priv::g_data = new priv::VulkanInstanceData();
+
+	priv::g_data->rhiSettings.Initialize();
 
 	priv::InitializeVolk();
 
@@ -188,20 +190,20 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 
 #endif // SPT_RHI_DEBUG
 
-	SPT_VK_CHECK(vkCreateInstance(&instanceInfo, GetAllocationCallbacks(), &priv::g_data.instance));
+	SPT_VK_CHECK(vkCreateInstance(&instanceInfo, GetAllocationCallbacks(), &priv::g_data->instance));
 
-	priv::VolkLoadInstance(priv::g_data.instance);
+	priv::VolkLoadInstance(priv::g_data->instance);
 
 #if SPT_RHI_DEBUG
 
 	if (GetSettings().IsValidationEnabled())
 	{
-		priv::g_data.debugMessenger = DebugMessenger::CreateDebugMessenger(priv::g_data.instance, GetAllocationCallbacks());
+		priv::g_data->debugMessenger = DebugMessenger::CreateDebugMessenger(priv::g_data->instance, GetAllocationCallbacks());
 	}
 
 #endif // SPT_RHI_DEBUG
 
-	priv::g_data.pipelineLayoutsManager.InitializeRHI();
+	priv::g_data->pipelineLayoutsManager.InitializeRHI();
 
 #if SPT_ENABLE_GPU_CRASH_DUMPS
 	if (GetSettings().AreGPUCrashDumpsEnabled())
@@ -210,57 +212,76 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 	}
 #endif // SPT_ENABLE_GPU_CRASH_DUMPS
 
-	SPT_CHECK(!!priv::g_data.instance);
+	SPT_CHECK(!!priv::g_data->instance);
 
 	const VkSurfaceKHR surface = VK_NULL_HANDLE;
 
-	priv::g_data.physicalDevice = PhysicalDevice::SelectPhysicalDevice(priv::g_data.instance, surface);
+	priv::g_data->physicalDevice = PhysicalDevice::SelectPhysicalDevice(priv::g_data->instance, surface);
 
 	if (SPT_IS_LOG_CATEGORY_ENABLED(VulkanRHI))
 	{
-		const VkPhysicalDeviceProperties2 deviceProps = PhysicalDevice::GetDeviceProperties(priv::g_data.physicalDevice);
+		const VkPhysicalDeviceProperties2 deviceProps = PhysicalDevice::GetDeviceProperties(priv::g_data->physicalDevice);
 		SPT_LOG_TRACE(VulkanRHI, "Selected Device: {0}", deviceProps.properties.deviceName);
 	}
 
-	priv::g_data.device.CreateDevice(priv::g_data.physicalDevice, GetAllocationCallbacks());
+	priv::g_data->device.CreateDevice(priv::g_data->physicalDevice, GetAllocationCallbacks());
 
 	VulkanRHILimits::Initialize(GetLogicalDevice(), GetPhysicalDeviceHandle());
 
-	priv::g_data.memoryManager.Initialize(priv::g_data.instance, priv::g_data.device.GetHandle(), priv::g_data.physicalDevice, GetAllocationCallbacks());
+	priv::g_data->memoryManager.Initialize(priv::g_data->instance, priv::g_data->device.GetHandle(), priv::g_data->physicalDevice, GetAllocationCallbacks());
 }
 
 void VulkanRHI::Uninitialize()
 {
-	priv::g_data.commandPoolsManager.DestroyResources();
+	priv::g_data->commandPoolsManager.DestroyResources();
 
-	priv::g_data.pipelineLayoutsManager.ReleaseRHI();
+	priv::g_data->pipelineLayoutsManager.ReleaseRHI();
 
-	if (priv::g_data.memoryManager.IsValid())
+	if (priv::g_data->memoryManager.IsValid())
 	{
-		priv::g_data.memoryManager.Destroy();
+		priv::g_data->memoryManager.Destroy();
 	}
 
-	if (priv::g_data.device.IsValid())
+	if (priv::g_data->device.IsValid())
 	{
-		priv::g_data.device.Destroy(GetAllocationCallbacks());
+		priv::g_data->device.Destroy(GetAllocationCallbacks());
 	}
 
-	if (priv::g_data.debugMessenger)
+	if (priv::g_data->debugMessenger)
 	{
-		DebugMessenger::DestroyDebugMessenger(priv::g_data.debugMessenger, priv::g_data.instance, GetAllocationCallbacks());
-		priv::g_data.debugMessenger = VK_NULL_HANDLE;
+		DebugMessenger::DestroyDebugMessenger(priv::g_data->debugMessenger, priv::g_data->instance, GetAllocationCallbacks());
+		priv::g_data->debugMessenger = VK_NULL_HANDLE;
 	}
 
-	if (priv::g_data.instance)
+	if (priv::g_data->instance)
 	{
-		vkDestroyInstance(priv::g_data.instance, GetAllocationCallbacks());
-		priv::g_data.instance = VK_NULL_HANDLE;
+		vkDestroyInstance(priv::g_data->instance, GetAllocationCallbacks());
+		priv::g_data->instance = VK_NULL_HANDLE;
 	}
+}
+
+void VulkanRHI::InitializeModule(rhi::RHIModuleData* data)
+{
+	SPT_CHECK_MSG(!priv::g_data, "VulkanRHI is already initialized!");
+
+	priv::g_data = reinterpret_cast<priv::VulkanInstanceData*>(data);
+
+	priv::InitializeVolk();
+	priv::VolkLoadInstance(priv::g_data->instance);
+
+	VulkanRHILimits::Initialize(GetLogicalDevice(), GetPhysicalDeviceHandle());
+}
+
+rhi::RHIModuleData* VulkanRHI::GetModuleData()
+{
+	SPT_CHECK_MSG(!!priv::g_data, "VulkanRHI is not initialized!");
+
+	return reinterpret_cast<rhi::RHIModuleData*>(priv::g_data);
 }
 
 void VulkanRHI::FlushCaches()
 {
-	priv::g_data.pipelineLayoutsManager.FlushPendingPipelineLayouts();
+	priv::g_data->pipelineLayoutsManager.FlushPendingPipelineLayouts();
 }
 
 rhi::ERHIType VulkanRHI::GetRHIType()
@@ -270,12 +291,12 @@ rhi::ERHIType VulkanRHI::GetRHIType()
 
 void VulkanRHI::WaitIdle()
 {
-	priv::g_data.device.WaitIdle();
+	priv::g_data->device.WaitIdle();
 }
 
 const rhi::RHISettings& VulkanRHI::GetSettings()
 {
-	return priv::g_data.rhiSettings;
+	return priv::g_data->rhiSettings;
 }
 
 Bool VulkanRHI::IsRayTracingEnabled()
@@ -285,12 +306,12 @@ Bool VulkanRHI::IsRayTracingEnabled()
 
 rhi::DescriptorProps VulkanRHI::GetDescriptorProps()
 {
-	return priv::g_data.device.GetDescriptorProps();
+	return priv::g_data->device.GetDescriptorProps();
 }
 
 RHIDeviceQueue VulkanRHI::GetDeviceQueue(rhi::EDeviceCommandQueueType queueType)
 {
-	return priv::g_data.device.GetQueue(queueType);
+	return priv::g_data->device.GetQueue(queueType);
 }
 
 #if SPT_RHI_DEBUG
@@ -304,42 +325,42 @@ void VulkanRHI::EnableValidationWarnings(Bool enable)
 
 VkInstance VulkanRHI::GetInstanceHandle()
 {
-	return priv::g_data.instance;
+	return priv::g_data->instance;
 }
 
 VkDevice VulkanRHI::GetDeviceHandle()
 {
-	return priv::g_data.device.GetHandle();
+	return priv::g_data->device.GetHandle();
 }
 
 VkPhysicalDevice VulkanRHI::GetPhysicalDeviceHandle()
 {
-	return priv::g_data.physicalDevice;
+	return priv::g_data->physicalDevice;
 }
 
 CommandPoolsManager& VulkanRHI::GetCommandPoolsManager()
 {
-	return priv::g_data.commandPoolsManager;
+	return priv::g_data->commandPoolsManager;
 }
 
 PipelineLayoutsManager& VulkanRHI::GetPipelineLayoutsManager()
 {
-	return priv::g_data.pipelineLayoutsManager;
+	return priv::g_data->pipelineLayoutsManager;
 }
 
 const LogicalDevice& VulkanRHI::GetLogicalDevice()
 {
-	return priv::g_data.device;
+	return priv::g_data->device;
 }
 
 VulkanMemoryManager& VulkanRHI::GetMemoryManager()
 {
-	return priv::g_data.memoryManager;
+	return priv::g_data->memoryManager;
 }
 
 VmaAllocator VulkanRHI::GetAllocatorHandle()
 {
-	return priv::g_data.memoryManager.GetAllocatorHandle();
+	return priv::g_data->memoryManager.GetAllocatorHandle();
 }
 
 const VkAllocationCallbacks* VulkanRHI::GetAllocationCallbacks()

@@ -5,6 +5,12 @@
 #include "Common/ShaderCompilationInput.h"
 #include "ShaderTypes.h"
 
+
+namespace spt::sc
+{
+struct CompilationEnvironmentDef;
+} // spt::sc
+
 namespace spt::rdr
 {
 
@@ -19,6 +25,8 @@ public:
 
 	void		Initialize();
 	void		Uninitialize();
+
+	void		InitializeModule();
 
 	void		ClearCachedShaders();
 
@@ -48,6 +56,8 @@ private:
 	lib::HashMap<ShaderHashType, lib::SharedPtr<Shader>> m_cachedShaders;
 
 	mutable lib::ReadWriteLock m_lock;
+
+	sc::CompilationEnvironmentDef* m_compilationEnvironmentDef = nullptr;
 
 #if WITH_SHADERS_HOT_RELOAD
 

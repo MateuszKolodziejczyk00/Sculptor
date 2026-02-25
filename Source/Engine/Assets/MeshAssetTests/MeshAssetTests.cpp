@@ -2,7 +2,7 @@
 #include "AssetsSystem.h"
 #include "MeshAsset.h"
 #include "Engine.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "Graphics/Transfers/GPUDeferredCommandsQueue.h"
 
 
@@ -97,13 +97,13 @@ int main(int argc, char** argv)
 
 	engn::Engine::Get().Initialize(engineInitializationParams);
 
-	rdr::Renderer::Initialize();
+	rdr::GPUApi::Initialize();
 
 	testing::InitGoogleTest(&argc, argv);
 
 	const auto testsResult = RUN_ALL_TESTS();
 
-	rdr::Renderer::Uninitialize();
+	rdr::GPUApi::Uninitialize();
 
 	return testsResult;
 }

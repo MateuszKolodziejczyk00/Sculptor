@@ -3,7 +3,7 @@
 #include "RayTracingSceneTypes.h"
 #include "Types/AccelerationStructure.h"
 #include "ResourcesManager.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/RenderContext.h"
 #include "Materials/MaterialsRenderingCommon.h"
@@ -154,7 +154,7 @@ void RayTracingRenderSystem::UpdateTLAS()
 
 		const lib::SharedRef<rdr::GPUWorkload> workload = recorder->FinishRecording();
 
-		rdr::Renderer::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
+		rdr::GPUApi::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
 
 		m_tlas->ReleaseInstancesBuildData();
 	}

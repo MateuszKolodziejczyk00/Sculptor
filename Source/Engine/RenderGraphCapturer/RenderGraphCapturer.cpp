@@ -55,7 +55,7 @@ RGCapturerDecorator::RGCapturerDecorator(const CaptureParameters& params, const 
 	m_capture->captureSource = captureSource;
 	m_capture->name = lib::File::Utils::CreateFileNameFromTime();
 
-	const rdr::debug::DescrptorBufferState descriptorsState = rdr::Renderer::GetDescriptorManager().DumpCurrentDescriptorBufferState();
+	const rdr::debug::DescrptorBufferState descriptorsState = rdr::GPUApi::GetDescriptorManager().DumpCurrentDescriptorBufferState();
 
 	for (SizeType slotIdx = 0u; slotIdx < descriptorsState.slots.size(); ++slotIdx)
 	{

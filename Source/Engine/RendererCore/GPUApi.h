@@ -25,6 +25,8 @@ class DescriptorHeap;
 class DescriptorManager;
 class DescriptorSetLayout;
 
+struct GPUApiData;
+
 
 using OnRendererCleanupDelegate = lib::ThreadSafeMulticastDelegate<void()>;
 
@@ -38,13 +40,15 @@ enum class EDeferredReleasesFlushFlags : Flags32
 };
 
 
-class RENDERER_CORE_API Renderer
+class RENDERER_CORE_API GPUApi
 {
 public:
 
 	static void									Initialize();
-
 	static void									Uninitialize();
+
+	static GPUApiData*							GetGPUApiData();
+	static void									InitializeModule(GPUApiData& data);
 
 	static void									FlushCaches();
 
@@ -80,7 +84,7 @@ public:
 private:
 
 	// block creating instance
-	Renderer() = default;
+	GPUApi() = default;
 };
 
 #define RENDERER_DISABLE_VALIDATION_WARNINGS_SCOPE RHI_DISABLE_VALIDATION_WARNINGS_SCOPE

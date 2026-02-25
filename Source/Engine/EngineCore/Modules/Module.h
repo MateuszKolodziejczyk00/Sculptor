@@ -5,14 +5,32 @@
 #include "FileSystem/DirectoryWatcher.h"
 #include "FileSystem/File.h"
 #include "SculptorCoreTypes.h"
-#include "Utility/ModulesABI.h"
+#include "Utility/ModuleDescriptor.h"
+
+
+namespace spt::rdr
+{
+struct GPUApiData;
+} // spt::rdr
 
 
 namespace spt::engn
 {
 
+class Engine;
+
+
 using RawModuleHandle = Uint64;
 static constexpr RawModuleHandle g_invalidModuleHandle = 0u;
+
+
+struct EngineGlobals
+{
+	prf::ProfilerImpl*       profiler           = nullptr;
+	Engine*                  engineInstance     = nullptr;
+	rdr::GPUApiData*         gpuApiData         = nullptr;
+	lib::HashedStringDBData* hashedStringDBData = nullptr;
+};
 
 
 class ModuleHandle
@@ -54,7 +72,9 @@ public:
 
 	void Initialize();
 
-	ModuleHandle LoadModule(lib::StringView moduleName, const lib::ModuleABI& abi);
+	void InitialzeGlobals(EngineGlobals& globals);
+
+	ModuleHandle LoadModule(lib::StringView moduleName);
 	void         UnloadModule(const ModuleHandle& module);
 
 	void EnqueueModuleReload(lib::StringView moduleName);
@@ -63,16 +83,17 @@ public:
 	Bool HasPendingReloads() const;
 
 	template<typename TModuleAPI>
-	TModuleAPI* GetModuleAPI(const ModuleHandle& handle) const
+	const TModuleAPI* GetModuleAPI(const ModuleHandle& handle) const
 	{
 		for (const LoadedModule& module : m_modules)
 		{
 			if (module.handle.GetRawHandle() == handle.GetRawHandle())
 			{
-				if (module.abi.apiType == lib::TypeInfo<TModuleAPI>())
+				if (module.descriptor.apiType == lib::TypeInfo<TModuleAPI>())
 				{
-					return reinterpret_cast<TModuleAPI*>(module.apiPtr);
+					return reinterpret_cast<const TModuleAPI*>(module.descriptor.api);
 				}
+				break;
 			}
 		}
 
@@ -80,13 +101,13 @@ public:
 	}
 
 	template<typename TModuleAPI>
-	TModuleAPI* GetModuleAPI() const
+	const TModuleAPI* GetModuleAPI() const
 	{
 		for (const LoadedModule& loadedModule : m_modules)
 		{
-			if (loadedModule.abi.apiType == lib::TypeInfo<TModuleAPI>())
+			if (loadedModule.descriptor.apiType == lib::TypeInfo<TModuleAPI>())
 			{
-				return reinterpret_cast<TModuleAPI*>(loadedModule.apiPtr);
+				return reinterpret_cast<const TModuleAPI*>(loadedModule.descriptor.api);
 			}
 		}
 
@@ -99,21 +120,20 @@ private:
 	{
 		static constexpr SizeType s_maxPathLength = 60u;
 
-		ModuleHandle   handle;
-		char           name[s_maxPathLength] = {};
-		Byte*          apiPtr = nullptr;
-		lib::Path      path;
-		lib::ModuleABI abi;
+		ModuleHandle          handle;
+		char                  name[s_maxPathLength] = {};
+		lib::Path             path;
+		lib::ModuleDescriptor descriptor;
 	};
 
 	Bool ReloadModule_Locked(LoadedModule& module);
-
-	void LoadModuleAPI_Locked(Byte* apiPtr, const lib::ModuleABI& abi, const ModuleHandle& handle);
 
 	static constexpr SizeType s_maxLoadedModules = 32u;
 
 	lib::InlineArray<LoadedModule, s_maxLoadedModules> m_modules;
 	lib::InlineArray<ModuleHandle, s_maxLoadedModules> m_modulesToReload;
+
+	EngineGlobals m_globals;
 
 	lib::Lock m_modulesLock;
 

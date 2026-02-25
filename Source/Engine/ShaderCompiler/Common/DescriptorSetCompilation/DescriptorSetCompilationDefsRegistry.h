@@ -37,10 +37,10 @@ class DescriptorSetCompilationDefsRegistry
 {
 public:
 
-	static void RegisterDSCompilationDef(const lib::HashedString& dsName, const DescriptorSetCompilationDef& definition);
+	static void RegisterDSCompilationDef(lib::String dsName, const DescriptorSetCompilationDef& definition);
 
-	static const DescriptorSetCompilationDef& GetDescriptorSetCompilationDef(const lib::HashedString& dsName);
-	static lib::String GetDescriptorSetShaderSourceCode(const lib::HashedString& dsName, Uint32 dsIdx);
+	static const DescriptorSetCompilationDef& GetDescriptorSetCompilationDef(const lib::String& dsName);
+	static lib::String GetDescriptorSetShaderSourceCode(const lib::String& dsName, Uint32 dsIdx);
 
 private:
 

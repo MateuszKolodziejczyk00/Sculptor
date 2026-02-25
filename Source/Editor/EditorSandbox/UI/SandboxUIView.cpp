@@ -2,7 +2,7 @@
 #include "UIUtils.h"
 #include "Renderer/SandboxRenderer.h"
 #include "JobSystem.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "RenderView/RenderViewSettingsUIView.h"
 #include "RenderScene/RenderSceneSettingsUIView.h"
 #include "RenderScene/SceneRendererStatsUIView.h"
@@ -111,7 +111,7 @@ void SandboxUIView::DrawUI()
 	ui::UIUtils::SetShortcut(uiContext, hotReloadShadersID, ui::ShortcutBinding::Create(inp::EKey::LShift, inp::EKey::R));
 	if (ImGui::Button("HotReload Shaders"))
 	{
-		rdr::Renderer::HotReloadShaders();
+		rdr::GPUApi::HotReloadShaders();
 	}
 #endif WITH_SHADERS_HOT_RELOAD
 	ImGui::End();

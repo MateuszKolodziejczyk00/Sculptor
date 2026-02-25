@@ -11,7 +11,7 @@ class RENDER_SCENE_API RendererParamsRegistry
 {
 public:
 
-	static void RegisterParameter(const lib::DynamicArray<lib::HashedString>& category, class RendererParamBase& param);
+	static void RegisterParameter(const lib::DynamicArray<lib::String>& category, class RendererParamBase& param);
 
 	static void DrawParametersUI();
 };
@@ -57,7 +57,7 @@ public:
 
 protected:
 
-	RendererParameter(const lib::HashedString& inName, const lib::DynamicArray<lib::HashedString>& inCategory, const TType& defaultValue)
+	RendererParameter(const lib::String& inName, const lib::DynamicArray<lib::String>& inCategory, const TType& defaultValue)
 		: paramName(inName)
 		, paramValue(defaultValue)
 	{
@@ -66,7 +66,7 @@ protected:
 
 private:
 
-	lib::HashedString paramName;
+	lib::String paramName;
 	TType paramValue;
 };
 
@@ -79,9 +79,9 @@ protected:
 
 public:
 
-	RendererFloatParameter(const lib::HashedString& name, const lib::DynamicArray<lib::HashedString>& category, Real32 defaultValue, Real32 inMin, Real32 inMax);
+	RendererFloatParameter(const lib::String& name, const lib::DynamicArray<lib::String>& category, Real32 defaultValue, Real32 inMin, Real32 inMax);
 
-	void DrawUI(const lib::HashedString& name, Real32& value);
+	void DrawUI(const lib::String& name, Real32& value);
 
 private:
 
@@ -98,9 +98,9 @@ protected:
 
 public:
 
-	RendererFloat3Parameter(const lib::HashedString& name, const lib::DynamicArray<lib::HashedString>& category, math::Vector3f defaultValue, Real32 inMin, Real32 inMax);
+	RendererFloat3Parameter(const lib::String& name, const lib::DynamicArray<lib::String>& category, math::Vector3f defaultValue, Real32 inMin, Real32 inMax);
 
-	void DrawUI(const lib::HashedString& name, math::Vector3f& value);
+	void DrawUI(const lib::String& name, math::Vector3f& value);
 
 private:
 
@@ -117,9 +117,9 @@ protected:
 
 public:
 
-	RendererBoolParameter(const lib::HashedString& name, const lib::DynamicArray<lib::HashedString>& category, Bool defaultValue);
+	RendererBoolParameter(const lib::String& name, const lib::DynamicArray<lib::String>& category, Bool defaultValue);
 
-	void DrawUI(const lib::HashedString& name, Bool& value);
+	void DrawUI(const lib::String& name, Bool& value);
 };
 
 
@@ -131,9 +131,9 @@ protected:
 
 public:
 
-	RendererIntParameter(const lib::HashedString& name, const lib::DynamicArray<lib::HashedString>& category, Int32 defaultValue, Int32 inMin, Int32 inMax);
+	RendererIntParameter(const lib::String& name, const lib::DynamicArray<lib::String>& category, Int32 defaultValue, Int32 inMin, Int32 inMax);
 
-	void DrawUI(const lib::HashedString& name, Int32& value);
+	void DrawUI(const lib::String& name, Int32& value);
 
 private:
 

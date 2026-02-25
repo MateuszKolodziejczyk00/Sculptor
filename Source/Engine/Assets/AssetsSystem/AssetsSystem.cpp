@@ -340,7 +340,7 @@ void AssetsSystem::RemoveAssetsCompiledDataByType(AssetType type)
 	const lib::DynamicArray<AssetMetaData> assets = m_assetsDB.GetAllAssetsDescriptors();
 	for (const AssetMetaData& assetMeta : assets)
 	{
-		if (assetMeta.descriptor.assetTypeKey == type.GetKey())
+		if (assetMeta.descriptor.assetTypeKey == type.id)
 		{
 			RemoveAssetCompiledData(assetMeta.pathID);
 		}

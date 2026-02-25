@@ -15,6 +15,7 @@ namespace spt::rhi
 struct RHIInitializationInfo;
 struct RHIWindowInitializationInfo;
 struct SubmitBatchData;
+struct RHIModuleData;
 }
 
 
@@ -34,9 +35,11 @@ public:
 
 	// RHI Interface ===================================================================
 
-	static void				Initialize(const rhi::RHIInitializationInfo& initInfo);
+	static void Initialize(const rhi::RHIInitializationInfo& initInfo);
+	static void Uninitialize();
 
-	static void				Uninitialize();
+	static void                InitializeModule(rhi::RHIModuleData* data);
+	static rhi::RHIModuleData* GetModuleData();
 
 	static void				FlushCaches();
 

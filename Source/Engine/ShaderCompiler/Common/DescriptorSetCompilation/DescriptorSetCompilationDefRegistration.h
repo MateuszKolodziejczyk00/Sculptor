@@ -12,7 +12,7 @@ class SHADER_COMPILER_API DescriptorSetCompilationDefRegistration
 {
 public:
 
-	DescriptorSetCompilationDefRegistration(const lib::HashedString& dsName, lib::String dsCode, lib::String accessorsCode, const DescriptorSetCompilationMetaData& metaData);
+	DescriptorSetCompilationDefRegistration(lib::String dsName, lib::String dsCode, lib::String accessorsCode, const DescriptorSetCompilationMetaData& metaData);
 };
 
 } // spt::sc

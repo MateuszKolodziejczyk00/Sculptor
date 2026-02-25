@@ -30,10 +30,8 @@ class Buffer;
 class BindableBufferView;
 
 
-using DSStateID = SizeType;
-
-struct DSStateTypeIDTag {};
-using DSStateTypeID = lib::NamedType<SizeType, DSStateTypeIDTag>;
+using DSStateID     = SizeType;
+using DSStateTypeID = lib::TypeID;
 
 
 enum class EDescriptorSetStateFlags
@@ -73,18 +71,18 @@ class ShaderCompilationAdditionalArgsBuilder
 {
 public:
 
-	explicit ShaderCompilationAdditionalArgsBuilder(lib::DynamicArray<lib::HashedString>& macroDefinitions)
+	explicit ShaderCompilationAdditionalArgsBuilder(lib::DynamicArray<lib::String>& macroDefinitions)
 		: m_macroDefinitions(macroDefinitions)
 	{  }
 
-	void AddDescriptorSet(const lib::HashedString& dsName)
+	void AddDescriptorSet(const lib::String& dsName)
 	{
-		m_macroDefinitions.emplace_back("DS_" + dsName.ToString());
+		m_macroDefinitions.emplace_back("DS_" + dsName);
 	}
 
 private:
 
-	lib::DynamicArray<lib::HashedString>& m_macroDefinitions;
+	lib::DynamicArray<lib::String>& m_macroDefinitions;
 };
 
 

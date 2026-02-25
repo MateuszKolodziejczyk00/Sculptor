@@ -7,7 +7,7 @@
 #include "Types/Texture.h"
 #include "ResourcesManager.h"
 #include "RenderGraphBuilder.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "Loaders/TextureLoader.h"
 #include "Transfers/UploadsManager.h"
 #include "PBRMaterialInstance.h"
@@ -431,7 +431,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 
 		graphBuilder.Execute();
 
-		rdr::Renderer::WaitIdle();
+		rdr::GPUApi::WaitIdle();
 
 		const Uint32 texturesDataOffset = static_cast<Uint32>(compiledData.size());
 		Uint32 accumulatedDataOffset = texturesDataOffset;

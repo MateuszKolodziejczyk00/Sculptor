@@ -1,7 +1,7 @@
 #include "MaterialsUnifiedData.h"
 #include "ResourcesManager.h"
 #include "Transfers/UploadUtils.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "MaterialTypes.h"
 
 namespace spt::mat
@@ -51,7 +51,7 @@ MaterialUnifiedData MaterialsUnifiedData::GetMaterialUnifiedData() const
 MaterialsUnifiedData::MaterialsUnifiedData()
 	: m_materialsUnifiedBuffer(CreateMaterialsUnifiedBuffer())
 {
-	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
+	rdr::GPUApi::GetOnRendererCleanupDelegate().AddLambda([this]
 															{
 																m_materialsUnifiedBuffer.reset();
 																m_materialTextures.clear();

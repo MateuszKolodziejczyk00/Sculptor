@@ -1,7 +1,7 @@
 #include "DeviceQueuesManager.h"
 #include "ResourcesManager.h"
 #include "Types/Semaphore.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "EngineFrame.h"
 #include "GPUWorkload.h"
 #include "Engine.h"

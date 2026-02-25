@@ -44,9 +44,10 @@ public:
 		return m_callable != nullptr;
 	}
 
-	ReturnType operator()(TArgs... args) const
+	template<typename... TCallArgs>
+	ReturnType operator()(TCallArgs&&... args) const
 	{
-		return m_callable(args...);
+		return m_callable(std::forward<TCallArgs>(args)...);
 	}
 
 	FunctionType* Get() const

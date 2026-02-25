@@ -5,7 +5,7 @@
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/AccelerationStructure.h"
 #include "Types/Texture.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "DeviceQueues/DeviceQueuesManager.h"
 #include "Transfers/UploadUtils.h"
 #include "GPUDeferredCommandsQueueTypes.h"
@@ -38,26 +38,23 @@ void GPUDeferredCommandsQueue::ForceFlushCommands()
 	ExecuteCommands();
 }
 
-void GPUDeferredCommandsQueue::OnPostEngineInit()
-{
-	SPT_PROFILER_FUNCTION();
-
-	Super::OnPostEngineInit();
-
-	// Release References to textures pending uploads
-	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]()
-															{
-																SPT_PROFILER_FUNCTION();
-																m_uploadRequests.clear();
-															});
-}
-
-
 void GPUDeferredCommandsQueue::OnBeginFrame(engn::FrameContext& frameContext)
 {
 	SPT_PROFILER_FUNCTION();
 
 	Super::OnBeginFrame(frameContext);
+
+	if (!m_hasRegisteredCleanup)
+	{
+		// Release References to textures pending uploads
+		rdr::GPUApi::GetOnRendererCleanupDelegate().AddLambda([this]()
+																{
+																	SPT_PROFILER_FUNCTION();
+																	m_uploadRequests.clear();
+																});
+
+		m_hasRegisteredCleanup = true;
+	}
 
 	js::Launch(SPT_GENERIC_JOB_NAME,
 			   [this]
@@ -111,7 +108,7 @@ void GPUDeferredCommandsQueue::ExecuteCommands()
 
 			const lib::SharedRef<rdr::GPUWorkload> gpuWorkload = recorder->FinishRecording();
 
-			rdr::Renderer::GetDeviceQueuesManager().Submit(gpuWorkload, rdr::EGPUWorkloadSubmitFlags::CorePipe);
+			rdr::GPUApi::GetDeviceQueuesManager().Submit(gpuWorkload, rdr::EGPUWorkloadSubmitFlags::CorePipe);
 
 			m_blasBuildRequests.clear();
 		}
@@ -140,7 +137,7 @@ void GPUDeferredCommandsQueue::ExecutePreUploadBarriers(const lib::SharedPtr<rdr
 
 	const lib::SharedRef<rdr::GPUWorkload> gpuWorkload = recorder->FinishRecording();
 
-	rdr::Renderer::GetDeviceQueuesManager().Submit(gpuWorkload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::CorePipe, rdr::EGPUWorkloadSubmitFlags::MemoryTransfers));
+	rdr::GPUApi::GetDeviceQueuesManager().Submit(gpuWorkload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::CorePipe, rdr::EGPUWorkloadSubmitFlags::MemoryTransfers));
 }
 
 void GPUDeferredCommandsQueue::ExecutePostUploadBarriers(const lib::SharedPtr<rdr::RenderContext>& renderContext)
@@ -164,7 +161,7 @@ void GPUDeferredCommandsQueue::ExecutePostUploadBarriers(const lib::SharedPtr<rd
 
 	const lib::SharedRef<rdr::GPUWorkload> gpuWorkload = recorder->FinishRecording();
 
-	rdr::Renderer::GetDeviceQueuesManager().Submit(gpuWorkload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::CorePipe, rdr::EGPUWorkloadSubmitFlags::MemoryTransfers));
+	rdr::GPUApi::GetDeviceQueuesManager().Submit(gpuWorkload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::CorePipe, rdr::EGPUWorkloadSubmitFlags::MemoryTransfers));
 }
 
 } // spt::gfx

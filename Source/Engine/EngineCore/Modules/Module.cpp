@@ -1,12 +1,13 @@
 #include "Module.h"
 #include "FileSystem/DirectoryWatcher.h"
 #include "Paths.h"
+#include "Utility/Templates/Callable.h"
 
 #ifdef SPT_PLATFORM_WINDOWS
 #define NOMINMAX
 #include <Windows.h>
 #endif
-#pragma optimize("", off)
+
 
 SPT_DEFINE_LOG_CATEGORY(ModulesManager, true);
 
@@ -34,6 +35,22 @@ void UnloadModuleImpl(RawModuleHandle moduleHandle)
 void* GetFunctionImpl(RawModuleHandle moduleHandle, const char* funcName)
 {
 	return reinterpret_cast<void*>(::GetProcAddress(reinterpret_cast<HMODULE>(moduleHandle), funcName));
+}
+
+bool IsFileReady(const lib::Path& path)
+{
+#ifdef SPT_PLATFORM_WINDOWS
+	const HANDLE hFile = ::CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+	if (hFile == INVALID_HANDLE_VALUE)
+	{
+		return false;
+	}
+	::CloseHandle(hFile);
+	return true;
+#else
+	std::error_code ec;
+	return std::filesystem::exists(path, ec) && !ec;
+#endif
 }
 #endif // SPT_PLATFORM_WINDOWS
 
@@ -87,6 +104,17 @@ ModuleHandle LoadModuleCopy(const lib::Path& modulePath)
 	return LoadModule(copiedDllPath);
 }
 
+void InitializeModule(const ModuleHandle& moduleHandle, const EngineGlobals& globals, lib::ModuleDescriptor& outModuleDescriptor)
+{
+	constexpr const char* initializeFuncName = "InitializeModule";
+	using InitializeModuleFunc = lib::RawCallable<void(const EngineGlobals*, lib::ModuleDescriptor&)>;
+
+	const InitializeModuleFunc initializeFunc = moduleHandle.GetFunction<void(const EngineGlobals*, lib::ModuleDescriptor&)>(initializeFuncName);
+	SPT_CHECK_MSG(initializeFunc.IsValid(), "Module does not export {} function", initializeFuncName);
+
+	initializeFunc(&globals, outModuleDescriptor);
+}
+
 } // utils
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -108,12 +136,9 @@ ModulesManager::~ModulesManager()
 {
 	lib::StopWatchingDirectory(m_fileWatcherHandle);
 
-	for (const LoadedModule& moduleHandle : m_modules)
+	for (const LoadedModule& loadedModule : m_modules)
 	{
-		delete[] moduleHandle.apiPtr;
-		delete[] moduleHandle.abi.exports.data();
-
-		utils::UnloadModule(moduleHandle.handle);
+		utils::UnloadModule(loadedModule.handle);
 	}
 }
 
@@ -131,7 +156,12 @@ void ModulesManager::Initialize()
 	m_fileWatcherHandle = lib::StartWatchingDirectory(lib::Path(Paths::GetExecutableDirectory()), lib::FileModifiedCallback::CreateLambda(std::move(onFileModified)));
 }
 
-ModuleHandle ModulesManager::LoadModule(lib::StringView moduleName, const lib::ModuleABI& abi)
+void ModulesManager::InitialzeGlobals(EngineGlobals& globals)
+{
+	m_globals = globals;
+}
+
+ModuleHandle ModulesManager::LoadModule(lib::StringView moduleName)
 {
 	const lib::LockGuard lock{m_modulesLock};
 
@@ -144,37 +174,15 @@ ModuleHandle ModulesManager::LoadModule(lib::StringView moduleName, const lib::M
 		return ModuleHandle();
 	}
 
-	Uint32 apiSize = 0u;
-	for (const lib::ModuleExportDescriptor& exportDesc : abi.exports)
-	{
-		const Uint32 endOffset = exportDesc.apiOffset + sizeof(void*);
-		if (endOffset > apiSize)
-		{
-			apiSize = endOffset;
-		}
-	}
-
-	// Allocate local copy for ABI. Previous one might be unloaded so it's not safe to use it, even if it's static
-	lib::ModuleExportDescriptor* localExports = new lib::ModuleExportDescriptor[abi.exports.size()];
-	std::memcpy(localExports, abi.exports.data(), sizeof(lib::ModuleExportDescriptor) * abi.exports.size());
-
-	lib::ModuleABI localABI;
-	localABI.apiType = abi.apiType;
-	localABI.exports = { localExports, abi.exports.size() };
-
 	LoadedModule loadedModule;
 	loadedModule.handle = handle;
-	loadedModule.apiPtr = new Byte[apiSize];
-	loadedModule.abi    = localABI;
 	loadedModule.path   = modulePath;
 
 	SPT_CHECK(moduleName.size() < sizeof(loadedModule.name));
 	std::memcpy(loadedModule.name, moduleName.data(), std::min(moduleName.size(), sizeof(loadedModule.name) - 1));
 	loadedModule.name[std::min(moduleName.size(), sizeof(loadedModule.name) - 1)] = '\0';
 
-	std::memset(loadedModule.apiPtr, 0, apiSize);
-
-	LoadModuleAPI_Locked(loadedModule.apiPtr, abi, handle);
+	utils::InitializeModule(handle, m_globals, loadedModule.descriptor);
 
 	m_modules.PushBack(std::move(loadedModule));
 
@@ -201,9 +209,6 @@ void ModulesManager::UnloadModule(const ModuleHandle& moduleHandle)
 	{
 		const LoadedModule& moduleToUnload = m_modules[foundModuleIdx];
 
-		delete[] moduleToUnload.apiPtr;
-		delete[] moduleToUnload.abi.exports.data();
-
 		utils::UnloadModule(moduleToUnload.handle);
 
 		SPT_LOG_INFO(ModulesManager, "Module {} unloaded successfully", moduleToUnload.name);
@@ -217,11 +222,11 @@ void ModulesManager::EnqueueModuleReload(lib::StringView moduleName)
 {
 	const lib::LockGuard lock{m_modulesLock};
 
-	for (const LoadedModule& moduleHandle : m_modules)
+	for (const LoadedModule& loadedModule : m_modules)
 	{
-		if (lib::StringView(moduleHandle.name) == moduleName)
+		if (lib::StringView(loadedModule.name) == moduleName)
 		{
-			m_modulesToReload.AddUnique(moduleHandle.handle);
+			m_modulesToReload.AddUnique(loadedModule.handle);
 			break;
 		}
 	}
@@ -254,6 +259,12 @@ void ModulesManager::ProcessModuleReloads()
 
 		if (foundModuleIdx != idxNone<Uint32>)
 		{
+			if (!utils::IsFileReady(m_modules[foundModuleIdx].path))
+			{
+				failedReloads.PushBack(moduleHandle);
+				continue;
+			}
+
 			if (!ReloadModule_Locked(m_modules[foundModuleIdx]))
 			{
 				failedReloads.PushBack(moduleHandle);
@@ -269,36 +280,25 @@ Bool ModulesManager::HasPendingReloads() const
 	return !m_modulesToReload.IsEmpty();
 }
 
-Bool ModulesManager::ReloadModule_Locked(LoadedModule& moduleHandle)
+Bool ModulesManager::ReloadModule_Locked(LoadedModule& loadedModule)
 {
-	ModuleHandle newModule = utils::LoadModuleCopy(moduleHandle.path);
+	ModuleHandle newModule = utils::LoadModuleCopy(loadedModule.path);
 	if (newModule.IsValid())
 	{
-		utils::UnloadModule(moduleHandle.handle);
-		moduleHandle.handle = newModule;
+		utils::UnloadModule(loadedModule.handle);
+		loadedModule.handle = newModule;
 
-		LoadModuleAPI_Locked(moduleHandle.apiPtr, moduleHandle.abi, moduleHandle.handle);
+		utils::InitializeModule(loadedModule.handle, m_globals, loadedModule.descriptor);
 
-		SPT_LOG_INFO(ModulesManager, "Module {} reloaded successfully", moduleHandle.name);
+		SPT_LOG_INFO(ModulesManager, "Module {} reloaded successfully", loadedModule.name);
 
 		return true;
 	}
 	else
 	{
-		SPT_LOG_ERROR(ModulesManager, "Failed to reload module {} from path {}", moduleHandle.name, moduleHandle.path.string());
+		SPT_LOG_ERROR(ModulesManager, "Failed to reload module {} from path {}", loadedModule.name, loadedModule.path.string());
 
 		return false;
-	}
-}
-
-void ModulesManager::LoadModuleAPI_Locked(Byte* apiPtr, const lib::ModuleABI& abi, const ModuleHandle& handle)
-{
-	SPT_CHECK(apiPtr != nullptr);
-
-	for (const lib::ModuleExportDescriptor& exportDesc : abi.exports)
-	{
-		void* funcPtr = handle.GetFunction<void*>(exportDesc.name);
-		*reinterpret_cast<void**>(apiPtr + exportDesc.apiOffset) = funcPtr;
 	}
 }
 

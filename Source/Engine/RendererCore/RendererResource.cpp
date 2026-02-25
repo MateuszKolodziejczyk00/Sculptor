@@ -1,7 +1,7 @@
 #include "RendererResource.h"
 #include "Utility/Templates/Overload.h"
 #include "Types/GPUMemoryPool.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 
 #include <variant>
 
@@ -11,7 +11,7 @@ namespace spt::rdr
 
 void RendererResourceBase::DeferRelease(GPUReleaseQueue::ReleaseEntry entry)
 {
-	Renderer::ReleaseDeferred(std::move(entry));
+	GPUApi::ReleaseDeferred(std::move(entry));
 }
 
 AllocationDefinition::AllocationDefinition()

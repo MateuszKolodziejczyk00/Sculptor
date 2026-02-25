@@ -1,6 +1,6 @@
 #include "Texture.h"
 #include "GPUMemoryPool.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "DescriptorSetState/DescriptorManager.h"
 
 namespace spt::rdr
@@ -106,7 +106,7 @@ TextureView::~TextureView()
 	// It's important to make sure that view will be destroyed before the texture if this view holds last ref
 	// because of that view rhi must be destroyed before calling destructor of members
 
-	DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+	DescriptorManager& descriptorManager = rdr::GPUApi::GetDescriptorManager();
 
 	if (m_srvDescriptor.IsValid())
 	{
@@ -121,7 +121,7 @@ TextureView::~TextureView()
 	DeferRelease(GPUReleaseQueue::ReleaseEntry::CreateLambda(
 		[releaseTicket = std::move(GetRHI().DeferredReleaseRHI()), srvDescriptor = std::move(m_srvDescriptor), uavDescriptor = std::move(m_uavDescriptor)]() mutable
 		{
-			DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+			DescriptorManager& descriptorManager = rdr::GPUApi::GetDescriptorManager();
 
 			if (srvDescriptor.IsValid())
 			{
@@ -153,7 +153,7 @@ math::Vector2u TextureView::GetResolution2D() const
 
 void TextureView::CreateDescriptors(TextureViewDescriptorsAllocation externalDescriptorsAllocation)
 {
-	DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+	DescriptorManager& descriptorManager = rdr::GPUApi::GetDescriptorManager();
 
 	if (GetRHI().GetTexture()->HasUsage(rhi::ETextureUsage::SampledTexture))
 	{

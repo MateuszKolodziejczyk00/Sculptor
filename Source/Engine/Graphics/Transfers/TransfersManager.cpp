@@ -1,7 +1,7 @@
 #include "TransfersManager.h"
 #include "RendererUtils.h"
 #include "CommandsRecorder/CommandRecorder.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "ResourcesManager.h"
 #include "DeviceQueues/GPUWorkload.h"
 
@@ -68,7 +68,7 @@ Uint64 TransfersManager::SubmitTransfers(const lib::SharedRef<rdr::RenderContext
 	workload->GetWaitSemaphores().AddTimelineSemaphore(transfersSemaphoresRef, semaphorePrevValue, rhi::EPipelineStage::ALL_TRANSFER);
 	workload->GetSignalSemaphores().AddTimelineSemaphore(transfersSemaphoresRef, semaphoreNewValue, rhi::EPipelineStage::ALL_TRANSFER);
 	
-	rdr::Renderer::GetDeviceQueuesManager().Submit(workload, rdr::EGPUWorkloadSubmitFlags::MemoryTransfers);
+	rdr::GPUApi::GetDeviceQueuesManager().Submit(workload, rdr::EGPUWorkloadSubmitFlags::MemoryTransfers);
 
 	return semaphoreNewValue;
 }
@@ -77,7 +77,7 @@ TransfersManager::TransfersManager()
 	: m_transferFinishedSemaphore(rdr::ResourcesManager::CreateRenderSemaphore(RENDERER_RESOURCE_NAME("TransferFinishedSemaphore"), rhi::SemaphoreDefinition(rhi::ESemaphoreType::Timeline)))
 	, m_lastSubmitCountValue(0)
 {
-	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
+	rdr::GPUApi::GetOnRendererCleanupDelegate().AddLambda([this]
 															{
 																m_transferFinishedSemaphore.reset();
 															});

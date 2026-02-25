@@ -24,13 +24,26 @@ public:
 	HashMap<HashedStringDB::KeyType, String>	records;
 };
 
-static DataBase& GetInstance()
-{
-	static DataBase instance;
-	return instance;
-}
+DataBase* g_dbInstance = nullptr;
 
 } // db
+
+void HashedStringDB::Initialize()
+{
+	SPT_CHECK(!db::g_dbInstance);
+	db::g_dbInstance = new db::DataBase();
+}
+
+void HashedStringDB::InitializeModule(HashedStringDBData& db)
+{
+	SPT_CHECK(!db::g_dbInstance);
+	db::g_dbInstance = reinterpret_cast<db::DataBase*>(&db);
+}
+
+HashedStringDBData* HashedStringDB::GetDBData()
+{
+	return reinterpret_cast<HashedStringDBData*>(db::g_dbInstance);
+}
 
 HashedStringDB::KeyType HashedStringDB::GetRecord(String&& inString, StringView& outView)
 {
@@ -96,10 +109,10 @@ StringView HashedStringDB::GetRecordStringChecked(KeyType key)
 
 Bool HashedStringDB::FindRecord(KeyType key, StringView& outView)
 {
-	const ReadLockGuard readRecordsLock(db::GetInstance().recordsMutex);
+	const ReadLockGuard readRecordsLock(db::g_dbInstance->recordsMutex);
 
-	const auto foundRecord = db::GetInstance().records.find(key);
-	if (foundRecord != db::GetInstance().records.cend())
+	const auto foundRecord = db::g_dbInstance->records.find(key);
+	if (foundRecord != db::g_dbInstance->records.cend())
 	{
 		outView = foundRecord->second;
 
@@ -111,9 +124,9 @@ Bool HashedStringDB::FindRecord(KeyType key, StringView& outView)
 
 String& HashedStringDB::CreateRecord(KeyType key, String&& newRecord)
 {
-	const WriteLockGuard addRecordLock(db::GetInstance().recordsMutex);
+	const WriteLockGuard addRecordLock(db::g_dbInstance->recordsMutex);
 
-	String& recordRef = db::GetInstance().records[key];
+	String& recordRef = db::g_dbInstance->records[key];
 	if (recordRef.empty())
 	{
 		recordRef = std::move(newRecord);

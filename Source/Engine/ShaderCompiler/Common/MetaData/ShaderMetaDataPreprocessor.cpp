@@ -73,7 +73,7 @@ static void IterateDescriptorSets(TFunctor&& func, const lib::String& sourceCode
 	{
 		const std::smatch& descriptorSetMatch = *descriptorSetIt;
 		SPT_CHECK(descriptorSetMatch.size() == 4); // whole match + dsNameMatch + second arg + dsIdxMatch
-		const lib::HashedString dsName = descriptorSetMatch[1].str();
+		const lib::String dsName   = descriptorSetMatch[1].str();
 		const lib::String dsIdxStr = descriptorSetMatch[3].str();
 
 		Uint32 dsIdx = idxNone<Uint32>;
@@ -318,13 +318,25 @@ static void PreprocessShaderStructs(lib::String& sourceCode, const ShaderPreproc
 	{
 		const std::smatch& shaderStructMatch = *shaderStructsIt;
 		SPT_CHECK(shaderStructMatch.size() == 2); // should be whole match + structNameMatch
-		const lib::HashedString structName = shaderStructMatch[1].str();
+		const lib::String structName = shaderStructMatch[1].str();
 
 		lib::String structSourceCode;
 		if (!m_definedStructs.contains(structName))
 		{
-			const rdr::ShaderStructMetaData& structMetaData = rdr::ShaderStructsRegistry::GetStructMetaDataChecked(structName);
-			structSourceCode = structMetaData.GetHLSLSourceCode();
+			const rdr::ShaderStructMetaData* structMetaData = rdr::ShaderStructsRegistry::GetStructMetaData(structName);
+			if (!structMetaData)
+			{
+				SPT_LOG_ERROR(ShaderMetaDataPrerpocessor, "Shader struct '{}' is not registered in ShaderStructsRegistry", structName);
+				structSourceCode = "struct " + structName + " { ??? };";
+			}
+			else
+			{
+				structSourceCode = structMetaData->GetHLSLSourceCode();
+			}
+
+#if WITH_SHADERS_HOT_RELOAD
+			outMetaData.shaderStructsVersionHashes[structName] = structMetaData ? structMetaData->GetVersionHash() : 0u;
+#endif // WITH_SHADERS_HOT_RELOAD
 
 			const SizeType overridesStartPos = structSourceCode.find('{');
 			helper::ApplyTypeOverrides(INOUT structSourceCode, overridesStartPos, preprocessingState.overrides);
@@ -351,7 +363,7 @@ static void PreprocessShaderDescriptorSets(lib::String& sourceCode, const Shader
 
 	lib::String accessorsCode;
 	
-	helper::IterateDescriptorSets([&sourceCode, &outMetaData, &accessorsCode, &preprocessingState](const lib::HashedString& dsName, Uint32 dsIdx, SizeType dsTokenPosition, SizeType dsTokenLength)
+	helper::IterateDescriptorSets([&sourceCode, &outMetaData, &accessorsCode, &preprocessingState](const lib::String& dsName, Uint32 dsIdx, SizeType dsTokenPosition, SizeType dsTokenLength)
 								  {
 									  const DescriptorSetCompilationDef& dsCompilationDef = DescriptorSetCompilationDefsRegistry::GetDescriptorSetCompilationDef(dsName);
 
@@ -492,7 +504,7 @@ ShaderPreprocessingMetaData ShaderMetaDataPrerpocessor::PreprocessAdditionalComp
 
 	ShaderPreprocessingMetaData metaData;
 
-	helper::IterateDescriptorSets([&metaData](const lib::HashedString& dsName, Uint32 dsIdx, SizeType dsTokenPosition, SizeType dsTokenLength)
+	helper::IterateDescriptorSets([&metaData](const lib::String& dsName, Uint32 dsIdx, SizeType dsTokenPosition, SizeType dsTokenLength)
 								  {
 									  const DescriptorSetCompilationDef& dsCompilationDef = DescriptorSetCompilationDefsRegistry::GetDescriptorSetCompilationDef(dsName);
 									  std::copy(std::cbegin(dsCompilationDef.GetMetaData().additionalMacros),

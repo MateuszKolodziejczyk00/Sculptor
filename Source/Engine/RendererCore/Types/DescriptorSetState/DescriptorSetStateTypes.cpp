@@ -4,7 +4,7 @@
 #include "Types/DescriptorSetLayout.h"
 #include "ResourcesManager.h"
 #include "Types/Sampler.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "Types/DescriptorHeap.h"
 #include "RHIBridge/RHIImpl.h"
 #include "RHIBridge/RHILimitsImpl.h"
@@ -55,14 +55,13 @@ const lib::SharedPtr<DescriptorSetLayout>& DescriptorSetStateLayoutsRegistry::Ge
 	return m_layouts.at(dsTypeID);
 }
 
-
 DescriptorSetStateLayoutsRegistry::DescriptorSetStateLayoutsRegistry()
 {
 }
 
 Bool DescriptorSetStateLayoutsRegistry::ShouldCreateLayout(DSStateTypeID dsTypeID, const RendererResourceName& name, const DescriptorSetStateLayoutDefinition& layoutDef) const
 {
-	const Bool isRayTracingSettingAllowingCreation = rdr::Renderer::IsRayTracingEnabled() || !IsRayTracingLayout(dsTypeID, name, layoutDef);
+	const Bool isRayTracingSettingAllowingCreation = rdr::GPUApi::IsRayTracingEnabled() || !IsRayTracingLayout(dsTypeID, name, layoutDef);
 
 	return isRayTracingSettingAllowingCreation;
 }
@@ -112,16 +111,16 @@ Bool DescriptorSetStateLayoutsRegistry::IsRayTracingLayout(DSStateTypeID dsTypeI
 // DescriptorsStackAllocator ====================================================================
 
 DescriptorStackAllocator::DescriptorStackAllocator(Uint32 stackSize)
-	: m_descriptorRange(Renderer::GetDescriptorHeap().GetRHI().AllocateRange(stackSize))
+	: m_descriptorRange(GPUApi::GetDescriptorHeap().GetRHI().AllocateRange(stackSize))
 {
 }
 
 DescriptorStackAllocator::~DescriptorStackAllocator()
 {
-	Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda(
+	GPUApi::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda(
 		[ds = m_descriptorRange]
 		{
-			rdr::DescriptorHeap& descriptorHeap = Renderer::GetDescriptorHeap();
+			rdr::DescriptorHeap& descriptorHeap = GPUApi::GetDescriptorHeap();
 			descriptorHeap.GetRHI().DeallocateRange(ds);
 		}));
 

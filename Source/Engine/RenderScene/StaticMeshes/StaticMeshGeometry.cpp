@@ -2,7 +2,7 @@
 #include "Transfers/UploadUtils.h"
 #include "RendererUtils.h"
 #include "ResourcesManager.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 
 namespace spt::rsc
 {
@@ -107,7 +107,7 @@ StaticMeshUnifiedData::StaticMeshUnifiedData()
 	m_submeshesBuffer		= createBufferImpl(RENDERER_RESOURCE_NAME("Static Meshes Submeshes Buffer"), 1024 * 8 * sizeof(SubmeshGPUData));
 	m_meshletsBuffer		= createBufferImpl(RENDERER_RESOURCE_NAME("Static Meshes Meshlets Buffer"), 1024 * 512 * sizeof(MeshletGPUData));
 
-	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
+	rdr::GPUApi::GetOnRendererCleanupDelegate().AddLambda([this]
 															{
 																DestroyResources();
 															});

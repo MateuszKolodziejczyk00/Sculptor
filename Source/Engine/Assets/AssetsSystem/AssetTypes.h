@@ -21,21 +21,21 @@ class AssetsSystem;
 class AssetInstance;
 
 
-using AssetType    = lib::HashedString;
-using AssetTypeKey = SizeType;
+using AssetType    = lib::RuntimeTypeInfo;
+using AssetTypeKey = lib::TypeID;
 
 
 template<typename TAssetType>
 static AssetType CreateAssetType()
 {
-	return AssetType(lib::TypeInfo<TAssetType>().name);
+	return lib::TypeInfo<TAssetType>();
 }
 
 
 template<typename TAssetType>
 static AssetTypeKey CreateAssetTypeKey()
 {
-	return CreateAssetType<TAssetType>().GetKey();
+	return CreateAssetType<TAssetType>().id;
 }
 
 
@@ -162,7 +162,7 @@ public:
 
 	const lib::HashedString& GetName() const { return m_name; }
 	const AssetType&         GetType() const { return m_data.type; }
-	AssetTypeKey             GetTypeKey() const { return m_data.type.GetKey(); }
+	AssetTypeKey             GetTypeKey() const { return m_data.type.id; }
 
 	// Usable only when "CompiledOnlyMode" is not in use
 	lib::Path GetRelativePath() const;

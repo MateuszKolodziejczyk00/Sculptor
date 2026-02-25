@@ -16,10 +16,11 @@ CompiledShader ShaderCompilerToolChain::CompileShader(const lib::String& shaderR
 	const Bool shouldUseShadersCache = ShaderCompilationEnvironment::ShouldUseCompiledShadersCache();
 
 	const Bool updateOnly = lib::HasAnyFlag(compilationFlags, EShaderCompilationFlags::UpdateOnly);
+	const Bool noCache = lib::HasAnyFlag(compilationFlags, EShaderCompilationFlags::NoCache);
 
 	CompiledShader outCompiledShader;
 
-	if (shouldUseShadersCache && !updateOnly)
+	if (shouldUseShadersCache && !updateOnly && !noCache)
 	{
 		outCompiledShader = CompiledShadersCache::TryGetCachedShader(shaderRelativePath, shaderStageDef, compilationSettings);
 	}

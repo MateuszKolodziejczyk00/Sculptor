@@ -1,5 +1,6 @@
 #include "ShadersManager.h"
 #include "Common/ShaderCompilerToolChain.h"
+#include "ShaderStructsRegistry.h"
 #include "Types/Shader.h"
 #include "RendererUtils.h"
 #include "RHIBridge/RHIImpl.h"
@@ -7,7 +8,7 @@
 #include "JobSystem/JobSystem.h"
 #include "Common/ShaderCompilationEnvironment.h"
 #include "Pipelines/PipelinesCache.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 
 
 namespace spt::rdr
@@ -33,6 +34,24 @@ static sc::ETargetEnvironment SelectCompilationTargetEnvironment()
 	}
 }
 
+
+static Bool VerifyShaderMetaData(const char* shaderName, const smd::ShaderMetaData& metaData)
+{
+#if WITH_SHADERS_HOT_RELOAD
+	for (const smd::ShaderStructVersion& shaderStructVersion : metaData.GetShaderStructsVersionHashes())
+	{
+		const ShaderStructMetaData* structMetaData = ShaderStructsRegistry::GetStructMetaData(shaderStructVersion.structName);
+		if (!structMetaData || structMetaData->GetVersionHash() != shaderStructVersion.versionHash)
+		{
+			SPT_LOG_ERROR(ShadersManager, "Shader '{}' uses shader struct '{}' with version hash {} which doesn't match current version hash {}. Shader will be recompiled.", shaderName, shaderStructVersion.structName.data(), shaderStructVersion.versionHash, structMetaData ? structMetaData->GetVersionHash() : 0u);
+			return false;
+		}
+	}
+#endif // WITH_SHADERS_HOT_RELOAD
+
+	return true;
+}
+
 } // priv
 
 void ShadersManager::Initialize()
@@ -45,11 +64,19 @@ void ShadersManager::Initialize()
 	compilationEnvironmentDef.targetEnvironment = priv::SelectCompilationTargetEnvironment(); // always override loaded target environment basing on current RHI
 
 	sc::ShaderCompilationEnvironment::Initialize(compilationEnvironmentDef);
+	m_compilationEnvironmentDef = sc::ShaderCompilationEnvironment::GetCompilationEnvironmentDef();
 }
 
 void ShadersManager::Uninitialize()
 {
 	ClearCachedShaders();
+}
+
+void ShadersManager::InitializeModule()
+{
+	SPT_CHECK(!!m_compilationEnvironmentDef);
+
+	sc::ShaderCompilationEnvironment::InitializeModule(m_compilationEnvironmentDef);
 }
 
 void ShadersManager::ClearCachedShaders()
@@ -148,9 +175,8 @@ void ShadersManager::HotReloadShaders()
 							if (hotReloadState->pendingCompilationsNum.fetch_sub(1) == 1)
 							{
 								SPT_LOG_INFO(ShadersManager, "Finished hot reloading shaders. Invalidating pipelines using {} shaders...", hotReloadState->invalidatedShadersNum.load());
-								Renderer::GetPipelinesCache().InvalidatePipelinesUsingShaders(lib::Span<const ShaderID>(hotReloadState->invalidatedShaderIDs.data(), hotReloadState->invalidatedShadersNum.load()));
-							}
-						},
+								GPUApi::GetPipelinesCache().InvalidatePipelinesUsingShaders(lib::Span<const ShaderID>(hotReloadState->invalidatedShaderIDs.data(), hotReloadState->invalidatedShadersNum.load()));
+							} },
 						js::JobDef().SetPriority(js::EJobPriority::Low));
 
 }
@@ -203,9 +229,16 @@ lib::SharedPtr<Shader> ShadersManager::CompileShader(const lib::String& shaderRe
 
 	sc::CompiledShader compilationResult = sc::ShaderCompilerToolChain::CompileShader(shaderRelativePath, shaderStageDef, compilationSettings, compilationFlags);
 
+	if (compilationResult.IsValid() && !priv::VerifyShaderMetaData(shaderRelativePath.c_str(), compilationResult.metaData))
+	{
+		const sc::EShaderCompilationFlags noCacheFlags = lib::Flags(compilationFlags, sc::EShaderCompilationFlags::NoCache);
+		compilationResult = sc::ShaderCompilerToolChain::CompileShader(shaderRelativePath, shaderStageDef, compilationSettings, noCacheFlags);
+	}
+
 	lib::SharedPtr<Shader> shader;
 	if (compilationResult.IsValid())
 	{
+		SPT_CHECK(priv::VerifyShaderMetaData(shaderRelativePath.c_str(), compilationResult.metaData));
 		const lib::HashedString shaderName = shaderRelativePath + "_" + shaderStageDef.entryPoint.ToString();
 		const rhi::ShaderModuleDefinition moduleDefinition(std::move(compilationResult.binary), compilationResult.stage, compilationResult.entryPoint);
 		shader = lib::MakeShared<Shader>(RENDERER_RESOURCE_NAME(shaderName), moduleDefinition, std::move(compilationResult.metaData));

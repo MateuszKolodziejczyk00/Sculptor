@@ -1,7 +1,7 @@
 #include "RenderGraphBuilder.h"
 #include "Allocators/StackAllocation/StackTrackingAllocator.h"
 #include "ResourcesManager.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/RenderContext.h"
 #include "Vulkan/VulkanTypes/RHIBuffer.h"
@@ -758,7 +758,7 @@ Bool RenderGraphBuilder::AssignShaderParamsToNodeInternal(RGNode& node, const li
 	const rdr::ConstantBufferAllocation cbAllocation = m_resourcesPool.GetConstantsAllocator().Allocate(static_cast<Uint32>(paramsData.size()));
 	std::memcpy(cbAllocation.buffer->GetRHI().MapPtr() + cbAllocation.offset, paramsData.data(), paramsData.size());
 
-	const lib::SharedPtr<rdr::DescriptorSetLayout>& layout = rdr::Renderer::GetShaderParamsDSLayout();
+	const lib::SharedPtr<rdr::DescriptorSetLayout>& layout = rdr::GPUApi::GetShaderParamsDSLayout();
 	const rhi::RHIDescriptorRange descriptors = m_dsAllocator.AllocateRange(static_cast<Uint32>(layout->GetRHI().GetDescriptorsDataSize()));
 	const Uint64 descriptorOffset = layout->GetRHI().GetDescriptorOffset(0u);
 	cbAllocation.buffer->GetRHI().CopySRVDescriptor(cbAllocation.offset, cbAllocation.size, descriptors.data.data() + descriptorOffset);
@@ -1138,7 +1138,7 @@ void RenderGraphBuilder::ExecuteGraph()
 
 	workload->BindEvent(m_onGraphExecutionFinished);
 
-	rdr::Renderer::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
+	rdr::GPUApi::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
 
 #if SPT_ENABLE_RENDER_GRAPH_CHECKPOINTS_VALIDATION
 	rdr::Renderer::WaitIdle(false);

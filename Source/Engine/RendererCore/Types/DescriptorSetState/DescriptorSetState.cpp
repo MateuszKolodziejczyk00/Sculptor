@@ -1,5 +1,5 @@
 #include "DescriptorSetState.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "ShaderMetaData.h"
 #include "Types/DescriptorSetLayout.h"
 #include "Types/DescriptorHeap.h"
@@ -150,7 +150,7 @@ rhi::RHIDescriptorRange DescriptorSetState::AllocateDescriptorRange() const
 	}
 	else
 	{
-		DescriptorHeap& descriptorHeap = Renderer::GetDescriptorHeap();
+		DescriptorHeap& descriptorHeap = GPUApi::GetDescriptorHeap();
 		return descriptorHeap.GetRHI().AllocateRange(m_layout->GetRHI().GetDescriptorsDataSize());
 	}
 }
@@ -161,10 +161,10 @@ void DescriptorSetState::SwapDescriptorRange(rhi::RHIDescriptorRange newDescript
 	{
 		if (!m_descriptorsAllocator)
 		{
-			Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda(
+			GPUApi::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda(
 				[ds = m_descriptorRange]
 				{
-					rdr::DescriptorHeap& descriptorHeap = Renderer::GetDescriptorHeap();
+					rdr::DescriptorHeap& descriptorHeap = GPUApi::GetDescriptorHeap();
 					descriptorHeap.GetRHI().DeallocateRange(ds);
 				}));
 		}

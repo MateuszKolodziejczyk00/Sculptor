@@ -1,6 +1,6 @@
 #include "SculptorEdApplication.h"
 #include "ProfilerCore.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "ResourcesManager.h"
 #include "Types/Semaphore.h"
 #include "Types/Texture.h"
@@ -44,7 +44,7 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 	prf::ProfilerCore::GetInstance().Initialize();
 
 	engn::EngineInitializationParams engineInitializationParams;
-	engn::Engine::Get().Initialize(engineInitializationParams);
+	engn::Engine::Initialize(engineInitializationParams);
 
 	as::AssetsSystemInitializer asInitializer;
 	asInitializer.contentPath = engn::Paths::GetContentPath();
@@ -65,7 +65,7 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 
 	prf::Profiler::Get().Initialize();
 
-	rdr::Renderer::Initialize();
+	rdr::GPUApi::Initialize();
 
 	rhi::RHIWindowInitializationInfo windowInitInfo;
 	windowInitInfo.framebufferSize = math::Vector2u(1920, 1080);
@@ -73,6 +73,13 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 	m_window = rdr::ResourcesManager::CreateRenderWindow("SculptorEd", windowInitInfo);
 
 	gfx::global::GlobalResourcesRegistry::Get().InitializeAll();
+
+	engn::EngineGlobals engineGlobals;
+	engineGlobals.profiler           = prf::ProfilerCore::GetInstance().GetProfiler();
+	engineGlobals.engineInstance     = &engn::Engine::Get();
+	engineGlobals.gpuApiData         = rdr::GPUApi::GetGPUApiData();
+	engineGlobals.hashedStringDBData = lib::HashedStringDB::GetDBData();
+	engn::Engine::Get().GetModulesManager().InitialzeGlobals(engineGlobals);
 }
 
 void SculptorEdApplication::OnRun()
@@ -122,7 +129,7 @@ void SculptorEdApplication::OnRun()
 
 		const lib::SharedRef<rdr::GPUWorkload> workload = recorder->FinishRecording();
 
-		rdr::Renderer::GetDeviceQueuesManager().Submit(workload);
+		rdr::GPUApi::GetDeviceQueuesManager().Submit(workload);
 		
 		workload->Wait();
 
@@ -186,7 +193,7 @@ void SculptorEdApplication::OnRun()
 
 void SculptorEdApplication::OnShutdown()
 {
-	rdr::Renderer::WaitIdle();
+	rdr::GPUApi::WaitIdle();
 
 	engn::Engine::Get().GetAssetsSystem().UnloadPermanentAssets();
 
@@ -202,7 +209,7 @@ void SculptorEdApplication::OnShutdown()
 
 	m_window.reset();
 	
-	rdr::Renderer::Uninitialize();
+	rdr::GPUApi::Uninitialize();
 
 	js::JobSystem::Shutdown();
 
@@ -246,7 +253,7 @@ js::Event SculptorEdApplication::ExecuteFrame(EditorFrameContext& frame)
 									 {
 										 EditorFrameContext* frame = static_cast<EditorFrameContext*>(userData);
 										 frame->FlushPreviousFrames();
-										 rdr::Renderer::WaitIdle(true);
+										 rdr::GPUApi::WaitIdle(true);
 									 },
 									 &frame);
 	}
@@ -427,13 +434,13 @@ void SculptorEdApplication::RenderFrame(EditorFrameContext& frame, rdr::Swapchai
 
 	const lib::SharedRef<rdr::Semaphore> uiFinishedSemaphore = workload->AddBinarySignalSemaphore(RENDERER_RESOURCE_NAME("UI Finished Semaphore"), rhi::EPipelineStage::ALL_COMMANDS);
 
-	rdr::Renderer::GetDeviceQueuesManager().Submit(workload, rdr::EGPUWorkloadSubmitFlags::CorePipe);
+	rdr::GPUApi::GetDeviceQueuesManager().Submit(workload, rdr::EGPUWorkloadSubmitFlags::CorePipe);
 
 	frame.SetFrameFinishedOnGPUWaitable(lib::MakeShared<rdr::GPUWaitableEvent>(workload));
 
 	if (canPresent)
 	{
-		rdr::Renderer::GetDeviceQueuesManager().Present(lib::ToSharedRef(m_window), swapchainTextureHandle, { uiFinishedSemaphore });
+		rdr::GPUApi::GetDeviceQueuesManager().Present(lib::ToSharedRef(m_window), swapchainTextureHandle, { uiFinishedSemaphore });
 	}
 }
 

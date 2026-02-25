@@ -1,5 +1,5 @@
 #include "EditorFrame.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "ImGui/SculptorImGui.h"
 
 
@@ -15,13 +15,13 @@ void EditorFrameContext::DoStagesTransition(engn::EFrameStage::Type prevStage, e
 
 	if (nextStage == engn::EFrameStage::RenderingBegin)
 	{
-		rdr::Renderer::GetDeviceQueuesManager().AdvanceGPUTimelineSection();
+		rdr::GPUApi::GetDeviceQueuesManager().AdvanceGPUTimelineSection();
 
-		rdr::Renderer::FlushCaches();
+		rdr::GPUApi::FlushCaches();
 
-		rdr::Renderer::ScheduleFlushDeferredReleases();
+		rdr::GPUApi::ScheduleFlushDeferredReleases();
 
-		rdr::Renderer::FlushReadyReleases();
+		rdr::GPUApi::FlushReadyReleases();
 	}
 
 	if (prevStage == engn::EFrameStage::UpdatingEnd)

@@ -5,7 +5,7 @@
 #include "View/ViewRenderingSpec.h"
 #include "Shadows/ShadowsRenderingTypes.h"
 #include "RenderGraphBuilder.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "RenderScene.h"
 #include "Shadows/ShadowMapsRenderSystem.h"
 #include "ResourcesManager.h"

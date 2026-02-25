@@ -5,26 +5,41 @@
 namespace spt::engn
 {
 
+Engine* g_engineInstance = nullptr;
+
 Engine& Engine::Get()
 {
-	static Engine instance;
-	return instance;
+	SPT_CHECK(g_engineInstance != nullptr);
+	return *g_engineInstance;
 }
 
 void Engine::Initialize(const EngineInitializationParams& initializationParams)
 {
 	SPT_PROFILER_FUNCTION();
 
+	lib::HashedStringDB::Initialize();
+
+	SPT_CHECK(g_engineInstance == nullptr);
+	g_engineInstance = new Engine();
+
 	platf::CmdLineArgs cmdLineArgs = platf::Platform::GetCommandLineArguments();
 	cmdLineArgs.insert(cmdLineArgs.end(), initializationParams.additionalArgs.cbegin(), initializationParams.additionalArgs.cend());
 
-	m_cmdLineArgs.Parse(cmdLineArgs);
+	g_engineInstance->m_cmdLineArgs.Parse(cmdLineArgs);
 
-	Paths::Initialize(m_cmdLineArgs);
+	Paths::Initialize(g_engineInstance->m_cmdLineArgs);
 
-	m_modulesManager.Initialize();
+	g_engineInstance->m_modulesManager.Initialize();
 
 	PluginsManager::GetInstance().PostEngineInit();
+}
+
+void Engine::InitializeModule(Engine& engineInstance)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(g_engineInstance == nullptr);
+	g_engineInstance = &engineInstance;
 }
 
 Real32 Engine::BeginFrame()

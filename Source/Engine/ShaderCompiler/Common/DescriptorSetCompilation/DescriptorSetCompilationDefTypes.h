@@ -14,7 +14,7 @@ struct DescriptorSetCompilationMetaData
 		: typeID(idxNone<SizeType>)
 	{ }
 
-	lib::DynamicArray<lib::HashedString> additionalMacros;
+	lib::DynamicArray<lib::String> additionalMacros;
 
 	lib::HashMap<Uint32, rhi::SamplerDefinition> bindingToImmutableSampler;
 

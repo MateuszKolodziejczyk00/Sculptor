@@ -16,7 +16,7 @@ AssetFactory& AssetFactory::GetInstance()
 
 AssetHandle AssetFactory::CreateAsset(AssetsSystem& owningSystem, const AssetInstanceDefinition& definition)
 {
-	const auto it = m_assetTypes.find(definition.type.GetKey());
+	const auto it = m_assetTypes.find(definition.type.id);
 	if (it == m_assetTypes.end())
 	{
 		return nullptr;
@@ -28,7 +28,7 @@ AssetHandle AssetFactory::CreateAsset(AssetsSystem& owningSystem, const AssetIns
 
 void AssetFactory::DeleteAsset(AssetType assetType, AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data)
 {
-	const auto it = m_assetTypes.find(assetType.GetKey());
+	const auto it = m_assetTypes.find(assetType.id);
 	if (it == m_assetTypes.end())
 	{
 		return;

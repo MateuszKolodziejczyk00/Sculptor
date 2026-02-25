@@ -99,6 +99,9 @@ enum class EShaderCompilationFlags
 	// Compiles shader only if source code was updated. If Cached shader is up to date compilation will return invalid shader
 	UpdateOnly		= BIT(0),
 
+	// Don't use compiled shaders cache at all (both for reading and writing)
+	NoCache			= BIT(1), 
+
 	Default			= None
 };
 

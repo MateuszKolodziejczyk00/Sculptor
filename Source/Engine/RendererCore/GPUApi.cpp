@@ -1,4 +1,4 @@
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "RendererSettings.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/Semaphore.h"
@@ -7,51 +7,50 @@
 #include "Shaders/ShadersManager.h"
 #include "Pipelines/PipelinesCache.h"
 #include "Samplers/SamplersCache.h"
-#include "GPUDiagnose/Diagnose.h"
-#include "Window/PlatformWindowImpl.h"
 #include "RHICore/RHIInitialization.h"
-#include "RHICore/RHISubmitTypes.h"
-#include "RHIBridge/RHISemaphoreImpl.h"
-#include "RHIBridge/RHICommandBufferImpl.h"
-#include "EngineFrame.h"
 #include "JobSystem.h"
 #include "ResourcesManager.h"
 #include "Types/DescriptorSetState/DescriptorManager.h"
+#include "Pipelines/PSOsLibrary.h"
 
 
 namespace spt::rdr
 {
 
-namespace priv
+struct GPUApiData
 {
+	ShadersManager shadersManager;
+	
+	PipelinesCache pipelinesCache;
+	
+	SamplersCache samplersCache;
+	
+	OnRendererCleanupDelegate cleanupDelegate;
+	
+	DeviceQueuesManager deviceQueuesManager;
+	
+	GPUReleaseQueue releasesQueue;
+	
+	lib::SharedPtr<DescriptorHeap> descriptorHeap;
+	
+	lib::UniquePtr<DescriptorManager> descriptorsManager;
+	
+	lib::SharedPtr<DescriptorSetLayout> shaderParamsDSLayout;
+	
+	lib::Lock releaseQueueLock;
+	lib::DynamicArray<GPUReleaseQueue::ReadyQueue> readyReleases;
 
-struct RendererData
-{
+	rhi::RHIModuleData* rhiModuleData = nullptr;
 
-ShadersManager shadersManager;
+	StructsRegistryData* shaderStructsRegistryData = nullptr;
 
-PipelinesCache pipelinesCache;
-
-SamplersCache samplersCache;
-
-OnRendererCleanupDelegate cleanupDelegate;
-
-DeviceQueuesManager deviceQueuesManager;
-
-GPUReleaseQueue releasesQueue;
-
-lib::SharedPtr<DescriptorHeap> descriptorHeap;
-
-lib::UniquePtr<DescriptorManager> descriptorsManager;
-
-lib::SharedPtr<DescriptorSetLayout> shaderParamsDSLayout;
-
-lib::Lock releaseQueueLock;
-lib::DynamicArray<GPUReleaseQueue::ReadyQueue> readyReleases;
-
+	GPUApiFactoryData* gpuApiFactoryData = nullptr;
 };
 
-static RendererData g_data;
+static GPUApiData* g_GPUApiData = nullptr;
+
+namespace utils
+{
 
 static void InitializeSamplerDescriptors()
 {
@@ -80,7 +79,7 @@ static void InitializeSamplerDescriptors()
 	for (Uint32 i = 0; i < SPT_ARRAY_SIZE(samplerStates); ++i)
 	{
 		const lib::SharedRef<rdr::Sampler> sampler = rdr::ResourcesManager::CreateSampler(samplerStates[i]);
-		priv::g_data.descriptorsManager->UploadSamplerDescriptor(i, *sampler);
+		g_GPUApiData->descriptorsManager->UploadSamplerDescriptor(i, *sampler);
 	}
 }
 
@@ -94,22 +93,30 @@ static void InitializeShaderParamsDSLayout()
 
 	rhi::DescriptorSetDefinition layoutDef;
 	layoutDef.bindings.emplace_back(bindingDef);
-	priv::g_data.shaderParamsDSLayout = rdr::ResourcesManager::CreateDescriptorSetLayout(RENDERER_RESOURCE_NAME("Shader Params Layout"), layoutDef);
+	g_GPUApiData->shaderParamsDSLayout = rdr::ResourcesManager::CreateDescriptorSetLayout(RENDERER_RESOURCE_NAME("Shader Params Layout"), layoutDef);
 }
 
-} // priv
+} // utils
 
-void Renderer::Initialize()
+void GPUApi::Initialize()
 {
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!g_GPUApiData);
+
+	g_GPUApiData = new GPUApiData();
+
+	g_GPUApiData->gpuApiFactoryData = ResourcesManager::Initialize();
+
 	platf::PlatformWindow::Initialize();
 
 	rhi::RHI::Initialize(rhi::RHIInitializationInfo{});
 
 	const Uint64 descriptorsBufferSize = 1024u * 1024u * 32u;
-	priv::g_data.descriptorHeap = ResourcesManager::CreateDescriptorHeap(RENDERER_RESOURCE_NAME("Renderer Descriptor Heap"),
+	g_GPUApiData->descriptorHeap = ResourcesManager::CreateDescriptorHeap(RENDERER_RESOURCE_NAME("GPUApi Descriptor Heap"),
 																		 rhi::DescriptorHeapDefinition{ .size = descriptorsBufferSize });
 
-	priv::g_data.descriptorsManager = std::make_unique<DescriptorManager>(*priv::g_data.descriptorHeap);
+	g_GPUApiData->descriptorsManager = std::make_unique<DescriptorManager>(*g_GPUApiData->descriptorHeap);
 
 	GetShadersManager().Initialize();
 
@@ -119,18 +126,21 @@ void Renderer::Initialize()
 
 	DescriptorSetStateLayoutsRegistry::Get().CreateRegisteredLayouts();
 
-	priv::InitializeShaderParamsDSLayout();
+	utils::InitializeShaderParamsDSLayout();
 
-	priv::InitializeSamplerDescriptors();
+	utils::InitializeSamplerDescriptors();
+
+	g_GPUApiData->rhiModuleData = rhi::RHI::GetModuleData();
+	g_GPUApiData->shaderStructsRegistryData = ShaderStructsRegistry::GetRegistryData();
 }
 
-void Renderer::Uninitialize()
+void GPUApi::Uninitialize()
 {
 	SPT_PROFILER_FUNCTION();
 
 	WaitIdle();
 
-	priv::g_data.shaderParamsDSLayout.reset();
+	g_GPUApiData->shaderParamsDSLayout.reset();
 
 	DescriptorSetStateLayoutsRegistry::Get().ReleaseRegisteredLayouts();
 
@@ -148,16 +158,45 @@ void Renderer::Uninitialize()
 
 	ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags::Immediate);
 
-	priv::g_data.descriptorsManager.reset();
+	g_GPUApiData->descriptorsManager.reset();
 
-	priv::g_data.descriptorHeap.reset();
+	g_GPUApiData->descriptorHeap.reset();
 
 	ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags::Immediate);
 
 	rhi::RHI::Uninitialize();
 }
 
-void Renderer::FlushCaches()
+GPUApiData* GPUApi::GetGPUApiData()
+{
+	SPT_CHECK(!!g_GPUApiData);
+
+	return g_GPUApiData;
+}
+
+void GPUApi::InitializeModule(GPUApiData& data)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!g_GPUApiData);
+
+	g_GPUApiData = &data;
+
+	ResourcesManager::InitializeModule(g_GPUApiData->gpuApiFactoryData);
+
+	rhi::RHI::InitializeModule(g_GPUApiData->rhiModuleData);
+
+	g_GPUApiData->shadersManager.InitializeModule();
+
+	ShaderStructsRegistry::InitializeModule(g_GPUApiData->shaderStructsRegistryData);
+
+	PSOPrecacheParams precacheParams{};
+	PSOsLibrary::GetInstance().PrecachePSOs(precacheParams);
+
+	g_GPUApiData->shadersManager.HotReloadShaders();
+}
+
+void GPUApi::FlushCaches()
 {
 	SPT_PROFILER_FUNCTION();
 	
@@ -168,54 +207,54 @@ void Renderer::FlushCaches()
 	GetPipelinesCache().FlushCreatedPipelines();
 }
 
-ShadersManager& Renderer::GetShadersManager()
+ShadersManager& GPUApi::GetShadersManager()
 {
-	return priv::g_data.shadersManager;
+	return g_GPUApiData->shadersManager;
 }
 
-PipelinesCache& Renderer::GetPipelinesCache()
+PipelinesCache& GPUApi::GetPipelinesCache()
 {
-	return priv::g_data.pipelinesCache;
+	return g_GPUApiData->pipelinesCache;
 }
 
-SamplersCache& Renderer::GetSamplersCache()
+SamplersCache& GPUApi::GetSamplersCache()
 {
-	return priv::g_data.samplersCache;
+	return g_GPUApiData->samplersCache;
 }
 
-DeviceQueuesManager& Renderer::GetDeviceQueuesManager()
+DeviceQueuesManager& GPUApi::GetDeviceQueuesManager()
 {
-	return priv::g_data.deviceQueuesManager;
+	return g_GPUApiData->deviceQueuesManager;
 }
 
-DescriptorHeap& Renderer::GetDescriptorHeap()
+DescriptorHeap& GPUApi::GetDescriptorHeap()
 {
-	return *priv::g_data.descriptorHeap;
+	return *g_GPUApiData->descriptorHeap;
 }
 
-DescriptorManager& Renderer::GetDescriptorManager()
+DescriptorManager& GPUApi::GetDescriptorManager()
 {
-	SPT_CHECK(!!priv::g_data.descriptorsManager);
+	SPT_CHECK(!!g_GPUApiData->descriptorsManager);
 
-	return *priv::g_data.descriptorsManager;
+	return *g_GPUApiData->descriptorsManager;
 }
 
-const lib::SharedPtr<DescriptorSetLayout>& Renderer::GetShaderParamsDSLayout()
+const lib::SharedPtr<DescriptorSetLayout>& GPUApi::GetShaderParamsDSLayout()
 {
-	return priv::g_data.shaderParamsDSLayout;
+	return g_GPUApiData->shaderParamsDSLayout;
 }
 
-void Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry entry)
+void GPUApi::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry entry)
 {
-	priv::g_data.releasesQueue.Enqueue(std::move(entry));
+	g_GPUApiData->releasesQueue.Enqueue(std::move(entry));
 }
 
-void Renderer::ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags flags /*= EDeferredReleasesFlushFlags::Default*/)
+void GPUApi::ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags flags /*= EDeferredReleasesFlushFlags::Default*/)
 {
-	auto flushLambda = [queue = std::move(priv::g_data.releasesQueue.Flush())]() mutable
+	auto flushLambda = [queue = std::move(g_GPUApiData->releasesQueue.Flush())]() mutable
 	{
-		lib::LockGuard lock(priv::g_data.releaseQueueLock);
-		priv::g_data.readyReleases.emplace_back(std::move(queue));
+		lib::LockGuard lock(g_GPUApiData->releaseQueueLock);
+		g_GPUApiData->readyReleases.emplace_back(std::move(queue));
 	};
 
 	if (lib::HasAnyFlag(flags, EDeferredReleasesFlushFlags::Immediate))
@@ -236,15 +275,15 @@ void Renderer::ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags flags /
 	}
 }
 
-void Renderer::FlushReadyReleases()
+void GPUApi::FlushReadyReleases()
 {
 	SPT_PROFILER_FUNCTION();
 
 	lib::DynamicArray<GPUReleaseQueue::ReadyQueue> readyReleases;
 
 	{
-		lib::LockGuard lock(priv::g_data.releaseQueueLock);
-		std::swap(readyReleases, priv::g_data.readyReleases);
+		lib::LockGuard lock(g_GPUApiData->releaseQueueLock);
+		std::swap(readyReleases, g_GPUApiData->readyReleases);
 	}
 
 	for (GPUReleaseQueue::ReadyQueue& queue : readyReleases)
@@ -253,12 +292,12 @@ void Renderer::FlushReadyReleases()
 	}
 }
 
-void Renderer::FlushPendingEvents()
+void GPUApi::FlushPendingEvents()
 {
 	GetDeviceQueuesManager().FlushSubmittedWorkloads();
 }
 
-void Renderer::WaitIdle(Bool releaseRuntimeResources /*= true*/)
+void GPUApi::WaitIdle(Bool releaseRuntimeResources /*= true*/)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -272,18 +311,18 @@ void Renderer::WaitIdle(Bool releaseRuntimeResources /*= true*/)
 	}
 }
 
-OnRendererCleanupDelegate& Renderer::GetOnRendererCleanupDelegate()
+OnRendererCleanupDelegate& GPUApi::GetOnRendererCleanupDelegate()
 {
-	return priv::g_data.cleanupDelegate;
+	return g_GPUApiData->cleanupDelegate;
 }
 
-Bool Renderer::IsRayTracingEnabled()
+Bool GPUApi::IsRayTracingEnabled()
 {
 	return rhi::RHI::IsRayTracingEnabled();
 }
 
 #if WITH_SHADERS_HOT_RELOAD
-void Renderer::HotReloadShaders()
+void GPUApi::HotReloadShaders()
 {
 	SPT_PROFILER_FUNCTION();
 

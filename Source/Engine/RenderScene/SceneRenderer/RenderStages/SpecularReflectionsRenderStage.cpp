@@ -658,7 +658,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 {
 	SPT_PROFILER_FUNCTION();
 
-	if (rdr::Renderer::IsRayTracingEnabled())
+	if (rdr::GPUApi::IsRayTracingEnabled())
 	{
 		SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "RT Reflections");
 

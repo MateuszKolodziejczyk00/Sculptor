@@ -1,7 +1,7 @@
 #include "CommandRecorder.h"
 #include "RenderingDefinition.h"
 #include "ResourcesManager.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "Pipelines/PipelinesCache.h"
 #include "Types/CommandBuffer.h"
 #include "Types/UIBackend.h"
@@ -23,7 +23,7 @@ CommandRecorder::CommandRecorder(const rdr::RendererResourceName& name, const li
 	m_commandsBuffer = ResourcesManager::CreateCommandBuffer(name, context, cmdBufferDef);
 	m_commandsBuffer->StartRecording(commandBufferUsage);
 
-	BindDescriptorHeap(Renderer::GetDescriptorHeap());
+	BindDescriptorHeap(GPUApi::GetDescriptorHeap());
 
 	m_canReuseCommandBuffer = !lib::HasAnyFlag(commandBufferUsage.beginFlags, rhi::ECommandBufferBeginFlags::OneTimeSubmit);
 }
@@ -148,7 +148,7 @@ void CommandRecorder::DrawMeshTasksIndirectCount(const lib::SharedRef<Buffer>& d
 
 void CommandRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)
 {
-	const lib::SharedPtr<GraphicsPipeline> pipeline = Renderer::GetPipelinesCache().GetGraphicsPipeline(pipelineID);
+	const lib::SharedPtr<GraphicsPipeline> pipeline = GPUApi::GetPipelinesCache().GetGraphicsPipeline(pipelineID);
 	SPT_CHECK(!!pipeline);
 
 	m_pipelineState.BindGraphicsPipeline(lib::Ref(pipeline));
@@ -163,7 +163,7 @@ void CommandRecorder::UnbindGraphicsPipeline()
 
 void CommandRecorder::BindComputePipeline(PipelineStateID pipelineID)
 {
-	const lib::SharedPtr<ComputePipeline> pipeline = Renderer::GetPipelinesCache().GetComputePipeline(pipelineID);
+	const lib::SharedPtr<ComputePipeline> pipeline = GPUApi::GetPipelinesCache().GetComputePipeline(pipelineID);
 	SPT_CHECK(!!pipeline);
 
 	m_pipelineState.BindComputePipeline(lib::Ref(pipeline));
@@ -173,7 +173,7 @@ void CommandRecorder::BindComputePipeline(PipelineStateID pipelineID)
 
 void CommandRecorder::BindComputePipeline(const ShaderID& shader)
 {
-	const PipelineStateID pipelineID = Renderer::GetPipelinesCache().GetOrCreateComputePipeline(RENDERER_RESOURCE_NAME(shader.GetName()), shader);
+	const PipelineStateID pipelineID = GPUApi::GetPipelinesCache().GetOrCreateComputePipeline(RENDERER_RESOURCE_NAME(shader.GetName()), shader);
 	BindComputePipeline(pipelineID);
 }
 
@@ -184,7 +184,7 @@ void CommandRecorder::UnbindComputePipeline()
 
 void CommandRecorder::BindRayTracingPipeline(PipelineStateID pipelineID)
 {
-	const lib::SharedPtr<RayTracingPipeline> pipeline = Renderer::GetPipelinesCache().GetRayTracingPipeline(pipelineID);
+	const lib::SharedPtr<RayTracingPipeline> pipeline = GPUApi::GetPipelinesCache().GetRayTracingPipeline(pipelineID);
 	SPT_CHECK(!!pipeline);
 
 	m_pipelineState.BindRayTracingPipeline(lib::Ref(pipeline));

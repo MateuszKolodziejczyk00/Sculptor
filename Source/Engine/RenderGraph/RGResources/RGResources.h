@@ -13,7 +13,7 @@
 #include "RHICore/RHIShaderTypes.h"
 #include "Utility/Templates/TypeStorage.h"
 #include "RGResourceTypes.h"
-#include "Renderer.h"
+#include "GPUApi.h"
 #include "Types/DescriptorSetState/DescriptorManager.h"
 
 
@@ -392,7 +392,7 @@ public:
 
 	~RGTextureView()
 	{
-		rdr::DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+		rdr::DescriptorManager& descriptorManager = rdr::GPUApi::GetDescriptorManager();
 		if (m_textureViewDescriptors.uavDescriptor.IsValid())
 		{
 			descriptorManager.FreeResourceDescriptor(std::move(m_textureViewDescriptors.uavDescriptor));
@@ -545,7 +545,7 @@ private:
 	{
 		if (!IsExternal())
 		{
-			rdr::DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+			rdr::DescriptorManager& descriptorManager = rdr::GPUApi::GetDescriptorManager();
 
 			m_textureViewDescriptors.srvDescriptor = descriptorManager.AllocateResourceDescriptor();
 			descriptorManager.SetCustomDescriptorInfo(m_textureViewDescriptors.srvDescriptor, this);
@@ -780,7 +780,7 @@ public:
 
 		if (requiresDescriptorsAllocation && lib::HasAnyFlag(buffer->GetUsageFlags(), rhi::EBufferUsage::Storage))
 		{
-			rdr::DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+			rdr::DescriptorManager& descriptorManager = rdr::GPUApi::GetDescriptorManager();
 			m_descriptorsAllocation.uavDescriptor = descriptorManager.AllocateResourceDescriptor();
 			descriptorManager.SetCustomDescriptorInfo(m_descriptorsAllocation.uavDescriptor, this);
 
@@ -808,7 +808,7 @@ public:
 		{
 			if (m_descriptorsAllocation.uavDescriptor.IsValid())
 			{
-				rdr::DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+				rdr::DescriptorManager& descriptorManager = rdr::GPUApi::GetDescriptorManager();
 				descriptorManager.FreeResourceDescriptor(std::move(m_descriptorsAllocation.uavDescriptor));
 			}
 		}

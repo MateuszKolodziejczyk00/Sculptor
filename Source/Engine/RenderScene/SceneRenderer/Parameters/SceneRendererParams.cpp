@@ -21,11 +21,11 @@ struct ParametersContainer
 	{
 		Node() = default;
 
-		explicit Node(const lib::HashedString& name)
+		explicit Node(const lib::String& name)
 			: categoryName(name)
 		{ }
 
-		lib::HashedString categoryName;
+		lib::String categoryName;
 		lib::DynamicArray<Node> children;
 		lib::DynamicArray<RendererParamBase*> params;
 	};
@@ -43,7 +43,7 @@ struct ParametersContainer
 		}
 	}
 
-	void AddParam(const lib::DynamicArray<lib::HashedString>& category, RendererParamBase& param)
+	void AddParam(const lib::DynamicArray<lib::String>& category, RendererParamBase& param)
 	{
 		Node& node = GetNode(category);
 
@@ -52,7 +52,7 @@ struct ParametersContainer
 
 private:
 
-	Node& GetNode(const lib::DynamicArray<lib::HashedString>& category)
+	Node& GetNode(const lib::DynamicArray<lib::String>& category)
 	{
 		SPT_CHECK(!category.empty());
 		
@@ -81,7 +81,7 @@ private:
 	void DrawNodeUI(const Node& node) const
 	{
 		ImGui::Indent(constants::indentationValue);
-		if (ImGui::CollapsingHeader(node.categoryName.GetData()))
+		if (ImGui::CollapsingHeader(node.categoryName.data()))
 		{
 
 			for (const Node& child : node.children)
@@ -111,7 +111,7 @@ static ParametersContainer& GetContainer()
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RendererParamsRegistry ========================================================================
 
-void RendererParamsRegistry::RegisterParameter(const lib::DynamicArray<lib::HashedString>& category, class RendererParamBase& param)
+void RendererParamsRegistry::RegisterParameter(const lib::DynamicArray<lib::String>& category, class RendererParamBase& param)
 {
 	priv::ParametersContainer& container = priv::GetContainer();
 	container.AddParam(category , param);
@@ -128,55 +128,55 @@ void RendererParamsRegistry::DrawParametersUI()
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RendererFloatParameter ========================================================================
 
-RendererFloatParameter::RendererFloatParameter(const lib::HashedString& name, const lib::DynamicArray<lib::HashedString>& category, Real32 defaultValue, Real32 inMin, Real32 inMax)
+RendererFloatParameter::RendererFloatParameter(const lib::String& name, const lib::DynamicArray<lib::String>& category, Real32 defaultValue, Real32 inMin, Real32 inMax)
 	: Super(name, category, defaultValue)
 	, min(inMin)
 	, max(inMax)
 { }
 
-void RendererFloatParameter::DrawUI(const lib::HashedString& name, Real32& value)
+void RendererFloatParameter::DrawUI(const lib::String& name, Real32& value)
 {
-	ImGui::SliderFloat(name.GetData(), &value, min, max, "%.5f");
+	ImGui::SliderFloat(name.data(), &value, min, max, "%.5f");
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RendererFloat3Parameter =========================================================================
 
-RendererFloat3Parameter::RendererFloat3Parameter(const lib::HashedString& name, const lib::DynamicArray<lib::HashedString>& category, math::Vector3f defaultValue, Real32 inMin, Real32 inMax)
+RendererFloat3Parameter::RendererFloat3Parameter(const lib::String& name, const lib::DynamicArray<lib::String>& category, math::Vector3f defaultValue, Real32 inMin, Real32 inMax)
 	: Super(name, category, defaultValue)
 	, min(inMin)
 	, max(inMax)
 { }
 
-void RendererFloat3Parameter::DrawUI(const lib::HashedString& name, math::Vector3f& value)
+void RendererFloat3Parameter::DrawUI(const lib::String& name, math::Vector3f& value)
 {
-	ImGui::SliderFloat3(name.GetData(), value.data(), min, max);
+	ImGui::SliderFloat3(name.data(), value.data(), min, max);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RendererBoolParameter =========================================================================
 
-RendererBoolParameter::RendererBoolParameter(const lib::HashedString& name, const lib::DynamicArray<lib::HashedString>& category, Bool defaultValue)
+RendererBoolParameter::RendererBoolParameter(const lib::String& name, const lib::DynamicArray<lib::String>& category, Bool defaultValue)
 	: Super(name, category, defaultValue)
 { }
 
-void RendererBoolParameter::DrawUI(const lib::HashedString& name, Bool& value)
+void RendererBoolParameter::DrawUI(const lib::String& name, Bool& value)
 {
-	ImGui::Checkbox(name.GetData(), &value);
+	ImGui::Checkbox(name.data(), &value);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RendererIntParameter ==========================================================================
 
-RendererIntParameter::RendererIntParameter(const lib::HashedString& name, const lib::DynamicArray<lib::HashedString>& category, Int32 defaultValue, Int32 inMin, Int32 inMax)
+RendererIntParameter::RendererIntParameter(const lib::String& name, const lib::DynamicArray<lib::String>& category, Int32 defaultValue, Int32 inMin, Int32 inMax)
 	: Super(name, category, defaultValue)
 	, min(inMin)
 	, max(inMax)
 { }
 
-void RendererIntParameter::DrawUI(const lib::HashedString& name, Int32& value)
+void RendererIntParameter::DrawUI(const lib::String& name, Int32& value)
 {
-	ImGui::SliderInt(name.GetData(), &value, min, max);
+	ImGui::SliderInt(name.data(), &value, min, max);
 }
 
 } // spt::rsc

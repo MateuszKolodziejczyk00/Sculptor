@@ -170,7 +170,7 @@ void MeshAsset::OnInitialize()
 	uploadRequest->dd = meshDD;
 	queue.RequestUpload(std::move(uploadRequest));
 
-	if (rdr::Renderer::IsRayTracingEnabled())
+	if (rdr::GPUApi::IsRayTracingEnabled())
 	{
 		lib::UniquePtr<MeshBLASBuildRequest> blasBuildRequest = lib::MakeUnique<MeshBLASBuildRequest>();
 		blasBuildRequest->renderMesh = m_renderMesh;
