@@ -1,10 +1,12 @@
 #pragma once
 
 #include "EngineCoreMacros.h"
+#include "Plugins/PluginsManager.h"
 #include "SculptorCoreTypes.h"
 #include "Utils/CommandLineArguments.h"
 #include "Delegates/MulticastDelegate.h"
 #include "EngineTimer.h"
+#include "Plugins/PluginsManager.h"
 #include "AssetsSystem.h"
 #include "Modules/Module.h"
 
@@ -43,6 +45,8 @@ public:
 
 	ModulesManager& GetModulesManager() { return m_modulesManager; }
 
+	PluginsManager& GetPluginsManager() { return m_pluginsManager; }
+
 private:
 
 	Engine() = default;
@@ -50,6 +54,8 @@ private:
 	EngineInitializationParams m_initParams;
 
 	CommandLineArguments m_cmdLineArgs;
+
+	PluginsManager m_pluginsManager;
 
 	EngineTimer m_timer;
 	OnBeginFrameDelegate m_onBeginFrameDelegate;

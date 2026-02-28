@@ -232,7 +232,7 @@ void EngineFramesManager::BeginFrame(lib::SharedPtr<FrameContext> context)
 
 	context->BeginFrame(def, std::move(m_lastFrame), m_perFrameMemArenas[frameIdx % tickableFramesNum]);
 
-	PluginsManager::GetInstance().BeginFrame(*context);
+	GetEngine().GetPluginsManager().BeginFrame(*context);
 
 	m_lastFrame = std::move(context);
 }

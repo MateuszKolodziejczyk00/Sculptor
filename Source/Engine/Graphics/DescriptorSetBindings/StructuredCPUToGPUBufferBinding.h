@@ -5,7 +5,7 @@
 #include "Types/Buffer.h"
 #include "ShaderStructs/ShaderStructsTypes.h"
 #include "DependenciesBuilder.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TransfersUtils.h"
 #include "ResourcesManager.h"
 
 

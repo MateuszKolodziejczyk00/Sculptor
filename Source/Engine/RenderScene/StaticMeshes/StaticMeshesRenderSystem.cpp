@@ -4,7 +4,7 @@
 #include "RenderScene.h"
 #include "StaticMeshes/RenderMesh.h"
 #include "StaticMeshesRenderSystem.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TransfersUtils.h"
 
 
 namespace spt::rsc
@@ -150,7 +150,7 @@ StaticMeshSMBatchDefinition SMBatchesBuilder::FinalizeBatchDefinition(const Batc
 	const rhi::BufferDefinition batchBufferDef(batchDataSize, rhi::EBufferUsage::Storage);
 	const lib::SharedRef<rdr::Buffer> batchBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("StaticMeshesBatch"), batchBufferDef, rhi::EMemoryUsage::CPUToGPU);
 
-	gfx::UploadDataToBuffer(batchBuffer, 0, reinterpret_cast<const Byte*>(batchBuildData.batchElements.data()), batchDataSize);
+	rdr::UploadDataToBuffer(batchBuffer, 0, reinterpret_cast<const Byte*>(batchBuildData.batchElements.data()), batchDataSize);
 
 	const lib::MTHandle<StaticMeshBatchDS> batchDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshBatchDS>(RENDERER_RESOURCE_NAME("StaticMeshesBatchDS"));
 	batchDS->u_batchElements = batchBuffer->GetFullView();

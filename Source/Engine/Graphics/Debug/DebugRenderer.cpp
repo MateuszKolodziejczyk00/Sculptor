@@ -4,7 +4,7 @@
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "RGDescriptorSetState.h"
 #include "Pipelines/PSOsLibraryTypes.h"
-#include "Transfers/UploadsManager.h"
+#include "Utils/TransfersManager.h"
 
 
 namespace spt::gfx
@@ -182,7 +182,7 @@ DebugRenderer::DebugRenderer(lib::HashedString name)
 	const lib::DynamicArray<math::Vector3f> sphereVertices = debug_utils::GenerateDebugSphereVertices(8u, 12u);
 	const rhi::BufferDefinition sphereVerticesBufferDef(sizeof(math::Vector3f) * sphereVertices.size(), lib::Flags(rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::Storage));
 	m_sphereVerticesBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME_FORMATTED("Debug Sphere Vertices"), sphereVerticesBufferDef, rhi::EMemoryUsage::GPUOnly);
-	gfx::UploadsManager::Get().EnqueueUpload(lib::Ref(m_sphereVerticesBuffer), 0u, reinterpret_cast<const Byte*>(sphereVertices.data()), sizeof(math::Vector3f) * sphereVertices.size());
+	rdr::GPUApi::GetTransfersManager().EnqueueUpload(lib::Ref(m_sphereVerticesBuffer), 0u, reinterpret_cast<const Byte*>(sphereVertices.data()), sizeof(math::Vector3f) * sphereVertices.size());
 
 	m_linesData   = debug_utils::CreateDebugGeometryData<DebugLineDefinition>(2u, 4096u);
 	m_markersData = debug_utils::CreateDebugGeometryData<DebugMarkerDefinition>(6u, 4096u);

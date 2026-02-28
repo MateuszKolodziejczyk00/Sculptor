@@ -1,6 +1,6 @@
 #include "RenderScene.h"
 #include "ResourcesManager.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TransfersUtils.h"
 #include "JobSystem/JobSystem.h"
 #include "EngineFrame.h"
 
@@ -110,7 +110,7 @@ RenderSceneEntityHandle RenderScene::CreateEntity(const RenderInstanceData& inst
 	entityGPUData.uniformScale	= transformComp.GetUniformScale();
 
 	const Byte* entityDataPtr = reinterpret_cast<const Byte*>(&entityGPUData);
-	gfx::UploadDataToBuffer(m_renderEntitiesBuffer, entityGPUDataSuballocation.GetOffset(), entityDataPtr, sizeof(RenderEntityGPUData));
+	rdr::UploadDataToBuffer(m_renderEntitiesBuffer, entityGPUDataSuballocation.GetOffset(), entityDataPtr, sizeof(RenderEntityGPUData));
 
 	return entity;
 }

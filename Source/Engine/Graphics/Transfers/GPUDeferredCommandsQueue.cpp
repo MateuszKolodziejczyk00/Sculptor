@@ -7,8 +7,8 @@
 #include "Types/Texture.h"
 #include "GPUApi.h"
 #include "DeviceQueues/DeviceQueuesManager.h"
-#include "Transfers/UploadUtils.h"
 #include "GPUDeferredCommandsQueueTypes.h"
+#include "Utils/TransfersUtils.h"
 
 
 namespace spt::gfx
@@ -84,7 +84,7 @@ void GPUDeferredCommandsQueue::ExecuteCommands()
 				request->EnqueueUploads();
 			}
 
-			gfx::FlushPendingUploads();
+			rdr::FlushPendingUploads();
 
 			ExecutePostUploadBarriers(renderContext);
 

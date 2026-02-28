@@ -1,9 +1,10 @@
-#include "UploadUtils.h"
+#include "TransfersUtils.h"
+#include "GPUApi.h"
 #include "ResourcesManager.h"
 #include "Types/Buffer.h"
-#include "Transfers/UploadsManager.h"
+#include "TransfersManager.h"
 
-namespace spt::gfx
+namespace spt::rdr
 {
 
 void FillBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, Uint64 range, Uint32 data)
@@ -22,7 +23,7 @@ void FillBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffs
 	}
 	else
 	{
-		UploadsManager::Get().EnqueueFill(destBuffer, bufferOffset, range, data);
+		GPUApi::GetTransfersManager().EnqueueFill(destBuffer, bufferOffset, range, data);
 	}
 }
 
@@ -42,7 +43,7 @@ void UploadDataToBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bu
 	{
 		SPT_CHECK_MSG(lib::HasAnyFlag(rhiBuffer.GetUsage(), rhi::EBufferUsage::TransferDst), "Buffer memory cannot be mapped on host and cannot be transfer destination!");
 
-		UploadsManager::Get().EnqueueUpload(destBuffer, bufferOffset, sourceData, dataSize);
+		GPUApi::GetTransfersManager().EnqueueUpload(destBuffer, bufferOffset, sourceData, dataSize);
 	}
 }
 
@@ -58,19 +59,18 @@ void UploadDataToBufferOnCPU(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint
 	std::memcpy(mappedBuffer.GetPtr() + bufferOffset, sourceData, dataSize);
 }
 
-void GRAPHICS_API UploadDataToTexture(const Byte* data, Uint64 dataSize, const lib::SharedRef<rdr::Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset /*= math::Vector3u::Zero()*/, Uint32 mipLevel /*= 0*/, Uint32 arrayLayer /*= 0*/)
+void UploadDataToTexture(const Byte* data, Uint64 dataSize, const lib::SharedRef<rdr::Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset /*= math::Vector3u::Zero()*/, Uint32 mipLevel /*= 0*/, Uint32 arrayLayer /*= 0*/)
 {
 	SPT_PROFILER_FUNCTION();
 	
-	UploadsManager::Get().EnqueueUploadToTexture(data, dataSize, texture, aspect, copyExtent, copyOffset, mipLevel, arrayLayer);
+	GPUApi::GetTransfersManager().EnqueueUploadToTexture(data, dataSize, texture, aspect, copyExtent, copyOffset, mipLevel, arrayLayer);
 }
 
 void FlushPendingUploads()
 {
 	SPT_PROFILER_FUNCTION();
 
-	UploadsManager& uploadsManager = UploadsManager::Get();
-	uploadsManager.FlushPendingUploads();
+	GPUApi::GetTransfersManager().FlushPendingUploads();
 }
 
-} // spt::gfx
+} // spt::rdr

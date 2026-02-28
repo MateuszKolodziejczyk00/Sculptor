@@ -7,7 +7,7 @@
 #include "ShaderStructs/ShaderStructs.h"
 #include "RenderGraphBuilder.h"
 #include "View/ViewRenderingSpec.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TransfersUtils.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "SceneRenderer/Utils/GaussianBlurRenderer.h"
 #include "SceneRenderer/RenderStages/Utils/BilateralGridRenderer.h"
@@ -148,7 +148,7 @@ static rg::RGBufferViewHandle ComputeAdaptedLuminance(rg::RenderGraphBuilder& gr
 		rhi::BufferDefinition adaptedLuminanceDef(adaptedLuminanceBufferSize, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst));
 		viewLuminanceData.adaptedLuminance = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("AdaptedLuminanceBuffer"), adaptedLuminanceDef, rhi::EMemoryUsage::GPUOnly);
 		constexpr Real32 defaultAadptedLuminance = 0.18f;
-		gfx::FillBuffer(lib::Ref(viewLuminanceData.adaptedLuminance), 0, sizeof(Real32), *reinterpret_cast<const Uint32*>(&defaultAadptedLuminance));
+		rdr::FillBuffer(lib::Ref(viewLuminanceData.adaptedLuminance), 0, sizeof(Real32), *reinterpret_cast<const Uint32*>(&defaultAadptedLuminance));
 	}
 
 	const rg::RGBufferViewHandle adaptedLuminanceBuffer = graphBuilder.AcquireExternalBufferView(viewLuminanceData.adaptedLuminance->GetFullView());

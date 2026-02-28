@@ -1,5 +1,5 @@
 #include "GeometryDrawer.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TransfersUtils.h"
 
 
 namespace spt::rsc
@@ -99,7 +99,7 @@ GeometryBatch GeometryBatchesBuilder::FinalizeBatchDefinition(const GeometryBatc
 	batchElementsBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
 	lib::SharedRef<rdr::Buffer> batchElementsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("GeometryBatchElements"), batchElementsBufferDef, rhi::EMemoryUsage::GPUOnly);
 
-	gfx::UploadDataToBuffer(batchElementsBuffer, 0, reinterpret_cast<const Byte*>(batchBuildData.batchElements.data()), batchElementsBufferDef.size);
+	rdr::UploadDataToBuffer(batchElementsBuffer, 0, reinterpret_cast<const Byte*>(batchBuildData.batchElements.data()), batchElementsBufferDef.size);
 
 	lib::MTHandle<GeometryBatchDS> batchDS = rdr::ResourcesManager::CreateDescriptorSetState<GeometryBatchDS>(RENDERER_RESOURCE_NAME("GeometryBatchDS"));
 	batchDS->u_batchElements = batchElementsBuffer->GetFullView();

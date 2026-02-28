@@ -1,5 +1,5 @@
 #include "GeometryManager.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TransfersUtils.h"
 #include "ResourcesManager.h"
 #include "GPUApi.h"
 
@@ -19,7 +19,7 @@ rhi::RHIVirtualAllocation GeometryManager::CreateGeometry(const Byte* geometryDa
 
 	const rhi::RHIVirtualAllocation geometryDataSuballocation = CreateGeometry(dataSize);
 
-	gfx::UploadDataToBuffer(lib::Ref(m_geometryBuffer), geometryDataSuballocation.GetOffset(), geometryData, dataSize);
+	rdr::UploadDataToBuffer(lib::Ref(m_geometryBuffer), geometryDataSuballocation.GetOffset(), geometryData, dataSize);
 
 	return geometryDataSuballocation;
 }

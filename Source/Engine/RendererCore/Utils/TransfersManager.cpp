@@ -1,27 +1,45 @@
-#include "UploadsManager.h"
+#include "TransfersManager.h"
 #include "RHICore/RHIAllocationTypes.h"
 #include "GPUApi.h"
 #include "Types/Buffer.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/RenderContext.h"
-#include "TransfersManager.h"
 #include "ResourcesManager.h"
 #include "MathUtils.h"
-#include "UploadUtils.h"
+#include "TransfersUtils.h"
 #include "RHIBridge/RHILimitsImpl.h"
 #include "Types/Texture.h"
 
 
-namespace spt::gfx
+namespace spt::rdr
 {
 
-UploadsManager& UploadsManager::Get()
+TransfersManager::TransfersManager()
+	: m_currentStagingBufferOffset(idxNone<Uint64>)
+	, m_lastUsedStagingBufferIdx(0)
 {
-	static UploadsManager instance;
-	return instance;
+	rhi::BufferDefinition stagingBuffersDef;
+	stagingBuffersDef.size = stagingBufferSize;
+	stagingBuffersDef.usage = rhi::EBufferUsage::TransferSrc;
+
+	rhi::RHIAllocationInfo allocationInfo;
+	allocationInfo.memoryUsage     = rhi::EMemoryUsage::CPUToGPU;
+	allocationInfo.allocationFlags = rhi::EAllocationFlags::CreateMapped;
+
+	for (Uint32 idx = 0; idx < 4; ++idx)
+	{
+		StagingBufferInfo& stagingBufferInfo = m_stagingBuffers.emplace_back();
+		stagingBufferInfo.buffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("StagingBuffer"), stagingBuffersDef, allocationInfo);
+	}
+
+	// This is singleton object so we can capture this safely
+	rdr::GPUApi::GetOnRendererCleanupDelegate().AddLambda([this]
+															{
+																m_stagingBuffers.clear();
+															});
 }
 
-void UploadsManager::EnqueueUpload(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, const Byte* sourceData, Uint64 dataSize)
+void TransfersManager::EnqueueUpload(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, const Byte* sourceData, Uint64 dataSize)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -43,7 +61,7 @@ void UploadsManager::EnqueueUpload(const lib::SharedRef<rdr::Buffer>& destBuffer
 	}
 }
 
-void UploadsManager::EnqueueFill(const lib::SharedRef<rdr::Buffer>& buffer, Uint64 bufferOffset, Uint64 range, Uint32 data)
+void TransfersManager::EnqueueFill(const lib::SharedRef<rdr::Buffer>& buffer, Uint64 bufferOffset, Uint64 range, Uint32 data)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -61,7 +79,7 @@ void UploadsManager::EnqueueFill(const lib::SharedRef<rdr::Buffer>& buffer, Uint
 	command->dataSize = range;
 }
 
-void UploadsManager::EnqueueUploadToTexture(const Byte* data, Uint64 dataSize, const lib::SharedRef<rdr::Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset /*= math::Vector3u::Zero()*/, Uint32 mipLevel /*= 0*/, Uint32 arrayLayer /*= 0*/)
+void TransfersManager::EnqueueUploadToTexture(const Byte* data, Uint64 dataSize, const lib::SharedRef<rdr::Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset /*= math::Vector3u::Zero()*/, Uint32 mipLevel /*= 0*/, Uint32 arrayLayer /*= 0*/)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -112,12 +130,12 @@ void UploadsManager::EnqueueUploadToTexture(const Byte* data, Uint64 dataSize, c
 	SPT_CHECK(srcDataOffset   == dataSize);
 }
 
-Bool UploadsManager::HasPendingUploads() const
+Bool TransfersManager::HasPendingUploads() const
 {
 	return !m_bufferCommands.empty() || !m_copyToTextureCommands.empty();
 }
 
-void UploadsManager::FlushPendingUploads()
+void TransfersManager::FlushPendingUploads()
 {
 	if (HasPendingUploads())
 	{
@@ -127,32 +145,7 @@ void UploadsManager::FlushPendingUploads()
 	}
 }
 
-UploadsManager::UploadsManager()
-	: m_currentStagingBufferOffset(idxNone<Uint64>)
-	, m_lastUsedStagingBufferIdx(0)
-{
-	rhi::BufferDefinition stagingBuffersDef;
-	stagingBuffersDef.size = stagingBufferSize;
-	stagingBuffersDef.usage = rhi::EBufferUsage::TransferSrc;
-
-	rhi::RHIAllocationInfo allocationInfo;
-	allocationInfo.memoryUsage     = rhi::EMemoryUsage::CPUToGPU;
-	allocationInfo.allocationFlags = rhi::EAllocationFlags::CreateMapped;
-
-	for (Uint32 idx = 0; idx < 4; ++idx)
-	{
-		StagingBufferInfo& stagingBufferInfo = m_stagingBuffers.emplace_back();
-		stagingBufferInfo.buffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("StagingBuffer"), stagingBuffersDef, allocationInfo);
-	}
-
-	// This is singleton object so we can capture this safely
-	rdr::GPUApi::GetOnRendererCleanupDelegate().AddLambda([this]
-															{
-																m_stagingBuffers.clear();
-															});
-}
-
-void UploadsManager::EnqueueUploadImpl(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, const Byte* sourceData, Uint64 dataSize)
+void TransfersManager::EnqueueUploadImpl(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, const Byte* sourceData, Uint64 dataSize)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -204,7 +197,7 @@ void UploadsManager::EnqueueUploadImpl(const lib::SharedRef<rdr::Buffer>& destBu
 	--m_copiesInProgressNum;
 }
 
-void UploadsManager::EnqueueUploadToTextureImpl(const Byte* data, Uint64 dataSize, const lib::SharedRef<rdr::Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset, Uint32 mipLevel, Uint32 arrayLayer)
+void TransfersManager::EnqueueUploadToTextureImpl(const Byte* data, Uint64 dataSize, const lib::SharedRef<rdr::Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset, Uint32 mipLevel, Uint32 arrayLayer)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -257,7 +250,7 @@ void UploadsManager::EnqueueUploadToTextureImpl(const Byte* data, Uint64 dataSiz
 	--m_copiesInProgressNum;
 }
 
-void UploadsManager::FlushPendingUploads_AssumesLocked()
+void TransfersManager::FlushPendingUploads_AssumesLocked()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -293,11 +286,13 @@ void UploadsManager::FlushPendingUploads_AssumesLocked()
 
 	FlushAsyncCopiesToStagingBuffer();
 
-	const Uint64 transferFinishedSingalValue = TransfersManager::SubmitTransfers(context, std::move(recorder));
+	const lib::SharedRef<rdr::GPUWorkload> workload = recorder->FinishRecording();
+	const rdr::SemaptoreSignalValues signalValues = rdr::GPUApi::GetDeviceQueuesManager().Submit(workload, rdr::EGPUWorkloadSubmitFlags::MemoryTransfers);
+	SPT_CHECK(signalValues.memoryTransfers.has_value());
 
 	for (SizeType stagingBufferIdx : m_stagingBuffersPendingFlush)
 	{
-		m_stagingBuffers[stagingBufferIdx].lastTransferSignalValue = transferFinishedSingalValue;
+		m_stagingBuffers[stagingBufferIdx].lastTransferSignalValue = signalValues.memoryTransfers.value();
 	}
 
 	m_bufferCommands.clear();
@@ -305,7 +300,7 @@ void UploadsManager::FlushPendingUploads_AssumesLocked()
 	m_stagingBuffersPendingFlush.clear();
 }
 
-void UploadsManager::AcquireAvailableStagingBuffer_AssumesLocked()
+void TransfersManager::AcquireAvailableStagingBuffer_AssumesLocked()
 {
 	if (m_stagingBuffersPendingFlush.size() == m_stagingBuffers.size())
 	{
@@ -322,7 +317,7 @@ void UploadsManager::AcquireAvailableStagingBuffer_AssumesLocked()
 	const StagingBufferInfo& bufferInfo = m_stagingBuffers[m_lastUsedStagingBufferIdx];
 	if (bufferInfo.lastTransferSignalValue > 0)
 	{
-		TransfersManager::WaitForTransfersFinished(bufferInfo.lastTransferSignalValue);
+		rdr::GPUApi::GetDeviceQueuesManager().WaitForMemoryTransfers(bufferInfo.lastTransferSignalValue);
 	}
 	
 	m_currentStagingBufferOffset = 0;
@@ -330,7 +325,7 @@ void UploadsManager::AcquireAvailableStagingBuffer_AssumesLocked()
 	m_stagingBuffersPendingFlush.emplace_back(m_lastUsedStagingBufferIdx);
 }
 
-void UploadsManager::FlushAsyncCopiesToStagingBuffer()
+void TransfersManager::FlushAsyncCopiesToStagingBuffer()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -340,4 +335,4 @@ void UploadsManager::FlushAsyncCopiesToStagingBuffer()
 	}
 }
 
-} // spt::gfx
+} // spt::rdr

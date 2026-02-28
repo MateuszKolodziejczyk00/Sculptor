@@ -1,10 +1,10 @@
 #include "TextureLoader.h"
 #include "Types/Texture.h"
 #include "ResourcesManager.h"
-#include "Transfers/UploadsManager.h"
 #include "RenderGraphBuilder.h"
 #include "FileSystem/File.h"
 #include "RHICore/SculptorDXGIFormats.h"
+#include "Utils/TransfersManager.h"
 
 #pragma warning(push)
 #pragma warning(disable: 4244)
@@ -391,7 +391,7 @@ lib::SharedPtr<rdr::Texture> TextureLoader::LoadTexture(lib::StringView path, co
 
 				const lib::Span<const Byte> data = dataView.GetSurfaceData(mipLevelIdx, arrayLayerIdx);
 
-				UploadsManager::Get().EnqueueUploadToTexture(data.data(), data.size(), lib::Ref(loadedTexture), aspect, mipResolution,  math::Vector3u::Zero(), mipLevelIdx, arrayLayerIdx);
+				rdr::GPUApi::GetTransfersManager().EnqueueUploadToTexture(data.data(), data.size(), lib::Ref(loadedTexture), aspect, mipResolution,  math::Vector3u::Zero(), mipLevelIdx, arrayLayerIdx);
 			}
 		}
 	};

@@ -1,6 +1,6 @@
 #include "MaterialsUnifiedData.h"
 #include "ResourcesManager.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TransfersUtils.h"
 #include "GPUApi.h"
 #include "MaterialTypes.h"
 
@@ -36,7 +36,7 @@ rhi::RHIVirtualAllocation MaterialsUnifiedData::CreateMaterialDataSuballocation(
 	const rhi::RHIVirtualAllocation suballocation = CreateMaterialDataSuballocation(dataSize);
 	SPT_CHECK(suballocation.IsValid());
 
-	gfx::UploadDataToBuffer(lib::Ref(m_materialsUnifiedBuffer), suballocation.GetOffset(), materialData, dataSize);
+	rdr::UploadDataToBuffer(lib::Ref(m_materialsUnifiedBuffer), suballocation.GetOffset(), materialData, dataSize);
 	
 	return suballocation;
 }

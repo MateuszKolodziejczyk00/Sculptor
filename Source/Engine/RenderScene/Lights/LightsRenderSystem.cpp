@@ -6,7 +6,7 @@
 #include "View/RenderView.h"
 #include "ResourcesManager.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TextureUtils.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
@@ -20,7 +20,7 @@
 #include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 #include "Bindless/BindlessTypes.h"
 #include "Pipelines/PSOsLibraryTypes.h"
-#include "Transfers/UploadsManager.h"
+#include "Utils/TransfersUtils.h"
 
 namespace spt::rsc
 {
@@ -381,12 +381,12 @@ static LightsInfo CreateLocalLightsData(rg::RenderGraphBuilder& graphBuilder, co
 
 		const rhi::BufferDefinition lightsBufferDefinition(localLights.size() * sizeof(rdr::HLSLStorage<LocalLightGPUData>), rhi::EBufferUsage::Storage);
 		const lib::SharedRef<rdr::Buffer> localLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("SceneLocalLights"), lightsBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
-		gfx::UploadDataToBuffer(localLightsBuffer, 0, reinterpret_cast<const Byte*>(hlslLocalLights.data()), hlslLocalLights.size() * sizeof(rdr::HLSLStorage<LocalLightGPUData>));
+		rdr::UploadDataToBuffer(localLightsBuffer, 0, reinterpret_cast<const Byte*>(hlslLocalLights.data()), hlslLocalLights.size() * sizeof(rdr::HLSLStorage<LocalLightGPUData>));
 		localLightsRGBuffer = graphBuilder.AcquireExternalBufferView(localLightsBuffer->GetFullView());
 
 		const rhi::BufferDefinition lightZRangesBufferDefinition(localLightsZRanges.size() * sizeof(math::Vector2f), rhi::EBufferUsage::Storage);
 		const lib::SharedRef<rdr::Buffer> lightZRangesBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("SceneLightZRanges"), lightZRangesBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
-		gfx::UploadDataToBuffer(lightZRangesBuffer, 0, reinterpret_cast<const Byte*>(localLightsZRanges.data()), localLightsZRanges.size() * sizeof(math::Vector2f));
+		rdr::UploadDataToBuffer(lightZRangesBuffer, 0, reinterpret_cast<const Byte*>(localLightsZRanges.data()), localLightsZRanges.size() * sizeof(math::Vector2f));
 		lightZRangesRGBuffer = graphBuilder.AcquireExternalBufferView(lightZRangesBuffer->GetFullView());
 	}
 
@@ -434,7 +434,7 @@ static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, 
 		const Uint64 directionalLightsBufferSize = directionalLightsData.size() * sizeof(rdr::HLSLStorage<DirectionalLightGPUData>);
 		const rhi::BufferDefinition directionalLightsBufferDefinition(directionalLightsBufferSize, rhi::EBufferUsage::Storage);
 		const lib::SharedRef<rdr::Buffer> directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("View Directional Lights Buffer"), directionalLightsBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
-		gfx::UploadDataToBuffer(directionalLightsBuffer, 0, reinterpret_cast<const Byte*>(directionalLightsData.data()), directionalLightsBufferSize);
+		rdr::UploadDataToBuffer(directionalLightsBuffer, 0, reinterpret_cast<const Byte*>(directionalLightsData.data()), directionalLightsBufferSize);
 
 		shadingInputDS->u_directionalLights = directionalLightsBuffer->GetFullView();
 	}
@@ -615,8 +615,8 @@ LightsRenderSystem::LightsRenderSystem(RenderScene& owningScene)
 	rhi::BufferDefinition pointLightProxyVerticesBufferDef(pointLightProxyVertices.size() * sizeof(math::Vector3f), lib::Flags(rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::Storage));
 	m_pointLightProxyVertices = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Point Light Proxy Vertices"), pointLightProxyVerticesBufferDef, rhi::EMemoryUsage::GPUOnly);
 
-	gfx::UploadsManager::Get().EnqueueUpload(lib::Ref(m_spotLightProxyVertices), 0u, reinterpret_cast<const Byte*>(spotLightProxyVertices.data()), spotLightProxyVertices.size() * sizeof(math::Vector3f));
-	gfx::UploadsManager::Get().EnqueueUpload(lib::Ref(m_pointLightProxyVertices), 0u, reinterpret_cast<const Byte*>(pointLightProxyVertices.data()), pointLightProxyVertices.size() * sizeof(math::Vector3f));
+	rdr::UploadDataToBuffer(lib::Ref(m_spotLightProxyVertices), 0u, reinterpret_cast<const Byte*>(spotLightProxyVertices.data()), spotLightProxyVertices.size() * sizeof(math::Vector3f));
+	rdr::UploadDataToBuffer(lib::Ref(m_pointLightProxyVertices), 0u, reinterpret_cast<const Byte*>(pointLightProxyVertices.data()), pointLightProxyVertices.size() * sizeof(math::Vector3f));
 }
 
 void LightsRenderSystem::CollectRenderViews(const RenderScene& renderScene, const RenderView& mainRenderView, INOUT RenderViewsCollector& viewsCollector)

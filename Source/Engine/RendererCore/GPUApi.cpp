@@ -12,6 +12,7 @@
 #include "ResourcesManager.h"
 #include "Types/DescriptorSetState/DescriptorManager.h"
 #include "Pipelines/PSOsLibrary.h"
+#include "Utils/TransfersManager.h"
 
 
 namespace spt::rdr
@@ -24,6 +25,8 @@ struct GPUApiData
 	PipelinesCache pipelinesCache;
 	
 	SamplersCache samplersCache;
+
+	TransfersManager* transfersManager;
 	
 	OnRendererCleanupDelegate cleanupDelegate;
 	
@@ -129,6 +132,8 @@ void GPUApi::Initialize()
 	utils::InitializeShaderParamsDSLayout();
 
 	utils::InitializeSamplerDescriptors();
+
+	g_GPUApiData->transfersManager = new TransfersManager();
 
 	g_GPUApiData->rhiModuleData = rhi::RHI::GetModuleData();
 	g_GPUApiData->shaderStructsRegistryData = ShaderStructsRegistry::GetRegistryData();
@@ -237,6 +242,11 @@ DescriptorManager& GPUApi::GetDescriptorManager()
 	SPT_CHECK(!!g_GPUApiData->descriptorsManager);
 
 	return *g_GPUApiData->descriptorsManager;
+}
+
+TransfersManager& GPUApi::GetTransfersManager()
+{
+	return *g_GPUApiData->transfersManager;
 }
 
 const lib::SharedPtr<DescriptorSetLayout>& GPUApi::GetShaderParamsDSLayout()

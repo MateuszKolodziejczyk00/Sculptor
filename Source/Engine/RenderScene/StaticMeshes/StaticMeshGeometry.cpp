@@ -1,5 +1,5 @@
 #include "StaticMeshGeometry.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TransfersUtils.h"
 #include "RendererUtils.h"
 #include "ResourcesManager.h"
 #include "GPUApi.h"
@@ -73,8 +73,8 @@ StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicAr
 		hlslSubmeshes[submeshIdx] = submeshes[submeshIdx];
 	}
 
-	gfx::UploadDataToBuffer(lib::Ref(m_meshletsBuffer),		meshletsSuballocation.GetOffset(),		reinterpret_cast<const Byte*>(hlslMeshlets.data()),		meshletsDataSize);
-	gfx::UploadDataToBuffer(lib::Ref(m_submeshesBuffer),	submeshesSuballocation.GetOffset(),		reinterpret_cast<const Byte*>(hlslSubmeshes.data()),	submeshesDataSize);
+	rdr::UploadDataToBuffer(lib::Ref(m_meshletsBuffer),		meshletsSuballocation.GetOffset(),		reinterpret_cast<const Byte*>(hlslMeshlets.data()),		meshletsDataSize);
+	rdr::UploadDataToBuffer(lib::Ref(m_submeshesBuffer),	submeshesSuballocation.GetOffset(),		reinterpret_cast<const Byte*>(hlslSubmeshes.data()),	submeshesDataSize);
 
 	StaticMeshGeometryData geometryData;
 	geometryData.submeshesSuballocation		= submeshesSuballocation;

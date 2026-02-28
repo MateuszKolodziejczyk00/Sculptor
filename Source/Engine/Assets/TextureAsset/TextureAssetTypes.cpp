@@ -1,4 +1,5 @@
 #include "TextureAssetTypes.h"
+#include "Utils/TransfersUtils.h"
 
 
 namespace spt::as
@@ -24,7 +25,7 @@ void TextureUploadRequest::EnqueueUploads()
 		const CompiledMip& mip = compiledTexture->mips[mipLevelIdx];
 
 		SPT_CHECK(mip.offset + mip.size <= textureData.size());
-		gfx::UploadDataToTexture(textureData.data() + mip.offset, mip.size, texture, textureAspect, texture->GetRHI().GetMipResolution(mipLevelIdx), math::Vector3u::Zero(), mipLevelIdx, 0u);
+		rdr::UploadDataToTexture(textureData.data() + mip.offset, mip.size, texture, textureAspect, texture->GetRHI().GetMipResolution(mipLevelIdx), math::Vector3u::Zero(), mipLevelIdx, 0u);
 	}
 }
 

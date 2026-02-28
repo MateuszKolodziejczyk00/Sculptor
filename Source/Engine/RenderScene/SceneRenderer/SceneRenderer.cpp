@@ -2,7 +2,7 @@
 #include "RenderScene.h"
 #include "SceneRenderSystem.h"
 #include "View/RenderView.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TransfersUtils.h"
 #include "RenderStages/PreRenderingRenderStage.h"
 #include "RenderStages/GlobalIlluminationRenderStage.h"
 #include "RenderStages/ForwardOpaqueRenderStage.h"
@@ -140,7 +140,7 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	}
 
 	// Flush all writes that happened during render graph recording
-	gfx::FlushPendingUploads();
+	rdr::FlushPendingUploads();
 	
 	ViewRenderingSpec& mainViewSpec = *renderViewsSpecs[mainViewIdx];
 

@@ -1,6 +1,7 @@
 #include "MeshAsset.h"
 #include "AssetsSystem.h"
 #include "DDC.h"
+#include "Engine.h"
 #include "Loaders/GLTFMeshBuilder.h"
 #include "Loaders/GLTF.h"
 #include "ResourcePath.h"
@@ -163,7 +164,7 @@ void MeshAsset::OnInitialize()
 
 	lib::MTHandle<DDCLoadedData<MeshDerivedDataHeader>> meshDD =  LoadDerivedData<MeshDerivedDataHeader>(*this);
 	
-	gfx::GPUDeferredCommandsQueue& queue = gfx::GPUDeferredCommandsQueue::Get();
+	gfx::GPUDeferredCommandsQueue& queue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
 
 	lib::UniquePtr<MeshUploadRequest> uploadRequest = lib::MakeUnique<MeshUploadRequest>();
 	uploadRequest->renderMesh = m_renderMesh;

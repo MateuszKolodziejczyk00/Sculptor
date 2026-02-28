@@ -87,7 +87,7 @@ ShaderDebugUtils::ShaderDebugUtils()
 	m_dynamicDebugRenderer = std::make_unique<DebugRenderer>("Dynamic");
 	m_persistentDebugRenderer = std::make_unique<DebugRenderer>("Persistent");
 
-	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
+	rdr::GPUApi::GetOnRendererCleanupDelegate().AddLambda([this]
 															{
 																CleanupResources();
 															});

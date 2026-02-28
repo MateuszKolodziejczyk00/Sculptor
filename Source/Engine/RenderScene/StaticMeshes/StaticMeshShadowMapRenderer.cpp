@@ -4,7 +4,7 @@
 #include "Shadows/ShadowMapsRenderSystem.h"
 #include "RenderGraphBuilder.h"
 #include "StaticMeshes/StaticMeshesRenderSystem.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TextureUtils.h"
 #include "SceneRenderer/RenderStages/ShadowMapRenderStage.h"
 #include "Shadows/ShadowsRenderingTypes.h"
 #include "Common/ShaderCompilationInput.h"

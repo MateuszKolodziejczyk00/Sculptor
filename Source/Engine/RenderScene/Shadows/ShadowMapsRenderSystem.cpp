@@ -7,7 +7,7 @@
 #include "Lights/LightTypes.h"
 #include "ShadowsRenderingTypes.h"
 #include "ConfigUtils.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TransfersUtils.h"
 #include "EngineFrame.h"
 
 namespace spt::rsc
@@ -93,7 +93,7 @@ void ShadowMapsRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
 {
 	Super::UpdateGPUSceneData(sceneData);
 
-	gfx::UploadDataToBuffer(lib::Ref(m_shadowMapViewsBuffer), 0, reinterpret_cast<const Byte*>(m_shadowMapViewsData.data()), m_shadowMapViewsData.size() * sizeof(ShadowMapViewData));
+	rdr::UploadDataToBuffer(lib::Ref(m_shadowMapViewsBuffer), 0, reinterpret_cast<const Byte*>(m_shadowMapViewsData.data()), m_shadowMapViewsData.size() * sizeof(ShadowMapViewData));
 
 	ShadowsSettings shadowsSettings;
 	shadowsSettings.highQualitySMEndIdx      = m_highQualityShadowMapLightEndIdx * 6;
@@ -309,7 +309,7 @@ void ShadowMapsRenderSystem::CreateShadowMaps()
 		hlslSM.texture = smView;
 		shadowMapTexturesHLSL.emplace_back(hlslSM);
 	}
-	gfx::UploadDataToBuffer(lib::Ref(m_shadowMapTexturesBuffer), 0, reinterpret_cast<const Byte*>(shadowMapTexturesHLSL.data()), shadowMapTexturesHLSL.size() * sizeof(rdr::HLSLStorage<ShadowMapTexture>));
+	rdr::UploadDataToBuffer(lib::Ref(m_shadowMapTexturesBuffer), 0, reinterpret_cast<const Byte*>(shadowMapTexturesHLSL.data()), shadowMapTexturesHLSL.size() * sizeof(rdr::HLSLStorage<ShadowMapTexture>));
 }
 
 void ShadowMapsRenderSystem::CreateShadowMapsRenderViews()

@@ -1,9 +1,9 @@
 #include "TextureAsset.h"
+#include "Engine.h"
 #include "ResourcesManager.h"
 #include "RendererResource.h"
 #include "Types/Texture.h"
 #include "RHIBridge/RHIDependencyImpl.h"
-#include "Transfers/UploadUtils.h"
 #include "TextureCompiler.h"
 #include "AssetsSystem.h"
 #include "Transfers/GPUDeferredCommandsQueue.h"
@@ -70,7 +70,7 @@ void TextureAsset::CreateTextureInstance()
 	m_textureInstance = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME(GetName()), textureDefinition, rhi::EMemoryUsage::GPUOnly);
 	SPT_CHECK_MSG(!!m_textureInstance, "Failed to create texture instance");
 
-	gfx::GPUDeferredCommandsQueue& queue = gfx::GPUDeferredCommandsQueue::Get();
+	gfx::GPUDeferredCommandsQueue& queue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
 
 	lib::UniquePtr<TextureUploadRequest> uploadRequest = lib::MakeUnique<TextureUploadRequest>();
 	uploadRequest->dstTextureView  = m_textureInstance;

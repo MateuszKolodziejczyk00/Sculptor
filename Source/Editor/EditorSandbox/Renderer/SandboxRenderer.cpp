@@ -8,7 +8,7 @@
 #include "RenderGraphBuilder.h"
 #include "Engine.h"
 #include "Paths.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TransfersUtils.h"
 #include "StaticMeshes/StaticMeshesRenderSystem.h"
 #include "Lights/LightsRenderSystem.h"
 #include "Shadows/ShadowMapsRenderSystem.h"
@@ -411,7 +411,7 @@ void SandboxRenderer::InitializeRenderScene()
 	m_renderView->SetLocation(math::Vector3f(0.f, 0.f, 1.f));
 
 	m_renderView->AddRenderStages(rsc::ERenderStage::DeferredRendererStages);
-	if (rdr::Renderer::IsRayTracingEnabled())
+	if (rdr::GPUApi::IsRayTracingEnabled())
 	{
 		m_renderView->AddRenderStages(rsc::ERenderStage::RayTracingRenderStages);
 	}
@@ -431,7 +431,7 @@ void SandboxRenderer::InitializeRenderScene()
 	}
 
 	m_renderScene->AddRenderSystem<rsc::ShadowMapsRenderSystem>(m_renderView);
-	if (rdr::Renderer::IsRayTracingEnabled())
+	if (rdr::GPUApi::IsRayTracingEnabled())
 	{
 		m_renderScene->AddRenderSystem<rsc::RayTracingRenderSystem>();
 		
@@ -513,7 +513,8 @@ void SandboxRenderer::InitializeRenderScene()
 							.rotation = math::Vector3f(90.f, 0.f, 0.f)
 						});
 
-	gfx::GPUDeferredCommandsQueue::Get().ForceFlushCommands();
+	gfx::GPUDeferredCommandsQueue& commandsQueue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
+	commandsQueue.ForceFlushCommands();
 
 	const Bool dlssInitResult = dlssInitJob.Await();
 

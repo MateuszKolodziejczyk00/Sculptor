@@ -57,7 +57,8 @@ TEST_F(IESProfileAssetsSystemTests, CreateIESProfile)
 
 	EXPECT_TRUE(result);
 
-	gfx::GPUDeferredCommandsQueue::Get().ForceFlushCommands();
+	gfx::GPUDeferredCommandsQueue& queue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
+	queue.ForceFlushCommands();
 
 	result.GetValue().Reset();
 
@@ -68,7 +69,7 @@ TEST_F(IESProfileAssetsSystemTests, CreateIESProfile)
 	EXPECT_TRUE(asset.IsValid());
 	asset.Reset();
 
-	gfx::GPUDeferredCommandsQueue::Get().ForceFlushCommands();
+	queue.ForceFlushCommands();
 
 	const EDeleteResult deleteResult = m_assetsSystem.DeleteAsset(assetPath);
 

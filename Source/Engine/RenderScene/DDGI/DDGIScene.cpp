@@ -1,6 +1,6 @@
 #include "DDGIScene.h"
 #include "DDGIVolume.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TransfersUtils.h"
 #include "ResourcesManager.h"
 #include "View/SceneView.h"
 #include "RenderScene.h"

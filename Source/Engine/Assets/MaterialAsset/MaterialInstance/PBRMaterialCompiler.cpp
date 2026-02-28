@@ -3,13 +3,12 @@
 #include "MathUtils.h"
 #include "Pipelines/PSOsLibraryTypes.h"
 #include "RenderGraphResourcesPool.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TransfersUtils.h"
 #include "Types/Texture.h"
 #include "ResourcesManager.h"
 #include "RenderGraphBuilder.h"
 #include "GPUApi.h"
 #include "Loaders/TextureLoader.h"
-#include "Transfers/UploadsManager.h"
 #include "PBRMaterialInstance.h"
 #include "Bindless/BindlessTypes.h"
 #include "Loaders/GLTF.h"
@@ -531,7 +530,7 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 	compilationInput.doubleSided          = definition.doubleSided;
 	compilationInput.customOpacity        = definition.customOpacity;
 
-	gfx::FlushPendingUploads();
+	rdr::FlushPendingUploads();
 
 	return CompilePBRMaterialImpl(asset, compilationInput);
 }
@@ -631,7 +630,7 @@ lib::SharedPtr<rdr::TextureView> LoadTexture(const rsc::GLTFModel& model, int te
 	const tinygltf::Image& image = model.images[imageIdx];
 	const lib::SharedRef<rdr::Texture> texture = CreateGLTFImage(image, isSRGB);
 
-	gfx::UploadDataToTexture(reinterpret_cast<const Byte*>(image.image.data()), image.image.size(), texture, rhi::ETextureAspect::Color, texture->GetResolution());
+	rdr::UploadDataToTexture(reinterpret_cast<const Byte*>(image.image.data()), image.image.size(), texture, rhi::ETextureAspect::Color, texture->GetResolution());
 
 	return texture->CreateView(RENDERER_RESOURCE_NAME("GLTF Texture View"));
 }
@@ -672,7 +671,7 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 	}
 
 	const Bool isMasked      = srcMat->alphaMode == "MASK";
-	const Bool isTransparent = srcMat->alphaMode == "BLEND";
+	const Bool isTransparent = srcMat->alphaMode == "BLEND" || srcMat->name.find("Glass") != lib::String::npos || srcMat->name.find("glass") != lib::String::npos;
 
 	PBRMaterialCompilationInput compilationInput;
 	compilationInput.baseColorTex         = LoadTexture(*gltfModel, srcMatPBR.baseColorTexture.index, false);
@@ -687,7 +686,7 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 	compilationInput.customOpacity        = isMasked;
 	compilationInput.transparent          = isTransparent;
 
-	gfx::FlushPendingUploads();
+	rdr::FlushPendingUploads();
 
 	return CompilePBRMaterialImpl(asset, compilationInput);
 }

@@ -10,7 +10,7 @@
 #include "MaterialsSubsystem.h"
 #include "StaticMeshes/RenderMesh.h"
 #include "StaticMeshes/StaticMeshRenderingCommon.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TransfersUtils.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 
 
@@ -82,7 +82,7 @@ static EmissivesSampler CreateEmissivesSampler(rg::RenderGraphBuilder& graphBuil
 		bufferDef.size = sizeof(EmissiveElement) * emissiveElements.size();
 		bufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
 		lib::SharedRef<rdr::Buffer> emissivesBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Stochastic DI Emissives"), bufferDef, rhi::EMemoryUsage::GPUOnly);
-		gfx::UploadDataToBuffer(emissivesBuffer, 0u, reinterpret_cast<const Byte*>(emissiveElements.data()), emissiveElements.size() * sizeof(rdr::HLSLStorage<EmissiveElement>));
+		rdr::UploadDataToBuffer(emissivesBuffer, 0u, reinterpret_cast<const Byte*>(emissiveElements.data()), emissiveElements.size() * sizeof(rdr::HLSLStorage<EmissiveElement>));
 
 		sampler.emissives    = graphBuilder.AcquireExternalBufferView(emissivesBuffer->GetFullView());
 		sampler.emissivesNum = static_cast<Uint32>(emissiveElements.size());

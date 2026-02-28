@@ -13,7 +13,7 @@
 #include "View/RenderView.h"
 #include "Engine.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TransfersUtils.h"
 #include "EngineFrame.h"
 #include "Camera/CameraSettings.h"
 #include "RenderScene.h"
@@ -540,7 +540,7 @@ void HDRResolveRenderStage::Initialize(RenderView& renderView)
 	m_viewExposureBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("View Exposure Buffer"), bufferDef, rhi::EMemoryUsage::GPUOnly);
 
 	const Real32 defaultExposure = 1.f;
-	gfx::FillBuffer(lib::Ref(m_viewExposureBuffer), 0u, bufferDef.size, *reinterpret_cast<const Uint32*>(&defaultExposure));
+	rdr::FillBuffer(lib::Ref(m_viewExposureBuffer), 0u, bufferDef.size, *reinterpret_cast<const Uint32*>(&defaultExposure));
 
 	renderView.SetExposureDataBuffer(m_viewExposureBuffer);
 

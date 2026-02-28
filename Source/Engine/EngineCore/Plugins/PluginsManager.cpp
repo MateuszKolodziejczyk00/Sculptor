@@ -7,35 +7,75 @@ namespace spt::engn
 
 SPT_DEFINE_LOG_CATEGORY(LogPluginsManager, true);
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// PluginFactoriesRegistry =======================================================================
 
-PluginsManager& PluginsManager::GetInstance()
+PluginFactoriesRegistry& PluginFactoriesRegistry::GetInstance()
 {
-	static PluginsManager instance;
+	static PluginFactoriesRegistry instance;
 	return instance;
 }
 
-void PluginsManager::RegisterPlugin(Plugin& plugin)
+void PluginFactoriesRegistry::RegisterFactory(const PluginFactory& factory)
 {
-	m_plugins.push_back(&plugin);
+	const Bool containsPlugin = lib::ContainsPred(m_factories, [&factory](const PluginFactory& registeredFactory)
+	{
+		return registeredFactory.pluginType == factory.pluginType;
+	});
 
-	SPT_LOG_INFO(LogPluginsManager, "Plugin registered: {}", plugin.GetName());
+	if (!containsPlugin)
+	{
+		m_factories.emplace_back(factory);
+	}
 }
 
-void PluginsManager::PostEngineInit()
+const lib::DynamicArray<PluginFactory>& PluginFactoriesRegistry::GetFactories() const
 {
-	for (Plugin* plugin : m_plugins)
+	return m_factories;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// PluginsManager=================================================================================
+
+void PluginsManager::InitializePlugins(const lib::Span<const PluginFactory>& pluginFactories)
+{
+	for (const PluginFactory& factory : pluginFactories)
 	{
-		plugin->PostEngineInit();
+		const lib::RuntimeTypeInfo pluginTypeInfo = factory.pluginType;
+		const Bool alreadyRegistered = lib::ContainsPred(m_plugins, [&pluginTypeInfo](const PluginEntry& entry)
+		{
+			return entry.pluginType == pluginTypeInfo;
+		});
+
+		if (!alreadyRegistered)
+		{
+			std::unique_ptr<Plugin> plugin = factory.factory();
+
+			SPT_LOG_INFO(LogPluginsManager, "Plugin registered: {}", pluginTypeInfo.name.data());
+			const PluginEntry& newEntry = m_plugins.emplace_back(PluginEntry{ std::move(plugin), pluginTypeInfo });
+
+			newEntry.plugin->PostEngineInit();
+		}
 	}
+}
+
+Plugin* PluginsManager::GetPlugin(const lib::RuntimeTypeInfo& pluginType) const
+{
+	const auto foundIt = std::find_if(m_plugins.begin(), m_plugins.end(), [&pluginType](const PluginEntry& entry)
+	{
+		return entry.pluginType == pluginType;
+	});
+
+	return foundIt != m_plugins.end() ? foundIt->plugin.get() : nullptr;
 }
 
 void PluginsManager::BeginFrame(FrameContext& frameContext)
 {
 	SPT_PROFILER_FUNCTION();
 
-	for (Plugin* plugin : m_plugins)
+	for (const PluginEntry& pluginEntry : m_plugins)
 	{
-		plugin->BeginFrame(frameContext);
+		pluginEntry.plugin->BeginFrame(frameContext);
 	}
 }
 

@@ -21,9 +21,12 @@ void Plugin::BeginFrame(FrameContext& frameContext)
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // GenericPluginRegistrator ======================================================================
 
-GenericPluginRegistrator::GenericPluginRegistrator(Plugin& plugin)
+GenericPluginRegistrator::GenericPluginRegistrator(const lib::RuntimeTypeInfo& type, PluginFactoryFunction factory)
 {
-	PluginsManager::GetInstance().RegisterPlugin(plugin);
+	PluginFactory pluginFactory;
+	pluginFactory.pluginType = type;
+	pluginFactory.factory    = factory;
+	PluginFactoriesRegistry::GetInstance().RegisterFactory(pluginFactory);
 }
 
 } // spt::engn

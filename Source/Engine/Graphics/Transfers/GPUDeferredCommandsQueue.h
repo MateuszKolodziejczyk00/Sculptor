@@ -24,11 +24,11 @@ using PostDeferredUploadsMulticastDelegate = lib::ThreadSafeMulticastDelegate<vo
 
 class GRAPHICS_API GPUDeferredCommandsQueue : public engn::Plugin
 {
-	SPT_GENERATE_PLUGIN(GPUDeferredCommandsQueue);
-
 	using Super = Plugin;
 
 public:
+
+	GPUDeferredCommandsQueue() = default;
 
 	void RequestUpload(lib::UniquePtr<GPUDeferredUploadRequest> request);
 	void RequestBLASBuild(lib::UniquePtr<GPUDeferredBLASBuildRequest> request);

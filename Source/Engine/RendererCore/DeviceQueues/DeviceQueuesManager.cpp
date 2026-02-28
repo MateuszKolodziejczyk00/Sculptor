@@ -279,7 +279,7 @@ void DeviceQueuesManager::Uninitialize()
 	m_resourceGPUInitSemaphore.reset();
 }
 
-void DeviceQueuesManager::Submit(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags /*= EGPUWorkloadSubmitFlags::Default*/)
+SemaptoreSignalValues DeviceQueuesManager::Submit(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags /*= EGPUWorkloadSubmitFlags::Default*/)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -287,7 +287,7 @@ void DeviceQueuesManager::Submit(const lib::SharedRef<GPUWorkload>& workload, EG
 
 	FlushGPUInits_Locked();
 
-	SubmitWorkloadInternal_Locked(workload, flags);
+	return SubmitWorkloadInternal_Locked(workload, flags);
 }
 
 void DeviceQueuesManager::Present(const lib::SharedRef<Window>& window, SwapchainTextureHandle swapchainTexture, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
@@ -339,7 +339,22 @@ void DeviceQueuesManager::AdvanceGPUTimelineSection()
 	m_submittedWorkloadsQueue.AdvanceGPUTimelineSection();
 }
 
-void DeviceQueuesManager::SubmitWorkloadInternal_Locked(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags /*= EGPUWorkloadSubmitFlags::Default*/)
+void DeviceQueuesManager::WaitForCorePipe(Uint64 waitValue)
+{
+	m_corePipeSemaphore->GetRHI().Wait(waitValue);
+}
+
+void DeviceQueuesManager::WaitForMemoryTransfers(Uint64 waitValue)
+{
+	m_memoryTransfersSemaphore->GetRHI().Wait(waitValue);
+}
+
+void DeviceQueuesManager::WaitForGPUResourcesInit(Uint64 waitValue)
+{
+	m_resourceGPUInitSemaphore->GetRHI().Wait(waitValue);
+}
+
+SemaptoreSignalValues DeviceQueuesManager::SubmitWorkloadInternal_Locked(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags /*= EGPUWorkloadSubmitFlags::Default*/)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -359,12 +374,16 @@ void DeviceQueuesManager::SubmitWorkloadInternal_Locked(const lib::SharedRef<GPU
 	definition.waitSemaphores   = std::move(workload->GetWaitSemaphores());
 	definition.signalSemaphores = std::move(workload->GetSignalSemaphores());
 
+	SemaptoreSignalValues signalValues;
+
 	CollectWaitSemaphores(workload, submissionQueue, flags, INOUT definition.waitSemaphores);
-	CollectSignalSemaphores(workload, submissionQueue, flags, INOUT definition.signalSemaphores);
+	CollectSignalSemaphores(workload, submissionQueue, flags, INOUT definition.signalSemaphores, OUT signalValues);
 
 	submissionQueue.SubmitGPUWorkload(std::move(definition));
 
 	m_submittedWorkloadsQueue.Push(workload);
+
+	return signalValues;
 }
 
 void DeviceQueuesManager::CollectWaitSemaphores(const lib::SharedRef<GPUWorkload>& workload, const DeviceQueue& submissionQueue, EGPUWorkloadSubmitFlags flags, INOUT SemaphoresArray& waitSemaphores)
@@ -396,23 +415,26 @@ void DeviceQueuesManager::CollectWaitSemaphores(const lib::SharedRef<GPUWorkload
 	waitSemaphores.AddTimelineSemaphore(m_resourceGPUInitSemaphore, m_resourceGPUInitSemaphoreValue, rhi::EPipelineStage::ALL_COMMANDS);
 }
 
-void DeviceQueuesManager::CollectSignalSemaphores(const lib::SharedRef<GPUWorkload>& workload, const DeviceQueue& submissionQueue, EGPUWorkloadSubmitFlags flags, INOUT SemaphoresArray& signalSemaphores)
+void DeviceQueuesManager::CollectSignalSemaphores(const lib::SharedRef<GPUWorkload>& workload, const DeviceQueue& submissionQueue, EGPUWorkloadSubmitFlags flags, INOUT SemaphoresArray& signalSemaphores, OUT SemaptoreSignalValues& signalValues)
 {
 	SPT_PROFILER_FUNCTION();
 
 	if (lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::CorePipeSignal))
 	{
 		signalSemaphores.AddTimelineSemaphore(m_corePipeSemaphore, ++m_corePipeSemaphoreValue, rhi::EPipelineStage::ALL_COMMANDS);
+		signalValues.corePipe = m_corePipeSemaphoreValue;
 	}
 
 	if (lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::MemoryTransfersSignal))
 	{
 		signalSemaphores.AddTimelineSemaphore(m_memoryTransfersSemaphore, ++m_memoryTransfersSemaphoreValue, rhi::EPipelineStage::ALL_COMMANDS);
+		signalValues.memoryTransfers = m_memoryTransfersSemaphoreValue;
 	}
 
 	if (lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::GPUResourcesInitSignal))
 	{
 		signalSemaphores.AddTimelineSemaphore(m_resourceGPUInitSemaphore, ++m_resourceGPUInitSemaphoreValue, rhi::EPipelineStage::ALL_COMMANDS);
+		signalValues.resourceGPUInit = m_resourceGPUInitSemaphoreValue;
 	}
 }
 

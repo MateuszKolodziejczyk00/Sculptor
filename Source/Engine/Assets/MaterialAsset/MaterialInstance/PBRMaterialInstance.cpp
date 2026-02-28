@@ -1,5 +1,6 @@
 #include "PBRMaterialInstance.h"
 #include "Assertions/Assertions.h"
+#include "Engine.h"
 #include "MaterialAsset.h"
 #include "MaterialInstance/PBRMaterialCompiler.h"
 #include "MaterialInstance/CompiledMaterial.h"
@@ -85,7 +86,7 @@ void PBRMaterialInstance::Load(const AssetInstance& asset, lib::MTHandle<DDCLoad
 		gpuTextureDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest);
 		lib::SharedPtr<rdr::TextureView> gpuTexture = rdr::ResourcesManager::CreateTextureView(name, gpuTextureDef, rhi::EMemoryUsage::GPUOnly);
 
-		gfx::GPUDeferredCommandsQueue& commandsQueue = gfx::GPUDeferredCommandsQueue::Get();
+		gfx::GPUDeferredCommandsQueue& commandsQueue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
 
 		auto uploadRequest = lib::MakeUnique<MaterialTextureUploadRequest>();
 		uploadRequest->dstTextureView = gpuTexture;

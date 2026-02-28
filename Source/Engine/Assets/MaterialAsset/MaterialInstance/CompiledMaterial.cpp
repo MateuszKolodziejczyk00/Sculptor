@@ -1,6 +1,6 @@
 #include "CompiledMaterial.h"
 #include "AssetTypes.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TransfersUtils.h"
 #include "Types/Texture.h"
 
 
@@ -25,7 +25,7 @@ void MaterialTextureUploadRequest::EnqueueUploads()
 		const MaterialTextureMipDefinition& mip = textureDef->mipLevels[mipLevelIdx];
 
 		SPT_CHECK(mip.dataOffset + mip.dataSize <= textureData.size());
-		gfx::UploadDataToTexture(textureData.data() + mip.dataOffset, mip.dataSize, texture, textureAspect, texture->GetRHI().GetMipResolution(mipLevelIdx), math::Vector3u::Zero(), mipLevelIdx, 0u);
+		rdr::UploadDataToTexture(textureData.data() + mip.dataOffset, mip.dataSize, texture, textureAspect, texture->GetRHI().GetMipResolution(mipLevelIdx), math::Vector3u::Zero(), mipLevelIdx, 0u);
 	}
 }
 

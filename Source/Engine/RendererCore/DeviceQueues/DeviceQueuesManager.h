@@ -168,6 +168,14 @@ private:
 };
 
 
+struct SemaptoreSignalValues
+{
+	std::optional<Uint64> corePipe;
+	std::optional<Uint64> memoryTransfers;
+	std::optional<Uint64> resourceGPUInit;
+};
+
+
 class RENDERER_CORE_API DeviceQueuesManager
 {
 public:
@@ -177,7 +185,7 @@ public:
 	void Initialize();
 	void Uninitialize();
 
-	void Submit(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags = EGPUWorkloadSubmitFlags::Default);
+	SemaptoreSignalValues Submit(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags = EGPUWorkloadSubmitFlags::Default);
 
 	void Present(const lib::SharedRef<Window>& window, SwapchainTextureHandle swapchainTexture, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
 
@@ -197,12 +205,16 @@ public:
 
 	void GPUInitTexture(const lib::SharedPtr<Texture>& texture) { m_gpuResourceInitQueue.EnqueueTextureInit(texture); }
 
+	void WaitForCorePipe(Uint64 waitValue);
+	void WaitForMemoryTransfers(Uint64 waitValue);
+	void WaitForGPUResourcesInit(Uint64 waitValue);
+
 private:
 
-	void SubmitWorkloadInternal_Locked(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags = EGPUWorkloadSubmitFlags::Default);
+	SemaptoreSignalValues SubmitWorkloadInternal_Locked(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags = EGPUWorkloadSubmitFlags::Default);
 
 	void CollectWaitSemaphores(const lib::SharedRef<GPUWorkload>& workload, const DeviceQueue& submissionQueue, EGPUWorkloadSubmitFlags flags, INOUT SemaphoresArray& waitSemaphores);
-	void CollectSignalSemaphores(const lib::SharedRef<GPUWorkload>& workload, const DeviceQueue& submissionQueue, EGPUWorkloadSubmitFlags flags, INOUT SemaphoresArray& signalSemaphores);
+	void CollectSignalSemaphores(const lib::SharedRef<GPUWorkload>& workload, const DeviceQueue& submissionQueue, EGPUWorkloadSubmitFlags flags, INOUT SemaphoresArray& signalSemaphores, OUT SemaptoreSignalValues& signalValues);
 
 	void FlushGPUInits_Locked();
 

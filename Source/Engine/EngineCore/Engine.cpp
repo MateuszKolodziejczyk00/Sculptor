@@ -1,6 +1,5 @@
 #include "Engine.h"
 #include "Paths.h"
-#include "Plugins/PluginsManager.h"
 
 namespace spt::engn
 {
@@ -31,7 +30,7 @@ void Engine::Initialize(const EngineInitializationParams& initializationParams)
 
 	g_engineInstance->m_modulesManager.Initialize();
 
-	PluginsManager::GetInstance().PostEngineInit();
+	g_engineInstance->GetPluginsManager().InitializePlugins(PluginFactoriesRegistry::GetInstance().GetFactories());
 }
 
 void Engine::InitializeModule(Engine& engineInstance)
@@ -40,6 +39,8 @@ void Engine::InitializeModule(Engine& engineInstance)
 
 	SPT_CHECK(g_engineInstance == nullptr);
 	g_engineInstance = &engineInstance;
+
+	g_engineInstance->GetPluginsManager().InitializePlugins(PluginFactoriesRegistry::GetInstance().GetFactories());
 }
 
 Real32 Engine::BeginFrame()

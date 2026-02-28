@@ -1,23 +1,22 @@
 #pragma once
 
-#include "GraphicsMacros.h"
+#include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHITextureTypes.h"
 
+
 namespace spt::rdr
 {
+
 class Buffer;
 class Texture;
-} // spt::rdr
 
-namespace spt::gfx
-{
 
-class GRAPHICS_API UploadsManager
+class RENDERER_CORE_API TransfersManager
 {
 public:
 
-	static UploadsManager& Get();
+	TransfersManager();
 
 	void EnqueueUpload(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, const Byte* sourceData, Uint64 dataSize);
 	void EnqueueFill(const lib::SharedRef<rdr::Buffer>& buffer, Uint64 bufferOffset, Uint64 range, Uint32 data);
@@ -29,8 +28,6 @@ public:
 	void FlushPendingUploads();
 
 private:
-
-	UploadsManager();
 
 	void EnqueueUploadImpl(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, const Byte* sourceData, Uint64 dataSize);
 	void EnqueueUploadToTextureImpl(const Byte* data, Uint64 dataSize, const lib::SharedRef<rdr::Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset, Uint32 mipLevel, Uint32 arrayLayer);
@@ -102,4 +99,4 @@ private:
 	std::atomic<Uint32> m_copiesInProgressNum = 0u;
 };
 
-} // spt::gfx
+} // spt::rdr

@@ -1,4 +1,5 @@
 #include "IESProfileAsset.h"
+#include "Engine.h"
 #include "IESProfileImporter.h"
 #include "AssetsSystem.h"
 #include "IESProfileCompiler.h"
@@ -7,7 +8,7 @@
 #include "Transfers/GPUDeferredCommandsQueueTypes.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/Texture.h"
-#include "Transfers/UploadUtils.h"
+#include "Utils/TransfersUtils.h"
 #include "ResourcesManager.h"
 
 
@@ -58,7 +59,7 @@ void IESProfileUploadRequest::EnqueueUploads()
 
 	const rhi::ETextureAspect textureAspect = dstTextureView->GetRHI().GetAspect();
 
-	gfx::UploadDataToTexture(dd->bin.data(), dd->bin.size(), texture, textureAspect, texture->GetRHI().GetResolution(), math::Vector3u::Zero(), 0u, 0u);
+	rdr::UploadDataToTexture(dd->bin.data(), dd->bin.size(), texture, textureAspect, texture->GetRHI().GetResolution(), math::Vector3u::Zero(), 0u, 0u);
 }
 
 void IESProfileUploadRequest::FinishStreaming(rdr::CommandRecorder& cmdRecorder, rhi::RHIDependency& postUploadDependency)
@@ -134,7 +135,7 @@ void IESProfileAsset::InitGPUTexture()
 														 textureDef,
 														 rhi::RHIAllocationInfo(rhi::EMemoryUsage::GPUOnly));
 
-	gfx::GPUDeferredCommandsQueue& queue = gfx::GPUDeferredCommandsQueue::Get();
+	gfx::GPUDeferredCommandsQueue& queue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
 
 	lib::UniquePtr<IESProfileUploadRequest> uploadRequest = lib::MakeUnique<IESProfileUploadRequest>();
 	uploadRequest->dstTextureView = m_texture;
