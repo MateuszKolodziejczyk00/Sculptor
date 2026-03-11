@@ -32,7 +32,7 @@ rhi::PipelineLayoutDefinition Pipeline::CreateLayoutDefinition() const
 {
 	SPT_PROFILER_FUNCTION();
 
-	const DescriptorSetStateLayoutsRegistry& layoutsRegistry = DescriptorSetStateLayoutsRegistry::Get();
+	const DescriptorSetStateLayoutsRegistry& layoutsRegistry = GPUApi::GetDSLayoutsRegistry();
 
 	rhi::PipelineLayoutDefinition layoutDefinition;
 

@@ -1,6 +1,5 @@
 #include "ShaderCompilationEnvironment.h"
-#include "EngineCore/Engine.h"
-#include "Paths.h"
+#include "Engine.h"
 
 namespace spt::sc
 {
@@ -16,11 +15,13 @@ void ShaderCompilationEnvironment::Initialize(const CompilationEnvironmentDef& e
 {
 	priv::g_environmentDef = new CompilationEnvironmentDef(environmentDef);
 
+	const engn::Paths& paths = engn::Engine::Get().GetPaths();
+
 	// add relative path to engine as prefix (path in definition is relative to the engine directory)
-	const lib::String& relativePathToEngine = engn::Paths::GetEnginePath();
-	priv::g_environmentDef->shadersPath		= engn::Paths::Combine(relativePathToEngine, priv::g_environmentDef->shadersPath);
-	priv::g_environmentDef->shadersCachePath	= engn::Paths::Combine(relativePathToEngine, priv::g_environmentDef->shadersCachePath);
-	priv::g_environmentDef->errorLogsPath	= engn::Paths::Combine(relativePathToEngine, priv::g_environmentDef->errorLogsPath);
+	const lib::Path& relativePathToEngine = paths.enginePath;
+	priv::g_environmentDef->shadersPath      = relativePathToEngine / priv::g_environmentDef->shadersPath;
+	priv::g_environmentDef->shadersCachePath = relativePathToEngine / priv::g_environmentDef->shadersCachePath;
+	priv::g_environmentDef->errorLogsPath    = relativePathToEngine / priv::g_environmentDef->errorLogsPath;
 }
 
 CompilationEnvironmentDef* ShaderCompilationEnvironment::GetCompilationEnvironmentDef()
@@ -64,17 +65,17 @@ ETargetEnvironment ShaderCompilationEnvironment::GetTargetEnvironment()
 	return priv::g_environmentDef->targetEnvironment;
 }
 
-const lib::String& ShaderCompilationEnvironment::GetShadersPath()
+const lib::Path& ShaderCompilationEnvironment::GetShadersPath()
 {
 	return priv::g_environmentDef->shadersPath;
 }
 
-const lib::String& ShaderCompilationEnvironment::GetShadersCachePath()
+const lib::Path& ShaderCompilationEnvironment::GetShadersCachePath()
 {
 	return priv::g_environmentDef->shadersCachePath;
 }
 
-const lib::String& ShaderCompilationEnvironment::GetErrorLogsPath()
+const lib::Path& ShaderCompilationEnvironment::GetErrorLogsPath()
 {
 	return priv::g_environmentDef->errorLogsPath;
 }

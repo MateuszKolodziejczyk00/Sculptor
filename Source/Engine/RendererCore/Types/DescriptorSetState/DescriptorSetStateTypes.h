@@ -92,19 +92,14 @@ struct DescriptorSetStateLayoutDefinition
 };
 
 
-using DescriptorSetStateLayoutFactoryMethod = lib::RawCallable<void(DescriptorSetStateLayoutsRegistry&)>;
-
-
 class RENDERER_CORE_API DescriptorSetStateLayoutsRegistry
 {
 public:
 
-	static DescriptorSetStateLayoutsRegistry& Get();
+	DescriptorSetStateLayoutsRegistry();
 
-	void CreateRegisteredLayouts();
 	void ReleaseRegisteredLayouts();
 
-	void RegisterFactoryMethod(DSStateTypeID dsTypeID, DescriptorSetStateLayoutFactoryMethod layoutFactoryMethod);
 	void RegisterLayout(DSStateTypeID dsTypeID, const RendererResourceName& name, const DescriptorSetStateLayoutDefinition& layoutDef);
 
 	const lib::SharedPtr<DescriptorSetLayout>& GetLayoutChecked(DSStateTypeID dsTypeID) const;
@@ -116,9 +111,24 @@ private:
 
 	Bool IsRayTracingLayout(DSStateTypeID dsTypeID, const RendererResourceName& name, const DescriptorSetStateLayoutDefinition& layoutDef) const;
 
-	DescriptorSetStateLayoutsRegistry();
-
 	lib::HashMap<DSStateTypeID, lib::SharedPtr<DescriptorSetLayout>> m_layouts;
+};
+
+
+using DescriptorSetStateLayoutFactoryMethod = lib::RawCallable<void(DescriptorSetStateLayoutsRegistry&)>;
+
+
+class RENDERER_CORE_API DescriptorSetStateLayoutsFactory
+{
+public:
+
+	static DescriptorSetStateLayoutsFactory& Get();
+
+	void RegisterFactoryMethod(DSStateTypeID dsTypeID, DescriptorSetStateLayoutFactoryMethod layoutFactoryMethod);
+
+	void CreateRegisteredLayouts(DescriptorSetStateLayoutsRegistry& registry) const;
+
+private:
 
 	lib::HashMap<DSStateTypeID, DescriptorSetStateLayoutFactoryMethod> m_layoutFactoryMethods;
 };

@@ -1,4 +1,5 @@
 #include "RenderMesh.h"
+#include "GeometryManager.h"
 
 
 namespace spt::rsc

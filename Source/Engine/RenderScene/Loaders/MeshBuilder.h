@@ -2,7 +2,6 @@
 
 #include "SculptorCoreTypes.h"
 #include "GeometryManager.h"
-#include "StaticMeshes/StaticMeshGeometry.h"
 #include "ECSRegistry.h"
 #include "StaticMeshes/RenderMesh.h"
 

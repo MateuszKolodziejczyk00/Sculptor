@@ -1,21 +1,25 @@
 #include "ECSRegistry.h"
 #include "ComponentsRegistry.h"
+#include "Engine.h"
 
 namespace spt::ecs
 {
 
-SCULPTOR_ECS_API Registry& GetRegistry()
+struct RegistryInstance
 {
-	static Registry registry;
-	static bool initialized = false;
-
-	if (!initialized)
+	RegistryInstance()
 	{
 		InitializeRegistry(registry);
-		initialized = true;
 	}
 
-	return registry;
+	Registry registry;
+};
+
+
+SCULPTOR_ECS_API Registry& GetRegistry()
+{
+	static engn::TEngineSingleton<RegistryInstance> instance;
+	return instance.Get().registry;
 }
 
 SCULPTOR_ECS_API EntityHandle CreateEntity()

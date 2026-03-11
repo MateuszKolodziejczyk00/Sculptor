@@ -35,9 +35,9 @@ private:
 
 	static lib::String			CreateShaderFileName(HashType hash);
 
-	static lib::String			CreateShaderFilePath(HashType hash);
-	static lib::String			CreateShaderFilePath(lib::HashedString shaderRelativePath, const ShaderStageCompilationDef& shaderStageDef, const ShaderCompilationSettings& compilationSettings);
-	static lib::String			CreateShaderSourceCodeFilePath(lib::HashedString shaderRelativePath);
+	static lib::Path			CreateShaderFilePath(HashType hash);
+	static lib::Path			CreateShaderFilePath(lib::HashedString shaderRelativePath, const ShaderStageCompilationDef& shaderStageDef, const ShaderCompilationSettings& compilationSettings);
+	static lib::Path			CreateShaderSourceCodeFilePath(lib::HashedString shaderRelativePath);
 
 	static Bool					IsCachedShaderUpToDateImpl(const lib::String& cachedShaderPath, const lib::String& shaderSourceCodePath);
 	static Bool					IsDeserializedShaderUpToDateImpl(const lib::String& cachedShaderPath, const CompiledShader& shader);

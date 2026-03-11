@@ -11,7 +11,7 @@ lib::String ShaderFileReader::ReadShaderFileRelative(const lib::String& shaderRe
 {
 	SPT_PROFILER_FUNCTION();
 	
-	const lib::String shaderPath = ShaderCompilationEnvironment::GetShadersPath() + "/" + shaderRelativePath;
+	const lib::String shaderPath = (ShaderCompilationEnvironment::GetShadersPath() / shaderRelativePath).generic_string();
 
 	return ReadShaderFileAbsolute(shaderPath);
 }

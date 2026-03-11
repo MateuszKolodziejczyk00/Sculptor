@@ -49,8 +49,6 @@ StandardTAARenderer::StandardTAARenderer()
 
 Bool StandardTAARenderer::Initialize(const TemporalAAInitSettings& initSettings)
 {
-	Super::Initialize(initSettings);
-
 	return true;
 }
 

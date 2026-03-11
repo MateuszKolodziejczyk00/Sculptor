@@ -25,6 +25,7 @@ class DescriptorHeap;
 class DescriptorManager;
 class DescriptorSetLayout;
 class TransfersManager;
+class DescriptorSetStateLayoutsRegistry;
 
 struct GPUApiData;
 
@@ -65,6 +66,8 @@ public:
 	static DescriptorManager&					GetDescriptorManager();
 
 	static TransfersManager&					GetTransfersManager();
+
+	static DescriptorSetStateLayoutsRegistry&	GetDSLayoutsRegistry();
 
 	static const lib::SharedPtr<DescriptorSetLayout>&	GetShaderParamsDSLayout();
 

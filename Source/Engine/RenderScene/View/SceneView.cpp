@@ -1,6 +1,6 @@
 #include "SceneView.h"
 #include "MathUtils.h"
-#include "EngineFrame.h"
+
 
 namespace spt::rsc
 {

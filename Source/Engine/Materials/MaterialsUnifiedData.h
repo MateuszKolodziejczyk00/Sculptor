@@ -20,6 +20,8 @@ public:
 
 	static MaterialsUnifiedData& Get();
 
+	MaterialsUnifiedData();
+
 	void AddMaterialTexture(const lib::SharedRef<rdr::TextureView>& texture);
 
 	rhi::RHIVirtualAllocation CreateMaterialDataSuballocation(Uint64 dataSize);
@@ -28,8 +30,6 @@ public:
 	MaterialUnifiedData GetMaterialUnifiedData() const;
 
 private:
-
-	MaterialsUnifiedData();
 
 	lib::SharedRef<rdr::Buffer> CreateMaterialsUnifiedBuffer() const;
 

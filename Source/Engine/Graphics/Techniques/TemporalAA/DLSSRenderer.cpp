@@ -1,11 +1,5 @@
 #include "DLSSRenderer.h"
 #include "RenderGraphBuilder.h"
-#include "ShaderStructs/ShaderStructs.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "ResourcesManager.h"
 
 
 namespace spt::gfx

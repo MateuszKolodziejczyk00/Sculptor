@@ -1,8 +1,9 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "RayTracing/RayTracingSceneTypes.h"
 #include "StaticMeshGeometry.h"
+#include "StaticMeshes/StaticMeshGeometry.h"
+#include "RayTracing/RayTracingGeometry.h"
 
 
 namespace spt::rdr

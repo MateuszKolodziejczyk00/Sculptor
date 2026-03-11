@@ -45,8 +45,6 @@ TemporalAccumulationRenderer::TemporalAccumulationRenderer()
 
 Bool TemporalAccumulationRenderer::Initialize(const TemporalAAInitSettings& initSettings)
 {
-	Super::Initialize(initSettings);
-
 	return true;
 }
 

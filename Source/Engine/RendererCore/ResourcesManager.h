@@ -14,6 +14,7 @@
 #include "RHICore/RHICommandBufferTypes.h"
 #include "RHICore/RHIRenderContextTypes.h"
 #include "Types/Buffer.h"
+#include "Types/Texture.h"
 
 
 namespace spt::rhi
@@ -92,11 +93,13 @@ public:
 
 	SPT_NODISCARD static lib::SharedRef<GPUEvent> CreateGPUEvent(const RendererResourceName& name, const rhi::EventDefinition& definition);
 	
-	SPT_NODISCARD static lib::SharedRef<Buffer> CreateBuffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const AllocationDefinition& allocationDefinition, BufferViewDescriptorsAllocation descriptorsAllocation = BufferViewDescriptorsAllocation{});
-	SPT_NODISCARD static lib::SharedRef<Buffer> CreateBuffer(const RendererResourceName& name, const rhi::RHIBuffer& bufferInstance);
+	SPT_NODISCARD static lib::SharedRef<Buffer>             CreateBuffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const AllocationDefinition& allocationDefinition, BufferViewDescriptorsAllocation descriptorsAllocation = BufferViewDescriptorsAllocation{});
+	SPT_NODISCARD static lib::SharedRef<Buffer>             CreateBuffer(const RendererResourceName& name, const rhi::RHIBuffer& bufferInstance);
+	SPT_NODISCARD static lib::SharedPtr<BindableBufferView> CreateBufferViewObject(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint64 size, BufferViewDescriptorsAllocation externalDescriptorsAllocation = BufferViewDescriptorsAllocation());
 
 	SPT_NODISCARD static lib::SharedRef<Texture>     CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationInfo);
 	SPT_NODISCARD static lib::SharedRef<TextureView> CreateTextureView(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationInfo);
+	SPT_NODISCARD static lib::SharedRef<TextureView> CreateTextureViewObject(const RendererResourceName& name, const lib::SharedRef<Texture>& texture, const rhi::TextureViewDefinition& viewDefinition = rhi::TextureViewDefinition(), TextureViewDescriptorsAllocation externalDescriptorsAllocation = TextureViewDescriptorsAllocation());
 
 	SPT_NODISCARD static lib::SharedRef<GPUMemoryPool> CreateGPUMemoryPool(const RendererResourceName& name, const rhi::RHIMemoryPoolDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo);
 

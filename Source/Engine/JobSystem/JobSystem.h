@@ -158,6 +158,26 @@ auto InlineParallelForEach(const char* name, TRange&& range, TCallable&& callabl
 }
 
 template<typename TRange, typename TCallable>
+auto InlineParallelFor(const char* name, Uint32 iterations, TCallable&& callable, const JobDef& iterationJobDef = JobDef())
+{
+	SPT_PROFILER_FUNCTION();
+
+	return LaunchInline(name,
+						[name, &iterations, iterationJobDef, localCallable = std::forward<TCallable>(callable)]
+						{
+							for (Uint32 i = 0; i < iterations; ++i)
+							{
+								AddNested(name,
+										  [i, &localCallable]() mutable
+										  {
+											  localCallable(i);
+										  },
+										  iterationJobDef);
+							}
+						});
+}
+
+template<typename TRange, typename TCallable>
 auto ParallelForEach(const char* name, TRange&& range, TCallable&& callable, const JobDef& enclosingJobDef = JobDef(), const JobDef& iterationJobsDef = JobDef())
 {
 	SPT_PROFILER_FUNCTION();

@@ -9,7 +9,7 @@ std::optional<GLTFModel> LoadGLTFModel(const lib::String& path)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::StringView fileExtension = engn::Paths::GetExtension(path);
+	const lib::String fileExtension = lib::Path(path).extension().generic_string();
 	SPT_CHECK(fileExtension == "gltf" || fileExtension == "glb");
 
 	tinygltf::Model model;

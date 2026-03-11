@@ -21,6 +21,8 @@ public:
 
 	static GeometryManager& Get();
 
+	GeometryManager();
+
 	rhi::RHIVirtualAllocation CreateGeometry(const Byte* geometryData, Uint64 dataSize);
 	rhi::RHIVirtualAllocation CreateGeometry(Uint64 dataSize);
 
@@ -30,7 +32,6 @@ public:
 
 private:
 
-	GeometryManager();
 	void DestroyResources();
 
 	lib::SharedPtr<rdr::Buffer> m_geometryBuffer;

@@ -9,42 +9,29 @@
 #include "Engine.h"
 #include "Paths.h"
 #include "Utils/TransfersUtils.h"
-#include "StaticMeshes/StaticMeshesRenderSystem.h"
-#include "Lights/LightsRenderSystem.h"
-#include "Shadows/ShadowMapsRenderSystem.h"
 #include "SceneRenderer/SceneRenderer.h"
 #include "InputManager.h"
 #include "Lights/LightTypes.h"
-#include "RayTracing/RayTracingRenderSystem.h"
 #include "GPUDiagnose/Profiler/GPUStatisticsCollector.h"
 #include "EngineFrame.h"
 #include "Profiler/Profiler.h"
-#include "DDGI/DDGIRenderSystem.h"
-#include "Camera/CameraSettings.h"
 #include "Loaders/TextureLoader.h"
-#include "Atmosphere/AtmosphereRenderSystem.h"
 #include "RenderGraphCapturer.h"
 #include "RenderGraphCaptureViewer.h"
 #include "RenderGraphCaptureSourceContext.h"
 #include "UIElements/ApplicationUI.h"
-#include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 #include "FileSystem/File.h"
 #include "Modules/Module.h"
-#include "View/Systems/TemporalAAViewRenderSystem.h"
 #include "Techniques/TemporalAA/DLSSRenderer.h"
 #include "Techniques/TemporalAA/StandardTAARenderer.h"
 #include "IESProfileAsset.h"
-#include "Shadows/WorldShadowCacheRenderSystem.h"
-#include "MaterialsSubsystem.h"
-#include "StaticMeshes/RenderMesh.h"
-#include "MaterialAsset.h"
+#include "Importers/GLTFImporter.h"
 #include "PrefabAsset.h"
 #include "Transfers/GPUDeferredCommandsQueue.h"
 
 #if SPT_SHADERS_DEBUG_FEATURES
 #include "Debug/ShaderDebugUtils.h"
 #endif // SPT_SHADERS_DEBUG_FEATURES
-
 
 namespace spt::ed
 {
@@ -61,13 +48,27 @@ SandboxRenderer::SandboxRenderer()
 	, m_captureSourceContext(lib::MakeShared<rg::capture::RGCaptureSourceContext>())
 	, m_memoryArena("Sandbox Renderer Arena", 4 * 1024 * 1024, 32 * 1024 * 1024)
 {
+	engn::Engine::Get().GetModulesManager().LoadModule("SceneRenderer");
+
 	InitializeRenderScene();
+
+	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
+
+	const rsc::SceneRendererDefinition sceneRendererDef
+	{
+		.scene         = *m_renderScene,
+		.renderSystems = rsc::ESceneRenderSystem::ALL
+	};
+	m_sceneRenderer = sceneRendererAPI->CreateSceneRenderer(sceneRendererDef);
 }
 
 SandboxRenderer::~SandboxRenderer()
 {
+	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
+
 	// explicit destroy view before scene
-	m_renderView.reset();
+	sceneRendererAPI->DestroyRenderView(m_renderView);
+	sceneRendererAPI->DestroySceneRenderer(m_sceneRenderer);
 }
 
 void SandboxRenderer::Update(engn::FrameContext& frame)
@@ -216,7 +217,7 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 	m_captureSourceContext->ExecuteOnSetupNewGraphBuilder(graphBuilder);
 
 	js::Launch(SPT_GENERIC_JOB_NAME,
-			   [resolution = m_renderView->GetRenderingRes(), gpuStatisticsCollector]
+			   [resolution = m_renderView->GetOutputRes(), gpuStatisticsCollector]
 			   {
 				   prf::GPUProfilerStatistics statistics;
 				   statistics.resolution = resolution;
@@ -230,6 +231,8 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 	rendererSettings.resetAccumulation = resetAccumulation;
 
 	resetAccumulation = false;
+
+	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
 
 	rg::RGTextureViewHandle sceneRenderingResultTextureView;
 
@@ -254,7 +257,7 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 		rendererSettings.persistentDebugRenderer = &shaderDebugCommandsCollectingScope.GetPersistentDebugRenderer();
 #endif // SPT_SHADERS_DEBUG_FEATURES
 
-		sceneRenderingResultTextureView = m_sceneRenderer.Render(graphBuilder, *m_renderScene, *m_renderView, rendererSettings);
+		sceneRenderingResultTextureView = sceneRendererAPI->ExecuteSceneRendering(m_sceneRenderer, graphBuilder, *m_renderScene, *m_renderView, rendererSettings);
 	}
 
 	SPT_CHECK(sceneRenderingResultTextureView.IsValid());
@@ -264,7 +267,7 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 	if (wantsToCreateScreenshot)
 	{
 		const lib::String screenshotFileName = lib::File::Utils::CreateFileNameFromTime("png");
-		const lib::String screenshotFilePath = engn::Paths::Combine(engn::Paths::GetSavedPath(), engn::Paths::Combine("Screenshots", screenshotFileName));
+		const lib::String screenshotFilePath = (engn::GetEngine().GetPaths().savedPath / "Screenshots" / screenshotFileName).generic_string();
 		SPT_LOG_INFO(Sandbox, "Writing screenshot to {}", screenshotFilePath);
 		js::JobWithResult<Bool> saveJob = gfx::TextureWriter::SaveTexture(graphBuilder, sceneRenderingResultTextureView, screenshotFilePath);
 
@@ -313,19 +316,14 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 	m_renderScene->EndFrame();
 }
 
-rsc::SceneRenderer& SandboxRenderer::GetSceneRenderer()
-{
-	return m_sceneRenderer;
-}
-
 const lib::SharedPtr<rsc::RenderScene>& SandboxRenderer::GetRenderScene()
 {
 	return m_renderScene;
 }
 
-const lib::SharedPtr<rsc::RenderView>& SandboxRenderer::GetRenderView() const
+rsc::RenderView& SandboxRenderer::GetRenderView() const
 {
-	return m_renderView;
+	return *m_renderView;
 }
 
 void SandboxRenderer::SetFov(Real32 fovDegrees)
@@ -378,16 +376,6 @@ void SandboxRenderer::SetViewportFocused(Bool isFocused)
 	m_isViewportFocused = isFocused;
 }
 
-void SandboxRenderer::CreateRenderGraphCapture()
-{
-	m_wantsCaptureNextFrame = true;
-}
-
-void SandboxRenderer::CreateScreenshot()
-{
-	m_wantsToCreateScreenshot = true;
-}
-
 void SandboxRenderer::InitializeRenderScene()
 {
 	SPT_PROFILER_FUNCTION();
@@ -407,62 +395,47 @@ void SandboxRenderer::InitializeRenderScene()
 
 	as::IESProfileAssetHandle iesProfiles[] = { iesProfile0, iesProfile1 };
 
-	m_renderView = lib::MakeShared<rsc::RenderView>(*m_renderScene);
-	m_renderView->SetLocation(math::Vector3f(0.f, 0.f, 1.f));
+	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
 
-	m_renderView->AddRenderStages(rsc::ERenderStage::DeferredRendererStages);
+	rsc::RenderViewDefinition viewDef;
+	viewDef.renderStages  = rsc::ERenderStage::DeferredRendererStages;
+	viewDef.renderSystems = rsc::EViewRenderSystem::ALL;
+
 	if (rdr::GPUApi::IsRayTracingEnabled())
 	{
-		m_renderView->AddRenderStages(rsc::ERenderStage::RayTracingRenderStages);
+		lib::AddFlags(viewDef.renderStages, rsc::ERenderStage::RayTracingRenderStages);
 	}
+
+	m_renderView = sceneRendererAPI->CreateRenderView(viewDef);
+	m_renderView->SetLocation(math::Vector3f(0.f, 0.f, 1.f));
 	m_renderView->SetOutputRes(math::Vector2u(1920, 1080));
 	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane, m_farPlane);
 
-	m_renderView->AddRenderSystem<rsc::ParticipatingMediaViewRenderSystem>();
+	rsc::ShadingRenderViewSettings shadingSettings;
+	shadingSettings.upscalingMethod = rsc::EUpscalingMethod::DLSS;
+	sceneRendererAPI->SetShadingViewSettings(*m_renderView, shadingSettings);
 
-	if (lib::SharedPtr<rdr::Texture> lensDirtTexture = gfx::TextureLoader::LoadTexture(engn::Paths::Combine(engn::Paths::GetContentPath(), "Camera/LensDirt.jpeg"), lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest)))
-	{
-		rhi::TextureViewDefinition viewDef;
-		viewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
-
-		rsc::CameraLensSettingsComponent cameraLensSettingsComponent;
-		cameraLensSettingsComponent.lensDirtTexture = lensDirtTexture->CreateView(RENDERER_RESOURCE_NAME("Lens Dirt View"), viewDef);
-		m_renderView->GetBlackboard().Create<rsc::CameraLensSettingsComponent>(cameraLensSettingsComponent);
-	}
-
-	m_renderScene->AddRenderSystem<rsc::ShadowMapsRenderSystem>(m_renderView);
-	if (rdr::GPUApi::IsRayTracingEnabled())
-	{
-		m_renderScene->AddRenderSystem<rsc::RayTracingRenderSystem>();
-		
-		m_renderScene->AddRenderSystem<rsc::ddgi::DDGIRenderSystem>();
-	}
-	m_renderScene->AddRenderSystem<rsc::StaticMeshesRenderSystem>();
-	m_renderScene->AddRenderSystem<rsc::LightsRenderSystem>();
-	m_renderScene->AddRenderSystem<rsc::AtmosphereRenderSystem>();
-	m_renderScene->AddRenderSystem<rsc::wsc::WorldShadowCacheRenderSystem>();
-
-	{
-		const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
-		rsc::PointLightData pointLightData;
-		pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-		pointLightData.luminousPower = 3200.f;
-		pointLightData.location = math::Vector3f(8.30f, 2.6f, 1.55f);
-		pointLightData.radius = 5.f;
-		pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
-		lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
-	}
-
-	{
-		const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
-		rsc::PointLightData pointLightData;
-		pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-		pointLightData.luminousPower = 3200.f;
-		pointLightData.location = math::Vector3f(-8.30f, 3.9f, 4.45f);
-		pointLightData.radius = 5.f;
-		pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
-		lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
-	}
+	// {
+	// 	const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
+	// 	rsc::PointLightData pointLightData;
+	// 	pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
+	// 	pointLightData.luminousPower = 3200.f;
+	// 	pointLightData.location = math::Vector3f(8.30f, 2.6f, 1.55f);
+	// 	pointLightData.radius = 5.f;
+	// 	pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
+	// 	lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
+	// }
+	//
+	// {
+	// 	const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
+	// 	rsc::PointLightData pointLightData;
+	// 	pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
+	// 	pointLightData.luminousPower = 3200.f;
+	// 	pointLightData.location = math::Vector3f(-8.30f, 3.9f, 4.45f);
+	// 	pointLightData.radius = 5.f;
+	// 	pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
+	// 	lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
+	// }
 
 	{
 		const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
@@ -504,6 +477,7 @@ void SandboxRenderer::InitializeRenderScene()
 	{
 		iesProfile->AwaitInitialization();
 	}
+
 	sponzaPrefab->AwaitInitialization();
 	sponzaPrefab->SetPermanent();
 
@@ -515,27 +489,6 @@ void SandboxRenderer::InitializeRenderScene()
 
 	gfx::GPUDeferredCommandsQueue& commandsQueue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
 	commandsQueue.ForceFlushCommands();
-
-	const Bool dlssInitResult = dlssInitJob.Await();
-
-	auto dlssRenderer = dlssInitResult ? std::make_unique<gfx::DLSSRenderer>() : nullptr;
-	rsc::TemporalAAViewRenderSystem* temporalAAViewSystem = m_renderView->AddRenderSystem<rsc::TemporalAAViewRenderSystem>();
-	SPT_CHECK(!!temporalAAViewSystem);
-	const gfx::TemporalAAInitSettings aaInitSettings{};
-	if (dlssRenderer && dlssRenderer->Initialize(aaInitSettings))
-	{
-		temporalAAViewSystem->SetTemporalAARenderer(std::move(dlssRenderer));
-	}
-	else
-	{
-		auto standardTAArenderer = std::make_unique<gfx::StandardTAARenderer>();
-
-		SPT_MAYBE_UNUSED
-		const Bool initResult = standardTAArenderer->Initialize(aaInitSettings);
-		SPT_CHECK(initResult);
-
-		temporalAAViewSystem->SetTemporalAARenderer(std::move(standardTAArenderer));
-	}
 
 	SPT_LOG_INFO(Sandbox, "Render Scene Initialization Finished");
 }

@@ -26,7 +26,7 @@ void Engine::Initialize(const EngineInitializationParams& initializationParams)
 
 	g_engineInstance->m_cmdLineArgs.Parse(cmdLineArgs);
 
-	Paths::Initialize(g_engineInstance->m_cmdLineArgs);
+	g_engineInstance->m_paths.Initialize(g_engineInstance->m_cmdLineArgs);
 
 	g_engineInstance->m_modulesManager.Initialize();
 

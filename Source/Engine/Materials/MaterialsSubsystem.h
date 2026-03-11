@@ -54,6 +54,8 @@ class MATERIALS_API MaterialsSubsystem
 {
 public:
 
+	MaterialsSubsystem();
+
 	static MaterialsSubsystem& Get();
 
 	template<typename TMaterialData>
@@ -72,8 +74,6 @@ public:
 	const lib::DynamicArray<lib::HashedString>& GetMaterialDataStructNames() const;
 
 private:
-
-	MaterialsSubsystem();
 
 	ecs::EntityHandle CreateMaterial(const MaterialDefinition& materialDef, ecs::EntityHandle shaderEntity, const Byte* materialData, Uint64 dataSize, lib::HashedString dataStructName, const MaterialFeatures& features);
 

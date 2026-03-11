@@ -29,7 +29,7 @@ void LinearizeDepthCS(CS_INPUT input)
 	const uint2 quadCoords = input.globalID.xy * 2u;
 
 	const float2 uv = (quadCoords + 1.f) * u_constants.invResolution;
-	const float4 depthSample = u_depth.Gather(u_nearestSampler, uv);
+	const float4 depthSample = u_depth.Gather(BindlessSamplers::NearestClampEdge(), uv);
 
 	const float4 linearDepth = ComputeLinearDepth(depthSample, u_sceneView);
 

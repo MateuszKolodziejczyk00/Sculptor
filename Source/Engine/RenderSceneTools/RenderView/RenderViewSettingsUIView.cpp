@@ -1,5 +1,6 @@
 #include "RenderViewSettingsUIView.h"
 #include "View/RenderView.h"
+#if RENDERER_REWORK_TEMP_DISABLE
 #include "ImGui/SculptorImGui.h"
 #include "Camera/CameraSettings.h"
 #include "ImGui/DockBuilder.h"
@@ -7,11 +8,12 @@
 #include "Techniques/TemporalAA//StandardTAARenderer.h"
 #include "Techniques/TemporalAA//DLSSRenderer.h"
 #include "Techniques/TemporalAA/TemporalAccumulationRenderer.h"
+#endif // RENDERER_REWORK_TEMP_DISABLE
 
 namespace spt::rsc
 {
 
-RenderViewSettingsUIView::RenderViewSettingsUIView(const scui::ViewDefinition& definition, const lib::SharedPtr<RenderView>& renderView)
+RenderViewSettingsUIView::RenderViewSettingsUIView(const scui::ViewDefinition& definition, RenderView& renderView)
 	: Super(definition)
 	, m_renderView(renderView)
 	, m_renderViewSettingsName(CreateUniqueName("Render View"))
@@ -33,11 +35,7 @@ void RenderViewSettingsUIView::DrawUI()
 	{
 		Super::DrawUI();
 
-		const lib::SharedPtr<RenderView> renderView = m_renderView.lock();
-		if (renderView)
-		{
-			DrawUIForView(*renderView);
-		}
+		DrawUIForView(m_renderView);
 	}
 
 	ImGui::End();
@@ -51,6 +49,7 @@ void RenderViewSettingsUIView::DrawUIForView(RenderView& view)
 		view.SetLocation(location);
 	}
 	
+#if RENDERER_REWORK_TEMP_DISABLE
 	if (CameraLensSettingsComponent* lensSettings = view.GetBlackboard().Find<CameraLensSettingsComponent>())
 	{
 		if (ImGui::CollapsingHeader("Lens Settings"))
@@ -93,6 +92,7 @@ void RenderViewSettingsUIView::DrawUIForView(RenderView& view)
 			taaSystem->SetTemporalAARenderer(std::move(newRenderer));
 		}
 	}
+#endif // RENDERER_REWORK_TEMP_DISABLE
 }
 
 } // spt::rsc

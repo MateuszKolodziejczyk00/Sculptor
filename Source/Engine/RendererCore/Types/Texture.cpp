@@ -2,6 +2,7 @@
 #include "GPUMemoryPool.h"
 #include "GPUApi.h"
 #include "DescriptorSetState/DescriptorManager.h"
+#include "ResourcesManager.h"
 
 namespace spt::rdr
 {
@@ -84,7 +85,7 @@ math::Vector2u Texture::GetResolution2D() const
 
 lib::SharedRef<TextureView> Texture::CreateView(const RendererResourceName& name, const rhi::TextureViewDefinition& viewDefinition /*= rhi::TextureViewDefinition()*/, TextureViewDescriptorsAllocation externalDescriptorsAllocation /*= TextureViewDescriptorsAllocation()*/) const
 {
-	return lib::Ref(std::make_shared<TextureView>(name, lib::Ref(const_cast<Texture*>(this)->shared_from_this()), viewDefinition, std::move(externalDescriptorsAllocation)));
+	return ResourcesManager::CreateTextureViewObject(name, lib::Ref(const_cast<Texture*>(this)->shared_from_this()), viewDefinition, std::move(externalDescriptorsAllocation));
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

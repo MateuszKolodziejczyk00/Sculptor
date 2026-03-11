@@ -4,13 +4,21 @@
 #include "GPUApi.h"
 #include "MaterialTypes.h"
 
+
 namespace spt::mat
 {
 
 MaterialsUnifiedData& MaterialsUnifiedData::Get()
 {
-	static MaterialsUnifiedData instance;
-	return instance;
+	static engn::TEngineSingleton<MaterialsUnifiedData> instance;
+	return instance.Get();
+}
+
+MaterialUnifiedData MaterialsUnifiedData::GetMaterialUnifiedData() const
+{
+	MaterialUnifiedData materials;
+	materials.materialsData = m_materialsUnifiedBuffer->GetFullView();
+	return materials;
 }
 
 void MaterialsUnifiedData::AddMaterialTexture(const lib::SharedRef<rdr::TextureView>& textureView)
@@ -39,13 +47,6 @@ rhi::RHIVirtualAllocation MaterialsUnifiedData::CreateMaterialDataSuballocation(
 	rdr::UploadDataToBuffer(lib::Ref(m_materialsUnifiedBuffer), suballocation.GetOffset(), materialData, dataSize);
 	
 	return suballocation;
-}
-
-MaterialUnifiedData MaterialsUnifiedData::GetMaterialUnifiedData() const
-{
-	MaterialUnifiedData materials;
-	materials.materialsData = m_materialsUnifiedBuffer->GetFullView();
-	return materials;
 }
 
 MaterialsUnifiedData::MaterialsUnifiedData()

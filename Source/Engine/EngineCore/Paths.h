@@ -2,6 +2,7 @@
 
 #include "EngineCoreMacros.h"
 #include "SculptorCoreTypes.h"
+#include "FileSystem/File.h"
 
 
 namespace spt::engn
@@ -14,35 +15,17 @@ class ENGINE_CORE_API Paths
 {
 public:
 
-	static void					Initialize(const CommandLineArguments& cmdLineArgs);
+	void Initialize(const CommandLineArguments& cmdLineArgs);
 
-	// Getters ===========================================
-
-	static const lib::String&		GetEnginePath();
-
-	static const lib::String&		GetConfigsPath();
-
-	static const lib::String&		GetSavedPath();
-
-	static const lib::String&		GetTracesPath();
-
-	static const lib::String&		GetGPUCrashDumpsPath();
-
-	static const lib::String&		GetContentPath();
-
-	static const lib::String&		GetImGuiConfigPath();
-
-	static const lib::StringView	GetExtension(lib::StringView path);
-
-	static const lib::String&		GetExecutablePath();
-
-	static const lib::String&		GetExecutableDirectory();
-
-	// Utils =============================================
-
-	static void AppendPath(lib::String& path, lib::StringView pathToAppend);
-
-	static lib::String Combine(lib::StringView pathBegin, lib::StringView pathEnd);
+	lib::Path enginePath;
+	lib::Path configsPath;
+	lib::Path savedPath;
+	lib::Path tracesPath;
+	lib::Path gpuCrashDumpsPath;
+	lib::Path contentPath;
+	lib::Path executablePath;
+	lib::Path executableDirectory;
+	lib::String imguiConfigPath;
 };
 
 } // spt::engn

@@ -1,13 +1,6 @@
 #pragma once
 
 #include "EditorSandboxMacros.h"
-#include "SculptorCoreTypes.h"
-#include "UITypes.h"
-#include "Pipelines/PipelineState.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "RenderScene.h"
 #include "View/RenderView.h"
 #include "SceneRenderer/SceneRenderer.h"
@@ -49,11 +42,9 @@ public:
 
 	void ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr::TextureView> output);
 
-	const lib::SharedPtr<rsc::RenderView>& GetRenderView() const;
+	rsc::RenderView& GetRenderView() const;
 
 	const lib::SharedPtr<rsc::RenderScene>& GetRenderScene();
-
-	rsc::SceneRenderer& GetSceneRenderer();
 
 	void	SetFov(Real32 fovDegrees);
 	Real32	GetFov();
@@ -105,9 +96,9 @@ private:
 	void PrepareRenderView(math::Vector2u outputResolution);
 
 	lib::SharedPtr<rsc::RenderScene>	m_renderScene;
-	lib::SharedPtr<rsc::RenderView>		m_renderView;
+	rsc::RenderView*					m_renderView;
 
-	rsc::SceneRenderer					m_sceneRenderer;
+	rsc::SceneRendererHandle			m_sceneRenderer;
 
 	/** Default FOV value used when		scene image have same width as window */
 	Real32								m_fovDegrees;

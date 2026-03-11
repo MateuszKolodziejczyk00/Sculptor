@@ -1,4 +1,5 @@
 #include "GPUApi.h"
+#include "Common/DescriptorSetCompilation/DescriptorSetCompilationDefsRegistry.h"
 #include "RendererSettings.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/Semaphore.h"
@@ -33,6 +34,8 @@ struct GPUApiData
 	DeviceQueuesManager deviceQueuesManager;
 	
 	GPUReleaseQueue releasesQueue;
+
+	DescriptorSetStateLayoutsRegistry dsLayoutsRegistry;
 	
 	lib::SharedPtr<DescriptorHeap> descriptorHeap;
 	
@@ -48,6 +51,8 @@ struct GPUApiData
 	StructsRegistryData* shaderStructsRegistryData = nullptr;
 
 	GPUApiFactoryData* gpuApiFactoryData = nullptr;
+
+	sc::DSCompilationDefRegistryData* dsCompilationDefRegistryData = nullptr;
 };
 
 static GPUApiData* g_GPUApiData = nullptr;
@@ -127,7 +132,7 @@ void GPUApi::Initialize()
 
 	GetDeviceQueuesManager().Initialize();
 
-	DescriptorSetStateLayoutsRegistry::Get().CreateRegisteredLayouts();
+	DescriptorSetStateLayoutsFactory::Get().CreateRegisteredLayouts(g_GPUApiData->dsLayoutsRegistry);
 
 	utils::InitializeShaderParamsDSLayout();
 
@@ -137,6 +142,7 @@ void GPUApi::Initialize()
 
 	g_GPUApiData->rhiModuleData = rhi::RHI::GetModuleData();
 	g_GPUApiData->shaderStructsRegistryData = ShaderStructsRegistry::GetRegistryData();
+	g_GPUApiData->dsCompilationDefRegistryData = sc::DescriptorSetCompilationDefsRegistry::GetRegistryData();
 }
 
 void GPUApi::Uninitialize()
@@ -147,7 +153,7 @@ void GPUApi::Uninitialize()
 
 	g_GPUApiData->shaderParamsDSLayout.reset();
 
-	DescriptorSetStateLayoutsRegistry::Get().ReleaseRegisteredLayouts();
+	g_GPUApiData->dsLayoutsRegistry.ReleaseRegisteredLayouts();
 
 	ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags::Immediate);
 
@@ -194,6 +200,9 @@ void GPUApi::InitializeModule(GPUApiData& data)
 	g_GPUApiData->shadersManager.InitializeModule();
 
 	ShaderStructsRegistry::InitializeModule(g_GPUApiData->shaderStructsRegistryData);
+	sc::DescriptorSetCompilationDefsRegistry::InitializeModule(g_GPUApiData->dsCompilationDefRegistryData);
+
+	DescriptorSetStateLayoutsFactory::Get().CreateRegisteredLayouts(g_GPUApiData->dsLayoutsRegistry);
 
 	PSOPrecacheParams precacheParams{};
 	PSOsLibrary::GetInstance().PrecachePSOs(precacheParams);
@@ -247,6 +256,11 @@ DescriptorManager& GPUApi::GetDescriptorManager()
 TransfersManager& GPUApi::GetTransfersManager()
 {
 	return *g_GPUApiData->transfersManager;
+}
+
+DescriptorSetStateLayoutsRegistry& GPUApi::GetDSLayoutsRegistry()
+{
+	return g_GPUApiData->dsLayoutsRegistry;
 }
 
 const lib::SharedPtr<DescriptorSetLayout>& GPUApi::GetShaderParamsDSLayout()

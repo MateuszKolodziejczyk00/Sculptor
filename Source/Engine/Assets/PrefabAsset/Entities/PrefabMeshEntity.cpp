@@ -1,11 +1,11 @@
 #include "PrefabMeshEntity.h"
+#include "Materials/MaterialsRenderingCommon.h"
 #include "PrefabAsset.h"
 #include "MeshAsset.h"
 #include "MaterialAsset.h"
 #include "AssetsSystem.h"
 #include "RenderScene.h"
 #include "StaticMeshes/RenderMesh.h"
-#include "StaticMeshes/StaticMeshRenderingCommon.h"
 
 
 SPT_DEFINE_LOG_CATEGORY(PrefabMeshEntity, true);
@@ -67,7 +67,7 @@ void PrefabMeshEntity::Spawn(const PrefabSpawningContext& context, lib::Span<con
 		return;
 	}
 
-	const lib::Span<const ResourcePathID> materials(reinterpret_cast<const ResourcePathID*>(compiledData.data() + sizeof(CompiledMeshEntity)), compiledMesh.materialsNum);
+	const lib::Span<const ResourcePathID> materialAssets(reinterpret_cast<const ResourcePathID*>(compiledData.data() + sizeof(CompiledMeshEntity)), compiledMesh.materialsNum);
 
 	const math::Affine3f localTransform = compiledMesh.transform;
 
@@ -82,10 +82,10 @@ void PrefabMeshEntity::Spawn(const PrefabSpawningContext& context, lib::Span<con
 	entity.emplace<rsc::StaticMeshInstanceRenderData>(staticMeshData);
 
 	rsc::MaterialSlotsComponent materialSlots;
-	materialSlots.slots.reserve(materials.size());
-	for (Uint32 matIdx = 0u; matIdx < materials.size(); ++matIdx)
+	materialSlots.slots.reserve(materialAssets.size());
+	for (Uint32 matIdx = 0u; matIdx < materialAssets.size(); ++matIdx)
 	{
-		const MaterialAssetHandle material = context.assetsSystem.GetLoadedAsset<MaterialAsset>(materials[matIdx]);
+		const MaterialAssetHandle material = context.assetsSystem.GetLoadedAsset<MaterialAsset>(materialAssets[matIdx]);
 		materialSlots.slots.emplace_back(material->GetMaterialEntity());
 	}
 	

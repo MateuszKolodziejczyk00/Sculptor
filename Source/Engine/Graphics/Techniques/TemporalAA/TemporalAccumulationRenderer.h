@@ -25,10 +25,10 @@ public:
 	TemporalAccumulationRenderer();
 
 	// Begin TemporalAARenderer overrides
-	virtual Bool Initialize(const TemporalAAInitSettings& initSettings) override;
-	virtual math::Vector2f ComputeJitter(Uint64 frameIdx, math::Vector2u renderingResolution, math::Vector2u outputResolution) const override;
-	virtual Bool PrepareForRendering(const TemporalAAParams& params) override;
-	virtual void Render(rg::RenderGraphBuilder& graphBuilder, const TemporalAARenderingParams& renderingParams) override;
+	Bool Initialize(const TemporalAAInitSettings& initSettings);
+	math::Vector2f ComputeJitter(Uint64 frameIdx, math::Vector2u renderingResolution, math::Vector2u outputResolution) const;
+	Bool PrepareForRendering(const TemporalAAParams& params);
+	void Render(rg::RenderGraphBuilder& graphBuilder, const TemporalAARenderingParams& renderingParams);
 	// End TemporalAARenderer overrides
 
 private:

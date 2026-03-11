@@ -1,4 +1,5 @@
 #include "GeometryManager.h"
+#include "Engine.h"
 #include "Utils/TransfersUtils.h"
 #include "ResourcesManager.h"
 #include "GPUApi.h"
@@ -9,30 +10,8 @@ namespace spt::rsc
 
 GeometryManager& GeometryManager::Get()
 {
-	static GeometryManager instance;
-	return instance;
-}
-
-rhi::RHIVirtualAllocation GeometryManager::CreateGeometry(const Byte* geometryData, Uint64 dataSize)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const rhi::RHIVirtualAllocation geometryDataSuballocation = CreateGeometry(dataSize);
-
-	rdr::UploadDataToBuffer(lib::Ref(m_geometryBuffer), geometryDataSuballocation.GetOffset(), geometryData, dataSize);
-
-	return geometryDataSuballocation;
-}
-
-rhi::RHIVirtualAllocation GeometryManager::CreateGeometry(Uint64 dataSize)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const rhi::VirtualAllocationDefinition suballocationDef(dataSize, 4, rhi::EVirtualAllocationFlags::PreferMinMemory);
-	const rhi::RHIVirtualAllocation geometryDataSuballocation = m_geometryBuffer->GetRHI().CreateSuballocation(suballocationDef);
-	SPT_CHECK(geometryDataSuballocation.IsValid());
-
-	return geometryDataSuballocation;
+	static engn::TEngineSingleton<GeometryManager> instance;
+	return instance.Get();
 }
 
 GeometryManager::GeometryManager()
@@ -55,6 +34,28 @@ GeometryManager::GeometryManager()
 															{
 																DestroyResources();
 															});
+}
+
+rhi::RHIVirtualAllocation GeometryManager::CreateGeometry(const Byte* geometryData, Uint64 dataSize)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const rhi::RHIVirtualAllocation geometryDataSuballocation = CreateGeometry(dataSize);
+
+	rdr::UploadDataToBuffer(lib::Ref(m_geometryBuffer), geometryDataSuballocation.GetOffset(), geometryData, dataSize);
+
+	return geometryDataSuballocation;
+}
+
+rhi::RHIVirtualAllocation GeometryManager::CreateGeometry(Uint64 dataSize)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const rhi::VirtualAllocationDefinition suballocationDef(dataSize, 4, rhi::EVirtualAllocationFlags::PreferMinMemory);
+	const rhi::RHIVirtualAllocation geometryDataSuballocation = m_geometryBuffer->GetRHI().CreateSuballocation(suballocationDef);
+	SPT_CHECK(geometryDataSuballocation.IsValid());
+
+	return geometryDataSuballocation;
 }
 
 Uint64 GeometryManager::GetGeometryBufferDeviceAddress() const

@@ -31,11 +31,11 @@ struct CompilationEnvironmentDef
 	/** if true, additional, separate .spv file will be generated when shader will be cached */
 	Bool					cacheSeparateSpvFile;
 
-	lib::String				shadersPath;
+	lib::Path				shadersPath;
 
-	lib::String				shadersCachePath;
+	lib::Path				shadersCachePath;
 
-	lib::String				errorLogsPath;
+	lib::Path				errorLogsPath;
 
 	void Serialize(srl::Serializer& serializer)
 	{
@@ -71,11 +71,11 @@ public:
 
 	static ETargetEnvironment		GetTargetEnvironment();
 
-	static const lib::String&		GetShadersPath();
+	static const lib::Path&			GetShadersPath();
 
-	static const lib::String&		GetShadersCachePath();
+	static const lib::Path&			GetShadersCachePath();
 
-	static const lib::String&		GetErrorLogsPath();
+	static const lib::Path&			GetErrorLogsPath();
 	
 };
 

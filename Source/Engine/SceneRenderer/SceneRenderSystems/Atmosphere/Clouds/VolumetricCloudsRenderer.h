@@ -1,0 +1,75 @@
+#pragma once
+
+#include "SculptorCoreTypes.h"
+#include "Utils/ViewRenderingSpec.h"
+#include "VolumetricCloudsTypes.h"
+
+namespace spt::rdr
+{
+class TextureView;
+} // spt::rdr
+
+
+namespace spt::rsc::clouds
+{
+
+class VolumetricCloudsRenderer
+{
+public:
+
+	VolumetricCloudsRenderer();
+
+	void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const lib::DynamicPushArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings);
+
+	const CloudsTransmittanceMap& GetCloudsTransmittanceMap() const { return m_cloudsTransmittanceMap; }
+
+	Bool AreVolumetricCloudsEnabled() const { return m_volumetricCloudsEnabled; }
+
+private:
+
+	void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext);
+
+	void RenderVolumetricClouds(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterface& rendererInterface, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context, const CloudscapeContext cloudscapeContext);
+
+	CloudscapeContext CreateFrameCloudscapeContext(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const lib::DynamicPushArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings);
+
+	void UpdateAllCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext);
+	void UpdateCloudscapeProbesPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext);
+	void UpdateCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext, Uint32 raysNumPerProbe, lib::Span<const math::Vector2u> probeCoords);
+
+	void InitTextures();
+
+	void LoadOrCreateBaseShapeNoiseTexture();
+	void LoadOrCreateDetailShapeNoiseTexture();
+	void LoadWeatherMapTexture();
+	void LoadCurlNoiseTexture();
+	void LoadDensityLUTTexture();
+
+	Bool m_volumetricCloudsEnabled = false;
+
+	Bool m_enqueuedCloudscapeProbesGlobalUpdate = true;
+
+	lib::SharedPtr<rdr::TextureView> m_baseShapeNoiseTexture;
+	lib::SharedPtr<rdr::TextureView> m_detailShapeNoiseTexture;
+
+	lib::SharedPtr<rdr::TextureView> m_weatherMap;
+
+	lib::SharedPtr<rdr::TextureView> m_densityLUT;
+
+	lib::SharedPtr<rdr::TextureView> m_curlNoise;
+
+	lib::SharedPtr<rdr::TextureView> m_cloudscapeProbes;
+	lib::SharedPtr<rdr::TextureView> m_cloudscapeHighResProbe;
+
+	lib::SharedPtr<rdr::TextureView> m_cloudscapeTransmittance;
+
+	TextureWithHistory m_mainViewClouds;
+	TextureWithHistory m_mainViewCloudsDepth;
+	TextureWithHistory m_mainViewCloudsAge;
+
+	CloudscapeConstants m_cloudscapeConstants;
+
+	CloudsTransmittanceMap m_cloudsTransmittanceMap;
+};
+
+} //spt::rsc::clouds

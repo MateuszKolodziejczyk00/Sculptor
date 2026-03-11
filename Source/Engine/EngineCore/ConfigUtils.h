@@ -2,7 +2,7 @@
 
 #include "EngineCoreMacros.h"
 #include "SculptorCoreTypes.h"
-#include "Paths.h"
+#include "Engine.h"
 #include "SerializationHelper.h"
 
 
@@ -24,14 +24,14 @@ public:
 template<typename TDataType>
 void ConfigUtils::SaveConfigData(const TDataType& data, const lib::String& configFileName)
 {
-	const lib::String finalPath = Paths::Combine(Paths::GetConfigsPath(), configFileName);
+	const lib::String finalPath = (GetEngine().GetPaths().configsPath / configFileName).generic_string();
 	srl::SerializationHelper::SaveTextStructToFile(data, finalPath);
 }
 
 template<typename TDataType>
 Bool ConfigUtils::LoadConfigData(TDataType& data, const lib::String& configFileName)
 {
-	const lib::String finalPath = Paths::Combine(Paths::GetConfigsPath(), configFileName);
+	const lib::String finalPath = (GetEngine().GetPaths().configsPath / configFileName).generic_string();
 	const Bool success = srl::SerializationHelper::LoadTextStructFromFile(data, finalPath);
 
 	// Save config in case of change of the struct

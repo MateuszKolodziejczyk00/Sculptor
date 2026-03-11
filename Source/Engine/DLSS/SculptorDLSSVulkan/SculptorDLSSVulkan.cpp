@@ -1,7 +1,7 @@
 #include "SculptorDLSSVulkan.h"
 #include "RHIBridge/RHIImpl.h"
 #include "RHICore/RHIPlugin.h"
-#include "Paths.h"
+#include "Engine.h"
 #include "Utility/String/StringUtils.h"
 
 #include "RHI/Vulkan/Device/LogicalDevice.h"
@@ -115,6 +115,120 @@ void DLSSRHIPlugin::CollectExtensions(rhi::ExtensionsCollector& collector) const
 
 DLSSRHIPlugin g_dlssRHIPlugin;
 
+} // priv
+
+
+namespace ngx
+{
+
+// NGX functions must be called from the same library instance that initalized it. In our case, renderer is a separate dll, that is hot-reloadable
+// so initializing library saves those pointers, so they can be called from any dll
+struct API
+{
+	lib::RawCallable<NVSDK_NGX_Result(NVSDK_NGX_Parameter**)> GetCapabilityParameters;
+	lib::RawCallable<NVSDK_NGX_Result(VkCommandBuffer, unsigned int, unsigned int, NVSDK_NGX_Handle**, NVSDK_NGX_Parameter*, NVSDK_NGX_DLSS_Create_Params*)> CreateDLSSFeature;
+	lib::RawCallable<NVSDK_NGX_Result(VkDevice, VkCommandBuffer, unsigned int, unsigned int, NVSDK_NGX_Handle**, NVSDK_NGX_Parameter*, NVSDK_NGX_DLSSD_Create_Params*)> CreateDLSSRRFeature;
+	lib::RawCallable<NVSDK_NGX_Result(VkCommandBuffer, NVSDK_NGX_Handle*, NVSDK_NGX_Parameter*, NVSDK_NGX_VK_DLSS_Eval_Params*)> EvaluateDLSS;
+	lib::RawCallable<NVSDK_NGX_Result(VkCommandBuffer, NVSDK_NGX_Handle*, NVSDK_NGX_Parameter*, NVSDK_NGX_VK_DLSSD_Eval_Params*)> EvaluateDLSSRR;
+	lib::RawCallable<NVSDK_NGX_Result(NVSDK_NGX_Handle*)> ReleaseDLSSFeature;
+	lib::RawCallable<void(NVSDK_NGX_Parameter*, const char*, unsigned int)> ParameterSetUInt;
+	lib::RawCallable<NVSDK_NGX_Result(NVSDK_NGX_Parameter* InParameters)> DestroyNGXParameters;
+	lib::RawCallable<NVSDK_NGX_Result()> Shutdown;
+};
+
+
+class NGXInstance
+{
+public:
+
+	static NGXInstance& GetInstance()
+	{
+		static engn::TEngineSingleton<NGXInstance> instance;
+		return instance.Get();
+	}
+
+	static const API& GetAPI()
+	{
+		return GetInstance().m_api;
+	}
+
+	NGXInstance() = default;
+
+	Bool TryInitialize()
+	{
+		if (!IsInitialized())
+		{
+			return Initialize();
+		}
+
+		return true;
+	}
+
+	Bool IsInitialized() const
+	{
+		return m_isInitialized;
+	}
+
+private:
+
+	Bool Initialize();
+	void Uninitialize();
+
+	API m_api;
+
+	Bool m_isInitialized = false;
+};
+
+Bool NGXInstance::Initialize()
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!m_isInitialized);
+
+	const lib::WString dlssDataPathW = engn::GetEngine().GetPaths().executableDirectory.wstring();
+
+	const NVSDK_NGX_Result initResult = NVSDK_NGX_VULKAN_Init(constants::dlssApplicationID, dlssDataPathW.c_str(), rhi::RHI::GetInstanceHandle(), rhi::RHI::GetPhysicalDeviceHandle(), rhi::RHI::GetDeviceHandle());
+
+	if (initResult != NVSDK_NGX_Result_Success)
+	{
+		SPT_LOG_ERROR(DLSS, "Failed to initialize NGX. Reason: {}", lib::StringUtils::ToMultibyteString(GetNGXResultAsString(initResult)));
+		return false;
+	}
+
+	m_isInitialized = true;
+
+	m_api.GetCapabilityParameters = NVSDK_NGX_VULKAN_GetCapabilityParameters;
+	m_api.CreateDLSSFeature       = NGX_VULKAN_CREATE_DLSS_EXT;
+	m_api.CreateDLSSRRFeature     = NGX_VULKAN_CREATE_DLSSD_EXT1;
+	m_api.EvaluateDLSS            = NGX_VULKAN_EVALUATE_DLSS_EXT;
+	m_api.EvaluateDLSSRR          = NGX_VULKAN_EVALUATE_DLSSD_EXT;
+	m_api.ReleaseDLSSFeature      = NVSDK_NGX_VULKAN_ReleaseFeature;
+	m_api.ParameterSetUInt        = NVSDK_NGX_Parameter_SetUI;
+	m_api.DestroyNGXParameters    = NVSDK_NGX_VULKAN_DestroyParameters;
+	m_api.Shutdown                = NVSDK_NGX_VULKAN_Shutdown;
+
+	rdr::GPUApi::GetOnRendererCleanupDelegate().AddLambda(
+		[this]()
+		{
+			Uninitialize();
+		});
+
+	SPT_CHECK(IsInitialized());
+	return true;
+}
+
+void NGXInstance::Uninitialize()
+{
+	SPT_PROFILER_FUNCTION();
+
+	m_api.Shutdown();
+}
+
+} // ngx
+
+
+namespace priv
+{
 
 BEGIN_RG_NODE_PARAMETERS_STRUCT(DLSSRenderNodeParams)
 	RG_TEXTURE_VIEW(input,    rg::ERGTextureAccess::ShaderRead,  rhi::EPipelineStage::ComputeShader)
@@ -191,7 +305,9 @@ void EvaluateDLSS(rdr::CommandRecorder& commandRecorder, const DLSSRenderingPara
 
 	const rhi::RHICommandBuffer& rhiCmdBuffer = commandRecorder.GetCommandBuffer()->GetRHI();
 
-	const NVSDK_NGX_Result result = NGX_VULKAN_EVALUATE_DLSS_EXT(rhiCmdBuffer.GetHandle(), &dlssHandle, &ngxParams, &dlssEvalParams);
+	const ngx::API& ngxAPI = ngx::NGXInstance::GetAPI();
+
+	const NVSDK_NGX_Result result = ngxAPI.EvaluateDLSS(rhiCmdBuffer.GetHandle(), &dlssHandle, &ngxParams, &dlssEvalParams);
 
 	if (result != NVSDK_NGX_Result_Success)
 	{
@@ -235,10 +351,10 @@ void EvaluateDLSSRR(rdr::CommandRecorder& commandRecorder, const DLSSRenderingPa
 	dlssEvalParams.pInWorldToViewMatrix = worldToView.data();
 	dlssEvalParams.pInViewToClipMatrix  = viewToClip.data();
 
-    dlssEvalParams.pInDiffuseAlbedo       = &diffuseAlbedoResource;
-    dlssEvalParams.pInSpecularAlbedo      = &specularAlbedoResource;
-    dlssEvalParams.pInNormals             = &normalsResource;
-    dlssEvalParams.pInRoughness           = &roughnessResource;
+	dlssEvalParams.pInDiffuseAlbedo       = &diffuseAlbedoResource;
+	dlssEvalParams.pInSpecularAlbedo      = &specularAlbedoResource;
+	dlssEvalParams.pInNormals             = &normalsResource;
+	dlssEvalParams.pInRoughness           = &roughnessResource;
 	dlssEvalParams.pInSpecularHitDistance = &specularHitDistanceResource;
 
 	dlssEvalParams.pInColor    = &inputResouce;
@@ -246,7 +362,8 @@ void EvaluateDLSSRR(rdr::CommandRecorder& commandRecorder, const DLSSRenderingPa
 
 	const rhi::RHICommandBuffer& rhiCmdBuffer = commandRecorder.GetCommandBuffer()->GetRHI();
 
-	const NVSDK_NGX_Result result = NGX_VULKAN_EVALUATE_DLSSD_EXT(rhiCmdBuffer.GetHandle(), &dlssHandle, &ngxParams, &dlssEvalParams);
+	const ngx::API& ngxAPI = ngx::NGXInstance::GetAPI();
+	const NVSDK_NGX_Result result = ngxAPI.EvaluateDLSSRR(rhiCmdBuffer.GetHandle(), &dlssHandle, &ngxParams, &dlssEvalParams);
 
 	if (result != NVSDK_NGX_Result_Success)
 	{
@@ -255,95 +372,6 @@ void EvaluateDLSSRR(rdr::CommandRecorder& commandRecorder, const DLSSRenderingPa
 }
 
 } // priv
-
-
-namespace ngx
-{
-
-class NGXInstance
-{
-public:
-
-	static NGXInstance& GetInstance()
-	{
-		static NGXInstance instance;
-		return instance;
-	}
-
-	Bool TryInitialize()
-	{
-		if (!IsInitialized())
-		{
-			return Initialize();
-		}
-
-		return true;
-	}
-
-	Bool IsInitialized() const
-	{
-		return m_isInitialized;
-	}
-
-private:
-
-	NGXInstance() = default;
-
-	Bool Initialize();
-	void Uninitialize();
-
-	Bool m_isInitialized = false;
-};
-
-Bool NGXInstance::Initialize()
-{
-	SPT_PROFILER_FUNCTION();
-
-	SPT_CHECK(!m_isInitialized);
-
-	lib::String dlssDataPath = engn::Paths::GetExecutablePath();
-
-	const SizeType lastSlashIndex = dlssDataPath.find_last_of('\\');
-	if (lastSlashIndex != lib::String::npos)
-	{
-		dlssDataPath.erase(dlssDataPath.begin() + lastSlashIndex, dlssDataPath.end());
-	}
-
-	if (dlssDataPath.empty())
-	{
-		return false;
-	}
-
-	const lib::WString dlssDataPathW = lib::StringUtils::ToWideString(dlssDataPath);
-
-	const NVSDK_NGX_Result initResult = NVSDK_NGX_VULKAN_Init(constants::dlssApplicationID, dlssDataPathW.c_str(), rhi::RHI::GetInstanceHandle(), rhi::RHI::GetPhysicalDeviceHandle(), rhi::RHI::GetDeviceHandle());
-
-	if (initResult != NVSDK_NGX_Result_Success)
-	{
-		SPT_LOG_ERROR(DLSS, "Failed to initialize NGX. Reason: {}", lib::StringUtils::ToMultibyteString(GetNGXResultAsString(initResult)));
-		return false;
-	}
-
-	m_isInitialized = true;
-
-	rdr::GPUApi::GetOnRendererCleanupDelegate().AddLambda(
-		[this]()
-		{
-			Uninitialize();
-		});
-
-	SPT_CHECK(IsInitialized());
-	return true;
-}
-
-void NGXInstance::Uninitialize()
-{
-	SPT_PROFILER_FUNCTION();
-
-	NVSDK_NGX_VULKAN_Shutdown();
-}
-
-} // ngx
 
 
 Bool SculptorDLSSVulkan::InitializeDLSS()
@@ -378,8 +406,8 @@ Bool SculptorDLSSVulkan::Initialize()
 		return false;
 	}
 
-	const NVSDK_NGX_Result capabilityParamsResult = NVSDK_NGX_VULKAN_GetCapabilityParameters(&m_ngxParams);
-
+	const ngx::API& ngxAPI = ngx::NGXInstance::GetAPI();
+	const NVSDK_NGX_Result capabilityParamsResult = ngxAPI.GetCapabilityParameters(&m_ngxParams);
 	if (capabilityParamsResult != NVSDK_NGX_Result_Success)
 	{
 		SPT_LOG_ERROR(DLSS, "Failed to fetch NGX parameters. Reason: {}", lib::StringUtils::ToMultibyteString(GetNGXResultAsString(capabilityParamsResult)));
@@ -496,16 +524,18 @@ Bool SculptorDLSSVulkan::PrepareForRendering(const rdr::CommandRecorder& cmdReco
 			ReleaseDLSSFeature();
 		}
 
+		const ngx::API& ngxAPI = ngx::NGXInstance::GetAPI();
+
 		if (params.enableRayReconstruction)
 		{
 			const NVSDK_NGX_RayReconstruction_Hint_Render_Preset newPreset = NVSDK_NGX_RayReconstruction_Hint_Render_Preset::NVSDK_NGX_RayReconstruction_Hint_Render_Preset_Default;
 
-			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_Balanced, newPreset);
-			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_Quality, newPreset);
-			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_Balanced, newPreset);
-			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_Performance, newPreset);
-			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_UltraPerformance, newPreset);
-			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_UltraQuality, newPreset);
+			ngxAPI.ParameterSetUInt(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_Balanced, newPreset);
+			ngxAPI.ParameterSetUInt(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_Quality, newPreset);
+			ngxAPI.ParameterSetUInt(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_Balanced, newPreset);
+			ngxAPI.ParameterSetUInt(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_Performance, newPreset);
+			ngxAPI.ParameterSetUInt(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_UltraPerformance, newPreset);
+			ngxAPI.ParameterSetUInt(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_UltraQuality, newPreset);
 		}
 		else
 		{
@@ -513,12 +543,12 @@ Bool SculptorDLSSVulkan::PrepareForRendering(const rdr::CommandRecorder& cmdReco
 				                                              ? NVSDK_NGX_DLSS_Hint_Render_Preset::NVSDK_NGX_DLSS_Hint_Render_Preset_J
 				                                              : NVSDK_NGX_DLSS_Hint_Render_Preset::NVSDK_NGX_DLSS_Hint_Render_Preset_Default;
 
-			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA, newPreset);
-			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality, newPreset);
-			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced, newPreset);
-			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, newPreset);
-			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, newPreset);
-			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraQuality, newPreset);
+			ngxAPI.ParameterSetUInt(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA, newPreset);
+			ngxAPI.ParameterSetUInt(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality, newPreset);
+			ngxAPI.ParameterSetUInt(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced, newPreset);
+			ngxAPI.ParameterSetUInt(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, newPreset);
+			ngxAPI.ParameterSetUInt(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, newPreset);
+			ngxAPI.ParameterSetUInt(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraQuality, newPreset);
 		}
 
 		if (params.enableRayReconstruction)
@@ -620,7 +650,9 @@ Bool SculptorDLSSVulkan::CreateDLLSFeature(const rdr::CommandRecorder& cmdRecord
 	const Uint32 creationNodeMask   = 1u;
 	const Uint32 visibilityNodeMask = 1u;
 
-	const NVSDK_NGX_Result createDLSSResult = NGX_VULKAN_CREATE_DLSS_EXT(rhiCmdBuffer.GetHandle(), creationNodeMask, visibilityNodeMask, OUT &m_dlssHandle, m_ngxParams, &dlssParams);
+	const ngx::API& ngxAPI = ngx::NGXInstance::GetAPI();
+
+	const NVSDK_NGX_Result createDLSSResult = ngxAPI.CreateDLSSFeature(rhiCmdBuffer.GetHandle(), creationNodeMask, visibilityNodeMask, OUT &m_dlssHandle, m_ngxParams, &dlssParams);
 
 	if (createDLSSResult != NVSDK_NGX_Result_Success)
 	{
@@ -656,7 +688,8 @@ Bool SculptorDLSSVulkan::CreateDLLSRRFeature(const rdr::CommandRecorder& cmdReco
 	const uint32_t creationNodeMask   = 1u;
 	const uint32_t visibilityNodeMask = 1u;
 
-	const NVSDK_NGX_Result createDLSSResult = NGX_VULKAN_CREATE_DLSSD_EXT1(VK_NULL_HANDLE, rhiCmdBuffer.GetHandle(), creationNodeMask, visibilityNodeMask, OUT &m_dlssHandle, m_ngxParams, &dlssParams);
+	const ngx::API& ngxAPI = ngx::NGXInstance::GetAPI();
+	const NVSDK_NGX_Result createDLSSResult = ngxAPI.CreateDLSSRRFeature(VK_NULL_HANDLE, rhiCmdBuffer.GetHandle(), creationNodeMask, visibilityNodeMask, OUT &m_dlssHandle, m_ngxParams, &dlssParams);
 
 	if (createDLSSResult != NVSDK_NGX_Result_Success)
 	{
@@ -675,7 +708,9 @@ void SculptorDLSSVulkan::ReleaseDLSSFeature()
 	SPT_CHECK(!!m_dlssHandle);
 
 	rdr::GPUApi::WaitIdle(false);
-	const NVSDK_NGX_Result result = NVSDK_NGX_VULKAN_ReleaseFeature(m_dlssHandle);
+
+	const ngx::API& ngxAPI = ngx::NGXInstance::GetAPI();
+	const NVSDK_NGX_Result result = ngxAPI.ReleaseDLSSFeature(m_dlssHandle);
 
 	if (result == NVSDK_NGX_Result_Success)
 	{
@@ -691,7 +726,8 @@ void SculptorDLSSVulkan::ReleaseNGXResources()
 {
 	SPT_CHECK(!!m_ngxParams);
 
-	const NVSDK_NGX_Result result = NVSDK_NGX_VULKAN_DestroyParameters(m_ngxParams);
+	const ngx::API& ngxAPI = ngx::NGXInstance::GetAPI();
+	const NVSDK_NGX_Result result = ngxAPI.DestroyNGXParameters(m_ngxParams);
 
 	if (result == NVSDK_NGX_Result_Success)
 	{

@@ -343,7 +343,7 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const l
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::String shadersPath = ShaderCompilationEnvironment::GetShadersPath();
+	const lib::String shadersPath = ShaderCompilationEnvironment::GetShadersPath().generic_string();
 	const lib::WString absoluteShadersPath = std::filesystem::absolute(shadersPath);
 
 	const ETargetEnvironment targetEnv = ShaderCompilationEnvironment::GetTargetEnvironment();

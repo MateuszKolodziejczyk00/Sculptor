@@ -5,8 +5,8 @@
 #endif // USE_STABLE_BLENDS
 
 
-[[descriptor_set(RenderViewDS, 0)]]
-[[descriptor_set(SRTemporalAccumulationDS, 1)]]
+[[descriptor_set(RenderViewDS)]]
+[[descriptor_set(SRTemporalAccumulationDS)]]
 
 
 #include "Utils/SceneViewUtils.hlsli"

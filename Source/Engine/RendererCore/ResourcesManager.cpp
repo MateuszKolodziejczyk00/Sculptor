@@ -129,6 +129,16 @@ static lib::SharedRef<Shader> CreateShader(const RendererResourceName& name, con
 	return lib::MakeShared<Shader>(name, moduleDef, std::move(metaData));
 }
 
+static lib::SharedRef<TextureView> CreateTextureViewObject(const RendererResourceName& name, const lib::SharedRef<Texture>& texture, const rhi::TextureViewDefinition& viewDefinition, TextureViewDescriptorsAllocation externalDescriptorsAllocation)
+{
+	return lib::MakeShared<TextureView>(name, texture, viewDefinition, std::move(externalDescriptorsAllocation));
+}
+
+static lib::SharedPtr<BindableBufferView> CreateBufferViewObject(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint64 size, BufferViewDescriptorsAllocation externalDescriptorsAllocation)
+{
+	return lib::MakeShared<BindableBufferView>(buffer, offset, size, std::move(externalDescriptorsAllocation));
+}
+
 } // utils
 
 struct GPUApiFactory
@@ -153,6 +163,8 @@ struct GPUApiFactory
 	lib::RawCallable<lib::SharedRef<ComputePipeline>(const RendererResourceName& /* name */, const lib::SharedRef<Shader>& /* shader */)> createComputePipelineFunc;
 	lib::RawCallable<lib::SharedRef<RayTracingPipeline>(const RendererResourceName& /* name */, const RayTracingPipelineShaderObjects& /* shaders */, const rhi::RayTracingPipelineDefinition& /* pipelineDef */)> createRayTracingPipelineFunc;
 	lib::RawCallable<lib::SharedRef<Shader>(const RendererResourceName& /* name */, const rhi::ShaderModuleDefinition& /* moduleDef */, spt::smd::ShaderMetaData&& /* metaData */)> createShaderFunc;
+	lib::RawCallable<lib::SharedRef<TextureView>(const RendererResourceName& /* name */, const lib::SharedRef<Texture>& /* texture */, const rhi::TextureViewDefinition& /* viewDefinition */, TextureViewDescriptorsAllocation /* externalDescriptorsAllocation */)> createTextureViewFunc;
+	lib::RawCallable<lib::SharedPtr<BindableBufferView>(const lib::SharedRef<Buffer>& /* buffer */, Uint64 /* offset */, Uint64 /* size */, BufferViewDescriptorsAllocation /* externalDescriptorsAllocation */)> createBufferViewObjectFunc;
 };
 
 GPUApiFactory* g_GPUApiFactory = nullptr;
@@ -185,6 +197,8 @@ GPUApiFactoryData* ResourcesManager::Initialize()
 	g_GPUApiFactory->createComputePipelineFunc     = utils::CreateComputePipeline;
 	g_GPUApiFactory->createRayTracingPipelineFunc  = utils::CreateRayTracingPipeline;
 	g_GPUApiFactory->createShaderFunc              = utils::CreateShader;
+	g_GPUApiFactory->createTextureViewFunc         = utils::CreateTextureViewObject;
+	g_GPUApiFactory->createBufferViewObjectFunc    = utils::CreateBufferViewObject;
 
 	return reinterpret_cast<GPUApiFactoryData*>(g_GPUApiFactory);
 }
@@ -234,6 +248,11 @@ lib::SharedRef<Buffer> ResourcesManager::CreateBuffer(const RendererResourceName
 	return g_GPUApiFactory->createBufferFromInstanceFunc(name, bufferInstance);
 }
 
+lib::SharedPtr<BindableBufferView> ResourcesManager::CreateBufferViewObject(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint64 size, BufferViewDescriptorsAllocation externalDescriptorsAllocation /* = BufferViewDescriptorsAllocation() */)
+{
+	return g_GPUApiFactory->createBufferViewObjectFunc(buffer, offset, size, std::move(externalDescriptorsAllocation));
+}
+
 lib::SharedRef<Texture> ResourcesManager::CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationDefinition)
 {
 	rhi::TextureDefinition newDefinition = textureDefinition;
@@ -260,6 +279,11 @@ lib::SharedRef<TextureView> ResourcesManager::CreateTextureView(const RendererRe
 {
 	const lib::SharedRef<Texture> texture = CreateTexture(name, textureDefinition, allocationDefinition);
 	return texture->CreateView(RENDERER_RESOURCE_NAME_FORMATTED("{} View", name.Get().ToString()));
+}
+
+lib::SharedRef<TextureView> ResourcesManager::CreateTextureViewObject(const RendererResourceName& name, const lib::SharedRef<Texture>& texture, const rhi::TextureViewDefinition& viewDefinition /* = rhi::TextureViewDefinition() */, TextureViewDescriptorsAllocation externalDescriptorsAllocation /* = TextureViewDescriptorsAllocation() */)
+{
+	return g_GPUApiFactory->createTextureViewFunc(name, texture, viewDefinition, std::move(externalDescriptorsAllocation));
 }
 
 lib::SharedRef<GPUMemoryPool> ResourcesManager::CreateGPUMemoryPool(const RendererResourceName& name, const rhi::RHIMemoryPoolDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo)

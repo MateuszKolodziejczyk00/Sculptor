@@ -4,9 +4,10 @@
 #include "RenderSceneTypes.h"
 #include "ShaderStructs.h"
 #include "MaterialsUnifiedData.h"
-#include "RayTracing/RayTracingSceneTypes.h"
-#include "Shadows/ShadowsRenderingTypes.h"
-#include "Shadows/WorldShadowCacheTypes.h"
+#include "SceneRenderSystems/RayTracing/RayTracingSceneTypes.h"
+#include "SceneRenderSystems/ShadowMaps/ShadowsRenderingTypes.h"
+#include "SceneRenderSystems/WorldShadowCache/WorldShadowCacheTypes.h"
+#include "DescriptorSetBindings/ConstantBufferBinding.h"
 
 
 namespace spt::rsc

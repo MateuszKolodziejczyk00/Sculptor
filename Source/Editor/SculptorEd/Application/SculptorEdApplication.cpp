@@ -47,8 +47,8 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 	engn::Engine::Initialize(engineInitializationParams);
 
 	as::AssetsSystemInitializer asInitializer;
-	asInitializer.contentPath = engn::Paths::GetContentPath();
-	asInitializer.ddcPath     = engn::Paths::Combine(engn::Paths::GetEnginePath(), "DDC");
+	asInitializer.contentPath = engn::GetEngine().GetPaths().contentPath;
+	asInitializer.ddcPath     = engn::GetEngine().GetPaths().enginePath / "DDC";
 
 	if (engn::Engine::Get().GetCmdLineArgs().Contains("-CompiledAssetsOnly"))
 	{
@@ -107,7 +107,7 @@ void SculptorEdApplication::OnRun()
 		imGuiIO.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 	}
 
-	imGuiIO.IniFilename = engn::Paths::GetImGuiConfigPath().data();
+	imGuiIO.IniFilename = engn::GetEngine().GetPaths().imguiConfigPath.c_str();
 
 	m_window->InitializeUI(uiContext);
 

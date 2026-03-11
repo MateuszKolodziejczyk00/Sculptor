@@ -1,10 +1,10 @@
 #include "CompilationErrorsLogger.h"
 #include "ShaderCompilationEnvironment.h"
 #include "ShaderCompilationInput.h"
+#include "FileSystem/File.h"
 
 #include <filesystem>
 #include <fstream>
-#include "FileSystem/File.h"
 
 namespace spt::sc
 {
@@ -102,7 +102,7 @@ void CompilationErrorsLogger::OutputShaderCompilationErrors(const lib::String& s
 
 lib::String CompilationErrorsLogger::GetShaderLogsPath(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef)
 {
-	const lib::String& logsPath = ShaderCompilationEnvironment::GetErrorLogsPath();
+	const lib::String& logsPath = ShaderCompilationEnvironment::GetErrorLogsPath().generic_string();
 
 	return logsPath + '/' + lib::File::DiscardExtension(shaderPath) + '/' + priv::GetShaderStageName(stageCompilationDef.stage) + '/' + stageCompilationDef.entryPoint.GetData();
 }

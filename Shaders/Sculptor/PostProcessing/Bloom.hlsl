@@ -159,14 +159,6 @@ void BloomCompositeCS(CS_INPUT input)
 
 		bloom = lerp(bloom, imageColor, 0.99f);
 
-		float3 lensDirt = 0.f;
-		if (u_bloomCompositeInfo.hasLensDirtTexture)
-		{
-			lensDirt = u_lensDirtTexture.SampleLevel(u_linearSampler, uv, 0).rgb * u_bloomCompositeInfo.lensDirtIntensity;
-		}
-
-		bloom += saturate(bloom - u_bloomCompositeInfo.lensDirtThreshold) * lensDirt;
-
 		if(u_bloomCompositeInfo.hasLensFlaresTexture)
 		{
 			bloom += UpsampleFilter(u_lensFlaresTexture, u_linearSampler, uv, inputPixelSize) * u_bloomCompositeInfo.lensFlaresIntensity;

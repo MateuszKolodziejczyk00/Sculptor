@@ -3,6 +3,7 @@
 #include "GPUMemoryPool.h"
 #include "DescriptorSetState/DescriptorManager.h"
 #include "GPUApi.h"
+#include "ResourcesManager.h"
 
 
 namespace spt::rdr
@@ -170,7 +171,7 @@ const BindableBufferView& Buffer::GetFullViewRef() const
 
 lib::SharedPtr<BindableBufferView> Buffer::CreateView(Uint64 offset, Uint64 size, BufferViewDescriptorsAllocation externalDescriptorsAllocation /*= BufferViewDescriptorsAllocation()*/) const
 {
-	return lib::MakeShared<BindableBufferView>(lib::Ref(const_cast<Buffer*>(this)->shared_from_this()), offset, size, std::move(externalDescriptorsAllocation));
+	return ResourcesManager::CreateBufferViewObject(lib::Ref(const_cast<Buffer*>(this)->shared_from_this()), offset, size, std::move(externalDescriptorsAllocation));
 }
 
 Uint64 Buffer::GetSize() const

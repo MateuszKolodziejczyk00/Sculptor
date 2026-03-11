@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RenderSceneRegistry.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "Types/Buffer.h"
 #include "RGDescriptorSetState.h"
@@ -13,6 +14,9 @@
 
 namespace spt::rsc
 {
+
+class RenderMesh;
+
 
 struct StaticMeshGeometryData
 {
@@ -76,6 +80,13 @@ using SubmeshGPUPtr   = gfx::GPUNamedElemPtr<SubmeshesArray, SubmeshGPUData>;
 using SubmeshsGPUSpan = gfx::GPUNamedElemsSpan<SubmeshesArray, SubmeshGPUData>;
 
 
+struct StaticMeshInstanceRenderData
+{
+	lib::MTHandle<RenderMesh> staticMesh;
+};
+SPT_REGISTER_COMPONENT_TYPE(StaticMeshInstanceRenderData, RenderSceneRegistry);
+
+
 BEGIN_SHADER_STRUCT(StaticMeshGeometryBuffers)
 	SHADER_STRUCT_FIELD(SubmeshesArray, submeshesArray)
 	SHADER_STRUCT_FIELD(MeshletsArray,  meshletsArray)
@@ -88,13 +99,14 @@ public:
 
 	static StaticMeshUnifiedData& Get();
 
+	StaticMeshUnifiedData();
+
 	StaticMeshGeometryData BuildStaticMeshData(lib::DynamicArray<SubmeshGPUData>& submeshes, lib::DynamicArray<MeshletGPUData>& meshlets, rhi::RHIVirtualAllocation geometryDataSuballocation);
 
 	StaticMeshGeometryBuffers GetGeometryBuffers() const;
 
 private:
 
-	StaticMeshUnifiedData();
 	void DestroyResources();
 
 	lib::SharedPtr<rdr::Buffer> m_submeshesBuffer;

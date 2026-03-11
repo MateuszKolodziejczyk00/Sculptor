@@ -9,7 +9,6 @@ function EditorSandbox:SetupConfiguration(configuration, platform)
 	self:AddPrivateDependency("Profiler")
 	self:AddPrivateDependency("RenderGraphCapturer")
 	
-	self:AddPublicDependency("RenderScene")
 	self:AddPublicDependency("RenderSceneTools")
 
 	self:AddPublicDependency("Assets")

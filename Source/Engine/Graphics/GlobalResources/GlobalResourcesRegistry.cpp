@@ -2,7 +2,7 @@
 #include "GPUApi.h"
 #include "JobSystem.h"
 #include "Loaders/TextureLoader.h"
-#include "Paths.h"
+#include "Engine.h"
 
 
 namespace spt::gfx::global
@@ -26,7 +26,7 @@ GlobalTexture::GlobalTexture(const char* path)
 
 void GlobalTexture::Initialize()
 {
-	const lib::String texturePath = engn::Paths::Combine(engn::Paths::GetContentPath(), m_path);
+	const lib::String texturePath = (engn::GetEngine().GetPaths().contentPath / m_path).generic_string();
 	m_texture = gfx::TextureLoader::LoadTexture(texturePath, lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest));
 	SPT_CHECK(!!m_texture);
 	m_textureView = m_texture->CreateView(RENDERER_RESOURCE_NAME_FORMATTED("{} View", m_texture->GetRHI().GetName().GetData()));
@@ -41,10 +41,11 @@ void GlobalTexture::Release()
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // GlobalResourcesRegistry =======================================================================
 
+engn::TEngineSingleton<GlobalResourcesRegistry> resourcesRegistry;
+
 GlobalResourcesRegistry& GlobalResourcesRegistry::Get()
 {
-	static GlobalResourcesRegistry instance;
-	return instance;
+	return resourcesRegistry.Get();
 }
 
 void GlobalResourcesRegistry::RegisterGlobalResource(GlobalResource* resource)
@@ -54,6 +55,9 @@ void GlobalResourcesRegistry::RegisterGlobalResource(GlobalResource* resource)
 
 void GlobalResourcesRegistry::InitializeAll()
 {
+	// Make sure that resources instances are created
+	Resources::Get();
+
 	js::InlineParallelForEach(SPT_GENERIC_JOB_NAME,
 							  m_resources,
 							  [](GlobalResource* resource)

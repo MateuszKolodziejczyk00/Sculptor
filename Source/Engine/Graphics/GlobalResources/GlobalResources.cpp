@@ -1,14 +1,15 @@
 #include "GlobalResources.h"
+#include "Engine.h"
 
 
 namespace spt::gfx::global
 {
 
-static Resources resourcesInstance;
+static engn::TEngineSingleton<Resources> resourcesInstance;
 
 const Resources& Resources::Get()
 {
-	return resourcesInstance;
+	return resourcesInstance.Get();
 }
 
 Resources::Resources()

@@ -1,5 +1,7 @@
 #include "SceneRendererStatsUIView.h"
+#if RENDERER_REWORK_TEMP_DISABLE
 #include "SceneRenderer/Debug/Stats/SceneRendererStatsView.h"
+#endif // RENDERER_REWORK_TEMP_DISABLE
 #include "ImGui/DockBuilder.h"
 
 
@@ -27,7 +29,9 @@ void SceneRendererStatsUIView::DrawUI()
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 	ImGui::Begin(m_statsPanelName.GetData());
 
+#if RENDERER_REWORK_TEMP_DISABLE
 	SceneRendererStatsRegistry::GetInstance().DrawUI();
+#endif // RENDERER_REWORK_TEMP_DISABLE
 
 	ImGui::End();
 }

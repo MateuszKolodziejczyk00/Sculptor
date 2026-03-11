@@ -33,11 +33,17 @@ private:
 };
 
 
+struct DSCompilationDefRegistryData {};
+
+
 class DescriptorSetCompilationDefsRegistry
 {
 public:
 
 	static void RegisterDSCompilationDef(lib::String dsName, const DescriptorSetCompilationDef& definition);
+
+	static void InitializeModule(DSCompilationDefRegistryData* registryData);
+	static DSCompilationDefRegistryData* GetRegistryData();
 
 	static const DescriptorSetCompilationDef& GetDescriptorSetCompilationDef(const lib::String& dsName);
 	static lib::String GetDescriptorSetShaderSourceCode(const lib::String& dsName, Uint32 dsIdx);

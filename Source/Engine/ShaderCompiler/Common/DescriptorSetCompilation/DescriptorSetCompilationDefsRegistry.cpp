@@ -11,10 +11,17 @@ namespace spt::sc
 namespace priv
 {
 
+using DefsRegistry = lib::HashMap<lib::String, DescriptorSetCompilationDef>;
+
+DefsRegistry* instance = nullptr;
+
 static lib::HashMap<lib::String, DescriptorSetCompilationDef>& GetRegistryInstance()
 {
-	static lib::HashMap<lib::String, DescriptorSetCompilationDef> instance;
-	return instance;
+	if (!instance)
+	{
+		instance = new DefsRegistry();
+	}
+	return *instance;
 }
 
 } // priv
@@ -98,6 +105,31 @@ DescriptorSetCompilationDefsRegistry::DescriptorSetCompilationDefsRegistry()
 void DescriptorSetCompilationDefsRegistry::RegisterDSCompilationDef(lib::String dsName, const DescriptorSetCompilationDef& definition)
 {
 	priv::GetRegistryInstance().emplace(std::move(dsName), definition);
+}
+
+void DescriptorSetCompilationDefsRegistry::InitializeModule(DSCompilationDefRegistryData* registryData)
+{
+	priv::DefsRegistry* globalRegistry = reinterpret_cast<priv::DefsRegistry*>(registryData);
+	SPT_CHECK(globalRegistry);
+
+	priv::DefsRegistry* localRegistry = priv::instance;
+
+	if (localRegistry)
+	{
+		for (const auto& [dsName, def] : *localRegistry)
+		{
+			globalRegistry->emplace(dsName, def);
+		}
+
+		delete localRegistry;
+	}
+
+	priv::instance = globalRegistry;
+}
+
+DSCompilationDefRegistryData* DescriptorSetCompilationDefsRegistry::GetRegistryData()
+{
+	return reinterpret_cast<DSCompilationDefRegistryData*>(priv::instance);
 }
 
 const DescriptorSetCompilationDef& DescriptorSetCompilationDefsRegistry::GetDescriptorSetCompilationDef(const lib::String& dsName)

@@ -11,31 +11,7 @@ namespace spt::mat
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // MaterialsSubsystem ============================================================================
 
-MaterialsSubsystem& MaterialsSubsystem::Get()
-{
-	static MaterialsSubsystem instance;
-	return instance;
-}
-
-const lib::DynamicArray<MaterialShader>& MaterialsSubsystem::GetMaterialShaders() const
-{
-	return m_materialShaders;
-}
-
-const lib::DynamicArray<RTHitGroupPermutation>& MaterialsSubsystem::GetRTHitGroups() const
-{
-	return m_hitGroups;
-}
-
-Uint32 MaterialsSubsystem::GetRTHitGroupIdx(const RTHitGroupPermutation& hitGroupPermutation) const
-{
-	return m_hitGroupToIdx.at(hitGroupPermutation);
-}
-
-const lib::DynamicArray<lib::HashedString>& MaterialsSubsystem::GetMaterialDataStructNames() const
-{
-	return m_materialDataStructNames;
-}
+engn::TEngineSingleton<MaterialsSubsystem> materialsSubsystem;
 
 MaterialsSubsystem::MaterialsSubsystem()
 {
@@ -63,6 +39,31 @@ MaterialsSubsystem::MaterialsSubsystem()
 	{
 		m_materialDataStructNames.emplace_back(dataStruct);
 	}
+}
+
+MaterialsSubsystem& MaterialsSubsystem::Get()
+{
+	return materialsSubsystem.Get();
+}
+
+const lib::DynamicArray<MaterialShader>& MaterialsSubsystem::GetMaterialShaders() const
+{
+	return m_materialShaders;
+}
+
+const lib::DynamicArray<RTHitGroupPermutation>& MaterialsSubsystem::GetRTHitGroups() const
+{
+	return m_hitGroups;
+}
+
+Uint32 MaterialsSubsystem::GetRTHitGroupIdx(const RTHitGroupPermutation& hitGroupPermutation) const
+{
+	return m_hitGroupToIdx.at(hitGroupPermutation);
+}
+
+const lib::DynamicArray<lib::HashedString>& MaterialsSubsystem::GetMaterialDataStructNames() const
+{
+	return m_materialDataStructNames;
 }
 
 ecs::EntityHandle MaterialsSubsystem::CreateMaterial(const MaterialDefinition& materialDef, ecs::EntityHandle shaderEntity, const Byte* materialData, Uint64 dataSize, lib::HashedString dataStructName, const MaterialFeatures& features)

@@ -16,30 +16,13 @@ namespace spt::rdr
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DescriptorSetStateLayoutsRegistry =============================================================
 
-DescriptorSetStateLayoutsRegistry& DescriptorSetStateLayoutsRegistry::Get()
+DescriptorSetStateLayoutsRegistry::DescriptorSetStateLayoutsRegistry()
 {
-	static DescriptorSetStateLayoutsRegistry instance;
-	return instance;
-}
-
-void DescriptorSetStateLayoutsRegistry::CreateRegisteredLayouts()
-{
-	SPT_PROFILER_FUNCTION();
-
-	for (const auto& [typeID, factoryMethod] : m_layoutFactoryMethods)
-	{
-		factoryMethod(*this);
-	}
 }
 
 void DescriptorSetStateLayoutsRegistry::ReleaseRegisteredLayouts()
 {
 	m_layouts.clear();
-}
-
-void DescriptorSetStateLayoutsRegistry::RegisterFactoryMethod(DSStateTypeID dsTypeID, DescriptorSetStateLayoutFactoryMethod layoutFactoryMethod)
-{
-	m_layoutFactoryMethods.emplace(dsTypeID, std::move(layoutFactoryMethod));
 }
 
 void DescriptorSetStateLayoutsRegistry::RegisterLayout(DSStateTypeID dsTypeID, const RendererResourceName& name, const DescriptorSetStateLayoutDefinition& layoutDef)
@@ -53,10 +36,6 @@ void DescriptorSetStateLayoutsRegistry::RegisterLayout(DSStateTypeID dsTypeID, c
 const lib::SharedPtr<DescriptorSetLayout>& DescriptorSetStateLayoutsRegistry::GetLayoutChecked(DSStateTypeID dsTypeID) const
 {
 	return m_layouts.at(dsTypeID);
-}
-
-DescriptorSetStateLayoutsRegistry::DescriptorSetStateLayoutsRegistry()
-{
 }
 
 Bool DescriptorSetStateLayoutsRegistry::ShouldCreateLayout(DSStateTypeID dsTypeID, const RendererResourceName& name, const DescriptorSetStateLayoutDefinition& layoutDef) const
@@ -105,6 +84,28 @@ Bool DescriptorSetStateLayoutsRegistry::IsRayTracingLayout(DSStateTypeID dsTypeI
 					   {
 						   return binding.type == rhi::EDescriptorType::AccelerationStructure;
 					   });
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// DescriptorSetStateLayoutsFactory ==============================================================
+
+DescriptorSetStateLayoutsFactory& DescriptorSetStateLayoutsFactory::Get()
+{
+	static DescriptorSetStateLayoutsFactory instance;
+	return instance;
+}
+
+void DescriptorSetStateLayoutsFactory::RegisterFactoryMethod(DSStateTypeID dsTypeID, DescriptorSetStateLayoutFactoryMethod layoutFactoryMethod)
+{
+	m_layoutFactoryMethods.emplace(dsTypeID, std::move(layoutFactoryMethod));
+}
+
+void DescriptorSetStateLayoutsFactory::CreateRegisteredLayouts(DescriptorSetStateLayoutsRegistry& registry) const
+{
+	for (const auto& [dsTypeID, layoutFactoryMethod] : m_layoutFactoryMethods)
+	{
+		layoutFactoryMethod(registry);
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

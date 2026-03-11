@@ -117,15 +117,9 @@ class GRAPHICS_API TemporalAARenderer
 public:
 
 	TemporalAARenderer() = default;
-	virtual ~TemporalAARenderer() = default;
+	~TemporalAARenderer() = default;
 
-	virtual math::Vector2f ComputeJitter(Uint64 frameIdx, math::Vector2u renderingResolution, math::Vector2u outputResolution) const = 0;
-
-	virtual Bool Initialize(const TemporalAAInitSettings& initSettings) = 0 { return true; };
-
-	virtual Bool PrepareForRendering(const TemporalAAParams& params) { return true; }
-
-	virtual void Render(rg::RenderGraphBuilder& graphBuilder, const TemporalAARenderingParams& renderingParams) = 0 {};
+	Bool PrepareForRendering(const TemporalAAParams& params) { return true; }
 
 	lib::StringView GetName() const { return m_name; }
 

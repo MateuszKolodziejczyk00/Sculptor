@@ -13,3 +13,5 @@
 							    // Disabled as we want to use it in certain situations to do additional runtime actions like logging if we're not constant evaluated
 
 #pragma warning(disable : 4359) // Alignment specifier is less than actual alignment (X), and will be ignored.
+
+#define RENDERER_REWORK_TEMP_DISABLE 0

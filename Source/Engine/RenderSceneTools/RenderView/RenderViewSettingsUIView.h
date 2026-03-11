@@ -18,7 +18,7 @@ protected:
 
 public:
 
-	explicit RenderViewSettingsUIView(const scui::ViewDefinition& definition, const lib::SharedPtr<RenderView>& renderView);
+	explicit RenderViewSettingsUIView(const scui::ViewDefinition& definition, RenderView& renderView);
 
 protected:
 
@@ -31,7 +31,7 @@ private:
 
 	void DrawUIForView(RenderView& view);
 
-	lib::WeakPtr<RenderView> m_renderView;
+	RenderView& m_renderView;
 
 	lib::HashedString m_renderViewSettingsName;
 };

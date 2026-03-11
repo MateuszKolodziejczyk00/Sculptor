@@ -1,8 +1,10 @@
 #include "RenderSceneSettingsUIView.h"
 #include "RenderScene.h"
+#include "ImGui/DockBuilder.h"
+#if RENDERER_REWORK_TEMP_DISABLE
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "Shadows/ShadowMapsRenderSystem.h"
-#include "ImGui/DockBuilder.h"
+#endif // RENDERER_REWORK_TEMP_DISABLE
 
 
 namespace spt::rsc
@@ -40,6 +42,7 @@ void RenderSceneSettingsUIView::DrawUI()
 
 void RenderSceneSettingsUIView::DrawUIForScene(RenderScene& scene)
 {
+#if RENDERER_REWORK_TEMP_DISABLE
 	rsc::RendererParamsRegistry::DrawParametersUI();
 
 	if (lib::SharedPtr<rsc::ShadowMapsRenderSystem> shadowMapsManger = scene.FindRenderSystem<rsc::ShadowMapsRenderSystem>())
@@ -52,6 +55,7 @@ void RenderSceneSettingsUIView::DrawUIForScene(RenderScene& scene)
 			shadowMapsManger->SetShadowMappingTechnique(static_cast<rsc::EShadowMappingTechnique>(currentTechnique));
 		}
 	}
+#endif
 }
 
 } // spt::rsc

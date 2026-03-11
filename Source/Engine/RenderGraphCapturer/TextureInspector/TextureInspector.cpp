@@ -14,7 +14,7 @@
 #include "TextureInspector/TextureLiveCapturer.h"
 #include "RenderGraphCaptureSourceContext.h"
 #include "RenderGraphBuilder.h"
-#include "Paths.h"
+#include "Engine.h"
 #include "FileSystem/File.h"
 
 
@@ -331,7 +331,7 @@ void TextureInspector::DrawTextureViewSettingPanel()
 
 	if (ImGui::Button("Save Texture"))
 	{
-		m_saveParams = SaveTextureParams{ engn::Paths::GetSavedPath() + "/Captures/" + m_capture->name + "/" + lib::File::Utils::CreateFileNameFromTime("png") };
+		m_saveParams = SaveTextureParams{ (engn::GetEngine().GetPaths().savedPath / "Captures" / m_capture->name / lib::File::Utils::CreateFileNameFromTime("png")).generic_string() };
 	}
 	else
 	{

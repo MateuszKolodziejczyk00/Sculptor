@@ -1,4 +1,5 @@
 #include "RGAllocator.h"
+#include "Engine.h"
 
 
 namespace spt::rg
@@ -10,9 +11,11 @@ public:
 
 	static RGMemoryChunksPool& Get()
 	{
-		static RGMemoryChunksPool instance;
-		return instance;
+		static engn::TEngineSingleton<RGMemoryChunksPool> instance;
+		return instance.Get();
 	}
+	
+	RGMemoryChunksPool() = default;
 
 	Byte* AcquireMemory()
 	{
@@ -39,8 +42,6 @@ public:
 	}
 
 private:
-	
-	RGMemoryChunksPool() = default;
 
 	lib::DynamicArray<Byte*> m_memoryPool;
 	lib::Lock m_lock;

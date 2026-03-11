@@ -50,6 +50,8 @@ class GRAPHICS_API GlobalResourcesRegistry
 {
 public:
 
+	GlobalResourcesRegistry() = default;
+
 	static GlobalResourcesRegistry& Get();
 
 	void RegisterGlobalResource(GlobalResource* resource);
@@ -57,8 +59,6 @@ public:
 	void InitializeAll();
 
 private:
-
-	GlobalResourcesRegistry() = default;
 
 	void ReleaseAll();
 

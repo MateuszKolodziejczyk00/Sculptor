@@ -1,6 +1,6 @@
 #include "Vulkan/Debug/GPUCrashTracker.h"
 #include "FileSystem/File.h"
-#include "Paths.h"
+#include "Engine.h"
 
 #if SPT_ENABLE_NSIGHT_AFTERMATH
 #include "GFSDK_Aftermath_GpuCrashDump.h"
@@ -221,7 +221,7 @@ lib::String GPUCrashTrackerInstance::GenerateDumpFileNameWithoutExtension() cons
 	oss << std::put_time(&localTime, "%d%m%Y_%H%M%S");
 	const lib::String timeString = oss.str();
 
-	return engn::Paths::Combine(engn::Paths::GetGPUCrashDumpsPath(), timeString);
+	return (engn::GetEngine().GetPaths().gpuCrashDumpsPath / timeString).generic_string();
 }
 
 void GPUCrashTrackerInstance::OnShaderDebugInfo(const void* shaderDebugInfo, const Uint32 shaderDebugInfoSize)
@@ -260,7 +260,7 @@ void GPUCrashTrackerInstance::ResolveMarker(const void* marker, void* userData, 
 
 void GPUCrashTrackerInstance::WriteShaderDebugInformationToFile(GFSDK_Aftermath_ShaderDebugInfoIdentifier identifier, const void* shaderDebugInfo, const Uint32 shaderDebugInfoSize) const
 {
-    const lib::String filePath = engn::Paths::Combine(engn::Paths::GetGPUCrashDumpsPath(), "shader-" + std::to_string(identifier) + ".nvdbg");
+    const lib::String filePath = (engn::GetEngine().GetPaths().gpuCrashDumpsPath / (lib::String("shader-") + std::to_string(identifier) + ".nvdbg")).generic_string();
 
     std::ofstream stream = lib::File::OpenOutputStream(filePath, lib::Flags(lib::EFileOpenFlags::Binary, lib::EFileOpenFlags::DiscardContent, lib::EFileOpenFlags::ForceCreate));
     if (stream)

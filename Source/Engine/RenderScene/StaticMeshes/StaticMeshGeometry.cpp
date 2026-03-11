@@ -3,15 +3,38 @@
 #include "RendererUtils.h"
 #include "ResourcesManager.h"
 #include "GPUApi.h"
+#include "Engine.h"
 
 namespace spt::rsc
 {
 
 StaticMeshUnifiedData& StaticMeshUnifiedData::Get()
 {
-	static StaticMeshUnifiedData instance;
-	return instance;
+	static engn::TEngineSingleton<StaticMeshUnifiedData> instance;
+	return instance.Get();
 }
+
+StaticMeshUnifiedData::StaticMeshUnifiedData()
+{
+	const auto createBufferImpl = [](const rdr::RendererResourceName& name, Uint64 size)
+	{
+		const rhi::EBufferUsage bufferUsage = lib::Flags(rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::Storage);
+		const rhi::EBufferFlags bufferFlags = rhi::EBufferFlags::WithVirtualSuballocations;
+		const rhi::RHIAllocationInfo bufferAllocationInfo(rhi::EMemoryUsage::GPUOnly);
+
+		const rhi::BufferDefinition bufferDef(size, bufferUsage, bufferFlags);
+		return rdr::ResourcesManager::CreateBuffer(name, bufferDef, bufferAllocationInfo);
+	};
+
+	m_submeshesBuffer		= createBufferImpl(RENDERER_RESOURCE_NAME("Static Meshes Submeshes Buffer"), 1024 * 8 * sizeof(SubmeshGPUData));
+	m_meshletsBuffer		= createBufferImpl(RENDERER_RESOURCE_NAME("Static Meshes Meshlets Buffer"), 1024 * 512 * sizeof(MeshletGPUData));
+
+	rdr::GPUApi::GetOnRendererCleanupDelegate().AddLambda([this]
+															{
+																DestroyResources();
+															});
+}
+
 
 StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicArray<SubmeshGPUData>& submeshes, lib::DynamicArray<MeshletGPUData>& meshlets, rhi::RHIVirtualAllocation geometryDataSuballocation)
 {
@@ -90,27 +113,6 @@ StaticMeshGeometryBuffers StaticMeshUnifiedData::GetGeometryBuffers() const
 	buffers.submeshesArray = m_submeshesBuffer->GetFullViewRef();
 	buffers.meshletsArray  = m_meshletsBuffer->GetFullViewRef();
 	return buffers;
-}
-
-StaticMeshUnifiedData::StaticMeshUnifiedData()
-{
-	const auto createBufferImpl = [](const rdr::RendererResourceName& name, Uint64 size)
-	{
-		const rhi::EBufferUsage bufferUsage = lib::Flags(rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::Storage);
-		const rhi::EBufferFlags bufferFlags = rhi::EBufferFlags::WithVirtualSuballocations;
-		const rhi::RHIAllocationInfo bufferAllocationInfo(rhi::EMemoryUsage::GPUOnly);
-
-		const rhi::BufferDefinition bufferDef(size, bufferUsage, bufferFlags);
-		return rdr::ResourcesManager::CreateBuffer(name, bufferDef, bufferAllocationInfo);
-	};
-
-	m_submeshesBuffer		= createBufferImpl(RENDERER_RESOURCE_NAME("Static Meshes Submeshes Buffer"), 1024 * 8 * sizeof(SubmeshGPUData));
-	m_meshletsBuffer		= createBufferImpl(RENDERER_RESOURCE_NAME("Static Meshes Meshlets Buffer"), 1024 * 512 * sizeof(MeshletGPUData));
-
-	rdr::GPUApi::GetOnRendererCleanupDelegate().AddLambda([this]
-															{
-																DestroyResources();
-															});
 }
 
 void StaticMeshUnifiedData::DestroyResources()

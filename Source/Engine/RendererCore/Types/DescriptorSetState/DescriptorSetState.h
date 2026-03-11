@@ -616,7 +616,7 @@ public:
 
 	DescriptorSetStateLayoutRegistration()
 	{
-		DescriptorSetStateLayoutsRegistry::Get().RegisterFactoryMethod(TDSStateType::GetStaticTypeID(), &DescriptorSetStateLayoutRegistration<TDSStateType>::CreateDescriptorSetStateLayout);
+		DescriptorSetStateLayoutsFactory::Get().RegisterFactoryMethod(TDSStateType::GetStaticTypeID(), &DescriptorSetStateLayoutRegistration<TDSStateType>::CreateDescriptorSetStateLayout);
 	}
 
 private:

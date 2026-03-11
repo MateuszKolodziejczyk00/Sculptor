@@ -3,7 +3,6 @@
 #include "Common/ShaderCompilationInput.h"
 #include "FileSystem/File.h"
 #include "Utility/String/StringUtils.h"
-#include "Paths.h"
 #include "SerializationHelper.h"
 
 
@@ -19,7 +18,7 @@ Bool CompiledShadersCache::HasCachedShader(lib::HashedString shaderRelativePath,
 		return false;
 	}
 
-	const lib::String filePath = CreateShaderFilePath(shaderRelativePath, shaderStageDef, compilationSettings);
+	const lib::String filePath = CreateShaderFilePath(shaderRelativePath, shaderStageDef, compilationSettings).generic_string();
 	return lib::File::Exists(filePath);
 }
 
@@ -31,8 +30,8 @@ CompiledShader CompiledShadersCache::TryGetCachedShader(lib::HashedString shader
 
 	if (CanUseShadersCache())
 	{
-		const lib::String cachedShaderPath = CreateShaderFilePath(shaderRelativePath, shaderStageDef, compilationSettings);
-		const lib::String shaderSourcePath = CreateShaderSourceCodeFilePath(shaderRelativePath);
+		const lib::String cachedShaderPath = CreateShaderFilePath(shaderRelativePath, shaderStageDef, compilationSettings).generic_string();
+		const lib::String shaderSourcePath = CreateShaderSourceCodeFilePath(shaderRelativePath).generic_string();
 
 		const Bool isCachedShaderUpToDate = IsCachedShaderUpToDateImpl(cachedShaderPath, shaderSourcePath);
 
@@ -63,7 +62,7 @@ void CompiledShadersCache::CacheShader(lib::HashedString shaderRelativePath, con
 	
 	SPT_CHECK(CanUseShadersCache());
 
-	const lib::String filePath = CreateShaderFilePath(shaderRelativePath, shaderStageDef, compilationSettings);
+	const lib::String filePath = CreateShaderFilePath(shaderRelativePath, shaderStageDef, compilationSettings).generic_string();
 	srl::SerializationHelper::SaveTextStructToFile(shader, filePath);
 
 	if (ShaderCompilationEnvironment::ShouldCacheSeparateSpvFile())
@@ -81,8 +80,8 @@ Bool CompiledShadersCache::IsCachedShaderUpToDate(lib::HashedString shaderRelati
 		return false;
 	}
 
-	const lib::String cachedShaderPath = CreateShaderFilePath(shaderRelativePath, shaderStageDef, compilationSettings);
-	const lib::String shaderSourcePath = CreateShaderSourceCodeFilePath(shaderRelativePath);
+	const lib::String cachedShaderPath = CreateShaderFilePath(shaderRelativePath, shaderStageDef, compilationSettings).generic_string();
+	const lib::String shaderSourcePath = CreateShaderSourceCodeFilePath(shaderRelativePath).generic_string();
 
 	if (!IsCachedShaderUpToDateImpl(cachedShaderPath, shaderSourcePath))
 	{
@@ -114,17 +113,17 @@ lib::String CompiledShadersCache::CreateShaderFileName(HashType hash)
 	return lib::StringUtils::ToHexString(reinterpret_cast<const Byte*>(&hash), sizeof(HashType));
 }
 
-lib::String CompiledShadersCache::CreateShaderFilePath(HashType hash)
+lib::Path CompiledShadersCache::CreateShaderFilePath(HashType hash)
 {
-	return engn::Paths::Combine(ShaderCompilationEnvironment::GetShadersCachePath(), CreateShaderFileName(hash));
+	return ShaderCompilationEnvironment::GetShadersCachePath() / CreateShaderFileName(hash);
 }
 
-lib::String CompiledShadersCache::CreateShaderSourceCodeFilePath(lib::HashedString shaderRelativePath)
+lib::Path CompiledShadersCache::CreateShaderSourceCodeFilePath(lib::HashedString shaderRelativePath)
 {
-	return engn::Paths::Combine(ShaderCompilationEnvironment::GetShadersPath(), shaderRelativePath.GetView());;
+	return ShaderCompilationEnvironment::GetShadersPath() / shaderRelativePath.GetView();
 }
 
-lib::String CompiledShadersCache::CreateShaderFilePath(lib::HashedString shaderRelativePath, const ShaderStageCompilationDef& shaderStageDef, const ShaderCompilationSettings& compilationSettings)
+lib::Path CompiledShadersCache::CreateShaderFilePath(lib::HashedString shaderRelativePath, const ShaderStageCompilationDef& shaderStageDef, const ShaderCompilationSettings& compilationSettings)
 {
 	SPT_PROFILER_FUNCTION();
 	

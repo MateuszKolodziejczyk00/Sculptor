@@ -1,12 +1,15 @@
 #include "Module.h"
+#include "Engine.h"
 #include "FileSystem/DirectoryWatcher.h"
-#include "Paths.h"
 #include "Utility/Templates/Callable.h"
 
 #ifdef SPT_PLATFORM_WINDOWS
 #define NOMINMAX
 #include <Windows.h>
 #endif
+
+
+#define HACK_FORCE_NO_UNLOAD 1
 
 
 SPT_DEFINE_LOG_CATEGORY(ModulesManager, true);
@@ -71,7 +74,7 @@ void UnloadModule(const ModuleHandle &moduleHandle)
 
 ModuleHandle LoadModuleCopy(const lib::Path& modulePath)
 {
-	const lib::Path tempPath = Paths::Combine(Paths::GetExecutableDirectory(), "TempBin");
+	const lib::Path tempPath = GetEngine().GetPaths().executableDirectory / "TempBin";
 
 	std::error_code ec;
 	std::filesystem::create_directories(tempPath, ec);
@@ -153,7 +156,7 @@ void ModulesManager::Initialize()
 		}
 	};
 
-	m_fileWatcherHandle = lib::StartWatchingDirectory(lib::Path(Paths::GetExecutableDirectory()), lib::FileModifiedCallback::CreateLambda(std::move(onFileModified)));
+	m_fileWatcherHandle = lib::StartWatchingDirectory(GetEngine().GetPaths().executableDirectory, lib::FileModifiedCallback::CreateLambda(std::move(onFileModified)));
 }
 
 void ModulesManager::InitialzeGlobals(EngineGlobals& globals)
@@ -165,7 +168,7 @@ ModuleHandle ModulesManager::LoadModule(lib::StringView moduleName)
 {
 	const lib::LockGuard lock{m_modulesLock};
 
-	const lib::Path modulePath = lib::Path(Paths::GetExecutableDirectory()) / (lib::String(moduleName) + ".dll");
+	const lib::Path modulePath = GetEngine().GetPaths().executableDirectory / (lib::String(moduleName) + ".dll");
 
 	ModuleHandle handle = utils::LoadModuleCopy(modulePath);
 	if (!handle.IsValid())
@@ -285,7 +288,9 @@ Bool ModulesManager::ReloadModule_Locked(LoadedModule& loadedModule)
 	ModuleHandle newModule = utils::LoadModuleCopy(loadedModule.path);
 	if (newModule.IsValid())
 	{
+#if !HACK_FORCE_NO_UNLOAD
 		utils::UnloadModule(loadedModule.handle);
+#endif
 		loadedModule.handle = newModule;
 
 		utils::InitializeModule(loadedModule.handle, m_globals, loadedModule.descriptor);

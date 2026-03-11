@@ -137,7 +137,7 @@ void DescriptorSetState::SetTypeID(DSStateTypeID id, const DescriptorSetStatePar
 {
 	m_typeID = id;
 
-	m_layout = DescriptorSetStateLayoutsRegistry::Get().GetLayoutChecked(m_typeID);
+	m_layout = GPUApi::GetDSLayoutsRegistry().GetLayoutChecked(m_typeID);
 }
 
 rhi::RHIDescriptorRange DescriptorSetState::AllocateDescriptorRange() const
