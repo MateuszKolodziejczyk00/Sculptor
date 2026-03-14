@@ -13,6 +13,7 @@
 #include "Utils/TransfersUtils.h"
 #include "Utils/SceneRenderingTypes.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
+#include "Utils/ViewRenderingSpec.h"
 
 
 namespace spt::rsc::stochastic_di
@@ -254,7 +255,7 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 	rg::RGBufferViewHandle historyReservoirs = graphBuilder.AcquireExternalBufferView(m_historyReservoirs->GetFullView());
 
 	SPT_CHECK(diParams.outputLuminance.IsValid());
-	
+
 	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
 	const math::Vector2u reservoirsResolution = ComputeReservoirsResolution(resolution);

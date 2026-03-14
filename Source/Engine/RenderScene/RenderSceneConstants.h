@@ -7,6 +7,7 @@
 #include "SceneRenderSystems/RayTracing/RayTracingSceneTypes.h"
 #include "SceneRenderSystems/ShadowMaps/ShadowsRenderingTypes.h"
 #include "SceneRenderSystems/WorldShadowCache/WorldShadowCacheTypes.h"
+#include "SceneRenderSystems/Atmosphere/AtmosphereTypes.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 
 
@@ -33,12 +34,13 @@ END_SHADER_STRUCT();
 
 
 BEGIN_SHADER_STRUCT(RenderSceneConstants)
-	SHADER_STRUCT_FIELD(GPUSceneData,      gpuScene)
-	SHADER_STRUCT_FIELD(RTSceneData,       rtScene)
-	SHADER_STRUCT_FIELD(SceneGeometryData, geometry)
-	SHADER_STRUCT_FIELD(GPUMaterialsData,  materials)
-	SHADER_STRUCT_FIELD(ShadowMapsData,    shadows)
-	SHADER_STRUCT_FIELD(wsc::WSCData,      wsc)
+	SHADER_STRUCT_FIELD(GPUSceneData,        gpuScene)
+	SHADER_STRUCT_FIELD(RTSceneData,         rtScene)
+	SHADER_STRUCT_FIELD(SceneGeometryData,   geometry)
+	SHADER_STRUCT_FIELD(GPUMaterialsData,    materials)
+	SHADER_STRUCT_FIELD(ShadowMapsData,      shadows)
+	SHADER_STRUCT_FIELD(wsc::WSCData,        wsc)
+	SHADER_STRUCT_FIELD(SceneAtmosphereData, atmosphere)
 END_SHADER_STRUCT();
 
 

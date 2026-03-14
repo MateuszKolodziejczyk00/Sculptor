@@ -329,6 +329,14 @@ function Project:BuildConfiguration(configuration, platform)
     -- files
 	files (self:GetProjectFiles(configuration, platform))
 
+	-- pch
+	if self.configurations[configuration].pch ~= nil then
+		pchheader (self.configurations[configuration].pch .. ".h")
+		pchsource (self.configurations[configuration].pch .. ".cpp")
+
+		forceincludes { self.configurations[configuration].pch .. ".h" }
+	end
+
     -- warnings
     -- by default use normal warnings level for third party projects, and highest level for sculptor projects
     if self:AreWarningsDisabled(configuration) then
@@ -366,6 +374,10 @@ end
 
 function Project:AddPrivateDefine(define)
     self:AddDefineInternal(define)
+end
+
+function Project:UsePCH(pch)
+    self.configurations[self.currentConfiguration].pch = pch
 end
 
 function Project:AddPublicDependency(dependency)

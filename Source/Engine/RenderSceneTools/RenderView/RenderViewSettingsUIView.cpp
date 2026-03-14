@@ -1,14 +1,9 @@
 #include "RenderViewSettingsUIView.h"
+#include "SceneRenderer/SceneRendererTypes.h"
 #include "View/RenderView.h"
-#if RENDERER_REWORK_TEMP_DISABLE
-#include "ImGui/SculptorImGui.h"
-#include "Camera/CameraSettings.h"
 #include "ImGui/DockBuilder.h"
-#include "View/Systems/TemporalAAViewRenderSystem.h"
-#include "Techniques/TemporalAA//StandardTAARenderer.h"
-#include "Techniques/TemporalAA//DLSSRenderer.h"
-#include "Techniques/TemporalAA/TemporalAccumulationRenderer.h"
-#endif // RENDERER_REWORK_TEMP_DISABLE
+#include "SceneRenderer/SceneRenderer.h"
+#include "Engine.h"
 
 namespace spt::rsc
 {
@@ -48,51 +43,23 @@ void RenderViewSettingsUIView::DrawUIForView(RenderView& view)
 	{
 		view.SetLocation(location);
 	}
-	
-#if RENDERER_REWORK_TEMP_DISABLE
-	if (CameraLensSettingsComponent* lensSettings = view.GetBlackboard().Find<CameraLensSettingsComponent>())
+
+	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
+
+	rsc::ShadingRenderViewSettings shadingSettings = sceneRendererAPI->GetShadingViewSettings(view);
+
+	Bool settingsChanged = false;
+
+	const char* modes[] = { "None", "DLSS", "Standard TAA", "Temporal Accumulation"};
+	if (ImGui::Combo("Anti Aliasing Mode", reinterpret_cast<int*>(&shadingSettings.upscalingMethod), modes, SPT_ARRAY_SIZE(modes)))
 	{
-		if (ImGui::CollapsingHeader("Lens Settings"))
-		{
-			ImGui::ColorEdit3("Lens Dirt Intensity", lensSettings->lensDirtIntensity.data());
-			ImGui::ColorEdit3("Lens Dirt Threshold", lensSettings->lensDirtThreshold.data());
-		}
+		settingsChanged = true;
 	}
 
-	if (lib::SharedPtr<rsc::TemporalAAViewRenderSystem> taaSystem = view.FindRenderSystem<rsc::TemporalAAViewRenderSystem>())
+	if (settingsChanged)
 	{
-		const char* modes[] = { "None", "DLSS", "Standard TAA", "Temporal Accumulation"};
-		const lib::StringView currentMode = taaSystem->GetRendererName();
-		const auto foundMode = std::find(std::begin(modes), std::end(modes), currentMode);
-		SPT_CHECK(foundMode != std::end(modes));
-		int currentModeIdx = static_cast<int>(std::distance(std::begin(modes), foundMode));
-
-		if (ImGui::Combo("Anti Aliasing Mode", &currentModeIdx, modes, SPT_ARRAY_SIZE(modes)))
-		{
-			lib::UniquePtr<gfx::TemporalAARenderer> newRenderer;
-
-			if (currentModeIdx == 1)
-			{
-				newRenderer = std::make_unique<gfx::DLSSRenderer>();
-			}
-			else if (currentModeIdx == 2)
-			{
-				newRenderer = std::make_unique<gfx::StandardTAARenderer>();
-			}
-			else if (currentModeIdx == 3)
-			{
-				newRenderer = std::make_unique<gfx::TemporalAccumulationRenderer>();
-			}
-
-			if (newRenderer && !newRenderer->Initialize(gfx::TemporalAAInitSettings{}))
-			{
-				newRenderer.reset();
-			}
-
-			taaSystem->SetTemporalAARenderer(std::move(newRenderer));
-		}
+		sceneRendererAPI->SetShadingViewSettings(view, shadingSettings);
 	}
-#endif // RENDERER_REWORK_TEMP_DISABLE
 }
 
 } // spt::rsc

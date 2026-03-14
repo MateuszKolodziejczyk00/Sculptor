@@ -1,104 +1,80 @@
 #ifndef SPHERICAL_HARMONICS_HLSLI
 #define SPHERICAL_HARMONICS_HLSLI
 
-template<typename T>
-struct SH2
+namespace SH2
 {
-	T coeffs[4];
 
-	T operator[](in int index)
-	{
-		return coeffs[index];
-	}
-
-	T Evaluate(in float3 dir)
-	{
-		return (T)(coeffs[0] + coeffs[1] * dir.y + coeffs[2] * dir.z + coeffs[3] * dir.x);
-	}
-
-	SH2<T> operator+(in SH2<T> b)
-	{
-		SH2<T> result;
-		result.coeffs[0] = coeffs[0] + b.coeffs[0];
-		result.coeffs[1] = coeffs[1] + b.coeffs[1];
-		result.coeffs[2] = coeffs[2] + b.coeffs[2];
-		result.coeffs[3] = coeffs[3] + b.coeffs[3];
-		return result;
-	}
-	
-	
-	SH2<T> operator*(in T b)
-	{
-		SH2<T> result;
-		result.coeffs[0] = coeffs[0] * b;
-		result.coeffs[1] = coeffs[1] * b;
-		result.coeffs[2] = coeffs[2] * b;
-		result.coeffs[3] = coeffs[3] * b;
-		return result;
-	}
-
-	SH2<T> operator/(in T b)
-	{
-		SH2<T> result;
-		result.coeffs[0] = coeffs[0] / b;
-		result.coeffs[1] = coeffs[1] / b;
-		result.coeffs[2] = coeffs[2] / b;
-		result.coeffs[3] = coeffs[3] / b;
-		return result;
-	}
-};
-
-
-template<typename T>
-SH2<T> CreateSH2(in T data, in float3 dir)
+float4 ComputeSHBasis(in float3 dir)
 {
-	SH2<T> result;
-	result.coeffs[0] = T(data * 0.282095f); // 1/2 * sqrt(1/pi)
-	result.coeffs[1] = T(data * 0.488603f * dir.y); // sqrt(3/(4*pi)) * y
-	result.coeffs[2] = T(data * 0.488603f * dir.z); // sqrt(3/(4*pi)) * z
-	result.coeffs[3] = T(data * 0.488603f * dir.x); // sqrt(3/(4*pi)) * x
-	return result;
+	float4 shBasis;
+	shBasis.x = 0.28209479177387814f; // Y00
+	shBasis.y = 0.4886025119029199f * dir.y; // Y1-1
+	shBasis.z = 0.4886025119029199f * dir.z; // Y10
+	shBasis.w = 0.4886025119029199f * dir.x; // Y11
+
+	return shBasis;
 }
 
 
-half4 SH2ToHalf4(in SH2<half> sh)
+float Evaluate(in float4 shCoeffs, in float3 dir)
 {
-	return half4(sh.coeffs[0], sh.coeffs[1], sh.coeffs[2], sh.coeffs[3]);
+	float4 shBasis = ComputeSHBasis(dir);
+	return dot(shCoeffs, shBasis);
+}
+
+} // SH2
+
+
+// Irradiance SH basis
+// Based on https://media.contentapi.ea.com/content/dam/eacom/frostbite/files/gdc2018-precomputedgiobalilluminationinfrostbite.pdf
+// Warning: It embeds 1 / PI from the BRDF
+namespace ESH2
+{
+
+float4 ComputeSHBasis(in float3 dir)
+{
+	float4 shBasis;
+	shBasis.x = 1.f;
+	shBasis.y = 2.f * dir.x;
+	shBasis.z = 2.f * dir.y;
+	shBasis.w = 2.f * dir.z;
+
+	return shBasis;
 }
 
 
-SH2<half> Half4ToSH2(in half4 data)
+// Average remains unchanged, directional part is scaled based on that, so it's in [-1, 1] range
+float4 Normalize(in float4 shCoeffs)
 {
-	SH2<half> result;
-	result.coeffs[0] = data.x;
-	result.coeffs[1] = data.y;
-	result.coeffs[2] = data.z;
-	result.coeffs[3] = data.w;
-	return result;
+	const float averageL = shCoeffs.x;
+	const float scale = averageL > 0.f ? rcp(averageL) : 1.f;
+	return shCoeffs * float4(1.f, float3(scale, scale, scale));
 }
 
 
-float4 SH2ToFloat4(in SH2<float> sh)
+float Average(in float4 shCoeffs)
 {
-	return float4(sh.coeffs[0], sh.coeffs[1], sh.coeffs[2], sh.coeffs[3]);
+	return shCoeffs.x;
 }
 
 
-SH2<float> Float4ToSH2(in float4 data)
+float3 AverageDirection_NotNormalized(in float4 shCoeffs)
 {
-	SH2<float> result;
-	result.coeffs[0] = data.x;
-	result.coeffs[1] = data.y;
-	result.coeffs[2] = data.z;
-	result.coeffs[3] = data.w;
-	return result;
+	return float3(shCoeffs.y, shCoeffs.z, shCoeffs.w);
 }
 
 
-SH2<float> SH2HalfToFloat(in SH2<half> data)
+float3 AverageDirection(in float4 shCoeffs)
 {
-	return Float4ToSH2(SH2ToHalf4(data));
+	return normalize(AverageDirection_NotNormalized(shCoeffs));
 }
 
+
+float Evaluate(in float4 shCoeffs, in float3 dir)
+{
+	return (0.5f + dot(dir, AverageDirection_NotNormalized(shCoeffs))) * shCoeffs.x * 2.f;
+}
+
+} // ESH2
 
 #endif // SPHERICAL_HARMONICS_HLSLI

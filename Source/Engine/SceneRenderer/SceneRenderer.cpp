@@ -1,6 +1,8 @@
 #include "SceneRenderer.h"
 #include "Containers/InlineArray.h"
+#include "Debug/Stats/SceneRendererStatsView.h"
 #include "EngineFrame.h"
+#include "Parameters/SceneRendererParams.h"
 #include "RenderScene.h"
 #include "RenderSceneConstants.h"
 #include "RenderStages/RenderStage.h"
@@ -250,6 +252,12 @@ void SetShadingViewSettings(RenderView& view, const ShadingRenderViewSettings& s
 	viewPrivate.settingsDirty = true;
 }
 
+const ShadingRenderViewSettings& GetShadingViewSettings(RenderView& view)
+{
+	RenderViewPrivate& viewPrivate = reinterpret_cast<RenderViewPrivate&>(view);
+	return viewPrivate.shadingSettings;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // SceneRenderer =================================================================================
 
@@ -340,6 +348,16 @@ rg::RGTextureViewHandle ExecuteSceneRendering(SceneRendererHandle renderer, rg::
 	return mainViewContext.output;
 }
 
+void TempDrawParamtersUI(void* ctx)
+{
+	RendererParamsRegistry::DrawParametersUI(ctx);
+}
+
+void TempDrawRendererStatsUI(void* ctx)
+{
+	SceneRendererStatsRegistry::GetInstance().DrawUI(ctx);
+}
+
 } // spt::rsc
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -356,9 +374,12 @@ void InitializeModule(const spt::engn::EngineGlobals& engineGlobals, spt::lib::M
 	api.CreateRenderView       = &spt::rsc::CreateRenderView;
 	api.DestroyRenderView      = &spt::rsc::DestroyRenderView;
 	api.SetShadingViewSettings = &spt::rsc::SetShadingViewSettings;
+	api.GetShadingViewSettings = &spt::rsc::GetShadingViewSettings;
 	api.CreateSceneRenderer    = &spt::rsc::CreateSceneRenderer;
 	api.DestroySceneRenderer   = &spt::rsc::DestroySceneRenderer;
 	api.ExecuteSceneRendering  = &spt::rsc::ExecuteSceneRendering;
+	api.DrawParametersUI       = &spt::rsc::TempDrawParamtersUI;
+	api.DrawRendererStatsUI    = &spt::rsc::TempDrawRendererStatsUI;
 
 	outModuleDescriptor.api     = &api;
 	outModuleDescriptor.apiType = spt::lib::TypeInfo<SceneRendererDLLModuleAPI>();

@@ -10,7 +10,7 @@ std::optional<GLTFModel> LoadGLTFModel(const lib::String& path)
 	SPT_PROFILER_FUNCTION();
 
 	const lib::String fileExtension = lib::Path(path).extension().generic_string();
-	SPT_CHECK(fileExtension == "gltf" || fileExtension == "glb");
+	SPT_CHECK(fileExtension == ".gltf" || fileExtension == ".glb");
 
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;
@@ -20,7 +20,7 @@ std::optional<GLTFModel> LoadGLTFModel(const lib::String& path)
 	lib::String error;
 	lib::String warning;
 
-	const Bool isBinary = fileExtension == "glb";
+	const Bool isBinary = fileExtension == ".glb";
 
 	const Bool loaded = isBinary ? loader.LoadBinaryFromFile(&model, &error, &warning, path)
 								 : loader.LoadASCIIFromFile(&model, &error, &warning, path);

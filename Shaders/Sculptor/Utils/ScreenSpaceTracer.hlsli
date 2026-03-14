@@ -48,19 +48,14 @@ SSTraceResult TraceSSShadowRay(in ScreenSpaceTracerContext context, in float2 st
 
 	const float linearStepExponent = 1.f;
 
-	float prevZ = ComputeLinearDepth(startZ + dZ * 0.01f, context.sceneView);
+	const float offset = 0.1f;
 
-	for(float i = 0.1f + jitter; i < stepsNum; i += 1.f)
+	for(float i = offset + jitter; i < stepsNum; i += 1.f)
 	{
 		const float t = pow(dT * i, linearStepExponent);
 
 		const float2 uv = startUV + dUV * t;
 		const float z = ComputeLinearDepth(startZ + dZ * t, context.sceneView);
-
-		const float rayMinZ = min(prevZ, z);
-		const float rayMaxZ = max(prevZ, z);
-
-		prevZ = z;
 
 		if(any(saturate(uv) != uv))
 		{
@@ -73,10 +68,9 @@ SSTraceResult TraceSSShadowRay(in ScreenSpaceTracerContext context, in float2 st
 		const float minZ = min(zNearest, zLinear);
 		const float maxZ = max(zNearest, zLinear);
 
-		const float penetration = rayMinZ - minZ;
+		const float penetration = z - minZ;
 
-		//const bool isHit = rayMinZ >= maxZ * 1.00002f && penetration < rayThickness;
-		const bool isHit = rayMaxZ >= maxZ * 1.00002f && penetration < rayThickness;
+		const bool isHit = z >= maxZ * 1.00002f && penetration < rayThickness;
 
 #if DEBUG_SCREEN_SPACE_TRACER
 	if(debugRay)

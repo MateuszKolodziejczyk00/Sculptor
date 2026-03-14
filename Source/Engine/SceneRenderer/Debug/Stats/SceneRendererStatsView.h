@@ -51,7 +51,7 @@ public:
 		return *static_cast<TStatsView*>(entry.view.get());
 	}
 
-	void DrawUI();
+	void DrawUI(void* ctx);
 
 private:
 

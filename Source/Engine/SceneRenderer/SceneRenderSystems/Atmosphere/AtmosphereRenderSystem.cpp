@@ -1,6 +1,7 @@
 #include "AtmosphereRenderSystem.h"
 #include "RenderScene.h"
 #include "RenderGraphBuilder.h"
+#include "RenderSceneConstants.h"
 #include "ResourcesManager.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"
@@ -305,6 +306,25 @@ void AtmosphereRenderSystem::Update(const SceneUpdateContext& context)
 	}
 }
 
+void AtmosphereRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
+{
+	Super::UpdateGPUSceneData(sceneData);
+
+	const AtmosphereContext& context = GetAtmosphereContext();
+
+	SceneAtmosphereData atmosphereData;
+	atmosphereData.atmosphereParams   = m_atmosphereParams;
+	atmosphereData.transmittanceLUT   = context.transmittanceLUT;
+	atmosphereData.multiScatteringLUT = context.multiScatteringLUT;
+
+	if (context.mainDirectionalLight)
+	{
+		atmosphereData.mainDirectionalLight = *context.mainDirectionalLight;
+	}
+
+	sceneData.atmosphere = atmosphereData;
+}
+
 void AtmosphereRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const lib::DynamicPushArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings)
 {
 	SPT_PROFILER_FUNCTION();
@@ -383,7 +403,8 @@ void AtmosphereRenderSystem::InitializeResources()
 
 	const auto createLUT = [](const rdr::RendererResourceName& name, math::Vector2u resolution, rhi::EFragmentFormat format)
 	{
-		const rhi::TextureDefinition textureDef(resolution, lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture), format);
+		rhi::TextureDefinition textureDef(resolution, lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture), format);
+		textureDef.flags = rhi::ETextureFlags::GloballyReadable;
 		const lib::SharedRef<rdr::Texture> texture = rdr::ResourcesManager::CreateTexture(name, textureDef, rhi::EMemoryUsage::GPUOnly);
 
 		rhi::TextureViewDefinition viewDefinition;

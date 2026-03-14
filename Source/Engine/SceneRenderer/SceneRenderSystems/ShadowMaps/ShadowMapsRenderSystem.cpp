@@ -1,5 +1,6 @@
 #include "ShadowMapsRenderSystem.h"
 #include "RHICore/RHITextureTypes.h"
+#include "RenderSceneConstants.h"
 #include "ResourcesManager.h"
 #include "Types/Texture.h"
 #include "RenderScene.h"

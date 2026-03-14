@@ -12,8 +12,10 @@ SceneRendererStatsRegistry& SceneRendererStatsRegistry::GetInstance()
 	return instance;
 }
 
-void SceneRendererStatsRegistry::DrawUI()
+void SceneRendererStatsRegistry::DrawUI(void* ctx)
 {
+	ImGui::SetCurrentContext(reinterpret_cast<ImGuiContext*>(ctx));
+
 	for (const Entry& entry : m_entries)
 	{
 		if (ImGui::CollapsingHeader(entry.name.c_str()))

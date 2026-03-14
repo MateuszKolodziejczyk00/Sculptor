@@ -29,7 +29,7 @@ SPT_REGISTER_VIEW_RENDER_SYSTEM(ParticipatingMediaViewRenderSystem)
 namespace parameters
 {
 
-RendererFloatParameter constantFogDensity("Constant Fog Density", { "Volumetric Fog" }, 0.05f, 0.f, 1.f);
+RendererFloatParameter constantFogDensity("Constant Fog Density", { "Volumetric Fog" }, 0.005f, 0.f, 1.f);
 RendererFloatParameter constantFogExtinction("Constant Fog Extinction", { "Volumetric Fog" }, 0.3f, 0.f, 10.f);
 RendererFloat3Parameter consantFogAlbedo("Constant Fox Albedo", { "Volumetric Fog" }, math::Vector3f::Constant(1.f), 0.f, 1.f);
 

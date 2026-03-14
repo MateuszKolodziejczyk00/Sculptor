@@ -54,6 +54,7 @@ void TraceSSShadowsCS(CS_INPUT input)
 
 	if (dot(N, L) < 0.f)
 	{
+		u_constants.outShadows.Store(coords, 0.f);
 		return;
 	}
 

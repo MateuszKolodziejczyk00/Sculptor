@@ -1,10 +1,10 @@
 #include "RenderSceneSettingsUIView.h"
 #include "RenderScene.h"
 #include "ImGui/DockBuilder.h"
-#if RENDERER_REWORK_TEMP_DISABLE
-#include "SceneRenderer/Parameters/SceneRendererParams.h"
-#include "Shadows/ShadowMapsRenderSystem.h"
-#endif // RENDERER_REWORK_TEMP_DISABLE
+#include "SceneRenderer/SceneRenderer.h"
+#include "UIElements/ApplicationUI.h"
+#include "SceneRenderer/SceneRenderer.h"
+#include "Engine.h"
 
 
 namespace spt::rsc
@@ -42,20 +42,10 @@ void RenderSceneSettingsUIView::DrawUI()
 
 void RenderSceneSettingsUIView::DrawUIForScene(RenderScene& scene)
 {
-#if RENDERER_REWORK_TEMP_DISABLE
-	rsc::RendererParamsRegistry::DrawParametersUI();
+	const scui::Context& context = scui::ApplicationUI::GetCurrentContext();
 
-	if (lib::SharedPtr<rsc::ShadowMapsRenderSystem> shadowMapsManger = scene.FindRenderSystem<rsc::ShadowMapsRenderSystem>())
-	{
-		const char* shadowMappingTechniques[3] = { "None", "DPCF", "MSM" };
-
-		int currentTechnique = static_cast<int>(shadowMapsManger->GetShadowMappingTechnique());
-		if (ImGui::Combo("Point Lights Shadow Mapping Technique", &currentTechnique, shadowMappingTechniques, SPT_ARRAY_SIZE(shadowMappingTechniques)))
-		{
-			shadowMapsManger->SetShadowMappingTechnique(static_cast<rsc::EShadowMappingTechnique>(currentTechnique));
-		}
-	}
-#endif
+	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
+	sceneRendererAPI->DrawParametersUI(context.GetUIContext().GetHandle());
 }
 
 } // spt::rsc

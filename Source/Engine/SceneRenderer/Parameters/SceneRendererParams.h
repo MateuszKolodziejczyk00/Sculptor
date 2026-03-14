@@ -13,7 +13,7 @@ public:
 
 	static void RegisterParameter(const lib::DynamicArray<lib::String>& category, class RendererParamBase& param);
 
-	static void DrawParametersUI();
+	static void DrawParametersUI(void* ctx);
 };
 
 

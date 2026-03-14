@@ -5,6 +5,8 @@ function SceneRenderer:SetupConfiguration(configuration, platform)
 	self:AddPublicDependency("RenderScene")
 
 	self:AddPublicDefine("SPT_ENABLE_SCENE_RENDERER_STATS=1")
+
+	self:UsePCH("SceneRendererPCH")
 end
 
 SceneRenderer:SetupProject()

@@ -117,9 +117,11 @@ void RendererParamsRegistry::RegisterParameter(const lib::DynamicArray<lib::Stri
 	container.AddParam(category , param);
 }
 
-void RendererParamsRegistry::DrawParametersUI()
+void RendererParamsRegistry::DrawParametersUI(void* ctx)
 {
 	SPT_PROFILER_FUNCTION();
+
+	ImGui::SetCurrentContext(reinterpret_cast<ImGuiContext*>(ctx));
 
 	const priv::ParametersContainer& container = priv::GetContainer();
 	container.DrawUI();

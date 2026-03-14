@@ -1,8 +1,9 @@
 #include "SceneRendererStatsUIView.h"
-#if RENDERER_REWORK_TEMP_DISABLE
-#include "SceneRenderer/Debug/Stats/SceneRendererStatsView.h"
-#endif // RENDERER_REWORK_TEMP_DISABLE
+#include "SceneRenderer/SceneRenderer.h"
 #include "ImGui/DockBuilder.h"
+#include "UIElements/ApplicationUI.h"
+#include "SceneRenderer/SceneRenderer.h"
+#include "Engine.h"
 
 
 namespace spt::rsc
@@ -24,14 +25,15 @@ void SceneRendererStatsUIView::BuildDefaultLayout(ImGuiID dockspaceID)
 
 void SceneRendererStatsUIView::DrawUI()
 {
+	const scui::Context& context = scui::ApplicationUI::GetCurrentContext();
+
 	Super::DrawUI();
 
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 	ImGui::Begin(m_statsPanelName.GetData());
 
-#if RENDERER_REWORK_TEMP_DISABLE
-	SceneRendererStatsRegistry::GetInstance().DrawUI();
-#endif // RENDERER_REWORK_TEMP_DISABLE
+	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
+	sceneRendererAPI->DrawRendererStatsUI(context.GetUIContext().GetHandle());
 
 	ImGui::End();
 }

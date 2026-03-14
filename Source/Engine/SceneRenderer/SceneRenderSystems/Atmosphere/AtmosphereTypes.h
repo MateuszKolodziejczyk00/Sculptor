@@ -47,6 +47,14 @@ BEGIN_SHADER_STRUCT(AtmosphereParams)
 END_SHADER_STRUCT();
 
 
+BEGIN_SHADER_STRUCT(SceneAtmosphereData)
+	SHADER_STRUCT_FIELD(AtmosphereParams,                  atmosphereParams)
+	SHADER_STRUCT_FIELD(DirectionalLightGPUData,           mainDirectionalLight)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, transmittanceLUT)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, multiScatteringLUT)
+END_SHADER_STRUCT();
+
+
 struct AtmosphereContext
 {
 	lib::SharedPtr<rdr::Buffer> atmosphereParamsBuffer;
