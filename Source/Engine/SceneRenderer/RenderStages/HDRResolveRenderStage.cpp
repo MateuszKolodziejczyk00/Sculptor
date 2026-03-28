@@ -22,6 +22,7 @@
 #include "Debug/DebugRenderer.h"
 #include "Pipelines/PSOsLibraryTypes.h"
 #include "Utils/AutomaticExposure.h"
+#include "Utils/ScreenSpaceTracer.h"
 
 namespace spt::rsc
 {
@@ -512,6 +513,43 @@ void DoGammaCorrection(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHa
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // HDRResolveRenderStage =========================================================================
 
+//namespace test
+//{
+//
+//SIMPLE_COMPUTE_PSO(ExeTestPSO, "Sculptor/PostProcessing/Test.hlsl", TestCS);
+//
+//BEGIN_SHADER_STRUCT(ExeTestPassConstants)
+//	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>, hdrTex)
+//	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector3f>, skyViewLUT)
+//	SHADER_STRUCT_FIELD(SSTracerData,                         tracerData)
+//	SHADER_STRUCT_FIELD(GPUGBuffer,                           gBuffer)
+//END_SHADER_STRUCT();
+//
+//static void ExeTest(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle outputTexture)
+//{
+//	SPT_PROFILER_FUNCTION();
+//
+//	const math::Vector2u resolution = viewSpec.GetRenderingRes();
+//	const math::Vector3u dispatchGroupsNum(math::Utils::DivideCeil(resolution.x(), 8u), math::Utils::DivideCeil(resolution.y(), 8u), 1u);
+//
+//	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
+//
+//	ExeTestPassConstants shaderConstants;
+//	shaderConstants.hdrTex     = viewContext.luminance;
+//	shaderConstants.skyViewLUT = viewContext.skyViewLUT;
+//	shaderConstants.tracerData = CreateScreenSpaceTracerData(viewContext.linearDepth, 64u);
+//	shaderConstants.gBuffer    = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
+//
+//
+//	graphBuilder.Dispatch(RG_DEBUG_NAME("Execute Test"),
+//						  ExeTestPSO::pso,
+//						  dispatchGroupsNum,
+//						  rg::EmptyDescriptorSets(),
+//						  shaderConstants);
+//}
+//
+//}
+
 HDRResolveRenderStage::HDRResolveRenderStage()
 { }
 
@@ -559,6 +597,8 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, Scene
 	{
 		bloom::ApplyBloom(graphBuilder, viewSpec, linearColorTexture);
 	}
+
+	//test::ExeTest(graphBuilder, viewSpec, linearColorTexture);
 
 	const math::Vector2u gridTileSize     = automaticExposureOutputs.bilateralGridInfo.tilesSize;
 	const math::Vector2u gridResolution2D = automaticExposureOutputs.bilateralGridInfo.bilateralGrid->GetResolution2D();

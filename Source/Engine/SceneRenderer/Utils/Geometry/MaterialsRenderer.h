@@ -41,6 +41,8 @@ struct MaterialsPassParams
 	rg::RGTextureViewHandle visibilityTexture;
 
 	rg::RGBufferViewHandle visibleMeshletsBuffer;
+
+	Bool enablePOM = true;
 };
 
 void ExecuteMaterialsPass(rg::RenderGraphBuilder& graphBuilder, const MaterialsPassParams& passParams);

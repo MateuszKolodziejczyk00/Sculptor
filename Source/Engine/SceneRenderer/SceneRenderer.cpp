@@ -24,6 +24,8 @@ struct SceneRendererData
 	explicit SceneRendererData(const SceneRendererDefinition& definition);
 	~SceneRendererData();
 
+	RenderScene& scene;
+
 	lib::MemoryArena rendererArena;
 	lib::MemoryArena perFrameArena;
 
@@ -32,7 +34,8 @@ struct SceneRendererData
 
 
 SceneRendererData::SceneRendererData(const SceneRendererDefinition& definition)
-	: rendererArena("SceneRendererData_RendererArena", 1024u * 1024u, 1024u * 1024u * 32u)
+	: scene(definition.scene)
+	, rendererArena("SceneRendererData_RendererArena", 1024u * 1024u, 1024u * 1024u * 32u)
 	, perFrameArena("SceneRendererData_PerFrameArena", 1024u * 1024u, 1024u * 1024u * 32u)
 {
 	const SceneRenderSystemsAPI& systemsAPI = SceneRenderSystemsAPI::Get();
@@ -43,6 +46,7 @@ SceneRendererData::SceneRendererData(const SceneRendererDefinition& definition)
 		{
 			const ESceneRenderSystem systemType = static_cast<ESceneRenderSystem>(1u << systemIdx);
 			renderSystems[systemIdx] = systemsAPI.CallConstructor(systemType, rendererArena, definition.scene);
+			systemsAPI.CallInitialize(systemType, *renderSystems[systemIdx], definition.scene);
 		}
 		else
 		{
@@ -59,6 +63,7 @@ SceneRendererData::~SceneRendererData()
 	{
 		if (SceneRenderSystem* renderSystem = renderSystems[systemIdx])
 		{
+			systemsAPI.CallDeinitialize(static_cast<ESceneRenderSystem>(1u << systemIdx), *renderSystem, scene);
 			systemsAPI.CallDestructor(static_cast<ESceneRenderSystem>(1u << systemIdx), *renderSystem);
 			renderSystem = nullptr;
 		}

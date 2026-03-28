@@ -45,6 +45,7 @@ DS_END();
 
 BEGIN_SHADER_STRUCT(EmitGBufferPermutation)
 	SHADER_STRUCT_FIELD(MaterialBatchPermutation, MATERIAL_BATCH)
+	SHADER_STRUCT_FIELD(Bool,                     ENABLE_POM)
 END_SHADER_STRUCT();
 
 
@@ -95,6 +96,7 @@ rdr::PipelineStateID CreateMaterialPipeline(const MaterialsPassParams& passParam
 
 	EmitGBufferPermutation permutation;
 	permutation.MATERIAL_BATCH = materialBatch.permutation;
+	permutation.ENABLE_POM     = passParams.enablePOM;
 
 	return EmitGBufferPSO::GetPermutation(pipelineDef, permutation);
 }

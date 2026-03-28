@@ -64,7 +64,17 @@ void TraceSSShadowsCS(CS_INPUT input)
 	const float3 startNDC = float3(startUV * 2.f - 1.f, startDepth);
 	const float3 startWS = NDCToWorldSpace(startNDC, u_sceneView);
 
-	const float3 endWS = startWS + L * u_constants.traceDistance;
+	float rayLenght = u_constants.traceDistance;
+
+	const Plane cameraNear = ConstructNearPlane(u_sceneView);
+	// intersect ray with near plane to avoid artifacts from reprojection of points behind the camera
+	IntersectionResult nearIntersection =  Ray::Create(startWS, L).IntersectPlane(cameraNear);
+	if (nearIntersection.IsValid())
+	{
+		rayLenght = min(rayLenght, nearIntersection.GetTime());
+	}
+
+	const float3 endWS = startWS + L * rayLenght;
 	const float3 endNDC = WorldSpaceToNDC(endWS, u_sceneView);
 
 	const float2 endUV = endNDC.xy * 0.5f + 0.5f;
@@ -72,13 +82,7 @@ void TraceSSShadowsCS(CS_INPUT input)
 
 	const float noise = frac(u_constants.blueNoise256.Load(uint3(coords & 255u, 0)).r + u_constants.frameIdx * SPT_GOLDEN_RATIO);
 
-	ScreenSpaceTracerContext tracerContext;
-	tracerContext.sceneView      = u_sceneView;
-	tracerContext.linearDepth    = u_constants.linearDepth.GetResource();
-	tracerContext.resolution     = u_constants.resolution;
-	tracerContext.stepsNum       = u_constants.stepsNum;
-
-	const SSTraceResult traceResult = TraceSSShadowRay(tracerContext, startUV, startDepth, endUV, endDepth, noise);
+	const SSTraceResult traceResult = TraceSSShadowRay(u_constants.ssTracerData, u_sceneView, startUV, startDepth, endUV, endDepth, noise);
 
 	u_constants.outShadows.Store(coords, traceResult.isHit ? 0.f : 1.f);
 

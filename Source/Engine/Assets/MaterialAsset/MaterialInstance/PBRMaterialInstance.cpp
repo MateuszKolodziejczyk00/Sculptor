@@ -106,9 +106,13 @@ void PBRMaterialInstance::Load(const AssetInstance& asset, lib::MTHandle<DDCLoad
 	m_materialData.metallicRoughnessTexture = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "MetallicRoughness"), materialDataHeader.metallicRoughnessTexture);
 	m_materialData.normalsTexture           = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "Normals"), materialDataHeader.normalsTexture);
 	m_materialData.alphaTexture             = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "Alpha"), materialDataHeader.alphaTexture);
+	m_materialData.occlusionTexture         = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "Occlusion"), materialDataHeader.occlusionTexture);
 
 	m_materialData.emissiveData.emissiveFactor  = materialDataHeader.emissionFactor;
 	m_materialData.emissiveData.emissiveTexture = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "Emissive"), materialDataHeader.emissiveTexture);
+
+	m_materialData.depthData.maxDepthCm   = materialDataHeader.maxDepthCm;
+	m_materialData.depthData.depthTexture = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "Depth"), materialDataHeader.depthTexture);
 
 	const Bool isEmissive = materialDataHeader.emissionFactor.x() > 0.f || materialDataHeader.emissionFactor.y() > 0.f || materialDataHeader.emissionFactor.z() > 0.f;
 

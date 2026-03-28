@@ -25,6 +25,12 @@ void WorldShadowCacheRenderSystem::Initialize(RenderScene& renderScene)
 
 	sceneRegistry.on_construct<DirectionalLightData>().connect<&WorldShadowCacheRenderSystem::OnDirectionalLightAdded>(this);
 	sceneRegistry.on_destroy<DirectionalLightData>().connect<&WorldShadowCacheRenderSystem::OnDirectionalLightRemoved>(this);
+
+	const auto dirLightsView = sceneRegistry.view<DirectionalLightData>();
+	for (const auto& [entity, dirLight] : dirLightsView.each())
+	{
+		OnDirectionalLightAdded(sceneRegistry, entity);
+	}
 }
 
 void WorldShadowCacheRenderSystem::Deinitialize(RenderScene& renderScene)

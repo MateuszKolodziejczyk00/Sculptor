@@ -5,6 +5,9 @@
 #include "Utils/Packing.hlsli"
 
 
+#define MATERIAL_DEPTH_DATA_ACCESSOR depthData
+
+
 CustomOpacityOutput EvaluateCustomOpacity(MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
 {
     CustomOpacityOutput output;
@@ -66,6 +69,12 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
         emissiveColor *= materialData.emissiveData.emissiveTexture.SPT_MATERIAL_SAMPLE(SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
     }
 
+	float occlusion = 1.f;
+	if (materialData.occlusionTexture.IsValid())
+	{
+		occlusion = materialData.occlusionTexture.SPT_MATERIAL_SAMPLE(SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
+	}
+
     MaterialEvaluationOutput output;
 
     output.shadingNormal  = shadingNormal;
@@ -74,6 +83,7 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
     output.baseColor      = baseColor;
     output.metallic       = metallic;
     output.emissiveColor  = emissiveColor;
+	output.occlusion      = occlusion;
 
     return output;
 }

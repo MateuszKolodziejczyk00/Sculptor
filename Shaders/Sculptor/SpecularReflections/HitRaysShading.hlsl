@@ -132,4 +132,3 @@ void ShadowRayRTM(inout ShadowRayPayload payload)
 {
 	payload.isShadowed = false;
 }
-[[meta(debug_features)]]

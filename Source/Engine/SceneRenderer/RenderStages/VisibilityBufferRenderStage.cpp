@@ -1,4 +1,5 @@
 #include "VisibilityBufferRenderStage.h"
+#include "Parameters/SceneRendererParams.h"
 #include "View/RenderView.h"
 #include "RenderGraphBuilder.h"
 #include "RenderScene.h"
@@ -13,6 +14,11 @@ namespace spt::rsc
 {
 
 REGISTER_RENDER_STAGE(ERenderStage::VisibilityBuffer, VisibilityBufferRenderStage);
+
+namespace renderer_params
+{
+RendererBoolParameter enablePOM("Enable POM", { "Geometry" }, false);
+} // renderer_params
 
 namespace utils
 {
@@ -140,6 +146,7 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 	materialsPassParams.depthTexture             = depth;
 	materialsPassParams.visibleMeshletsBuffer    = geometryPassesResult.visibleMeshlets;
 	materialsPassParams.visibilityTexture        = visibilityTexture;
+	materialsPassParams.enablePOM                = renderer_params::enablePOM;
 
 	materials_renderer::ExecuteMaterialsPass(graphBuilder, materialsPassParams);
 

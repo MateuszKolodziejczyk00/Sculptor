@@ -185,6 +185,19 @@ struct RTReflections
 	float3 diffuse;
 };
 
+
+float3 GTAOMultiBounce(in float visibility, float3 albedo)
+{
+	const float3 a =  2.0404f * albedo - 0.3324f;
+	const float3 b = -4.7951f * albedo + 0.6417f;
+	const float3 c =  2.7552f * albedo + 0.6903f;
+
+	const float x = visibility;
+
+	return max(x, ((x *	a + b) * x + c) * x);
+}
+
+
 #if RT_REFLECTIONS_ENABLED
 RTReflections ComputeRTReflectionsLuminance(in uint2 pixel, in float2 uv)
 {
@@ -244,6 +257,10 @@ RTReflections ComputeRTReflectionsLuminance(in uint2 pixel, in float2 uv)
 			aoMultiplier = ambientOcclusion;
 		}
 	}
+
+	const float detailAO = u_aoTexture.Load(uint3(pixel, 0u)).x;
+	const float3 detailGTAO = GTAOMultiBounce(detailAO, diffuseColor);
+	aoMultiplier *= detailGTAO;
 
 	diffuseLo *= Diffuse_Lambert(diffuseColor) * aoMultiplier;
 

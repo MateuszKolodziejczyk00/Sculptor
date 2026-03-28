@@ -17,11 +17,11 @@
 
 struct GBufferOutput
 {
-	float4 gBuffer0 : SV_TARGET0;
-	float4 gBuffer1 : SV_TARGET1;
-	float  gBuffer2 : SV_TARGET2;
-	float3 gBuffer3 : SV_TARGET3;
-	uint   gBuffer4 : SV_TARGET4;
+	float4 gBuffer0;
+	float4 gBuffer1;
+	float  gBuffer2;
+	float3 gBuffer3;
+	uint   gBuffer4;
 };
 
 

@@ -421,6 +421,8 @@ void CompilerImpl::PreprocessAdditionalCompilerArgs(const lib::String& shaderPat
 		{
 			args.Append(lib::WString(L"-O3"));
 			args.Append(lib::WString(L"spirv-opt -O"));
+			args.Append(lib::WString(L"-Zi"));
+			args.Append(lib::WString(L"-fspv-debug=vulkan-with-source"));
 		}
 	}
 

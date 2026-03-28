@@ -120,13 +120,14 @@ struct VertexData
 VertexData ProcessVertex(in RenderEntityGPUData entityData, in const SubmeshGPUData submesh, in const MeshletGPUData meshlet, in uint vertexIdx, inout bool hasTangent)
 {
 	const uint meshletGlobalVertexIndicesOffset = submesh.meshletsVerticesDataOffset + meshlet.meshletVerticesOffset;
-	const uint globalVertexIdx  = UGB().LoadVertexIndex(meshletGlobalVertexIndicesOffset, vertexIdx);
-	const float3 vertexLocation = UGB().LoadLocation(submesh.locationsOffset, globalVertexIdx);
-	const float4 vertexCS = mul(u_sceneView.viewProjectionMatrix, mul(entityData.transform, float4(vertexLocation, 1.f)));
+	const uint globalVertexIdx    = UGB().LoadVertexIndex(meshletGlobalVertexIndicesOffset, vertexIdx);
+	const float3 vertexLocation   = UGB().LoadLocation(submesh.locationsOffset, globalVertexIdx);
+	const float3 vertexLocationWS = mul(entityData.transform, float4(vertexLocation, 1.f)).xyz;
+	const float4 vertexCS = mul(u_sceneView.viewProjectionMatrix, float4(vertexLocationWS, 1.f));
 
 	VertexData vertexData;
-	vertexData.worldLocation = vertexLocation;
-	vertexData.clipSpace     = vertexCS;
+	vertexData.clipSpace = vertexCS;
+	vertexData.worldLocation = vertexLocationWS;
 
 	if (submesh.normalsOffset != IDX_NONE_32)
 	{
@@ -236,9 +237,54 @@ MaterialEvaluationParameters CreateMaterialEvalParams(in InterpolatedVertexData 
 }
 
 
-GBufferOutput EmitGBuffer_FS(in OutputVertex vertexInput)
+void ApplyParallax(inout MaterialEvaluationParameters evalParams, in MaterialDepthData materialDepthData, in float3 toView)
 {
-	GBufferOutput output = (GBufferOutput)0;
+    const float texLevel = 0.f;
+    const float heightScale = materialDepthData.maxDepthCm;
+
+    float layersNum = lerp(32.f, 10.f, abs(toView.z)); 
+    float layerDepth = 1.f / layersNum;
+    float currentLayerDepth = 0.f;
+
+    float2 P = (toView.xy / max(toView.z, 0.05f)) * heightScale;
+    float2 deltaUV = P / layersNum;
+
+    float2 currentUV = evalParams.uv.uv;
+    float currentHeight = materialDepthData.depthTexture.SampleLevel(BindlessSamplers::MaterialAniso(), currentUV, texLevel);
+    
+    float prevHeight = 0.f;
+
+    while (currentLayerDepth < currentHeight)
+    {
+        prevHeight = currentHeight;
+        currentUV -= deltaUV;
+        currentHeight = materialDepthData.depthTexture.SampleLevel(BindlessSamplers::MaterialAniso(), currentUV, texLevel);
+        currentLayerDepth += layerDepth;
+    }
+
+    float2 prevUV = currentUV + deltaUV;
+    float nextDepth = currentHeight - currentLayerDepth;
+    float prevDepth = prevHeight - (currentLayerDepth - layerDepth);
+
+    float weight = nextDepth / (nextDepth - prevDepth);
+    evalParams.uv.uv = lerp(currentUV, prevUV, weight);
+}
+
+
+struct FS_Output
+{
+	float4 gBuffer0  : SV_TARGET0;
+	float4 gBuffer1  : SV_TARGET1;
+	float  gBuffer2  : SV_TARGET2;
+	float3 gBuffer3  : SV_TARGET3;
+	uint   gBuffer4  : SV_TARGET4;
+	float  occlusion : SV_TARGET5;
+};
+
+
+FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
+{
+	FS_Output output = (FS_Output )0;
 
 	const uint2 pixelCoord = u_emitGBufferConstants.screenResolution * vertexInput.screenUV;
 	
@@ -255,9 +301,21 @@ GBufferOutput EmitGBuffer_FS(in OutputVertex vertexInput)
 		const float2 screenPositionClip = vertexInput.screenUV * 2.f - 1.f;
 		const InterpolatedVertexData vertexData = ProcessTriangle(visibleMeshlet, visibleTriangleIdx, screenPositionClip);
 
-		const MaterialEvaluationParameters materialEvalParams = CreateMaterialEvalParams(vertexData);
+		MaterialEvaluationParameters materialEvalParams = CreateMaterialEvalParams(vertexData);
 
 		const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(visibleMeshlet.materialDataHandle);
+
+#if ENABLE_POM && defined(MATERIAL_DEPTH_DATA_ACCESSOR)
+		MaterialDepthData materialDepthData = materialData.MATERIAL_DEPTH_DATA_ACCESSOR;
+		if (materialDepthData.depthTexture.IsValid())
+		{
+			const float3x3 tbn = float3x3(vertexData.tangent, -vertexData.bitangent, vertexData.normal);
+			const float3 toViewWS = normalize(u_sceneView.viewLocation - vertexData.worldLocation);
+			const float3 toViewTS = mul(tbn, toViewWS);
+			ApplyParallax(materialEvalParams, materialDepthData, toViewTS);
+		}
+#endif // ENABLE_POM && defined(MATERIAL_DEPTH_DATA_ACCESSOR)
+
 		const MaterialEvaluationOutput evaluatedMaterial = EvaluateMaterial(materialEvalParams, materialData);
 
 		GBufferData gBufferData;
@@ -269,7 +327,14 @@ GBufferOutput EmitGBuffer_FS(in OutputVertex vertexInput)
 		gBufferData.roughness = evaluatedMaterial.roughness;
 		gBufferData.emissive  = evaluatedMaterial.emissiveColor;
 
-		output = EncodeGBuffer(gBufferData);
+		const GBufferOutput gBufferOutput = EncodeGBuffer(gBufferData);
+
+		output.gBuffer0  = gBufferOutput.gBuffer0;
+		output.gBuffer1  = gBufferOutput.gBuffer1;
+		output.gBuffer2  = gBufferOutput.gBuffer2;
+		output.gBuffer3  = gBufferOutput.gBuffer3;
+		output.gBuffer4  = gBufferOutput.gBuffer4;
+		output.occlusion = evaluatedMaterial.occlusion;
 	}
 
 	return output;

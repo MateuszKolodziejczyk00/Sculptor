@@ -446,6 +446,44 @@ public:
 	}
 };
 
+
+template<typename TShaderStructMemberMetaData, typename TMember>
+constexpr const char* VariableNameOfTypeImpl()
+{
+	if constexpr (rdr::shader_translator::priv::IsHeadMember<TShaderStructMemberMetaData>())
+	{
+		return VariableNameOfTypeImpl<typename TShaderStructMemberMetaData::PrevMemberMetaDataType, TMember>();
+	}
+	else
+	{
+		using MemberType = typename TShaderStructMemberMetaData::UnderlyingType;
+
+		if constexpr (std::is_same_v<MemberType, TMember>)
+		{
+			return TShaderStructMemberMetaData::GetVariableName();
+		}
+		else
+		{
+			if constexpr (rdr::shader_translator::priv::IsTailMember<TShaderStructMemberMetaData>())
+			{
+				return nullptr;
+			}
+			else
+			{
+				return VariableNameOfTypeImpl<typename TShaderStructMemberMetaData::PrevMemberMetaDataType, TMember>();
+			}
+		}
+	}
+}
+
+
+template<typename TStruct, typename TMember>
+const char* VariableNameOfType()
+{
+	return VariableNameOfTypeImpl<typename TStruct::HeadMemberMetaData, TMember>();
+}
+
+
 template<typename TShaderStructMemberMetaData, typename TMember>
 constexpr Uint32 OffsetOfTypeImpl()
 {

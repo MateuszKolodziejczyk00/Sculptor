@@ -21,30 +21,22 @@ SPT_DEFINE_LOG_CATEGORY(PBRMaterialCompiler, true);
 namespace spt::as::material_compiler
 {
 
-COMPUTE_PSO(CompilePBRMaterialTexturesPSO)
-{
-	COMPUTE_SHADER("Sculptor/Materials/CompilePBRMaterialTextures.hlsl", CompilePBRMaterialTexturesCS);
-
-	PRESET(dflt);
-
-	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
-	{
-		dflt = CompilePSO(compiler, { });
-	}
-};
-
-
 BEGIN_SHADER_STRUCT(CompilePBRMaterialConstants)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, loadedBaseColor)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, loadedMetallicRoughness)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, loadedNormals)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, loadedEmissive)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         loadedDepth)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         rwAlpha)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwBaseColor)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwMetallicRoughness)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>, rwNormals)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwEmissive)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         rwDepth)
 END_SHADER_STRUCT();
+
+
+SIMPLE_COMPUTE_PSO(CompilePBRMaterialTexturesPSO, "Sculptor/Materials/CompilePBRMaterialTextures.hlsl", CompilePBRMaterialTexturesCS)
 
 
 static void CompilePBRMaterialTextures(rg::RenderGraphBuilder& graphBuilder, math::Vector2u dispatchSize, const CompilePBRMaterialConstants& params)
@@ -54,24 +46,87 @@ static void CompilePBRMaterialTextures(rg::RenderGraphBuilder& graphBuilder, mat
 	const math::Vector3u dispatchGroupsNum(math::Utils::DivideCeil(dispatchSize.x(), 16u), math::Utils::DivideCeil(dispatchSize.y(), 16u), 1u);
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Compile PBR Material Textures"),
-						  CompilePBRMaterialTexturesPSO::dflt,
+						  CompilePBRMaterialTexturesPSO::pso,
 						  dispatchGroupsNum,
 						  rg::EmptyDescriptorSets(),
 						  params);
 }
 
 
-COMPUTE_PSO(GeneratePBRTexturesMipsPSO)
+BEGIN_SHADER_STRUCT(GenerateDepthMapFromNormalsConstants)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         alpha)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, normals)
+	SHADER_STRUCT_FIELD(Real32,                            maxDepthCm)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         rwDepth)
+END_SHADER_STRUCT();
+
+
+SIMPLE_COMPUTE_PSO(GenerateDepthMapFromNormalsPSO, "Sculptor/Materials/GenerateDepthMapFromNormals.hlsl", GenerateCS);
+
+
+static rg::RGTextureViewHandle GenerateHeightMapFromNormals(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle normals, rg::RGTextureViewHandle alpha, Real32 maxDepthCm)
 {
-	COMPUTE_SHADER("Sculptor/Materials/GeneratePBRTexturesMips.hlsl", GeneratePBRTexturesMipsCS);
+	SPT_PROFILER_FUNCTION();
 
-	PRESET(dflt);
+	SPT_CHECK(normals.IsValid());
 
-	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
-	{
-		dflt = CompilePSO(compiler, { });
-	}
-};
+	const math::Vector2u resolution = normals->GetResolution2D();
+	const Uint32 mipLevelsNum = rhi::texture_utils::ComputeBlockCompressedMipsNumForResolution(resolution);
+	const rg::RGTextureViewHandle depth = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Depth Map"), rg::TextureDef(resolution, rhi::EFragmentFormat::R8_UN_Float).SetMipLevelsNum(mipLevelsNum));
+
+	GenerateDepthMapFromNormalsConstants constants;
+	constants.normals    = normals;
+	constants.alpha      = alpha;
+	constants.maxDepthCm = maxDepthCm;
+	constants.rwDepth    = depth;
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Generate Depth Map From Normals"),
+						  GenerateDepthMapFromNormalsPSO::pso,
+						  math::Vector3u(math::Utils::DivideCeil(resolution.x(), 16u), math::Utils::DivideCeil(resolution.y(), 16u), 1u),
+						  rg::EmptyDescriptorSets(),
+						  constants);
+
+	return depth;
+}
+
+
+BEGIN_SHADER_STRUCT(GenerateOcclusionMapConstants)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,            alpha)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,         depth)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>, normals)
+	SHADER_STRUCT_FIELD(Real32,                               maxDepthCm)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<Real32>,         rwOcclusion)
+END_SHADER_STRUCT();
+
+
+SIMPLE_COMPUTE_PSO(GenerateOcclusionMapPSO, "Sculptor/Materials/GenerateOcclusionMap.hlsl", GenerateCS);
+
+
+static rg::RGTextureViewHandle GenerateOcclusionMap(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle depth, rg::RGTextureViewHandle normals, rg::RGTextureViewHandle alpha, Real32 maxDepthCm)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(depth.IsValid());
+
+	const math::Vector2u resolution = depth->GetResolution2D();
+	const Uint32 mipLevelsNum = rhi::texture_utils::ComputeBlockCompressedMipsNumForResolution(resolution);
+	const rg::RGTextureViewHandle occlusion = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Occlusion Map"), rg::TextureDef(resolution, rhi::EFragmentFormat::R8_UN_Float).SetMipLevelsNum(mipLevelsNum));
+
+	GenerateOcclusionMapConstants constants;
+	constants.alpha       = alpha;
+	constants.depth       = depth;
+	constants.normals     = normals;
+	constants.maxDepthCm  = maxDepthCm;
+	constants.rwOcclusion = occlusion;
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Generate Occlusion Map"),
+						  GenerateOcclusionMapPSO::pso,
+						  math::Vector3u(math::Utils::DivideCeil(resolution.x(), 16u), math::Utils::DivideCeil(resolution.y(), 16u), 1u),
+						  rg::EmptyDescriptorSets(),
+						  constants);
+
+	return occlusion;
+}
 
 
 BEGIN_SHADER_STRUCT(GeneratePBRTexturesMipsConstants)
@@ -80,12 +135,19 @@ BEGIN_SHADER_STRUCT(GeneratePBRTexturesMipsConstants)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, inMetallicRoughness)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, inNormals)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, inEmissive)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         inDepth)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         inOcclusion)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         rwAlpha)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwBaseColor)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwMetallicRoughness)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>, rwNormals)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwEmissive)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         rwDepth)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         rwOcclusion)
 END_SHADER_STRUCT();
+
+
+SIMPLE_COMPUTE_PSO(GeneratePBRTexturesMipsPSO, "Sculptor/Materials/GeneratePBRTexturesMips.hlsl", GeneratePBRTexturesMipsCS)
 
 
 static void GeneratePBRTexturesMips(rg::RenderGraphBuilder& graphBuilder, math::Vector2u dispatchSize, const GeneratePBRTexturesMipsConstants& constants)
@@ -95,7 +157,7 @@ static void GeneratePBRTexturesMips(rg::RenderGraphBuilder& graphBuilder, math::
 	const math::Vector3u dispatchGroupsNum(math::Utils::DivideCeil(dispatchSize.x(), 16u), math::Utils::DivideCeil(dispatchSize.y(), 16u), 1u);
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Generate PBR Textures Misp"),
-						  GeneratePBRTexturesMipsPSO::dflt,
+						  GeneratePBRTexturesMipsPSO::pso,
 						  dispatchGroupsNum,
 						  rg::EmptyDescriptorSets(),
 						  constants);
@@ -132,7 +194,7 @@ static lib::Span<lib::Span<Byte>> GenericDownloadMipsImpl(const DownloadMipFunc&
 		return {};
 	}
 
-	SPT_CHECK(mipsData.size() >= 2u);
+	SPT_CHECK(mipsData.size() >= 1u);
 
 	const math::Vector2u resolution = textureView->GetResolution2D();
 
@@ -236,11 +298,13 @@ struct PBRMaterialCompilationInput
 	lib::SharedPtr<rdr::TextureView> metallicRoughnessTex;
 	lib::SharedPtr<rdr::TextureView> normalsTex;
 	lib::SharedPtr<rdr::TextureView> emissiveTex;
+	lib::SharedPtr<rdr::TextureView> depthTex;
 
 	math::Vector3f baseColorFactor = math::Vector3f::Ones();
 	Real32 metallicFactor          = 0.f;
 	Real32 roughnessFactor         = 1.f;
 	math::Vector3f emissionFactor  = math::Vector3f::Zero();
+	Real32 maxDepthCm = 0.f;
 
 	Bool doubleSided   = true;
 	Bool customOpacity = false;
@@ -259,6 +323,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 	headerData.metallicFactor  = compilationInput.metallicFactor;
 	headerData.roughnessFactor = compilationInput.roughnessFactor;
 	headerData.emissionFactor  = compilationInput.emissionFactor;
+	headerData.maxDepthCm      = compilationInput.maxDepthCm;
 	headerData.doubleSided     = compilationInput.doubleSided   ? 1u : 0u;
 	headerData.customOpacity   = compilationInput.customOpacity ? 1u : 0u;
 	headerData.transparent     = compilationInput.transparent   ? 1u : 0u;
@@ -266,7 +331,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 	lib::DynamicArray<Byte> compiledData;
 	compiledData.resize(sizeof(PBRMaterialDataHeader));
 
-	const Bool usesAnyTexture = compilationInput.baseColorTex || compilationInput.metallicRoughnessTex || compilationInput.normalsTex || compilationInput.emissiveTex;
+	const Bool usesAnyTexture = compilationInput.baseColorTex || compilationInput.metallicRoughnessTex || compilationInput.normalsTex || compilationInput.emissiveTex || compilationInput.depthTex;
 
 	if (usesAnyTexture)
 	{
@@ -297,6 +362,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		const auto [loadedEmissive, emissive]                   = acquireRGTextures(compilationInput.emissiveTex,          rhi::EFragmentFormat::RGBA8_UN_Float);
 		const auto [loadedMetallicRoughness, metallicRoughness] = acquireRGTextures(compilationInput.metallicRoughnessTex, rhi::EFragmentFormat::RGBA8_UN_Float);
 		const auto [loadedNormals, normals]                     = acquireRGTextures(compilationInput.normalsTex,           rhi::EFragmentFormat::RG8_UN_Float);
+		auto [loadedDepth, depth]                               = acquireRGTextures(compilationInput.depthTex,            rhi::EFragmentFormat::R8_UN_Float);
 
 		rg::RGTextureViewHandle alpha;
 		if (baseColor.IsValid() && compilationInput.customOpacity)
@@ -309,13 +375,26 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		compilationConstants.loadedMetallicRoughness = loadedMetallicRoughness;
 		compilationConstants.loadedNormals           = loadedNormals;
 		compilationConstants.loadedEmissive          = loadedEmissive;
+		compilationConstants.loadedDepth             = loadedDepth;
 		compilationConstants.rwAlpha                 = alpha;
 		compilationConstants.rwBaseColor             = baseColor;
 		compilationConstants.rwMetallicRoughness     = metallicRoughness;
 		compilationConstants.rwNormals               = normals;
 		compilationConstants.rwEmissive              = emissive;
+		compilationConstants.rwDepth                 = depth;
 
 		CompilePBRMaterialTextures(graphBuilder, maxDimentions, compilationConstants);
+
+		if (!depth.IsValid() && loadedNormals.IsValid())
+		{
+			depth = GenerateHeightMapFromNormals(graphBuilder, loadedNormals, alpha, compilationInput.maxDepthCm);
+		}
+
+		rg::RGTextureViewHandle occlusion;
+		if (depth.IsValid() && normals.IsValid())
+		{
+			occlusion = GenerateOcclusionMap(graphBuilder, depth, loadedNormals, alpha, compilationInput.maxDepthCm);
+		}
 
 		const Uint32 maxMipLevelsNum = rhi::texture_utils::ComputeMipLevelsNumForResolution(maxDimentions);
 
@@ -342,6 +421,8 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		const lib::ManagedSpan<rg::RGTextureViewHandle> normalsMipViews           = createTextureMipViews(normals);
 		const lib::ManagedSpan<rg::RGTextureViewHandle> emissiveMipViews          = createTextureMipViews(emissive);
 		const lib::ManagedSpan<rg::RGTextureViewHandle> alphaMipViews             = createTextureMipViews(alpha);
+		const lib::ManagedSpan<rg::RGTextureViewHandle> depthMipViews             = createTextureMipViews(depth);
+		const lib::ManagedSpan<rg::RGTextureViewHandle> occlusionMipViews         = createTextureMipViews(occlusion);
 
 		for (Uint32 dstMipViewIdx = 1u; dstMipViewIdx < maxMipLevelsNum; ++dstMipViewIdx)
 		{
@@ -386,6 +467,20 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 				dispatchSize = dispatchSize.cwiseMax(emissiveMipViews[dstMipViewIdx]->GetResolution2D());
 			}
 
+			if (depthMipViews[srcMipViewIdx])
+			{
+				mipGenConstants.inDepth = depthMipViews[srcMipViewIdx];
+				mipGenConstants.rwDepth = depthMipViews[dstMipViewIdx];
+				dispatchSize = dispatchSize.cwiseMax(depthMipViews[dstMipViewIdx]->GetResolution2D());
+			}
+
+			if (occlusionMipViews[srcMipViewIdx])
+			{
+				mipGenConstants.inOcclusion = occlusionMipViews[srcMipViewIdx];
+				mipGenConstants.rwOcclusion = occlusionMipViews[dstMipViewIdx];
+				dispatchSize = dispatchSize.cwiseMax(occlusionMipViews[dstMipViewIdx]->GetResolution2D());
+			}
+
 			GeneratePBRTexturesMips(graphBuilder, dispatchSize, mipGenConstants);
 		}
 
@@ -427,6 +522,8 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		const lib::ManagedSpan<lib::SharedPtr<rdr::Buffer>> normalsMipsStagedData           = stageMipsData(normalsMipViews);
 		const lib::ManagedSpan<lib::SharedPtr<rdr::Buffer>> emissiveMipsStagedData          = stageMipsData(emissiveMipViews);
 		const lib::ManagedSpan<lib::SharedPtr<rdr::Buffer>> alphaMipsStagedData             = stageMipsData(alphaMipViews);
+		const lib::ManagedSpan<lib::SharedPtr<rdr::Buffer>> depthMipsStagedData             = stageMipsData(depthMipViews);
+		const lib::ManagedSpan<lib::SharedPtr<rdr::Buffer>> occlusionMipsStagedData         = stageMipsData(occlusionMipViews);
 
 		graphBuilder.Execute();
 
@@ -440,6 +537,8 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		const lib::Span<lib::Span<Byte>> normalsMipsData           = DownloadMipsAsBC5(tempArena, normalsMipsStagedData, normals);
 		const lib::Span<lib::Span<Byte>> emissiveMipsData          = DownloadMipsAsBC1(tempArena, emissiveMipsStagedData, emissive);
 		const lib::Span<lib::Span<Byte>> alphaMipsData             = DownloadMipsAsBC4(tempArena, alphaMipsStagedData, alpha);
+		const lib::Span<lib::Span<Byte>> depthMipsData            = DownloadMipsAsBC4(tempArena, depthMipsStagedData, depth);
+		const lib::Span<lib::Span<Byte>> occlusionMipsData         = DownloadMipsAsBC4(tempArena, occlusionMipsStagedData, occlusion);
 
 		const auto cacheTextureDefinition = [](MaterialTextureDefinition& textureDefinition, const rg::RGTextureViewHandle& textureView, rhi::EFragmentFormat format, lib::Span<const lib::Span<Byte>> mipsData)
 		{
@@ -456,6 +555,8 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		cacheTextureDefinition(headerData.normalsTexture, normals,                     rhi::EFragmentFormat::BC5_UN,   normalsMipsData);
 		cacheTextureDefinition(headerData.emissiveTexture, emissive,                   rhi::EFragmentFormat::BC1_sRGB, emissiveMipsData);
 		cacheTextureDefinition(headerData.alphaTexture, alpha,                         rhi::EFragmentFormat::BC4_UN,   alphaMipsData);
+		cacheTextureDefinition(headerData.depthTexture, depth,                         rhi::EFragmentFormat::BC4_UN,   depthMipsData);
+		cacheTextureDefinition(headerData.occlusionTexture, occlusion,                 rhi::EFragmentFormat::BC4_UN,   occlusionMipsData);
 
 		const auto accmulateTextureOffset = [&accumulatedDataOffset](MaterialTextureDefinition& textureDef, lib::Span<const lib::Span<Byte>> mipsData)
 		{
@@ -479,6 +580,8 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		accmulateTextureOffset(headerData.normalsTexture, normalsMipsData);
 		accmulateTextureOffset(headerData.emissiveTexture, emissiveMipsData);
 		accmulateTextureOffset(headerData.alphaTexture, alphaMipsData);
+		accmulateTextureOffset(headerData.depthTexture, depthMipsData);
+		accmulateTextureOffset(headerData.occlusionTexture, occlusionMipsData);
 
 		compiledData.resize(accumulatedDataOffset);
 
@@ -501,6 +604,8 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		downloadMipsData(headerData.normalsTexture, normalsMipsData);
 		downloadMipsData(headerData.emissiveTexture, emissiveMipsData);
 		downloadMipsData(headerData.alphaTexture, alphaMipsData);
+		downloadMipsData(headerData.depthTexture, depthMipsData);
+		downloadMipsData(headerData.occlusionTexture, occlusionMipsData);
 	}
 
 	std::memcpy(compiledData.data(), &headerData, sizeof(PBRMaterialDataHeader));
@@ -517,16 +622,19 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 	const lib::Path metallicRoughnessPath = !definition.metallicRoughnessTexPath.empty() ? (referencePath / definition.metallicRoughnessTexPath) : lib::Path{};
 	const lib::Path normalsPath           = !definition.normalsTexPath.empty() ? (referencePath / definition.normalsTexPath) : lib::Path{};
 	const lib::Path emissivePath          = !definition.emissiveTexPath.empty() ? (referencePath / definition.emissiveTexPath) : lib::Path{};
+	const lib::Path depthPath             = !definition.depthTexPath.empty() ? (referencePath / definition.depthTexPath) : lib::Path{};
 
 	PBRMaterialCompilationInput compilationInput;
 	compilationInput.baseColorTex         = TryLoadTexture(baseColorPath);
 	compilationInput.metallicRoughnessTex = TryLoadTexture(metallicRoughnessPath);
 	compilationInput.normalsTex           = TryLoadTexture(normalsPath);
 	compilationInput.emissiveTex          = TryLoadTexture(emissivePath);
+	compilationInput.depthTex             = TryLoadTexture(depthPath);
 	compilationInput.baseColorFactor      = definition.baseColorFactor;
 	compilationInput.metallicFactor       = definition.metallicFactor;
 	compilationInput.roughnessFactor      = definition.roughnessFactor;
 	compilationInput.emissionFactor       = definition.emissionFactor;
+	compilationInput.maxDepthCm           = definition.maxDepthCm;
 	compilationInput.doubleSided          = definition.doubleSided;
 	compilationInput.customOpacity        = definition.customOpacity;
 
@@ -682,6 +790,7 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 	compilationInput.metallicFactor       = static_cast<Real32>(srcMatPBR.metallicFactor);
 	compilationInput.roughnessFactor      = static_cast<Real32>(srcMatPBR.roughnessFactor);
 	compilationInput.emissionFactor       = math::Map<const math::Vector3d>(srcMat->emissiveFactor.data()).cast<Real32>() * emissiveStrength;
+	compilationInput.maxDepthCm           = PBRMaterialDefinition::s_defultMaxDepthCm;
 	compilationInput.doubleSided          = srcMat->doubleSided;
 	compilationInput.customOpacity        = isMasked;
 	compilationInput.transparent          = isTransparent;

@@ -173,4 +173,14 @@ void GeneratePBRTexturesMipsCS(CS_INPUT input)
 	{
 		DownsampleSRGB(u_params.inEmissive, u_params.rwEmissive, coords);
 	}
+
+	if (u_params.rwDepth.IsValid())
+	{
+		DownsampleLinear(u_params.inDepth, u_params.rwDepth, coords);
+	}
+
+	if (u_params.rwOcclusion.IsValid())
+	{
+		DownsampleLinear(u_params.inOcclusion, u_params.rwOcclusion, coords);
+	}
 }

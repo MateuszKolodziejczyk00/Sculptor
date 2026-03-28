@@ -8,6 +8,7 @@
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "Lights/LightTypes.h"
+#include "Utils/ScreenSpaceTracer.h"
 #include "EngineFrame.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "MaterialsSubsystem.h"
@@ -69,7 +70,7 @@ BEGIN_SHADER_STRUCT(ScreenSpaceShadowsConstants)
 	SHADER_STRUCT_FIELD(math::Vector2f,                                     pixelSize)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<Real32>,                       outShadows)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,                       depth)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,                       linearDepth)
+	SHADER_STRUCT_FIELD(SSTracerData,                                       ssTracerData)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>,               normal)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,                       blueNoise256)
 	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<Uint32>,                        inCommandsNum)
@@ -79,7 +80,6 @@ BEGIN_SHADER_STRUCT(ScreenSpaceShadowsConstants)
 	SHADER_STRUCT_FIELD(Uint32,                                             frameIdx)
 	SHADER_STRUCT_FIELD(math::Vector3f,                                     lightDirection)
 	SHADER_STRUCT_FIELD(Real32,                                             lightConeAngle)
-	SHADER_STRUCT_FIELD(Uint32,                                             stepsNum)
 	SHADER_STRUCT_FIELD(Real32,                                             traceDistance)
 END_SHADER_STRUCT();
 
@@ -118,7 +118,6 @@ static void TraceShadowRays(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 	constants.pixelSize              = tracingContext.resolution.cast<Real32>().cwiseInverse();
 	constants.outShadows             = outTexture;
 	constants.depth                  = tracingContext.depthTexture;
-	constants.linearDepth            = tracingContext.linearDepthTexture;
 	constants.normal                 = tracingContext.normalsTexture;
 	constants.blueNoise256           = gfx::global::Resources::Get().blueNoise256.GetView();
 	constants.inCommandsNum          = tracesAllocation.tracesNum;
@@ -128,8 +127,8 @@ static void TraceShadowRays(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 	constants.frameIdx               = viewSpec.GetFrameIdx();
 	constants.lightDirection         = tracingContext.lightDirection;
 	constants.lightConeAngle         = tracingContext.shadowRayConeAngle;
-	constants.stepsNum               = params::screenSpaceShadowsSteps;
 	constants.traceDistance          = params::screenSpaceShadowsDistance;
+	constants.ssTracerData           = CreateScreenSpaceTracerData(tracingContext.linearDepthTexture, params::screenSpaceShadowsSteps);
 
 
 	graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SS Shadows"),

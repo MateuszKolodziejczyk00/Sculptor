@@ -89,7 +89,7 @@ void ComputeInScatteringCS(CS_INPUT input)
 
 		inScatteringExtinction.rgb = LuminanceToExposedLuminance(inScatteringExtinction.rgb);
 
-		u_inScatteringTexture[input.globalID]            = inScatteringExtinction;
+		u_inScatteringTexture[input.globalID] = inScatteringExtinction;
 
 		if (isWithinLocalLightsScatteringRange)
 		{

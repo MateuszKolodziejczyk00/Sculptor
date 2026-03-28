@@ -449,7 +449,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 			//// Fast history
 
-			const float currentFrameWeightFast = max(0.25f, specularFrameWeight);
+			const float currentFrameWeightFast = max(0.2f, specularFrameWeight);
 
 			u_rwSpecularFastHistoryTexture[pixel] = lerp(fastHistory, specular.rgb, currentFrameWeightFast);
 		}

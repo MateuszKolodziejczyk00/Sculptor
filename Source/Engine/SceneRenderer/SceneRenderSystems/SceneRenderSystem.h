@@ -67,6 +67,8 @@ public:
 
 	SceneRenderSystem* CallConstructor(ESceneRenderSystem systemType, lib::MemoryArena& arena, RenderScene& scene) const;
 	void               CallDestructor(ESceneRenderSystem systemType, SceneRenderSystem& system) const;
+	void               CallInitialize(ESceneRenderSystem systemType, SceneRenderSystem& system, RenderScene& scene) const;
+	void               CallDeinitialize(ESceneRenderSystem systemType, SceneRenderSystem& system, RenderScene& scene) const;
 	void               CallUpdateFunc(ESceneRenderSystem systemType, SceneRenderSystem& system, const SceneUpdateContext& context) const;
 	void               CallUpdateGPUSceneDataFunc(ESceneRenderSystem systemType, SceneRenderSystem& system, RenderSceneConstants& sceneData) const;
 	void               CallCollectRenderViewsFunc(ESceneRenderSystem systemType, SceneRenderSystem& system, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const RenderView& mainRenderView, INOUT RenderViewsCollector& viewsCollector) const;
@@ -87,6 +89,16 @@ public:
 		const auto destructor = [](SceneRenderSystem& system)
 		{
 			static_cast<TSystemType&>(system).~TSystemType();
+		};
+
+		const auto initializeFunc = [](SceneRenderSystem& system, RenderScene& renderScene)
+		{
+			static_cast<TSystemType&>(system).Initialize(renderScene);
+		};
+
+		const auto deinitializeFunc = [](SceneRenderSystem& system, RenderScene& renderScene)
+		{
+			static_cast<TSystemType&>(system).Deinitialize(renderScene);
 		};
 
 		const auto updateFunc = [](SceneRenderSystem& system, const SceneUpdateContext& context)
@@ -117,6 +129,8 @@ public:
 		m_systemEntries[systemIdx] = SystemEntry{
 			.constructor              = constructor,
 			.destructor               = destructor,
+			.initializeFunc           = initializeFunc,
+			.deinitializeFunc         = deinitializeFunc,
 			.updateFunc               = updateFunc,
 			.updateGPUSceneDataFunc   = updateGPUSceneDataFunc,
 			.collectRenderViewsFunc   = collectRenderViewsFunc,
@@ -131,6 +145,8 @@ private:
 	{
 		lib::RawCallable<SceneRenderSystem*(lib::MemoryArena&, RenderScene&)>                                                                                                                                  constructor;
 		lib::RawCallable<void(SceneRenderSystem&)>                                                                                                                                                             destructor;
+		lib::RawCallable<void(SceneRenderSystem&, RenderScene&)>                                                                                                                                               initializeFunc;
+		lib::RawCallable<void(SceneRenderSystem&, RenderScene&)>                                                                                                                                               deinitializeFunc;
 		lib::RawCallable<void(SceneRenderSystem&, const SceneUpdateContext&)>                                                                                                                                  updateFunc;
 		lib::RawCallable<void(SceneRenderSystem&, RenderSceneConstants&)>                                                                                                                                      updateGPUSceneDataFunc;
 		lib::RawCallable<void(SceneRenderSystem&, const SceneRendererInterface&, const RenderScene&, const RenderView&, INOUT RenderViewsCollector& )>                                                         collectRenderViewsFunc;

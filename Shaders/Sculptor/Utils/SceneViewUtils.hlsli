@@ -207,6 +207,11 @@ Ray CreateViewRayWSNoJitter(in SceneViewData sceneView, in float2 uv)
 	return Ray::Create(sceneView.viewLocation, ComputeViewRayDirectionWSNoJitter(sceneView, uv));
 }
 
+Plane ConstructNearPlane(in SceneViewData sceneView)
+{
+	return Plane::Create(sceneView.viewForward, sceneView.viewLocation + sceneView.viewForward * GetNearPlane(sceneView));
+}
+
 #ifdef DS_RenderViewDS
 
 float GetViewExposure()

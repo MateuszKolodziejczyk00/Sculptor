@@ -11,15 +11,20 @@ namespace spt::as
 
 struct PBRMaterialDefinition
 {
+	static constexpr Real32 s_defultMaxDepthCm = 0.006f;
+
 	lib::Path baseColorTexPath;
 	lib::Path metallicRoughnessTexPath;
 	lib::Path normalsTexPath;
 	lib::Path emissiveTexPath;
+	lib::Path depthTexPath;
 
 	math::Vector3f baseColorFactor = math::Vector3f::Ones();
 	Real32 metallicFactor          = 0.f;
 	Real32 roughnessFactor         = 1.f;
 	math::Vector3f emissionFactor  = math::Vector3f::Zero();
+
+	Real32 maxDepthCm = s_defultMaxDepthCm;
 
 	Bool doubleSided   = true;
 	Bool customOpacity = false;
@@ -30,11 +35,13 @@ struct PBRMaterialDefinition
 		serializer.Serialize("MetallicRoughnessTexPath", metallicRoughnessTexPath);
 		serializer.Serialize("NormalsTexPath",           normalsTexPath);
 		serializer.Serialize("EmissiveTexPath",          emissiveTexPath);
+		serializer.Serialize("DepthTexPath",            depthTexPath);
 
 		serializer.Serialize("BaseColorFactor", baseColorFactor);
 		serializer.Serialize("MetallicFactor",  metallicFactor);
 		serializer.Serialize("RoughnessFactor", roughnessFactor);
 		serializer.Serialize("EmissionFactor",  emissionFactor);
+		serializer.Serialize("MaxDepthCm",      maxDepthCm);
 
 		serializer.Serialize("DoubleSided",   doubleSided);
 		serializer.Serialize("CustomOpacity", customOpacity);

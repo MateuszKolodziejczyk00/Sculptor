@@ -43,6 +43,7 @@ END_SHADER_STRUCT();
 DS_BEGIN(CompositeLightingDS, rg::RGDescriptorSetState<CompositeLightingDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_aoTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                            u_luminanceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<CompositeLightingConstants>),             u_constants)
 DS_END();
@@ -134,6 +135,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	const lib::MTHandle<CompositeLightingDS> compositeLightingDS = graphBuilder.CreateDescriptorSet<CompositeLightingDS>(RENDERER_RESOURCE_NAME("CompositeLightingDS"));
 	compositeLightingDS->u_luminanceTexture = viewContext.luminance;
 	compositeLightingDS->u_depthTexture     = viewContext.depth;
+	compositeLightingDS->u_aoTexture        = viewContext.gBuffer[GBuffer::Texture::Occlusion];
 	compositeLightingDS->u_constants        = shaderConstants;
 
 	CompositeLightingPermutation permutation;

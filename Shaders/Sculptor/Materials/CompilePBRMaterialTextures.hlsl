@@ -45,4 +45,10 @@ void CompilePBRMaterialTexturesCS(CS_INPUT input)
 		const float3 emissive = u_constants.loadedEmissive.Load(coords).xyz;
 		u_constants.rwEmissive.Store(coords, float4(emissive, 1.f));
 	}
+
+	if (u_constants.rwDepth.IsValid())
+	{
+		const float depth = u_constants.loadedDepth.Load(coords);
+		u_constants.rwDepth.Store(coords, depth);
+	}
 }

@@ -116,6 +116,7 @@ public:
 		Roughness,
 		Emissive,
 		Flags,
+		Occlusion,
 		NUM
 	};
 
@@ -127,7 +128,8 @@ public:
 		rhi::EFragmentFormat::RGB10A2_UN_Float,
 		rhi::EFragmentFormat::R16_UN_Float,
 		rhi::EFragmentFormat::B10G11R11_U_Float,
-		rhi::EFragmentFormat::R8_U_Int
+		rhi::EFragmentFormat::R8_U_Int,
+		rhi::EFragmentFormat::R8_UN_Float
 	};
 
 	static rhi::EFragmentFormat GetFormat(Texture textureType)

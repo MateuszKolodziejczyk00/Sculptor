@@ -8,14 +8,7 @@
 // "Rendering Tiny Glades With Entirely Too Much Ray Marching" by Tomasz Stachowiak
 
 
-struct ScreenSpaceTracerContext
-{
-	SceneViewData    sceneView;
-	Texture2D<float> linearDepth;
-	
-	uint2 resolution;
-	uint  stepsNum;
-};
+[[shader_struct(SSTracerData)]]
 
 
 struct SSTraceResult
@@ -26,25 +19,61 @@ struct SSTraceResult
 };
 
 
-SSTraceResult TraceSSShadowRay(in ScreenSpaceTracerContext context, in float2 startUV, in float startDepth, in float2 endUV, in float endDepth, in float jitter)
+void ComputeClampedEndUV(in float2 startUV, in float startDepth, inout float2 endUV, inout float endDepth)
+{
+	const float2 dUV = endUV - startUV;
+	const float dZ = endDepth - startDepth;
+
+	float t = 1.f;
+	if (dUV.x != 0.f)
+	{
+		if (dUV.x > 0.f)
+		{
+			t = min(t, (1.f - startUV.x) / dUV.x);
+		}
+		else
+		{
+			t = min(t, -startUV.x / dUV.x);
+		}
+	}
+	if (dUV.y != 0.f)
+	{
+		if (dUV.y > 0.f)
+		{
+			t = min(t, (1.f - startUV.y) / dUV.y);
+		}
+		else
+		{
+			t = min(t, -startUV.y / dUV.y);
+		}
+	}
+
+	endUV    = startUV + dUV * t;
+	endDepth = startDepth + dZ * t;
+}
+
+
+SSTraceResult TraceSSShadowRay(in SSTracerData tracer, in SceneViewData sceneView, in float2 startUV, in float startDepth, in float2 endUV, in float endDepth, in float jitter)
 {
 	SSTraceResult result;
 	result.isHit = false;
 
 #if DEBUG_SCREEN_SPACE_TRACER
-	const bool debugRay = debug::IsPixelHovered(startUV * context.resolution, context.resolution);
+	const bool debugRay = debug::IsPixelHovered(startUV * tracer.resolution, tracer.resolution);
 #endif // DEBUG_SCREEN_SPACE_TRACER
+
+	ComputeClampedEndUV(startUV, startDepth, endUV, endDepth);
 
 	const float startZ = startDepth;
 	const float endZ   = endDepth;
 
-	const float stepsNum = context.stepsNum;
+	const float stepsNum = tracer.stepsNum;
 
 	const float2 dUV = endUV - startUV;
 	const float dZ = endZ - startZ;
 	const float dT = 1.f / stepsNum;
 
-	const float rayThickness = 0.5f * GetNearPlane(context.sceneView);
+	const float rayThickness = 0.5f * GetNearPlane(sceneView);
 
 	const float linearStepExponent = 1.f;
 
@@ -55,15 +84,10 @@ SSTraceResult TraceSSShadowRay(in ScreenSpaceTracerContext context, in float2 st
 		const float t = pow(dT * i, linearStepExponent);
 
 		const float2 uv = startUV + dUV * t;
-		const float z = ComputeLinearDepth(startZ + dZ * t, context.sceneView);
+		const float z = ComputeLinearDepth(startZ + dZ * t, sceneView);
 
-		if(any(saturate(uv) != uv))
-		{
-			break;
-		}
-
-		const float zNearest = context.linearDepth.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0.f);
-		const float zLinear  = context.linearDepth.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0.f);
+		const float zNearest = tracer.linearDepth.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0.f);
+		const float zLinear  = tracer.linearDepth.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0.f);
 
 		const float minZ = min(zNearest, zLinear);
 		const float maxZ = max(zNearest, zLinear);
@@ -75,8 +99,8 @@ SSTraceResult TraceSSShadowRay(in ScreenSpaceTracerContext context, in float2 st
 #if DEBUG_SCREEN_SPACE_TRACER
 	if(debugRay)
 	{
-		const float3 wsRay  = NDCToWorldSpace(float3(uv * 2.f - 1.f, ComputeProjectionDepth(z, context.sceneView)), context.sceneView);
-		const float3 wsSurf = NDCToWorldSpace(float3(uv * 2.f - 1.f, ComputeProjectionDepth(maxZ, context.sceneView)), context.sceneView);
+		const float3 wsRay  = NDCToWorldSpace(float3(uv * 2.f - 1.f, ComputeProjectionDepth(z, sceneView)), sceneView);
+		const float3 wsSurf = NDCToWorldSpace(float3(uv * 2.f - 1.f, ComputeProjectionDepth(maxZ, sceneView)), sceneView);
 
 		DebugMarkerDefinition m;
 		m.location = wsRay;
@@ -108,8 +132,8 @@ SSTraceResult TraceSSShadowRay(in ScreenSpaceTracerContext context, in float2 st
 #if DEBUG_SCREEN_SPACE_TRACER
 	if(debugRay)
 	{
-		const float3 startWS = NDCToWorldSpace(float3(startUV * 2.f - 1.f, startDepth), context.sceneView);
-		const float3 endWS   = NDCToWorldSpace(float3(endUV * 2.f - 1.f, endDepth), context.sceneView);
+		const float3 startWS = NDCToWorldSpace(float3(startUV * 2.f - 1.f, startDepth), sceneView);
+		const float3 endWS   = NDCToWorldSpace(float3(endUV * 2.f - 1.f, endDepth), sceneView);
 
 		if(result.isHit)
 		{

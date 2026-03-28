@@ -38,6 +38,8 @@ struct MaterialEvaluationOutput
 	float3  baseColor;
 	float   metallic;
 
+	float occlusion;
+
 	float3 emissiveColor;
 };
 

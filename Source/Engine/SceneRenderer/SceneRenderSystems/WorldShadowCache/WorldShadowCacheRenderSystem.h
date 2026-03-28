@@ -36,6 +36,33 @@ private:
 		PerLightData() = default;
 		~PerLightData();
 
+		PerLightData(const PerLightData&) = delete;
+		PerLightData& operator=(const PerLightData&) = delete;
+
+		PerLightData(PerLightData&& other)
+			: dirLightEntity(other.dirLightEntity)
+			, shadowMaps(std::move(other.shadowMaps))
+			, shadowMapsViews(std::move(other.shadowMapsViews))
+			, shadowCascadeViews(std::move(other.shadowCascadeViews))
+		{
+			std::fill(other.shadowCascadeViews.begin(), other.shadowCascadeViews.end(), nullptr);
+		}
+
+		PerLightData& operator=(PerLightData&& other)
+		{
+			if (this != &other)
+			{
+				dirLightEntity = other.dirLightEntity;
+				shadowMaps = std::move(other.shadowMaps);
+				shadowMapsViews = std::move(other.shadowMapsViews);
+				shadowCascadeViews = std::move(other.shadowCascadeViews);
+				std::fill(other.shadowCascadeViews.begin(), other.shadowCascadeViews.end(), nullptr);
+			}
+			return *this;
+		}
+
+
+
 		RenderSceneEntity dirLightEntity;
 
 		lib::StaticArray<lib::SharedPtr<rdr::Texture>,     constants::cascadeCount> shadowMaps;

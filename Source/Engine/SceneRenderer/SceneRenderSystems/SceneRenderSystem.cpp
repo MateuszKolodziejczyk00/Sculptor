@@ -42,6 +42,22 @@ void SceneRenderSystemsAPI::CallDestructor(ESceneRenderSystem systemType, SceneR
 	systemEntry.destructor(system);
 }
 
+void SceneRenderSystemsAPI::CallInitialize(ESceneRenderSystem systemType, SceneRenderSystem& system, RenderScene& scene) const
+{
+	const SystemEntry& systemEntry = GetSystemEntry(systemType);
+
+	SPT_CHECK(systemEntry.updateFunc.IsValid());
+	systemEntry.initializeFunc(system, scene);
+}
+
+void SceneRenderSystemsAPI::CallDeinitialize(ESceneRenderSystem systemType, SceneRenderSystem& system, RenderScene& scene) const
+{
+	const SystemEntry& systemEntry = GetSystemEntry(systemType);
+
+	SPT_CHECK(systemEntry.updateFunc.IsValid());
+	systemEntry.deinitializeFunc(system, scene);
+}
+
 void SceneRenderSystemsAPI::CallUpdateFunc(ESceneRenderSystem systemType, SceneRenderSystem& system, const SceneUpdateContext& context) const
 {
 	const SystemEntry& systemEntry = GetSystemEntry(systemType);
