@@ -8,6 +8,7 @@
 #include "RenderScene.h"
 #include "RenderGraphBuilder.h"
 #include "Utils/SceneRenderingTypes.h"
+#include "Utils/ScreenSpaceTracer.h"
 #include "SceneRenderSystems/Lights/LightsRenderSystem.h"
 #include "SceneRenderSystems/DDGI/DDGIRenderSystem.h"
 #include "SceneRenderer/Utils/DepthBasedUpsampler.h"
@@ -52,6 +53,9 @@ RendererFloatParameter resamplingRangeStep("Resampling Range Step", { "Specular 
 RendererBoolParameter enableStableHistoryBlend("Enable Stable History Blend", { "Specular Reflections" }, false);
 RendererIntParameter wideRadiusSpatialPassesNum("Wide Radius Spatial Passes Num", { "Specular Reflections" }, 0, 0, 5);
 RendererBoolParameter useSharcAsRadianceCache("Use Sharc As Radiance Cache", { "Specular Reflections" }, true);
+RendererIntParameter ssrtStepsNum("SSRT Steps Num", { "Specular Reflections" }, 10, 1, 64);
+RendererFloatParameter ssrtTraceLenght("SSRT Trace Lenght", { "Specular Reflections" }, 0.15f, 0.f, 1.f);
+
 } // renderer_params
 
 struct SpecularReflectionsParams
@@ -276,6 +280,12 @@ static void ShadeMissRays(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 namespace hit_rays
 {
 
+BEGIN_SHADER_STRUCT(HitRaysShadingPermutation)
+	SHADER_STRUCT_FIELD(Bool,                    USE_DDGI)
+	SHADER_STRUCT_FIELD(SharcShadersPermutation, SHARC_PERMUTATION)
+END_SHADER_STRUCT()
+
+
 RT_PSO(HitRayShadingPSO)
 {
 	RAY_GEN_SHADER("Sculptor/SpecularReflections/HitRaysShading.hlsl", HitRaysShadingRTG);
@@ -289,15 +299,15 @@ RT_PSO(HitRayShadingPSO)
 		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
 	};
 
-	PRESET(ddgi);
-	PRESET(sharc);
+	PERMUTATION_DOMAIN(HitRaysShadingPermutation);
 	
 	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
 	{
 		const lib::DynamicArray<HitGroup> hitGroups = mat::MaterialsSubsystem::Get().GetRTHitGroups<HitGroup>();
 		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
-		ddgi  = CompilePSO(compiler, psoDefinition, hitGroups, { "USE_DDGI=1" });
-		sharc = CompilePSO(compiler, psoDefinition, hitGroups, { "USE_DDGI=0" });
+		CompilePermutation(compiler, psoDefinition, hitGroups, HitRaysShadingPermutation{ .USE_DDGI = true });
+		CompilePermutation(compiler, psoDefinition, hitGroups, HitRaysShadingPermutation{ .USE_DDGI = false, .SHARC_PERMUTATION = SharcShadersPermutation{ .SHARC_DEMODULATE_MATERIALS = false } });
+		CompilePermutation(compiler, psoDefinition, hitGroups, HitRaysShadingPermutation{ .USE_DDGI = false, .SHARC_PERMUTATION = SharcShadersPermutation{ .SHARC_DEMODULATE_MATERIALS = true } });
 	}
 };
 
@@ -315,8 +325,15 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const SceneRender
 
 	const Bool useSharc = renderer_params::useSharcAsRadianceCache && SharcGICache::IsSharcSupported();
 
+	HitRaysShadingPermutation permutation;
+	permutation.USE_DDGI = !useSharc;
+	if (useSharc)
+	{
+		permutation.SHARC_PERMUTATION = SharcGICache::GetShadersPermutation();
+	}
+
 	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("Hit Rays Shading"),
-								   useSharc ? HitRayShadingPSO::sharc : HitRayShadingPSO::ddgi,
+								   HitRayShadingPSO::GetPermutation(permutation),
 								   shadingParams.shadingIndirectArgs, ComputeHitShadingIndirectArgsOffset(),
 								   rg::BindDescriptorSets(std::move(shadingDS),
 														  std::move(ddgiDS),
@@ -385,12 +402,14 @@ BEGIN_SHADER_STRUCT(SpecularReflectionsTraceConstants)
 	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
 	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
 	SHADER_STRUCT_FIELD(Uint32,         rayCommandsBufferSize)
+	SHADER_STRUCT_FIELD(SSTracerData,   ssrTracer)
+	SHADER_STRUCT_FIELD(Real32,         ssrTraceLength)
+	SHADER_STRUCT_FIELD(GPUGBuffer,     gpuGBuffer)
 END_SHADER_STRUCT();
 
 
 DS_BEGIN(SpecularReflectionsTraceDS, rg::RGDescriptorSetState<SpecularReflectionsTraceDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),                               u_rayDirections)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<vrt::EncodedRayTraceCommand>),          u_traceCommands)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<shading::RTHitMaterialInfo>),         u_hitMaterialInfos)
@@ -439,6 +458,8 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, const Scene
 
 	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, lib::String("Generate Reservoirs ") + debugName.AsString());
 
+	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
+
 	// Phase (1) Generate Ray Directions
 
 	const auto [rayDirections, rayPdfs] = ray_directions::GenerateRayDirections(graphBuilder, renderScene, viewSpec, params, traceParams.tracesAllocation);
@@ -469,15 +490,17 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, const Scene
 	const rg::RGBufferViewHandle raysShadingCountsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Rays Shading Counts Buffer"), raysShadingCountsBufferDef, rhi::EMemoryUsage::GPUOnly);
 
 	SpecularReflectionsTraceConstants shaderConstants;
-	shaderConstants.resolution    = params.resolution;
-	shaderConstants.invResolution = params.resolution.cast<Real32>().cwiseInverse();
+	shaderConstants.resolution            = params.resolution;
+	shaderConstants.invResolution         = params.resolution.cast<Real32>().cwiseInverse();
 	shaderConstants.rayCommandsBufferSize = static_cast<Uint32>(sortedRaysBuffer->GetSize() / sizeof(vrt::EncodedRayTraceCommand));
+	shaderConstants.ssrTracer             = CreateScreenSpaceTracerData(viewContext.linearDepth, static_cast<Uint32>(renderer_params::ssrtStepsNum));
+	shaderConstants.ssrTraceLength         = renderer_params::ssrtTraceLenght;
+	shaderConstants.gpuGBuffer            = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
 
 	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Shading Indirect Args"), shadingIndirectArgsBuffer, 0u);
 	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Rays Shading Counts"), raysShadingCountsBuffer, 0u);
 
 	lib::MTHandle<SpecularReflectionsTraceDS> traceRaysDS = graphBuilder.CreateDescriptorSet<SpecularReflectionsTraceDS>(RENDERER_RESOURCE_NAME("SpecularReflectionsTraceDS"));
-	traceRaysDS->u_depthTexture        = params.depthTexture;
 	traceRaysDS->u_rayDirections       = rayDirections;
 	traceRaysDS->u_traceCommands       = traceParams.tracesAllocation.rayTraceCommands;
 	traceRaysDS->u_hitMaterialInfos    = hitMaterialInfos;
@@ -800,6 +823,8 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		resamplingParams.enableFireflyFilter             = renderer_params::enableFireflyFilter && !viewSystemsInfo.useUnifiedDenoising;
 		resamplingParams.reservoirMaxAge                 = renderer_params::reservoirMaxAge;
 		resamplingParams.resamplingRangeStep             = renderer_params::resamplingRangeStep;
+		resamplingParams.ssrStepsNum                     = renderer_params::ssrtStepsNum;
+		resamplingParams.ssrTraceLength                  = renderer_params::ssrtTraceLenght;
 
 		const sr_restir::InitialResamplingResult initialResamplingResult = m_resampler.ExecuteInitialResampling(graphBuilder, resamplingParams);
 
@@ -947,7 +972,11 @@ void SpecularReflectionsRenderStage::UpdateSharcCache(rg::RenderGraphBuilder& gr
 			m_sharcCache = std::make_unique<SharcGICache>();
 		}
 
-		m_sharcCache->Update(graphBuilder, rendererInterface, renderScene, viewSpec, stageContext.rendererSettings.resetAccumulation);
+		SharcUpdateParams updateParams;
+		updateParams.resetCache     = stageContext.rendererSettings.resetAccumulation;
+		updateParams.ssrStepsNum    = renderer_params::ssrtStepsNum;
+		updateParams.ssrTraceLength = renderer_params::ssrtTraceLenght;
+		m_sharcCache->Update(graphBuilder, rendererInterface, renderScene, viewSpec, updateParams);
 	}
 	else
 	{

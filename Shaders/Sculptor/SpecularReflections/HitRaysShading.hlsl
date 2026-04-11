@@ -102,8 +102,14 @@ void HitRaysShadingRTG()
 		const float3 sampledLocation = hitLocation + voxelSize * normalizedOffset.x * tangent + voxelSize * normalizedOffset.y * bitangent;
 
 		const float NdotV = dot(-rayDirection, hitResult.normal);
-		const float3 materialDemodulation = ComputeMaterialDemodulation(u_brdfIntegrationLUT, u_brdfIntegrationLUTSampler, surface.diffuseColor, surface.specularColor, NdotV, surface.roughness);
-		if (!QueryCachedLuminance(u_sceneView.viewLocation, u_viewExposure.exposure, materialDemodulation, sampledLocation, hitResult.normal, OUT luminance))
+
+		SharcQuery query;
+		query.location = sampledLocation;
+		query.normal   = hitResult.normal;
+#if SHARC_MATERIAL_DEMODULATION
+		query.materialDemodulation = ComputeMaterialDemodulation(u_brdfIntegrationLUT, u_brdfIntegrationLUTSampler, surface.diffuseColor, surface.specularColor, NdotV, surface.roughness);
+#endif // SHARC_MATERIAL_DEMODULATION
+		if (!QueryCachedLuminance(u_sceneView.viewLocation, u_viewExposure.exposure, query, OUT luminance))
 		{
 			luminance = 0.f;
 		}

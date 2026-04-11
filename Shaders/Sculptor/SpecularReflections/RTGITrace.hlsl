@@ -16,6 +16,9 @@
 #include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
 #include "Utils/VariableRate/VariableRate.hlsli"
 
+#include "Utils/ScreenSpaceTracer.hlsli"
+#include "Utils/GBuffer/GBuffer.hlsli"
+
 
 [shader("raygeneration")]
 void GenerateRTGIRaysRTG()
@@ -33,18 +36,56 @@ void GenerateRTGIRaysRTG()
 
 	const uint2 pixel = traceCommand.blockCoords + traceCommand.localOffset;
 
-	const float depth = u_depthTexture.Load(uint3(pixel, 0));
+	const float depth = u_constants.gpuGBuffer.depth.Load(uint3(pixel, 0));
 	if (depth > 0.f)
 	{
 		const float2 uv = (pixel + 0.5f) * u_constants.invResolution;
 		const float3 ndc = float3(uv * 2.f - 1.f, depth);
-		const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
+		float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
 
 		const uint encodedRayDirection = u_rayDirections[traceCommandIndex];
 
 		const float3 rayDirection = OctahedronDecodeNormal(UnpackHalf2x16Norm(encodedRayDirection));
 
-		const RayHitResult hitResult = RTGITraceRay(worldLocation, rayDirection);
+		RngState rng = RngState::Create(pixel, 123u);
+
+		RayHitResult hitResult;
+		bool isRayFinished = false;
+
+		const float traceLength = u_constants.ssrTraceLength;
+		const SSTraceResultExtended ssResult = TraceScreenSpaceRay(u_constants.ssrTracer, u_sceneView, uv, depth, rayDirection, traceLength, rng.Next());
+
+		float3 traceOrigin = worldLocation;
+
+		if (ssResult.isHit)
+		{
+			const GBufferInterface gbuffer = GBufferInterface(u_constants.gpuGBuffer);
+
+			const SurfaceInfo hitSurfaceInfo = gbuffer.GetSurfaceInfo(ssResult.hitUV);
+			hitResult.normal      = hitSurfaceInfo.normal;
+			hitResult.roughness   = hitSurfaceInfo.roughness;
+			hitResult.baseColor   = hitSurfaceInfo.baseColorMetallic.rgb;
+			hitResult.metallic    = hitSurfaceInfo.baseColorMetallic.w;
+			hitResult.emissive    = 0.f;
+			hitResult.hitType     = RTGBUFFER_HIT_TYPE_VALID_HIT;
+			hitResult.hitDistance = traceLength * ssResult.hitT;
+
+			isRayFinished = true;
+		}
+		else
+		{
+			traceOrigin += rayDirection * ssResult.unoccludedDistance * 0.99f;
+		}
+
+		if (!isRayFinished)
+		{
+			hitResult = RTGITraceRay(traceOrigin , rayDirection);
+
+			if (hitResult.hitType != RTGBUFFER_HIT_TYPE_NO_HIT)
+			{
+				hitResult.hitDistance += ssResult.unoccludedDistance * 0.99f;
+			}
+		}
 
 		uint hitResultIdx = IDX_NONE_32;
 
@@ -88,3 +129,4 @@ void GenerateRTGIRaysRTG()
 		}
 	}
 }
+[[meta(debug_features)]]

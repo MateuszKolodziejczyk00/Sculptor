@@ -31,6 +31,11 @@ BEGIN_SHADER_STRUCT(SharcCacheConstants)
 END_SHADER_STRUCT();
 
 
+BEGIN_SHADER_STRUCT(SharcShadersPermutation)
+	SHADER_STRUCT_FIELD(Bool, SHARC_DEMODULATE_MATERIALS)
+END_SHADER_STRUCT()
+
+
 DS_BEGIN(SharcCacheDS, rg::RGDescriptorSetState<SharcCacheDS>)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint64>),          u_hashEntries)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<math::Vector4u>),  u_voxelData)
@@ -38,15 +43,31 @@ DS_BEGIN(SharcCacheDS, rg::RGDescriptorSetState<SharcCacheDS>)
 DS_END();
 
 
+struct SharcUpdateParams
+{
+	Bool   resetCache = false;
+	Uint32 ssrStepsNum = 0;
+	Real32 ssrTraceLength = 0.f;
+};
+
+
 class SharcGICache
 {
 public:
 
 	static Bool IsSharcSupported();
+	static Bool IsDemodulatingMaterials();
+
+	static SharcShadersPermutation GetShadersPermutation()
+	{
+		SharcShadersPermutation permutation;
+		permutation.SHARC_DEMODULATE_MATERIALS = IsDemodulatingMaterials();
+		return permutation;
+	}
 
 	SharcGICache();
 
-	void Update(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, Bool resetCache);
+	void Update(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const SharcUpdateParams& params);
 
 private:
 
@@ -59,6 +80,8 @@ private:
 	lib::SharedPtr<rdr::Buffer> m_copyBuffer;
 
 	Bool m_requresReset = true;
+
+	Bool m_isDemodulatingMaterials = false;
 };
 
 } // spt::rsc

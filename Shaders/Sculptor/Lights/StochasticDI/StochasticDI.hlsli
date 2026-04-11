@@ -5,6 +5,7 @@
 #include "Utils/MortonCode.hlsli"
 #include "Utils/Packing.hlsli"
 #include "Utils/GBuffer/GBuffer.hlsli"
+#include "Utils/ScreenSpaceTracer.hlsli"
 
 
 [[shader_struct(DIPackedReservoir)]]
@@ -255,6 +256,32 @@ bool CanResampleSurface(in SurfaceInfo toSurface, in float3 fromLocation, in flo
 	}
 
 	return true;
+}
+
+
+bool PerformDIVisibilityTest(in SSTracerData tracer, in SceneViewData sceneView, in SurfaceInfo surf, in EmissiveSample sample, in float ssRayLength, in float jitter)
+{
+	const float3 toSample = sample.location - surf.location;
+	const float  d = length(toSample);
+	const float3 L = toSample / d;
+
+	const SSTraceResultExtended traceResult = TraceScreenSpaceRay(tracer, sceneView, surf.uv, surf.depth, L, min(d, ssRayLength), jitter);
+	if (traceResult.isHit)
+	{
+		return false;
+	}
+
+	if (d < ssRayLength)
+	{
+		 return true;
+	}
+
+	RayDesc rayDesc;
+	rayDesc.TMin      = traceResult.unoccludedDistance;
+	rayDesc.TMax      = d - 0.02f;
+	rayDesc.Origin    = surf.location;
+	rayDesc.Direction = L;
+	return RTScene().VisibilityTest(rayDesc);
 }
 
 #endif // STOCHASTIC_DI_HLSLI

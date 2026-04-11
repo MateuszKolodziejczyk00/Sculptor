@@ -109,6 +109,9 @@ GBufferOutput EncodeGBuffer(in GBufferData data)
 struct SurfaceInfo
 {
 	float3 location;
+	float2 uv;
+	float  depth;
+	float4 baseColorMetallic;
 	float3 diffuseColor;
 	float3 specularColor;
 	float3 normal;
@@ -158,13 +161,21 @@ struct GBufferInterface : GPUGBuffer
 	{
 		const GBufferData gBufferData = GetGBufferData(coords);
 
+		const float2 uv = float2(coords + 0.5f) * pixelSize;
+		const float d = depth.Load(coords);
+		const float3 ndc = float3(uv * 2.f - 1.f, d);
+		const float3 location = NDCToWorldSpace(ndc, u_sceneView);
+
 		SurfaceInfo surfaceInfo;
-		surfaceInfo.location      = GetWorldLocation(coords);
-		surfaceInfo.normal        = gBufferData.normal;
-		surfaceInfo.tangent       = gBufferData.tangent;
-		surfaceInfo.bitangent     = gBufferData.bitangent;
-		surfaceInfo.roughness     = gBufferData.roughness;
-		surfaceInfo.emissive      = gBufferData.emissive;
+		surfaceInfo.location          = location;
+		surfaceInfo.uv                = uv;
+		surfaceInfo.depth             = d;
+		surfaceInfo.baseColorMetallic = float4(gBufferData.baseColor, gBufferData.metallic);
+		surfaceInfo.normal            = gBufferData.normal;
+		surfaceInfo.tangent           = gBufferData.tangent;
+		surfaceInfo.bitangent         = gBufferData.bitangent;
+		surfaceInfo.roughness         = gBufferData.roughness;
+		surfaceInfo.emissive          = gBufferData.emissive;
 
 		ComputeSurfaceColor(gBufferData.baseColor, gBufferData.metallic, OUT surfaceInfo.diffuseColor, OUT surfaceInfo.specularColor);
 

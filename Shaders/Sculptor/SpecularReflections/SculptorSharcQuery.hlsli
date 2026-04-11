@@ -18,23 +18,35 @@ SharcParameters CreateSharcParameters(in float3 viewLocation, in float exposure)
 }
 
 
-bool QueryCachedLuminance(in SharcParameters sharcParams, in float3 materialDemodulation, in float3 location, in float3 normal, out float3 luminance)
+struct SharcQuery
+{
+#if SHARC_MATERIAL_DEMODULATION
+	float3 materialDemodulation;
+#endif // SHARC_MATERIAL_DEMODULATION
+	float3 location;
+	float3 normal;
+};
+
+
+bool QueryCachedLuminance(in SharcParameters sharcParams, in SharcQuery query, out float3 luminance)
 {
     SharcHitData hitData;
-    hitData.positionWorld        = location;
-    hitData.normalWorld          = normal;
-    hitData.materialDemodulation = materialDemodulation;
+    hitData.positionWorld        = query.location;
+    hitData.normalWorld          = query.normal;
+#if SHARC_MATERIAL_DEMODULATION
+    hitData.materialDemodulation = query.materialDemodulation;
+#endif // SHARC_MATERIAL_DEMODULATION
     const bool success = SharcGetCachedRadiance(sharcParams, hitData, OUT luminance, false);
 
     return success;
 }
 
 
-bool QueryCachedLuminance(in float3 viewLocation, in float exposure, in float3 materialDemodulation, in float3 location, in float3 normal, out float3 luminance)
+bool QueryCachedLuminance(in float3 viewLocation, in float exposure, in SharcQuery query, out float3 luminance)
 {
     const SharcParameters sharcParams = CreateSharcParameters(viewLocation, exposure);
 
-    return QueryCachedLuminance(sharcParams, materialDemodulation, location, normal, OUT luminance);
+    return QueryCachedLuminance(sharcParams, query, OUT luminance);
 }
 
 #endif // DS_SharcCacheDS

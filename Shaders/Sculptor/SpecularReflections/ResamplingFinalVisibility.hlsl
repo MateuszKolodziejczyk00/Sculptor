@@ -13,6 +13,9 @@
 #include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
 #include "Utils/VariableRate/VariableRate.hlsli"
 
+#include "Utils/ScreenSpaceTracer.hlsli"
+#include "Utils/Random.hlsli"
+
 #ifdef SPT_RT_GENERATION_SHADER
 #ifndef FORCE_FULL_RATE
 #error "FORCE_FULL_RATE must be defined"
@@ -61,13 +64,24 @@ void ResamplingFinalVisibilityTestRTG()
 			{
 				const float3 rayDirection = (reservoir.hitLocation - worldLocation) / distance;
 
-				RayDesc rayDesc;
-				rayDesc.TMin        = bias;
-				rayDesc.TMax        = distance - bias;
-				rayDesc.Origin      = worldLocation;
-				rayDesc.Direction   = rayDirection;
+				const RngState rng = RngState::Create(pixel.xy, 123u);
 
-				isVisible = RTScene().VisibilityTest(rayDesc);
+				const float traceDist = min(u_resamplingConstants.ssrTraceLength, distance - bias);
+				const SSTraceResultExtended ssResult = TraceScreenSpaceRay(u_resamplingConstants.ssTracer, u_sceneView, uv, depth, rayDirection, traceDist, rng.Next());
+				if (ssResult.isHit)
+				{
+					isVisible = false;
+				}
+				else
+				{
+					RayDesc rayDesc;
+					rayDesc.TMin        = ssResult.unoccludedDistance * 0.99f;
+					rayDesc.TMax        = distance - bias;
+					rayDesc.Origin      = worldLocation;
+					rayDesc.Direction   = rayDirection;
+
+					isVisible = RTScene().VisibilityTest(rayDesc);
+				}
 			}
 
 			if(!isVisible)

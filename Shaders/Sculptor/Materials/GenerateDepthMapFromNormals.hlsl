@@ -72,7 +72,7 @@ void GenerateCS(CS_INPUT input)
 		}
 	}
 
-	const float strength = 0.2f;
+	const float strength = 0.5f;
 
 	float finalHeight = -(heightSum / samplesNum);
 	finalHeight /= u_constants.maxDepthCm;

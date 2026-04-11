@@ -102,6 +102,9 @@ struct ResamplingParams
 	Uint32 reservoirMaxAge = 10u;
 
 	Real32 resamplingRangeStep = 4.f;
+
+	Uint32 ssrStepsNum    = 10u;
+	Real32 ssrTraceLength = 0.15f;
 };
 
 

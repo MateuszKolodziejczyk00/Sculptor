@@ -120,6 +120,48 @@ TextureCoord InterpolateTextureCoord(in float2 uv0, in float2 uv1, in float2 uv2
 }
 
 
+float2 ComputeUVScale(in float3 ws0, in float3 ws1, in float3 ws2, in float2 uv0, in float2 uv1, in float2 uv2)
+{
+	/*
+	 * E = [E10, E20]^T
+	 * M = [du10, dv10]
+	 *     [du20, dv20]
+	 *
+	 * if we would know tangend dPdu and bitangent dPdv, we could compute P for any uv using:
+	 * P = P0 + dPdu * du + dPdv * dv
+	 *
+	 * and therefore:
+	 * E = M * [dPdu, dPdv]^T
+	 *
+	 * To solve for dPdu and dPdv we need to invert M:
+	 * [dPdu, dPdv]^T = M^-1 * E
+	 *
+	 * M^1 = 1 / det(M) * X
+	 * where X:
+	 * X = [dv20, -dv10]
+	 *     [-du20, du10]
+	 *
+	 * therefore:
+	 * dPdu = (1 / det(M)) * (dv20 * E10 - dv10 * E20)
+	 * dPdv = (1 / det(M)) * (-du20 * E10 + du10 * E20)
+	 */
+
+	const float3 e10 = ws1 - ws0;
+	const float3 e20 = ws2 - ws0;
+
+	const float2 duv10 = uv1 - uv0;
+	const float2 duv20 = uv2 - uv0;
+
+	const float det = duv10.x * duv20.y - duv10.y * duv20.x;
+	const float rcpDet = rcp(det);
+
+	const float3 dPdu = (e10 * duv20.y - e20 * duv10.y) * rcpDet;
+	const float3 dPdv = (e20 * duv10.x - e10 * duv20.x) * rcpDet;
+
+	return float2(rcp(max(length(dPdu), 0.001f)), rcp(max(length(dPdv), 0.001f)));
+}
+
+
 template<typename TDataType>
 TDataType InterpolateAttribute(in TDataType a0, in TDataType a1, in TDataType a2, in Barycentrics barycentrics)
 {

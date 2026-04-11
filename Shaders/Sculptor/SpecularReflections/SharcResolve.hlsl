@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(SharcResolveDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
+[[descriptor_set(SharcResolveDS)]]
+[[descriptor_set(RenderViewDS)]]
 
 
 #include "SpecularReflections/SculptorSharc.hlsli"

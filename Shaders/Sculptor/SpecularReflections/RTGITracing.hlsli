@@ -166,7 +166,7 @@ RayHitResult RTGITraceRay(in float3 rayOrigin, in float3 rayDirection)
 	const float maxHitDistance = 200.f;
 
 	RayDesc rayDesc;
-	rayDesc.TMin      = 0.01f;
+	rayDesc.TMin      = 0.f;
 	rayDesc.TMax      = maxHitDistance;
 	rayDesc.Origin    = rayOrigin;
 	rayDesc.Direction = rayDirection;

@@ -17,7 +17,7 @@ class RenderGraphBuilder;
 
 struct RGTextureAccessDef
 {
-	RGTextureView*       textureView;
+	RGTextureView*      textureView;
 	ERGTextureAccess    access;
 	rhi::EPipelineStage pipelineStages;
 };

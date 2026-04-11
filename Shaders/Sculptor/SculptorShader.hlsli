@@ -20,6 +20,8 @@
 
 #define SMALL_NUMBER 1.e-6f
 
+#define POM_MAX_DEPTH_OFFSET_CM 10.f
+
 
 #define IN
 #define OUT

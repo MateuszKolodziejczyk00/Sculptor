@@ -94,6 +94,17 @@ rdr::PipelineStateID CreateMaterialPipeline(const MaterialsPassParams& passParam
 				   	   };
 				   });
 
+	if (passParams.enablePOM)
+	{
+		pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(
+			rhi::ColorRenderTargetDefinition
+			{
+				.format = passParams.pomDepth->GetFormat(),
+				.colorBlendType = rhi::ERenderTargetBlendType::Disabled,
+				.alphaBlendType = rhi::ERenderTargetBlendType::Disabled
+			});
+	}
+
 	EmitGBufferPermutation permutation;
 	permutation.MATERIAL_BATCH = materialBatch.permutation;
 	permutation.ENABLE_POM     = passParams.enablePOM;
@@ -203,6 +214,17 @@ void ExecuteMaterialRenderCommands(rg::RenderGraphBuilder& graphBuilder, const M
 		gBufferRTDef.loadOperation  = rhi::ERTLoadOperation::DontCare;
 		gBufferRTDef.storeOperation = rhi::ERTStoreOperation::Store;
 		renderPassDef.AddColorRenderTarget(gBufferRTDef);
+	}
+
+	if (passParams.enablePOM)
+	{
+		SPT_CHECK(passParams.pomDepth.IsValid());
+
+		rg::RGRenderTargetDef pomDepthRTDef;
+		pomDepthRTDef.textureView    = passParams.pomDepth;
+		pomDepthRTDef.loadOperation  = rhi::ERTLoadOperation::DontCare;
+		pomDepthRTDef.storeOperation = rhi::ERTStoreOperation::Store;
+		renderPassDef.AddColorRenderTarget(pomDepthRTDef);
 	}
 
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Materials Pass"),

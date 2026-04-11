@@ -14,7 +14,6 @@
 #include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 #include "SpecularReflections/Denoiser/RTDenoising.hlsli"
-#include "SpecularReflections/SculptorSharcQuery.hlsli"
 
 
 

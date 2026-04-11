@@ -78,12 +78,13 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	deviceInfoLinkedData.Append(vulkan11Features);
 
 	VkPhysicalDeviceVulkan12Features vulkan12Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
-	vulkan12Features.bufferDeviceAddress	= VK_TRUE;
-	vulkan12Features.timelineSemaphore		= VK_TRUE;
-	vulkan12Features.drawIndirectCount		= VK_TRUE;
-	vulkan12Features.shaderFloat16			= VK_TRUE;
-	vulkan12Features.shaderBufferInt64Atomics = VK_TRUE;
-	vulkan12Features.shaderSharedInt64Atomics = VK_TRUE;
+	vulkan12Features.bufferDeviceAddress		= VK_TRUE;
+	vulkan12Features.timelineSemaphore			= VK_TRUE;
+	vulkan12Features.drawIndirectCount			= VK_TRUE;
+	vulkan12Features.storageBuffer8BitAccess	= VK_TRUE;
+	vulkan12Features.shaderFloat16				= VK_TRUE;
+	vulkan12Features.shaderBufferInt64Atomics	= VK_TRUE;
+	vulkan12Features.shaderSharedInt64Atomics	= VK_TRUE;
 	vulkan12Features.descriptorBindingSampledImageUpdateAfterBind	= VK_TRUE;
 	vulkan12Features.descriptorBindingStorageBufferUpdateAfterBind	= VK_TRUE;
 	vulkan12Features.descriptorBindingStorageImageUpdateAfterBind	= VK_TRUE;

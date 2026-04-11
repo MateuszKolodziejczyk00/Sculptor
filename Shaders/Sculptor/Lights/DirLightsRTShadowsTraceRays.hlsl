@@ -26,12 +26,16 @@ float TraceShadowRay(in uint2 pixel)
 		const float3 ndc = float3(uv * 2.f - 1.f, depth);
 		float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
 
+#if !CONTINUE_RAYS
 		const float3 normal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(pixel, 0)));
 
 		if(dot(normal, u_params.lightDirection) <= 0.015f)
+#endif // !CONTINUE_RAYS
 		{
+#if !CONTINUE_RAYS
 			const float3 bias = normalize(u_sceneView.viewLocation - worldLocation) * u_params.shadowRayBias;
 			worldLocation += bias;
+#endif // !CONTINUE_RAYS
 
 			const float maxConeAngle = u_params.shadowRayConeAngle;
 			
@@ -39,8 +43,15 @@ float TraceShadowRay(in uint2 pixel)
 			const float2 noise = frac(g_BlueNoiseSamples[sampleIdx]);
 			const float3 shadowRayDirection = VectorInCone(-u_params.lightDirection, maxConeAngle, noise);
 
+			float minT = 0.f;
+
+#if CONTINUE_RAYS
+			const uint16_t continuationDist = u_params.rayContinuationDists.Load(DispatchRaysIndex().x);
+			minT = (continuationDist / 255.f) * u_params.ssTraceDistance;
+#endif // CONTINUE_RAYS
+
 			RayDesc rayDesc;
-			rayDesc.TMin        = 0.f;
+			rayDesc.TMin        = minT;
 			rayDesc.TMax        = u_params.maxTraceDistance;
 			rayDesc.Origin      = worldLocation;
 			rayDesc.Direction   = shadowRayDirection;

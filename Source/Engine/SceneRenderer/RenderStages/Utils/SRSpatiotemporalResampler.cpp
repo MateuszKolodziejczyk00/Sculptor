@@ -1,5 +1,6 @@
 #include "SRSpatiotemporalResampler.h"
 #include "RenderGraphBuilder.h"
+#include "Utils/ScreenSpaceTracer.h"
 #include "View/RenderView.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "RGDescriptorSetState.h"
@@ -79,6 +80,8 @@ BEGIN_SHADER_STRUCT(SRResamplingConstants)
 	SHADER_STRUCT_FIELD(math::Vector2f, pixelSize)
 	SHADER_STRUCT_FIELD(Uint32,         frameIdx)
 	SHADER_STRUCT_FIELD(Real32,         resamplingRangeStep)
+	SHADER_STRUCT_FIELD(SSTracerData,   ssTracer)
+	SHADER_STRUCT_FIELD(Real32,         ssrTraceLength)
 END_SHADER_STRUCT();
 
 
@@ -92,6 +95,8 @@ static SRResamplingConstants CreateResamplingConstants(const ResamplingParams& p
 	resamplingConstants.pixelSize            = resolution.cast<Real32>().cwiseInverse();
 	resamplingConstants.frameIdx             = params.viewSpec.GetFrameIdx();
 	resamplingConstants.resamplingRangeStep  = params.resamplingRangeStep;
+	resamplingConstants.ssTracer             = CreateScreenSpaceTracerData(params.viewSpec.GetShadingViewContext().linearDepth, params.ssrStepsNum);
+	resamplingConstants.ssrTraceLength       = params.ssrTraceLength;
 
 	return resamplingConstants;
 }

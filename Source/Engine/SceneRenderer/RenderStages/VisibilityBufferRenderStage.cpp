@@ -17,7 +17,7 @@ REGISTER_RENDER_STAGE(ERenderStage::VisibilityBuffer, VisibilityBufferRenderStag
 
 namespace renderer_params
 {
-RendererBoolParameter enablePOM("Enable POM", { "Geometry" }, false);
+RendererBoolParameter enablePOM("Enable POM", { "Geometry" }, true);
 } // renderer_params
 
 namespace utils
@@ -35,6 +35,72 @@ static lib::SharedPtr<rdr::TextureView> CreateDepthTexture(rdr::RendererResource
 #endif // !SPT_RELEASE
 
 	return rdr::ResourcesManager::CreateTextureView(name, depthDef, rhi::EMemoryUsage::GPUOnly);
+}
+
+
+BEGIN_SHADER_STRUCT(ApplyPOMOffsetConstants)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>, depth)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>, pomDepth)
+	SHADER_STRUCT_FIELD(math::Vector2u,               resolution)
+END_SHADER_STRUCT();
+
+
+DS_BEGIN(ApplyPOMOffsetDS, rg::RGDescriptorSetState<ApplyPOMOffsetDS>)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<ApplyPOMOffsetConstants>), u_constants)
+DS_END()
+
+
+GRAPHICS_PSO(ApplyPOMOffsetPSO)
+{
+	VERTEX_SHADER("Sculptor/GeometryRendering/ApplyPOMOffset.hlsl", ApplyPOMOffsetVS);
+	FRAGMENT_SHADER("Sculptor/GeometryRendering/ApplyPOMOffset.hlsl", ApplyPOMOffsetFS);
+
+	PRESET(pso);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		rhi::GraphicsPipelineDefinition psoDef;
+		psoDef.rasterizationDefinition.cullMode = rhi::ECullMode::None;
+		psoDef.renderTargetsDefinition.depthRTDefinition = rhi::DepthRenderTargetDefinition(rhi::EFragmentFormat::D32_S_Float, rhi::ECompareOp::Always);
+		pso = CompilePSO(compiler, psoDef, {});
+	}
+};
+
+
+static void ApplyPOMOffset(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle depth, rg::RGTextureViewHandle pomDepth, rg::RGTextureViewHandle rwDepth)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector2u resolution = depth->GetResolution2D();
+
+	ApplyPOMOffsetConstants constants;
+	constants.depth      = depth;
+	constants.pomDepth   = pomDepth;
+	constants.resolution = resolution;
+
+	const lib::MTHandle<ApplyPOMOffsetDS> ds = graphBuilder.CreateDescriptorSet<ApplyPOMOffsetDS>(RENDERER_RESOURCE_NAME("Apply POM Offset DS"));
+	ds->u_constants = constants;
+
+	rg::RGRenderTargetDef depthRT;
+	depthRT.textureView    = rwDepth;
+	depthRT.loadOperation  = rhi::ERTLoadOperation::DontCare;
+	depthRT.storeOperation = rhi::ERTStoreOperation::Store;
+
+	rg::RGRenderPassDefinition renderPassDef(math::Vector2i::Zero(), resolution);
+	renderPassDef.SetDepthRenderTarget(depthRT);
+
+	graphBuilder.RenderPass(RG_DEBUG_NAME("Apply POM Offset"), 
+							renderPassDef,
+							rg::BindDescriptorSets(ds),
+							[res = resolution](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+							{
+								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), res.cast<Real32>()), 0.f, 1.f);
+								recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), res));
+
+								recorder.BindGraphicsPipeline(ApplyPOMOffsetPSO::pso);
+
+								recorder.DrawInstances(3u, 1u);
+							});
 }
 
 } // utils
@@ -81,7 +147,7 @@ void VisibilityBufferRenderStage::PrepareDepthTextures(const ViewRenderingSpec& 
 	if (!m_currentDepthTexture || m_currentDepthTexture->GetResolution2D() != renderingRes)
 	{
 		m_currentDepthTexture = utils::CreateDepthTexture(RENDERER_RESOURCE_NAME("Depth Texture"), GetDepthFormat(), renderingRes, true);
-		m_currentDepthHalfRes = utils::CreateDepthTexture(RENDERER_RESOURCE_NAME("Depth Texture Half Res"), rhi::EFragmentFormat::R32_S_Float, renderingHalfRes, false);
+		m_currentDepthHalfRes = utils::CreateDepthTexture(RENDERER_RESOURCE_NAME("Depth Texture Half Res"), rhi::EFragmentFormat::D32_S_Float, renderingHalfRes, false);
 	}
 
 	const HiZ::HiZSizeInfo hiZSizeInfo = HiZ::ComputeHiZSizeInfo(renderingRes);
@@ -119,9 +185,17 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 
 	const rg::RGTextureViewHandle visibilityTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Visibility Texture"), rg::TextureDef(viewSpec.GetRenderingRes(), rhi::EFragmentFormat::R32_U_Int));
 
+	const Bool enablePOM = renderer_params::enablePOM;
+
+	rg::RGTextureViewHandle rasterizedDepth = depth;
+	if (enablePOM)
+	{
+		rasterizedDepth = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Rasterized Depth"), rg::TextureDef(resolution, rhi::EFragmentFormat::D32_S_Float));
+	}
+
 	VisPassParams visPassParams{ viewSpec, cachedGeometryPassData };
 	visPassParams.geometryPassParams.historyHiZ = historyHiZ;
-	visPassParams.geometryPassParams.depth      = depth;
+	visPassParams.geometryPassParams.depth      = rasterizedDepth;
 	visPassParams.geometryPassParams.hiZ        = hiZ;
 	visPassParams.visibilityTexture             = visibilityTexture;
 
@@ -139,21 +213,32 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 
 	material_depth_tiles_renderer::RenderMaterialDepthTiles(graphBuilder, materialDepth, materialTiles);
 
+	rg::RGTextureViewHandle pomDepth;
+	if (enablePOM)
+	{
+		pomDepth = graphBuilder.CreateTextureView(RG_DEBUG_NAME("POM Depth Texture"), rg::TextureDef(resolution, rhi::EFragmentFormat::R8_UN_Float));
+	}
+
 	materials_renderer::MaterialsPassParams materialsPassParams(viewSpec, cachedGeometryPassData);
 	materialsPassParams.materialDepthTileSize    = material_depth_tiles_renderer::GetMaterialDepthTileSize();
 	materialsPassParams.materialDepthTexture     = materialDepth;
 	materialsPassParams.materialDepthTileTexture = materialTiles;
-	materialsPassParams.depthTexture             = depth;
+	materialsPassParams.depthTexture             = rasterizedDepth;
 	materialsPassParams.visibleMeshletsBuffer    = geometryPassesResult.visibleMeshlets;
 	materialsPassParams.visibilityTexture        = visibilityTexture;
-	materialsPassParams.enablePOM                = renderer_params::enablePOM;
+	materialsPassParams.enablePOM                = enablePOM;
+	materialsPassParams.pomDepth                 = pomDepth;
 
 	materials_renderer::ExecuteMaterialsPass(graphBuilder, materialsPassParams);
 
-	shadingContext.depth               = depth;
-	shadingContext.depthHalfRes        = graphBuilder.AcquireExternalTextureView(m_currentDepthHalfRes);
+	if (enablePOM)
+	{
+		utils::ApplyPOMOffset(graphBuilder, rasterizedDepth, pomDepth, depth);
+	}
 
-	shadingContext.historyDepth        = historyDepth;
+	shadingContext.depth        = depth;
+	shadingContext.depthHalfRes = graphBuilder.AcquireExternalTextureView(m_currentDepthHalfRes);
+	shadingContext.historyDepth = historyDepth;
 	if (m_historyDepthHalfRes)
 	{
 		shadingContext.historyDepthHalfRes = graphBuilder.AcquireExternalTextureView(m_historyDepthHalfRes);

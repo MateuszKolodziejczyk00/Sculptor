@@ -18,9 +18,13 @@ void TemporalAccumulationCS(CS_INPUT input)
 
 	const float currentExposure = u_exposure[u_constants.exposureOffset];
 
-	const float3 inputColor = u_constants.input.Load(coords).xyz / currentExposure;
-
 	const float3 historyColor = u_constants.accumulatedData.Load(coords).xyz;
+
+	float3 inputColor = u_constants.input.Load(coords).xyz / currentExposure;
+	if (any(isnan(inputColor)))
+	{
+		inputColor = u_constants.currentFrameWeight < 1.f ? historyColor : 0.f;
+	}
 
 	const float3 accumulatedColor = inputColor * u_constants.currentFrameWeight + historyColor * u_constants.historyWeight;
 	const float3 exposedColor = accumulatedColor * currentExposure;

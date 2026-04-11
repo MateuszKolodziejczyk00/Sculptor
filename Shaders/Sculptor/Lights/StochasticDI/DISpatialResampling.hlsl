@@ -91,15 +91,8 @@ void DISpatialResamplingRTG()
 
 	// Update visibility
 	{
-		const float3 toSample = reservoir.sample.location - surface.location;
-
-		RayDesc rayDesc;
-		rayDesc.TMin      = 0.01f;
-		rayDesc.TMax      = length(toSample) - 0.02f;
-		rayDesc.Origin    = surface.location + surface.normal * 0.01f;
-		rayDesc.Direction = normalize(toSample);
-
-		if (!RTScene().VisibilityTest(rayDesc))
+		const float ssLenght = u_constants.ssrtRange;
+		if (!PerformDIVisibilityTest(u_constants.ssTracer, u_sceneView, surface, reservoir.sample, ssLenght, rngState.Next()))
 		{
 			reservoir.weightSum = 0.f;
 		}

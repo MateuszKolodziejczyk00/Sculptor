@@ -164,6 +164,7 @@ struct InterpolatedVertexData
 	float3 bitangent;
 	bool hasTangent;
 	TextureCoord uv;
+	float2 uvScale;
 };
 
 
@@ -178,6 +179,7 @@ InterpolatedVertexData Interpolate(in VertexData vertices[3], in Barycentrics ba
 	interpolatedVD.uv            = InterpolateTextureCoord(vertices[0].uv, vertices[1].uv, vertices[2].uv, barycentrics);
 	interpolatedVD.worldLocation = InterpolateAttribute<float3>(vertices[0].worldLocation, vertices[1].worldLocation, vertices[2].worldLocation, barycentrics);
 	interpolatedVD.clipSpace     = InterpolateAttribute<float4>(vertices[0].clipSpace, vertices[1].clipSpace, vertices[2].clipSpace, barycentrics);
+	interpolatedVD.uvScale       = ComputeUVScale(vertices[0].worldLocation, vertices[1].worldLocation, vertices[2].worldLocation, vertices[0].uv, vertices[1].uv, vertices[2].uv);
 
 	return interpolatedVD;
 }
@@ -237,7 +239,7 @@ MaterialEvaluationParameters CreateMaterialEvalParams(in InterpolatedVertexData 
 }
 
 
-void ApplyParallax(inout MaterialEvaluationParameters evalParams, in MaterialDepthData materialDepthData, in float3 toView)
+float ApplyParallax(inout MaterialEvaluationParameters evalParams, in MaterialDepthData materialDepthData, in float3 toView, in float2 uvScale)
 {
     const float texLevel = 0.f;
     const float heightScale = materialDepthData.maxDepthCm;
@@ -246,28 +248,32 @@ void ApplyParallax(inout MaterialEvaluationParameters evalParams, in MaterialDep
     float layerDepth = 1.f / layersNum;
     float currentLayerDepth = 0.f;
 
-    float2 P = (toView.xy / max(toView.z, 0.05f)) * heightScale;
+	float2 P = (toView.xy / max(toView.z, 0.05f)) * heightScale * uvScale;
     float2 deltaUV = P / layersNum;
 
     float2 currentUV = evalParams.uv.uv;
-    float currentHeight = materialDepthData.depthTexture.SampleLevel(BindlessSamplers::MaterialAniso(), currentUV, texLevel);
+	float currentDepth = materialDepthData.depthTexture.SampleLevel(BindlessSamplers::MaterialAniso(), currentUV, texLevel);
     
     float prevHeight = 0.f;
 
-    while (currentLayerDepth < currentHeight)
+	while (currentLayerDepth < currentDepth)
     {
-        prevHeight = currentHeight;
+		prevHeight = currentDepth;
         currentUV -= deltaUV;
-        currentHeight = materialDepthData.depthTexture.SampleLevel(BindlessSamplers::MaterialAniso(), currentUV, texLevel);
+		currentDepth = materialDepthData.depthTexture.SampleLevel(BindlessSamplers::MaterialAniso(), currentUV, texLevel);
         currentLayerDepth += layerDepth;
     }
 
     float2 prevUV = currentUV + deltaUV;
-    float nextDepth = currentHeight - currentLayerDepth;
+	float nextDepth = currentDepth - currentLayerDepth;
     float prevDepth = prevHeight - (currentLayerDepth - layerDepth);
 
     float weight = nextDepth / (nextDepth - prevDepth);
     evalParams.uv.uv = lerp(currentUV, prevUV, weight);
+
+	const float finalDepth = lerp(currentLayerDepth, currentLayerDepth - layerDepth, weight) * heightScale;
+	const float dist = finalDepth / abs(toView.z);
+	return dist;
 }
 
 
@@ -279,6 +285,9 @@ struct FS_Output
 	float3 gBuffer3  : SV_TARGET3;
 	uint   gBuffer4  : SV_TARGET4;
 	float  occlusion : SV_TARGET5;
+#if ENABLE_POM
+	float  pomDepth  : SV_TARGET6;
+#endif // ENABLE_POM
 };
 
 
@@ -307,12 +316,15 @@ FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 
 #if ENABLE_POM && defined(MATERIAL_DEPTH_DATA_ACCESSOR)
 		MaterialDepthData materialDepthData = materialData.MATERIAL_DEPTH_DATA_ACCESSOR;
+		float pomDepth = 0.f;
 		if (materialDepthData.depthTexture.IsValid())
 		{
 			const float3x3 tbn = float3x3(vertexData.tangent, -vertexData.bitangent, vertexData.normal);
 			const float3 toViewWS = normalize(u_sceneView.viewLocation - vertexData.worldLocation);
-			const float3 toViewTS = mul(tbn, toViewWS);
-			ApplyParallax(materialEvalParams, materialDepthData, toViewTS);
+			const float3 toViewTS = normalize(mul(tbn, toViewWS));
+			pomDepth = ApplyParallax(materialEvalParams, materialDepthData, toViewTS, vertexData.uvScale);
+			pomDepth *=  100.f / POM_MAX_DEPTH_OFFSET_CM;
+			pomDepth *= abs(dot(u_sceneView.viewForward, toViewWS));
 		}
 #endif // ENABLE_POM && defined(MATERIAL_DEPTH_DATA_ACCESSOR)
 
@@ -335,6 +347,9 @@ FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 		output.gBuffer3  = gBufferOutput.gBuffer3;
 		output.gBuffer4  = gBufferOutput.gBuffer4;
 		output.occlusion = evaluatedMaterial.occlusion;
+#if ENABLE_POM
+		output.pomDepth  = pomDepth;
+#endif // ENABLE_POM
 	}
 
 	return output;

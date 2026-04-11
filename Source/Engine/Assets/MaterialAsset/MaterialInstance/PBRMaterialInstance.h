@@ -11,7 +11,7 @@ namespace spt::as
 
 struct PBRMaterialDefinition
 {
-	static constexpr Real32 s_defultMaxDepthCm = 0.006f;
+	static constexpr Real32 s_defultMaxDepthCm = 0.04f;
 
 	lib::Path baseColorTexPath;
 	lib::Path metallicRoughnessTexPath;

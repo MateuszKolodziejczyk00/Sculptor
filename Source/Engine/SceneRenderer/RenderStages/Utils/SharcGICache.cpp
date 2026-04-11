@@ -1,4 +1,5 @@
 #include "SharcGICache.h"
+#include "Parameters/SceneRendererParams.h"
 #include "SceneRenderSystems/Atmosphere/AtmosphereRenderSystem.h"
 #include "ResourcesManager.h"
 #include "Types/Buffer.h"
@@ -6,6 +7,7 @@
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
+#include "Utils/ScreenSpaceTracer.h"
 #include "Utils/ViewRenderingSpec.h"
 #include "RenderGraphBuilder.h"
 #include "RenderScene.h"
@@ -19,6 +21,12 @@
 namespace spt::rsc
 {
 
+namespace renderer_params
+{
+RendererBoolParameter demodulateMaterials("Demodulate Materials", { "SHRAC" }, false);
+RendererBoolParameter debugViewOn("Debug View On", { "SHRAC" }, false);
+} // renderer_params
+
 namespace sharc_passes
 {
 
@@ -30,6 +38,9 @@ BEGIN_SHADER_STRUCT(SharcUpdateConstants)
 	SHADER_STRUCT_FIELD(math::Vector3f, prevViewLocation)
 	SHADER_STRUCT_FIELD(Uint32,         frameIdx)
 	SHADER_STRUCT_FIELD(Uint32,         sharcCapacity)
+	SHADER_STRUCT_FIELD(SSTracerData,   ssrTracer)
+	SHADER_STRUCT_FIELD(Real32,         ssrTraceLength)
+	SHADER_STRUCT_FIELD(GPUGBuffer,     gpuGBuffer)
 END_SHADER_STRUCT()
 
 
@@ -38,10 +49,6 @@ DS_BEGIN(SharcUpdateDS, rg::RGDescriptorSetState<SharcUpdateDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_transmittanceLUT)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),                    u_atmosphereParams)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                           u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_baseColorMetallicTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_roughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint64>),                             u_hashEntries)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint64>),                             u_hashEntriesPrev)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<math::Vector4u>),                     u_voxelData)
@@ -74,21 +81,54 @@ RT_PSO(SharcUpdatePSO)
 		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
 	};
 
-	PRESET(pso);
+	PERMUTATION_DOMAIN(SharcShadersPermutation);
 	
 	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
 	{
 		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
-		pso = CompilePSO(compiler, psoDefinition, mat::MaterialsSubsystem::Get().GetRTHitGroups<HitGroup>());
+		CompilePermutation(compiler, psoDefinition, mat::MaterialsSubsystem::Get().GetRTHitGroups<HitGroup>(), SharcShadersPermutation{ .SHARC_DEMODULATE_MATERIALS = false });
+		CompilePermutation(compiler, psoDefinition, mat::MaterialsSubsystem::Get().GetRTHitGroups<HitGroup>(), SharcShadersPermutation{ .SHARC_DEMODULATE_MATERIALS = true });
 	}
 };
 
 
-static rdr::PipelineStateID CreateSharcResolvePipeline()
+COMPUTE_PSO(SharcResolvePSO)
 {
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/SharcResolve.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "SharcResolveCS"));
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("SharcResolvePipeline"), shader);
-}
+	COMPUTE_SHADER("Sculptor/SpecularReflections/SharcResolve.hlsl", SharcResolveCS);
+
+	PERMUTATION_DOMAIN(SharcShadersPermutation);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		CompilePermutation(compiler, SharcShadersPermutation{ .SHARC_DEMODULATE_MATERIALS = false });
+		CompilePermutation(compiler, SharcShadersPermutation{ .SHARC_DEMODULATE_MATERIALS = true });
+	}
+};
+
+
+BEGIN_SHADER_STRUCT(SharcDebugViewConstants)
+	SHADER_STRUCT_FIELD(GPUGBuffer, gpuGBuffer)
+END_SHADER_STRUCT()
+
+
+BEGIN_SHADER_STRUCT(SharcDebugViewPermutation)
+	SHADER_STRUCT_FIELD(rdr::DebugFeature,       sharcView)
+	SHADER_STRUCT_FIELD(SharcShadersPermutation, sharcPermutation)
+END_SHADER_STRUCT();
+
+
+COMPUTE_PSO(SharcDebugViewPSO)
+{
+	COMPUTE_SHADER("Sculptor/SpecularReflections/SharcDebugView.hlsl", SharcDebugViewCS);
+
+	PERMUTATION_DOMAIN(SharcDebugViewPermutation);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		CompilePermutation(compiler, SharcDebugViewPermutation{ .sharcView = rdr::DebugFeature(true), .sharcPermutation = SharcShadersPermutation{ .SHARC_DEMODULATE_MATERIALS = false } });
+		CompilePermutation(compiler, SharcDebugViewPermutation{ .sharcView = rdr::DebugFeature(true), .sharcPermutation = SharcShadersPermutation{ .SHARC_DEMODULATE_MATERIALS = true } });
+	}
+};
 
 } // sharc_passes
 
@@ -96,6 +136,11 @@ Bool SharcGICache::IsSharcSupported()
 {
 	static const Bool isSupported = std::filesystem::is_directory(lib::Path(sc::ShaderCompilationEnvironment::GetShadersPath()) / "Sharc");
 	return isSupported;
+}
+
+Bool SharcGICache::IsDemodulatingMaterials()
+{
+	return renderer_params::demodulateMaterials;
 }
 
 SharcGICache::SharcGICache()
@@ -115,11 +160,17 @@ SharcGICache::SharcGICache()
 	m_prevVoxelData = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Voxel Data Buffer (2)"), voxelDataDef, rhi::EMemoryUsage::GPUOnly);
 }
 
-void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, Bool resetCache)
+void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const SharcUpdateParams& params)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Update Sharc GI Cache");
+
+	if (IsDemodulatingMaterials() != m_isDemodulatingMaterials)
+	{
+		m_isDemodulatingMaterials = renderer_params::demodulateMaterials;
+		m_requresReset = true;
+	}
 
 	std::swap(m_voxelData, m_prevVoxelData);
 
@@ -131,7 +182,7 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 
 	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Sharc voxel data"), graphBuilder.AcquireExternalBufferView(m_voxelData->GetFullView()), 0u);
 
-	if (m_requresReset || resetCache)
+	if (m_requresReset || params.resetCache)
 	{
 		graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Sharc prev voxel data"), graphBuilder.AcquireExternalBufferView(m_prevVoxelData->GetFullView()), 0u);
 		graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Sharc entries"), hashEntriesView, 0u);
@@ -149,6 +200,9 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 	shaderConstants.prevViewLocation = renderView.GetPrevFrameRenderingData().viewLocation;
 	shaderConstants.frameIdx         = viewSpec.GetFrameIdx();
 	shaderConstants.sharcCapacity    = m_entriesNum;
+	shaderConstants.ssrTracer        = CreateScreenSpaceTracerData(viewContext.linearDepth, params.ssrStepsNum);
+	shaderConstants.ssrTraceLength   = params.ssrTraceLength;
+	shaderConstants.gpuGBuffer       = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
 
 	const AtmosphereRenderSystem& atmosphereSystem = rendererInterface.GetRenderSystemChecked<AtmosphereRenderSystem>();
 	const AtmosphereContext& atmosphereContext     = atmosphereSystem.GetAtmosphereContext();
@@ -166,10 +220,6 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 	updateDS->u_skyViewLUT               = viewContext.skyViewLUT;
 	updateDS->u_transmittanceLUT         = atmosphereContext.transmittanceLUT;
 	updateDS->u_atmosphereParams         = atmosphereContext.atmosphereParamsBuffer->GetFullView();
-	updateDS->u_normalsTexture           = viewContext.octahedronNormals;
-	updateDS->u_baseColorMetallicTexture = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
-	updateDS->u_depthTexture             = viewContext.depth;
-	updateDS->u_roughnessTexture         = viewContext.gBuffer[GBuffer::Texture::Roughness];
 	updateDS->u_hashEntries              = m_hashEntriesBuffer->GetFullView();
 	updateDS->u_hashEntriesPrev          = hashEntriesPrev;
 	updateDS->u_voxelData                = m_voxelData->GetFullView();
@@ -179,8 +229,10 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 	const LightsRenderSystem& lightsRenderSystem   = rendererInterface.GetRenderSystemChecked<LightsRenderSystem>();
 	const ddgi::DDGIRenderSystem& ddgiRenderSystem = rendererInterface.GetRenderSystemChecked<ddgi::DDGIRenderSystem>();
 
+	const SharcShadersPermutation permutation = GetShadersPermutation();
+
 	graphBuilder.TraceRays(RG_DEBUG_NAME("Update Sharc GI Cache"),
-						   sharc_passes::SharcUpdatePSO::pso,
+						   sharc_passes::SharcUpdatePSO::GetPermutation(permutation),
 						   tracesNum,
 						   rg::BindDescriptorSets(std::move(updateDS),
 												  ddgiRenderSystem.GetDDGISceneDS(),
@@ -193,10 +245,8 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 	resolveDS->u_voxelDataPrev = m_prevVoxelData->GetFullView();
 	resolveDS->u_constants     = shaderConstants;
 
-	static rdr::PipelineStateID sharcResolvePipeline = sharc_passes::CreateSharcResolvePipeline();
-
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Resolve Sharc GI Cache"),
-						  sharcResolvePipeline,
+						  sharc_passes::SharcResolvePSO::GetPermutation(permutation),
 						  math::Utils::DivideCeil(m_entriesNum, 64u),
 						  rg::BindDescriptorSets(std::move(resolveDS)));
 
@@ -209,6 +259,22 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 	sharcCacheDS->u_sharcCacheConstants = sharcCacheConstants;
 
 	viewContext.sharcCacheDS = std::move(sharcCacheDS);
+
+	if (renderer_params::debugViewOn)
+	{
+		sharc_passes::SharcDebugViewConstants debugViewConstants;
+		debugViewConstants.gpuGBuffer = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
+
+		sharc_passes::SharcDebugViewPermutation debugViewPermutation;
+		debugViewPermutation.sharcView        = rdr::DebugFeature(true);
+		debugViewPermutation.sharcPermutation = permutation;
+
+		graphBuilder.Dispatch(RG_DEBUG_NAME("Sharc GI Cache Debug View"),
+							  sharc_passes::SharcDebugViewPSO::GetPermutation(debugViewPermutation),
+							  math::Utils::DivideCeil(resolution, math::Vector2u(16u, 16u)),
+							  rg::BindDescriptorSets(viewContext.sharcCacheDS),
+							  debugViewConstants);
+	}
 }
 
 } // spt::rsc

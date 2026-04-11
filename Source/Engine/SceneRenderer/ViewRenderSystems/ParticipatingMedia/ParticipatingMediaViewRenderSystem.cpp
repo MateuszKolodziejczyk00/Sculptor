@@ -36,7 +36,7 @@ RendererFloat3Parameter consantFogAlbedo("Constant Fox Albedo", { "Volumetric Fo
 RendererFloatParameter fogHeightFalloff("Fog Height Falloff", { "Volumetric Fog" }, 0.012f, 0.f, 10.f);
 RendererFloatParameter fogHeightAbsorptionPercentage("Fog Height Absorption %", { "Volumetric Fog" }, 0.2f, 0.f, 1.f);
 
-RendererFloatParameter phaseFunctionAnisotrophy("Phase Function Aniso", { "Volumetric Fog" }, 0.3f, 0.f, 1.f);
+RendererFloatParameter phaseFunctionAnisotrophy("Phase Function Aniso", { "Volumetric Fog" }, 0.84f, 0.f, 1.f);
 
 RendererFloatParameter fogFarPlane("Fog Far Plane", { "Volumetric Fog" }, 8000.f, 1.f, 40000.f);
 

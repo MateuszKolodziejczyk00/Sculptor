@@ -10,6 +10,7 @@
 #include "MaterialsSubsystem.h"
 #include "StaticMeshes/RenderMesh.h"
 #include "Utils/Geometry/StaticMeshRenderingCommon.h"
+#include "Utils/ScreenSpaceTracer.h"
 #include "Utils/TransfersUtils.h"
 #include "Utils/SceneRenderingTypes.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
@@ -25,6 +26,8 @@ RendererIntParameter risSamplesNum("RIS Samples Num", { "Stochastic DI" }, 2, 1,
 RendererBoolParameter enableTemporalResampling("Enable Temporal Resampling", { "Stochastic DI" }, true);
 RendererIntParameter spatialSamplesNum("Spatial Samples Num", { "Stochastic DI" }, 8, 1, 20);
 RendererIntParameter spatialResamplingRange("Spatial Resampling Range", { "Stochastic DI" }, 32, 1, 64);
+RendererFloatParameter ssrtRange("SSRT Range", { "Stochastic DI" }, 0.15f, 0.f, 0.5f);
+RendererIntParameter ssrtStepsNum("SSRT Steps Num", { "Stochastic DI" }, 10, 0, 100);
 RendererBoolParameter enableSurfaceCheckDuringSpatialResampling("Enable Surface Check During Spatial Resampling", { "Stochastic DI" }, false);
 } // renderer_params
 
@@ -113,6 +116,7 @@ END_SHADER_STRUCT();
 BEGIN_SHADER_STRUCT(StochasticDIInitialSamplingConstants)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>,     motion)
 	SHADER_STRUCT_FIELD(GPUGBuffer,                               gBuffer)
+	SHADER_STRUCT_FIELD(SSTracerData,                             ssTracer)
 	SHADER_STRUCT_FIELD(EmissivesSampler,                         emissivesSampler)
 	SHADER_STRUCT_FIELD(gfx::TypedBuffer<DIPackedReservoir>,      historyReservoirs)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<DIPackedReservoir>, outReservoirs)
@@ -121,6 +125,7 @@ BEGIN_SHADER_STRUCT(StochasticDIInitialSamplingConstants)
 	SHADER_STRUCT_FIELD(math::Vector2u,                           reservoirsResolution)
 	SHADER_STRUCT_FIELD(Uint32,                                   risSamplesNum)
 	SHADER_STRUCT_FIELD(Bool,                                     enableTemporalResampling)
+	SHADER_STRUCT_FIELD(Real32,                                   ssrtRange)
 END_SHADER_STRUCT();
 
 
@@ -159,12 +164,14 @@ BEGIN_SHADER_STRUCT(DISpatialResamplingConstants)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector3f>,     rwDiffuse)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector2f>,     rwLightDirection)
 	SHADER_STRUCT_FIELD(GPUGBuffer,                               gBuffer)
+	SHADER_STRUCT_FIELD(SSTracerData,                             ssTracer)
 	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<DIPackedReservoir>,   inReservoirs)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<DIPackedReservoir>, outReservoirs)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>,     brdfIntegrationLUT)
 	SHADER_STRUCT_FIELD(math::Vector2u,                           reservoirsResolution)
 	SHADER_STRUCT_FIELD(Uint32,                                   spatialSamplesNum)
 	SHADER_STRUCT_FIELD(Uint32,                                   spatialResamplingRange)
+	SHADER_STRUCT_FIELD(Real32,                                   ssrtRange)
 END_SHADER_STRUCT();
 
 
@@ -262,15 +269,19 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 
 	rg::RGBufferViewHandle reservoirsBuffer = CreateDIReservoirs(graphBuilder, reservoirsResolution);
 
+	const SSTracerData ssTracer = CreateScreenSpaceTracerData(viewContext.linearDepth, renderer_params::ssrtStepsNum);
+
 	{
 		StochasticDIInitialSamplingConstants shaderConstants;
 		shaderConstants.motion                   = viewContext.motion;
 		shaderConstants.gBuffer                  = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
+		shaderConstants.ssTracer                 = ssTracer;
 		shaderConstants.emissivesSampler         = CreateEmissivesSampler(graphBuilder, renderScene);
 		shaderConstants.outReservoirs            = reservoirsBuffer;
 		shaderConstants.reservoirsResolution     = reservoirsResolution;
 		shaderConstants.risSamplesNum            = renderer_params::risSamplesNum;
 		shaderConstants.enableTemporalResampling = renderer_params::enableTemporalResampling;
+		shaderConstants.ssrtRange                = renderer_params::ssrtRange;
 
 		if (canReuseHistory)
 		{
@@ -298,12 +309,14 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 		shaderConstants.rwDiffuse              = diffuse;
 		shaderConstants.rwLightDirection       = lightDirection;
 		shaderConstants.gBuffer                = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
+		shaderConstants.ssTracer               = ssTracer;
 		shaderConstants.inReservoirs           = reservoirsBuffer;
 		shaderConstants.outReservoirs          = historyReservoirs;
 		shaderConstants.brdfIntegrationLUT     = brdfIntegrationLUT;
 		shaderConstants.reservoirsResolution   = reservoirsResolution;
 		shaderConstants.spatialSamplesNum      = renderer_params::spatialSamplesNum;
 		shaderConstants.spatialResamplingRange = renderer_params::spatialResamplingRange;
+		shaderConstants.ssrtRange              = renderer_params::ssrtRange;
 
 		DISpatialResamplingPermutationDomain permutation;
 		permutation.ENABLE_SURFACE_CHECK = renderer_params::enableSurfaceCheckDuringSpatialResampling;

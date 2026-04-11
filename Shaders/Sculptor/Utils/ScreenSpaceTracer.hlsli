@@ -16,6 +16,7 @@ struct SSTraceResult
 	bool isHit;
 	float2 hitUV;
 	float  hitT;
+	float unoccludedT;
 };
 
 
@@ -53,10 +54,11 @@ void ComputeClampedEndUV(in float2 startUV, in float startDepth, inout float2 en
 }
 
 
-SSTraceResult TraceSSShadowRay(in SSTracerData tracer, in SceneViewData sceneView, in float2 startUV, in float startDepth, in float2 endUV, in float endDepth, in float jitter)
+SSTraceResult TraceScreenSpaceRay(in SSTracerData tracer, in SceneViewData sceneView, in float2 startUV, in float startDepth, in float2 endUV, in float endDepth, in float jitter, in bool allowOccluded)
 {
 	SSTraceResult result;
-	result.isHit = false;
+	result.isHit       = false;
+	result.unoccludedT = 0.f;
 
 #if DEBUG_SCREEN_SPACE_TRACER
 	const bool debugRay = debug::IsPixelHovered(startUV * tracer.resolution, tracer.resolution);
@@ -78,6 +80,8 @@ SSTraceResult TraceSSShadowRay(in SSTracerData tracer, in SceneViewData sceneVie
 	const float linearStepExponent = 1.f;
 
 	const float offset = 0.1f;
+
+	bool wasOccluded = false;
 
 	for(float i = offset + jitter; i < stepsNum; i += 1.f)
 	{
@@ -127,6 +131,21 @@ SSTraceResult TraceSSShadowRay(in SSTracerData tracer, in SceneViewData sceneVie
 
 			break;
 		}
+		else if (penetration < rayThickness)
+		{
+			if (!wasOccluded)
+			{
+				result.unoccludedT = t;
+			}
+		}
+		else
+		{
+			wasOccluded = true;
+			if (!allowOccluded)
+			{
+				break;
+			}
+		}
 	}
 
 #if DEBUG_SCREEN_SPACE_TRACER
@@ -162,6 +181,46 @@ SSTraceResult TraceSSShadowRay(in SSTracerData tracer, in SceneViewData sceneVie
 
 	}
 #endif // DEBUG_SCREEN_SPACE_TRACER
+
+	return result;
+}
+
+
+struct SSTraceResultExtended : SSTraceResult 
+{
+	float unoccludedDistance;
+};
+
+
+SSTraceResultExtended TraceScreenSpaceRay(in SSTracerData tracer, in SceneViewData sceneView, in float2 startUV, in float depth, in float3 rayDirWS, in float rayLenght, in float jitter)
+{
+	const float startDepth = depth;
+
+	const float3 startNDC = float3(startUV * 2.f - 1.f, startDepth);
+	const float3 startWS = NDCToWorldSpace(startNDC, sceneView);
+
+	const Plane cameraNear = ConstructNearPlane(sceneView);
+	// intersect ray with near plane to avoid artifacts from reprojection of points behind the camera
+	IntersectionResult nearIntersection =  Ray::Create(startWS, rayDirWS).IntersectPlane(cameraNear);
+	if (nearIntersection.IsValid())
+	{
+		rayLenght = min(rayLenght, nearIntersection.GetTime());
+	}
+
+	const float3 endWS = startWS + rayDirWS * rayLenght;
+	const float3 endNDC = WorldSpaceToNDC(endWS, sceneView);
+
+	const float2 endUV = endNDC.xy * 0.5f + 0.5f;
+	const float endDepth = endNDC.z;
+
+	const SSTraceResult traceResult = TraceScreenSpaceRay(tracer, sceneView, startUV, startDepth, endUV, endDepth, jitter, true);
+
+	SSTraceResultExtended result;
+	result.isHit              = traceResult.isHit;
+	result.hitUV              = traceResult.hitUV;
+	result.hitT               = traceResult.hitT;
+	result.unoccludedT        = traceResult.unoccludedT;
+	result.unoccludedDistance = traceResult.unoccludedT * rayLenght;
 
 	return result;
 }

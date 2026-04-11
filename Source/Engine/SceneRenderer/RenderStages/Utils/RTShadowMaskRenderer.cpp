@@ -36,7 +36,7 @@ RendererFloatParameter directionalLightShadowRayBias("Shadow Ray Bias", { "Light
 RendererBoolParameter halfResShadows("Half Res", { "Lighting", "Shadows", "Directional" }, false);
 RendererBoolParameter enableScreenSpaceShadows("Enable Screen Space Shadows", { "Lighting", "Shadows", "Directional" }, true);
 RendererIntParameter screenSpaceShadowsSteps("Screen Space Shadows Steps", { "Lighting", "Shadows", "Directional" }, 8, 1, 64);
-RendererFloatParameter screenSpaceShadowsDistance("Screen Space Shadows Distance", { "Lighting", "Shadows", "Directional" }, 0.3f, 0.f, 5.f);
+RendererFloatParameter screenSpaceShadowsDistance("Screen Space Shadows Distance", { "Lighting", "Shadows", "Directional" }, 0.1f, 0.f, 5.f);
 RendererBoolParameter enableScreenSpaceDebug("Enable Screen Space Debug", { "Lighting", "Shadows", "Directional" }, false);
 
 } // params
@@ -77,10 +77,12 @@ BEGIN_SHADER_STRUCT(ScreenSpaceShadowsConstants)
 	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<vrt::EncodedRayTraceCommand>,   inCommands)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<Uint32>,                      outRTTraceIndirectArgs)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<vrt::EncodedRayTraceCommand>, outRTCommands)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<Uint16>,                      outContinuationDists)
 	SHADER_STRUCT_FIELD(Uint32,                                             frameIdx)
 	SHADER_STRUCT_FIELD(math::Vector3f,                                     lightDirection)
 	SHADER_STRUCT_FIELD(Real32,                                             lightConeAngle)
 	SHADER_STRUCT_FIELD(Real32,                                             traceDistance)
+	SHADER_STRUCT_FIELD(Real32,                                             rcpTraceDistance)
 END_SHADER_STRUCT();
 
 
@@ -104,7 +106,7 @@ COMPUTE_PSO(ScreenSpaceShadowsPSO)
 };
 
 
-static void TraceShadowRays(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const ShadowTracingContext& tracingContext, vrt::TracesAllocation& tracesAllocation, rg::RGTextureViewHandle outTexture)
+static void TraceShadowRays(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const ShadowTracingContext& tracingContext, vrt::TracesAllocation& tracesAllocation, rg::RGBufferViewHandle continuationDists, rg::RGTextureViewHandle outTexture)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -124,12 +126,13 @@ static void TraceShadowRays(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 	constants.inCommands             = tracesAllocation.rayTraceCommands;
 	constants.outRTTraceIndirectArgs = rtTraceIndirectArgs;
 	constants.outRTCommands          = rtTraceCommands;
+	constants.outContinuationDists   = continuationDists;
 	constants.frameIdx               = viewSpec.GetFrameIdx();
 	constants.lightDirection         = tracingContext.lightDirection;
 	constants.lightConeAngle         = tracingContext.shadowRayConeAngle;
 	constants.traceDistance          = params::screenSpaceShadowsDistance;
+	constants.rcpTraceDistance       = 1.f / params::screenSpaceShadowsDistance;
 	constants.ssTracerData           = CreateScreenSpaceTracerData(tracingContext.linearDepthTexture, params::screenSpaceShadowsSteps);
-
 
 	graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SS Shadows"),
 								  params::enableScreenSpaceDebug ? ScreenSpaceShadowsPSO::debug : ScreenSpaceShadowsPSO::pso,
@@ -204,13 +207,15 @@ void ResolveVRTVisibility(rg::RenderGraphBuilder& graphBuilder, const VRTVisibil
 } // vrt_resolve
 
 BEGIN_SHADER_STRUCT(DirectionalLightShadowUpdateParams)
-	SHADER_STRUCT_FIELD(math::Vector3f, lightDirection)
-	SHADER_STRUCT_FIELD(Real32,			maxTraceDistance)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
-	SHADER_STRUCT_FIELD(Real32,			shadowRayBias)
-	SHADER_STRUCT_FIELD(Real32,			time)
-	SHADER_STRUCT_FIELD(Real32,			shadowRayConeAngle)
-	SHADER_STRUCT_FIELD(Bool,			enableShadows)
+	SHADER_STRUCT_FIELD(math::Vector3f,           lightDirection)
+	SHADER_STRUCT_FIELD(Real32,                   maxTraceDistance)
+	SHADER_STRUCT_FIELD(math::Vector2u,           resolution)
+	SHADER_STRUCT_FIELD(Real32,                   shadowRayBias)
+	SHADER_STRUCT_FIELD(Real32,                   time)
+	SHADER_STRUCT_FIELD(Real32,                   shadowRayConeAngle)
+	SHADER_STRUCT_FIELD(Bool,                     enableShadows)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<Uint16>, rayContinuationDists)
+	SHADER_STRUCT_FIELD(Real32,                   ssTraceDistance)
 END_SHADER_STRUCT();
 
 
@@ -227,11 +232,18 @@ DS_BEGIN(DirectionalLightShadowMaskDS, rg::RGDescriptorSetState<DirectionalLight
 DS_END();
 
 
+BEGIN_SHADER_STRUCT(ShadowsRayTracingPermutationDomain)
+	SHADER_STRUCT_FIELD(Bool, CONTINUE_RAYS)
+END_SHADER_STRUCT();
+
+
 RT_PSO(ShadowsRayTracingPSO)
 {
 	RAY_GEN_SHADER("Sculptor/Lights/DirLightsRTShadowsTraceRays.hlsl", GenerateShadowRaysRTG);
 
 	MISS_SHADERS(SHADER_ENTRY("Sculptor/Lights/DirLightsRTShadowsTraceRays.hlsl", GenericRTM));
+
+	PERMUTATION_DOMAIN(ShadowsRayTracingPermutationDomain)
 
 	HIT_GROUP
 	{
@@ -240,12 +252,14 @@ RT_PSO(ShadowsRayTracingPSO)
 		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
 	};
 
+	PRESET(continuation_pso);
 	PRESET(pso);
 
 	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
 	{
 		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
-		pso = CompilePSO(compiler, psoDefinition, mat::MaterialsSubsystem::Get().GetRTHitGroups<HitGroup>());
+		pso              = CompilePermutation(compiler, psoDefinition, mat::MaterialsSubsystem::Get().GetRTHitGroups<HitGroup>(), ShadowsRayTracingPermutationDomain{ .CONTINUE_RAYS = false });
+		continuation_pso = CompilePermutation(compiler, psoDefinition, mat::MaterialsSubsystem::Get().GetRTHitGroups<HitGroup>(), ShadowsRayTracingPermutationDomain{ .CONTINUE_RAYS = true });
 	}
 };
 
@@ -262,11 +276,16 @@ static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuil
 	tracesAllocationDefinition.outputTracesAndDispatchGroupsNum = params::enableScreenSpaceShadows;
 	vrt::TracesAllocation tracesAllocation = AllocateTraces(graphBuilder, tracesAllocationDefinition);
 
+	rhi::BufferDefinition continuationDistBufferDef;
+	continuationDistBufferDef.size = tracingContext.resolution.x() * tracingContext.resolution.y() * sizeof(Uint16);
+	continuationDistBufferDef.usage = rhi::EBufferUsage::Storage;
+	const rg::RGBufferViewHandle continuationDists = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Shadow Rays Continuation Dist"), continuationDistBufferDef, rhi::EMemoryUsage::GPUOnly);
+
 	const rg::RGTextureViewHandle shadowMaskTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Directional Light Shadow Mask"), rg::TextureDef(tracingContext.resolution, rhi::EFragmentFormat::R16_UN_Float));
 
 	if (params::enableScreenSpaceShadows)
 	{
-		screen_space::TraceShadowRays(graphBuilder, viewSpec, tracingContext, tracesAllocation, shadowMaskTexture);
+		screen_space::TraceShadowRays(graphBuilder, viewSpec, tracingContext, tracesAllocation, continuationDists, shadowMaskTexture);
 	}
 
 	const lib::MTHandle<TraceShadowRaysDS> traceShadowRaysDS = graphBuilder.CreateDescriptorSet<TraceShadowRaysDS>(RENDERER_RESOURCE_NAME("Trace Shadow Rays DS"));
@@ -275,20 +294,22 @@ static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuil
 	traceShadowRaysDS->u_traceCommands   = tracesAllocation.rayTraceCommands;
 
 	DirectionalLightShadowUpdateParams updateParams;
-	updateParams.lightDirection     = tracingContext.lightDirection;
-	updateParams.maxTraceDistance   = params::directionalLightMaxShadowTraceDist;
-	updateParams.time               = renderScene.GetCurrentFrameRef().GetTime();
-	updateParams.shadowRayConeAngle = tracingContext.shadowRayConeAngle;
-	updateParams.enableShadows      = params::directionalLightEnableShadows;
-	updateParams.shadowRayBias      = params::directionalLightShadowRayBias;
-	updateParams.resolution         = tracingContext.resolution;
+	updateParams.lightDirection       = tracingContext.lightDirection;
+	updateParams.maxTraceDistance     = params::directionalLightMaxShadowTraceDist;
+	updateParams.time                 = renderScene.GetCurrentFrameRef().GetTime();
+	updateParams.shadowRayConeAngle   = tracingContext.shadowRayConeAngle;
+	updateParams.enableShadows        = params::directionalLightEnableShadows;
+	updateParams.shadowRayBias        = params::directionalLightShadowRayBias;
+	updateParams.resolution           = tracingContext.resolution;
+	updateParams.rayContinuationDists = continuationDists;
+	updateParams.ssTraceDistance      = params::screenSpaceShadowsDistance;
 
 	const lib::MTHandle<DirectionalLightShadowMaskDS> directionalLightShadowMaskDS = graphBuilder.CreateDescriptorSet<DirectionalLightShadowMaskDS>(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask DS"));
 	directionalLightShadowMaskDS->u_shadowMask = shadowMaskTexture;
 	directionalLightShadowMaskDS->u_params     = updateParams;
 
 	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("Directional Light Trace Shadow Rays"),
-								   ShadowsRayTracingPSO::pso,
+								   params::enableScreenSpaceShadows ? ShadowsRayTracingPSO::continuation_pso : ShadowsRayTracingPSO::pso,
 								   tracesAllocation.tracingIndirectArgs, 0,
 								   rg::BindDescriptorSets(traceShadowRaysDS,
 														  directionalLightShadowMaskDS));
