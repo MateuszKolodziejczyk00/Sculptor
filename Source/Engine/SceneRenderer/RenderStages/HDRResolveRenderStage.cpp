@@ -58,6 +58,9 @@ RendererFloatParameter lensFlaresHaloDistortion("Lens Flares Halo Distortion", {
 RendererFloatParameter lensFlaresHaloWidth("Lens Flares Halo Width", { "Lens Flares", "Halo" }, 0.55f, 0.f, 1.f);
 
 RendererBoolParameter enableColorDithering("Enable Color Dithering", { "Post Process" }, true);
+RendererFloatParameter whitePointTemperature("White Point Temperature", { "Post Process" }, 6500.f, 2000.f, 25000.f);
+RendererFloatParameter purkinjeShiftIntensity("Purkinje Shift Intensity", { "Post Process" }, 0.f, 0.f, 1.f);
+RendererIntParameter tonemapper("Tonemapper", { "Post Process" }, 1, 0, 2);
 
 RendererFloatParameter detailStrength("Detail Strength", { "LocalTonemap" }, 1.f, 0.f, 2.f);
 RendererFloatParameter contrastStrength("Contrast Strength", { "LocalTonemap" }, 0.8f, 0.f, 2.f);
@@ -425,15 +428,22 @@ static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& 
 namespace tonemapping
 {
 
+BEGIN_SHADER_STRUCT(TonemappingPermutation)
+	SHADER_STRUCT_FIELD(Int32, TONEMAPPER)
+END_SHADER_STRUCT();
+
 COMPUTE_PSO(TonemappingPSO)
 {
 	COMPUTE_SHADER("Sculptor/PostProcessing/Tonemapping.hlsl", TonemappingCS);
 
-	PRESET(ldr);
+	PERMUTATION_DOMAIN(TonemappingPermutation)
 
 	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
 	{
-		ldr = CompilePSO(compiler, { });
+		for (Int32 tonemapper = 0; tonemapper <= 2; ++tonemapper)
+		{
+			CompilePermutation(compiler, TonemappingPermutation{ tonemapper });
+		}
 	}
 };
 
@@ -448,6 +458,8 @@ BEGIN_SHADER_STRUCT(TonemappingPassConstants)
 	SHADER_STRUCT_FIELD(Real32,                               contrastStrength)
 	SHADER_STRUCT_FIELD(Real32,                               detailStrength)
 	SHADER_STRUCT_FIELD(Real32,                               bilateralGridStrength)
+	SHADER_STRUCT_FIELD(Real32,                               whitePointTemperature)
+	SHADER_STRUCT_FIELD(Real32,                               purkinjeShiftIntensity)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>, linearColor)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture3DRef<math::Vector2f>, luminanceBilateralGrid)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,         logLuminance)
@@ -457,7 +469,7 @@ BEGIN_SHADER_STRUCT(TonemappingPassConstants)
 END_SHADER_STRUCT();
 
 
-static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const TonemappingPassConstants& tonemappingConstants)
+static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const TonemappingPermutation& permutation, const TonemappingPassConstants& tonemappingConstants)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -468,7 +480,7 @@ static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder
 	const math::Vector3u dispatchGroupsNum(math::Utils::DivideCeil(resolution.x(), 8u), math::Utils::DivideCeil(resolution.y(), 8u), 1u);
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Tonemapping And Gamma"),
-						  TonemappingPSO::ldr,
+						  TonemappingPSO::GetPermutation(permutation),
 						  dispatchGroupsNum,
 						  rg::EmptyDescriptorSets(),
 						  tonemappingConstants);
@@ -512,43 +524,6 @@ void DoGammaCorrection(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHa
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // HDRResolveRenderStage =========================================================================
-
-//namespace test
-//{
-//
-//SIMPLE_COMPUTE_PSO(ExeTestPSO, "Sculptor/PostProcessing/Test.hlsl", TestCS);
-//
-//BEGIN_SHADER_STRUCT(ExeTestPassConstants)
-//	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>, hdrTex)
-//	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector3f>, skyViewLUT)
-//	SHADER_STRUCT_FIELD(SSTracerData,                         tracerData)
-//	SHADER_STRUCT_FIELD(GPUGBuffer,                           gBuffer)
-//END_SHADER_STRUCT();
-//
-//static void ExeTest(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle outputTexture)
-//{
-//	SPT_PROFILER_FUNCTION();
-//
-//	const math::Vector2u resolution = viewSpec.GetRenderingRes();
-//	const math::Vector3u dispatchGroupsNum(math::Utils::DivideCeil(resolution.x(), 8u), math::Utils::DivideCeil(resolution.y(), 8u), 1u);
-//
-//	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
-//
-//	ExeTestPassConstants shaderConstants;
-//	shaderConstants.hdrTex     = viewContext.luminance;
-//	shaderConstants.skyViewLUT = viewContext.skyViewLUT;
-//	shaderConstants.tracerData = CreateScreenSpaceTracerData(viewContext.linearDepth, 64u);
-//	shaderConstants.gBuffer    = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
-//
-//
-//	graphBuilder.Dispatch(RG_DEBUG_NAME("Execute Test"),
-//						  ExeTestPSO::pso,
-//						  dispatchGroupsNum,
-//						  rg::EmptyDescriptorSets(),
-//						  shaderConstants);
-//}
-//
-//}
 
 HDRResolveRenderStage::HDRResolveRenderStage()
 { }
@@ -598,8 +573,6 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, Scene
 		bloom::ApplyBloom(graphBuilder, viewSpec, linearColorTexture);
 	}
 
-	//test::ExeTest(graphBuilder, viewSpec, linearColorTexture);
-
 	const math::Vector2u gridTileSize     = automaticExposureOutputs.bilateralGridInfo.tilesSize;
 	const math::Vector2u gridResolution2D = automaticExposureOutputs.bilateralGridInfo.bilateralGrid->GetResolution2D();
 
@@ -639,6 +612,8 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, Scene
 	tonemappingSettings.bilateralGridStrength    = params::bilateralGridStrength;
 	tonemappingSettings.bilateralGridUVPerPixel  = gridSize2D.cast<Real32>().cwiseInverse();
 	tonemappingSettings.pixelSize                = inputPixelSize;
+	tonemappingSettings.whitePointTemperature    = params::whitePointTemperature;
+	tonemappingSettings.purkinjeShiftIntensity   = params::purkinjeShiftIntensity;
 	tonemappingSettings.linearColor              = linearColorTexture;
 	tonemappingSettings.luminanceBilateralGrid   = automaticExposureOutputs.bilateralGridInfo.bilateralGrid;
 	tonemappingSettings.logLuminance             = automaticExposureOutputs.bilateralGridInfo.downsampledLogLuminance;
@@ -646,7 +621,10 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, Scene
 	tonemappingSettings.rwLDRTexture             = tonemappedTexture;
 	tonemappingSettings.debugGeometry            = debugColorTexture;
 
-	tonemapping::DoTonemappingAndGammaCorrection(graphBuilder, viewSpec, tonemappingSettings);
+	tonemapping::TonemappingPermutation permutation;
+	permutation.TONEMAPPER = params::tonemapper;
+
+	tonemapping::DoTonemappingAndGammaCorrection(graphBuilder, viewSpec, permutation, tonemappingSettings);
 
 	viewContext.output = tonemappedTexture;
 }

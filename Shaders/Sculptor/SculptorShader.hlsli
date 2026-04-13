@@ -301,3 +301,13 @@ float3 ClipAABB(in float3 aabb_min, in float3 aabb_max, in float3 value)
         return value;
     }
 }
+
+
+float3x3 Diag(float3 v)
+{
+	return float3x3(
+		v.x, 0.f, 0.f,
+		0.f, v.y, 0.f,
+		0.f, 0.f, v.z
+	);
+}

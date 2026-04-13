@@ -467,7 +467,7 @@ void SandboxRenderer::InitializeRenderScene()
 		directionalLightData.direction              = math::Vector3f(-0.5f, -0.3f, -1.7f).normalized();
 		directionalLightData.lightConeAngle         = 0.0046f;
 		directionalLightData.sunDiskAngleMultiplier = 3.8f;
-		directionalLightData.sunDiskEC              = 13.4f;
+		directionalLightData.sunDiskEC              = 9.4f;
 		m_directionalLightEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
 	}
 
@@ -489,6 +489,8 @@ void SandboxRenderer::InitializeRenderScene()
 
 	gfx::GPUDeferredCommandsQueue& commandsQueue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
 	commandsQueue.ForceFlushCommands();
+
+	dlssInitJob.Wait();
 
 	SPT_LOG_INFO(Sandbox, "Render Scene Initialization Finished");
 }

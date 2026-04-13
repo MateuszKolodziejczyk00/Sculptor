@@ -65,8 +65,8 @@ public:
 	Bool sunMovement = false;
 	Real32 sunMovementSpeed = 0.08f;
 
-	Real32 sunAngleYaw = 0.0f;
-	Real32 sunAnglePitch = 0.7f;
+	Real32 sunAngleYaw = 0.83f;
+	Real32 sunAnglePitch = 0.07f;
 	Bool sunAngleDirty = false;
 
 	enum class EDirLightType
