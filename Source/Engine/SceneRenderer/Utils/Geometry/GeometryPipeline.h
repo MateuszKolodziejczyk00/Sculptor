@@ -93,6 +93,14 @@ BEGIN_SHADER_STRUCT(GeometryPipelinePermutation)
 END_SHADER_STRUCT();
 
 
+struct GeometryPipelineExecutor;
+
+GeometryPipelineExecutor* CreateExecutor(rg::RenderGraphBuilder& graphBuilder, const GeometryPassParams& inGeometryPassParams, GeometryRenderingPipeline& inPipeline);
+void                      DestroyExecutor(GeometryPipelineExecutor* executor);
+void                      ExecuteFirstPass(rg::RenderGraphBuilder& graphBuilder, const GeometryPipelineExecutor& executor);
+void                      ExecuteSecondPass(rg::RenderGraphBuilder& graphBuilder, const GeometryPipelineExecutor& executor);
+
 void ExecutePipeline(rg::RenderGraphBuilder& graphBuilder, const GeometryPassParams& geometryPassParams, GeometryRenderingPipeline& pipeline);
+
 
 } // spt::rsc::gp

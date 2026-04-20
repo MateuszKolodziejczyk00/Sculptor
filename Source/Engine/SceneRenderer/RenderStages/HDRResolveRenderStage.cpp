@@ -63,7 +63,7 @@ RendererFloatParameter purkinjeShiftIntensity("Purkinje Shift Intensity", { "Pos
 RendererIntParameter tonemapper("Tonemapper", { "Post Process" }, 1, 0, 2);
 
 RendererFloatParameter detailStrength("Detail Strength", { "LocalTonemap" }, 1.f, 0.f, 2.f);
-RendererFloatParameter contrastStrength("Contrast Strength", { "LocalTonemap" }, 0.8f, 0.f, 2.f);
+RendererFloatParameter contrastStrength("Contrast Strength", { "LocalTonemap" }, 0.7f, 0.f, 2.f);
 
 RendererFloatParameter bilateralGridStrength("Bilateral Grid Strength", { "LocalTonemap" }, 0.5f, 0.f, 1.f);
 
@@ -109,20 +109,8 @@ DS_BEGIN(LensFlaresBlurDS, rg::RGDescriptorSetState<LensFlaresBlurDS>)
 DS_END();
 
 
-static rdr::PipelineStateID CompileComputeLensFlaresPipeline()
-{
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/LensFlares.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ComputeLensFlaresCS"));
-
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("ComputeLensFlaresPipeline"), shader);
-}
-
-
-static rdr::PipelineStateID CompileLensFlaresBlurPipeline()
-{
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/LensFlaresBlur.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "LensFlaresBlurCS"));
-
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("LensFlaresBlurPipeline"), shader);
-}
+SIMPLE_COMPUTE_PSO(ComputeLensFlaresPSO, "Sculptor/PostProcessing/LensFlares.hlsl", ComputeLensFlaresCS);
+SIMPLE_COMPUTE_PSO(LensFlaresBlurPSO, "Sculptor/PostProcessing/LensFlaresBlur.hlsl", LensFlaresBlurCS);
 
 
 static rg::RGTextureViewHandle ComputeLensFlares(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle bloomTexture)
@@ -134,8 +122,6 @@ static rg::RGTextureViewHandle ComputeLensFlares(rg::RenderGraphBuilder& graphBu
 	const rg::RGTextureViewHandle lensFlaresTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Lens Flares Texture"), rg::TextureDef(lensFlaresRes, SceneRendererStatics::hdrFormat));
 	
 	const rg::RGTextureViewHandle tempTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Lens Flares Texture Temp"), rg::TextureDef(lensFlaresRes, SceneRendererStatics::hdrFormat));
-
-	static const rdr::PipelineStateID computeLensFlaresPipeline = CompileComputeLensFlaresPipeline();
 
 	LensFlaresParams lensFlaresParams;
 	lensFlaresParams.ghostsDistortion		= math::Vector3f(-params::lensFlaresGhostsDistortion, 0.f, params::lensFlaresGhostsDistortion);
@@ -154,11 +140,9 @@ static rg::RGTextureViewHandle ComputeLensFlares(rg::RenderGraphBuilder& graphBu
 	lensFlaresPassDS->u_lensFlaresParams = lensFlaresParams;
 	
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Apply Lens Flares"),
-						  computeLensFlaresPipeline,
+						  ComputeLensFlaresPSO::pso,
 						  math::Utils::DivideCeil(lensFlaresRes, math::Vector3u(8u, 8u, 1u)),
 						  rg::BindDescriptorSets(lensFlaresPassDS));
-
-	static const rdr::PipelineStateID lensFlaresBlurPipeline = CompileLensFlaresBlurPipeline();
 
 	const lib::MTHandle<LensFlaresBlurDS> blurHorizontalPassDS = graphBuilder.CreateDescriptorSet<LensFlaresBlurDS>(RENDERER_RESOURCE_NAME("LensFlaresHorizontalBlurDS"));
 	blurHorizontalPassDS->u_inputTexture	= lensFlaresTexture;
@@ -166,7 +150,7 @@ static rg::RGTextureViewHandle ComputeLensFlares(rg::RenderGraphBuilder& graphBu
 	blurHorizontalPassDS->u_blurParams		= LensFlaresBlurParams{ 1u };
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Lens Flares Horizontal Blur"),
-						  lensFlaresBlurPipeline,
+						  LensFlaresBlurPSO::pso,
 						  math::Utils::DivideCeil(lensFlaresRes, math::Vector3u(256u, 1u, 1u)),
 						  rg::BindDescriptorSets(blurHorizontalPassDS));
 
@@ -176,7 +160,7 @@ static rg::RGTextureViewHandle ComputeLensFlares(rg::RenderGraphBuilder& graphBu
 	blurVerticalPassDS->u_blurParams		= LensFlaresBlurParams{ 0u };
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Lens Flares Vertical Blur"),
-						  lensFlaresBlurPipeline,
+						  LensFlaresBlurPSO::pso,
 						  math::Utils::DivideCeil(math::Vector3u(lensFlaresRes.y(), lensFlaresRes.x(), lensFlaresRes.z()), math::Vector3u(256u, 1u, 1u)),
 						  rg::BindDescriptorSets(blurVerticalPassDS));
 
@@ -499,12 +483,7 @@ DS_BEGIN(GammaCorrectionDS, rg::RGDescriptorSetState<GammaCorrectionDS>)
 DS_END();
 
 
-rdr::PipelineStateID CompileGammaCorrectionPipeline()
-{
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/GammaCorrection.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "GammaCorrectionCS"));
-
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("GammaCorrectionPipeline"), shader);
-}
+SIMPLE_COMPUTE_PSO(GammaCorrectionPSO, "Sculptor/PostProcessing/GammaCorrection.hlsl", GammaCorrectionCS);
 
 void DoGammaCorrection(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle texture)
 {
@@ -513,11 +492,9 @@ void DoGammaCorrection(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHa
 	const lib::MTHandle<GammaCorrectionDS> gammaCorrectionCS = graphBuilder.CreateDescriptorSet<GammaCorrectionDS>(RENDERER_RESOURCE_NAME("GammaCorrectionDS"));
 	gammaCorrectionCS->u_texture = texture;
 
-	static const rdr::PipelineStateID pipelineState = CompileGammaCorrectionPipeline();
-
 	const math::Vector2u textureRes = texture->GetResolution2D();
 	const math::Vector3u dispatchGroupsNum(math::Utils::DivideCeil(textureRes.x(), 8u), math::Utils::DivideCeil(textureRes.y(), 8u), 1);
-	graphBuilder.Dispatch(RG_DEBUG_NAME("Gamma Correction"), pipelineState, dispatchGroupsNum, rg::BindDescriptorSets(gammaCorrectionCS));
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Gamma Correction"), GammaCorrectionPSO::pso, dispatchGroupsNum, rg::BindDescriptorSets(gammaCorrectionCS));
 }
 
 } // gamma

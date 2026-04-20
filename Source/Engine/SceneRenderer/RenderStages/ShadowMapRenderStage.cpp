@@ -1,4 +1,5 @@
 #include "ShadowMapRenderStage.h"
+#include "SceneRenderSystems/Terrain/TerrainRenderSystem.h"
 #include "Utils/Geometry/GeometryTypes.h"
 #include "Utils/Geometry/GeometryDepthOnlyRenderer.h"
 #include "SceneRenderSystems/StaticMeshes/StaticMeshesRenderSystem.h"
@@ -184,6 +185,15 @@ void ShadowMapRenderStage::RenderCSM(rg::RenderGraphBuilder& graphBuilder, Scene
 	geometryPassParams.hiZ        = currentHiZ;
 
 	depth_only::RenderDepthOnly(graphBuilder, geometryPassParams);
+
+	if (TerrainRenderSystem* terrainRenderSystem = rendererInterface.GetRenderSystem<TerrainRenderSystem>())
+	{
+		if (terrainRenderSystem->IsEnabled())
+		{
+			const TerrainShadowMapRenderParams terrainShadowMapParams{ viewSpec, shadowMapView };
+			terrainRenderSystem->RenderShadowMap(graphBuilder, terrainShadowMapParams);
+		}
+	}
 
 	std::swap(m_currentHiZ, m_historyHiZ);
 }

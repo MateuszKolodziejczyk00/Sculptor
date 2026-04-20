@@ -15,6 +15,7 @@
 #include "Utils/Wave.hlsli"
 #include "Utils/GBuffer/GBuffer.hlsli"
 #include "GeometryRendering/GeometryCommon.hlsli"
+#include "Terrain/SceneTerrain.hlsli"
 
 #include "Materials/MaterialSystem.hlsli"
 
@@ -32,7 +33,7 @@
 struct OutputVertex
 {
 	float4 locationCS : SV_Position;
-	float2 screenUV : TEXCOORD;
+	float2 screenUV   : TEXCOORD;
 };
 
 
@@ -241,35 +242,35 @@ MaterialEvaluationParameters CreateMaterialEvalParams(in InterpolatedVertexData 
 
 float ApplyParallax(inout MaterialEvaluationParameters evalParams, in MaterialDepthData materialDepthData, in float3 toView, in float2 uvScale)
 {
-    const float texLevel = 0.f;
-    const float heightScale = materialDepthData.maxDepthCm;
+	const float texLevel = 0.f;
+	const float heightScale = materialDepthData.maxDepthCm;
 
-    float layersNum = lerp(32.f, 10.f, abs(toView.z)); 
-    float layerDepth = 1.f / layersNum;
-    float currentLayerDepth = 0.f;
+	float layersNum = lerp(32.f, 10.f, abs(toView.z)); 
+	float layerDepth = 1.f / layersNum;
+	float currentLayerDepth = 0.f;
 
 	float2 P = (toView.xy / max(toView.z, 0.05f)) * heightScale * uvScale;
-    float2 deltaUV = P / layersNum;
+	float2 deltaUV = P / layersNum;
 
-    float2 currentUV = evalParams.uv.uv;
+	float2 currentUV = evalParams.uv.uv;
 	float currentDepth = materialDepthData.depthTexture.SampleLevel(BindlessSamplers::MaterialAniso(), currentUV, texLevel);
-    
-    float prevHeight = 0.f;
+	
+	float prevHeight = 0.f;
 
 	while (currentLayerDepth < currentDepth)
-    {
+	{
 		prevHeight = currentDepth;
-        currentUV -= deltaUV;
+		currentUV -= deltaUV;
 		currentDepth = materialDepthData.depthTexture.SampleLevel(BindlessSamplers::MaterialAniso(), currentUV, texLevel);
-        currentLayerDepth += layerDepth;
-    }
+		currentLayerDepth += layerDepth;
+	}
 
-    float2 prevUV = currentUV + deltaUV;
+	float2 prevUV = currentUV + deltaUV;
 	float nextDepth = currentDepth - currentLayerDepth;
-    float prevDepth = prevHeight - (currentLayerDepth - layerDepth);
+	float prevDepth = prevHeight - (currentLayerDepth - layerDepth);
 
-    float weight = nextDepth / (nextDepth - prevDepth);
-    evalParams.uv.uv = lerp(currentUV, prevUV, weight);
+	float weight = nextDepth / (nextDepth - prevDepth);
+	evalParams.uv.uv = lerp(currentUV, prevUV, weight);
 
 	const float finalDepth = lerp(currentLayerDepth, currentLayerDepth - layerDepth, weight) * heightScale;
 	const float dist = finalDepth / abs(toView.z);
@@ -337,6 +338,10 @@ FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 		gBufferData.tangent   = vertexData.tangent;
 		gBufferData.bitangent = vertexData.bitangent;
 		gBufferData.roughness = evaluatedMaterial.roughness;
+		if (gBufferData.roughness == 0.f)
+		{
+			gBufferData.roughness = 0.6f;
+		}
 		gBufferData.emissive  = evaluatedMaterial.emissiveColor;
 
 		const GBufferOutput gBufferOutput = EncodeGBuffer(gBufferData);
@@ -351,6 +356,46 @@ FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 		output.pomDepth  = pomDepth;
 #endif // ENABLE_POM
 	}
+
+	return output;
+}
+
+
+FS_Output EmitTerrainGBuffer_FS(in OutputVertex vertexInput)
+{
+	const uint2  pixelCoord = u_emitGBufferConstants.screenResolution * vertexInput.screenUV;
+	const float  depth      = u_depthTexture.Load(uint3(pixelCoord, 0u)).x;
+	const float3 ndc        = float3(vertexInput.screenUV * 2.f - 1.f, depth);
+
+	const float3 locationWS = NDCToWorldSpace(ndc, u_sceneView);
+
+	const TerrainInterface terrain = SceneTerrain();
+
+	const float3 terrainNormal    = terrain.GetNormal(locationWS.xy);
+	const float3 terrainTangent   = terrain.GetTangent(locationWS.xy);
+	const float3 terrainBitangent = terrain.GetBitangent(locationWS.xy);
+
+	GBufferData gBufferData;
+	gBufferData.baseColor = lerp(float3(0.1f, 0.3f, 0.1f), float3(0.4f, 0.6f, 0.4f), saturate(locationWS.z * 0.03f));
+	gBufferData.metallic  = 0.f;
+	gBufferData.normal    = terrainNormal;
+	gBufferData.tangent   = terrainTangent;
+	gBufferData.bitangent = terrainBitangent;
+	gBufferData.roughness = 0.88f;
+	gBufferData.emissive  = 0.f;
+
+	const GBufferOutput gBufferOutput = EncodeGBuffer(gBufferData);
+
+	FS_Output output;
+	output.gBuffer0  = gBufferOutput.gBuffer0;
+	output.gBuffer1  = gBufferOutput.gBuffer1;
+	output.gBuffer2  = gBufferOutput.gBuffer2;
+	output.gBuffer3  = gBufferOutput.gBuffer3;
+	output.gBuffer4  = gBufferOutput.gBuffer4;
+	output.occlusion = 1.f;
+#if ENABLE_POM
+	output.pomDepth  = 0.f;
+#endif // ENABLE_POM
 
 	return output;
 }

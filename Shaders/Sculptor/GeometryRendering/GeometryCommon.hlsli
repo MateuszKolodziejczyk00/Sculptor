@@ -3,7 +3,11 @@
 
 #include "SceneRendering/GPUScene.hlsli"
 
-uint PackVisibilityInfo(in uint visibleMeshletIdx, in uint triangleIdx)
+#define VISIBLE_PRIMITIVE_TYPE_INVALID  0
+#define VISIBLE_PRIMITIVE_TYPE_GEOMETRY 1
+#define VISIBLE_PRIMITIVE_TYPE_TERRAIN  2
+
+uint PackGeometryVisibilityInfo(in uint visibleMeshletIdx, in uint triangleIdx)
 {
 	SPT_CHECK_MSG(triangleIdx < (1 << 7), L"Invalid triangle index - {}", triangleIdx);
 	SPT_CHECK_MSG(((visibleMeshletIdx << 7) >> 7) == visibleMeshletIdx, L"Invalid meshlet index - {}", visibleMeshletIdx);
@@ -11,11 +15,30 @@ uint PackVisibilityInfo(in uint visibleMeshletIdx, in uint triangleIdx)
 }
 
 
-bool UnpackVisibilityInfo(in uint packedInfo, out uint visibleMeshletIdx, out uint triangleIdx)
+uint PackTerrainVisibilityInfo()
+{
+	return (0xFFFFFFFF >> 7) << 7;
+}
+
+
+uint UnpackVisibilityInfo(in uint packedInfo, out uint visibleMeshletIdx, out uint triangleIdx)
 {
 	visibleMeshletIdx = packedInfo >> 7;
 	triangleIdx = packedInfo & 0x7F;
-	return (visibleMeshletIdx != (~0u >> 7));
+
+	if (visibleMeshletIdx == (0xFFFFFFFF >> 7))
+	{
+		if (triangleIdx == 0u)
+		{
+			return VISIBLE_PRIMITIVE_TYPE_TERRAIN;
+		}
+		else
+		{
+			return VISIBLE_PRIMITIVE_TYPE_INVALID;
+		}
+	}
+
+	return VISIBLE_PRIMITIVE_TYPE_GEOMETRY;
 }
 
 

@@ -12,9 +12,9 @@
 namespace spt::rsc::gp
 {
 
-struct GeometryPassContext
+struct GeometryPipelineContext
 {
-	explicit GeometryPassContext(GeometryRenderingPipeline& inPipeline)
+	explicit GeometryPipelineContext(GeometryRenderingPipeline& inPipeline)
 		: pipeline(inPipeline)
 	{ }
 
@@ -169,6 +169,8 @@ struct BatchGPUData
 	rg::RGBufferViewHandle dispatchOccludedMeshletsCommand;
 };
 
+static_assert(std::is_trivially_destructible_v<BatchGPUData>, "BatchGPUData must be trivially destructible");
+
 
 static BatchGPUData CreateGPUBatch(rg::RenderGraphBuilder& graphBuilder, const GeometryBatch& batch)
 {
@@ -285,11 +287,11 @@ void CullBatchElements(rg::RenderGraphBuilder& graphBuilder, const GeometryPassP
 
 
 template<EGeometryPass passIdx>
-static void CreateRenderPass(rg::RenderGraphBuilder& graphBuilder, const GeometryPassParams& geometryPassParams, const GeometryPassContext& passContext)
+static void CreateRenderPass(rg::RenderGraphBuilder& graphBuilder, const GeometryPassParams& geometryPassParams, const GeometryPipelineContext& pipelineContext)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RenderPassDefinition renderPassDef = passContext.pipeline.CreateRenderPassDefinition(graphBuilder, geometryPassParams, passIdx);
+	const RenderPassDefinition renderPassDef = pipelineContext.pipeline.CreateRenderPassDefinition(graphBuilder, geometryPassParams, passIdx);
 	
 	graphBuilder.RenderPass(RG_DEBUG_NAME_FORMATTED("Geometry Pass ({})", GeometryPassTraits<passIdx>::GetPassName()),
 							renderPassDef,
@@ -303,7 +305,7 @@ static void CreateRenderPass(rg::RenderGraphBuilder& graphBuilder, const Geometr
 
 
 template<EGeometryPass passIdx>
-static void DrawBatchElements(rg::RenderGraphBuilder& graphBuilder, const GeometryPassParams& geometryPassParams, const GeometryPassContext& passContext, lib::Span<const BatchGPUData> gpuBatches)
+static void DrawBatchElements(rg::RenderGraphBuilder& graphBuilder, const GeometryPassParams& geometryPassParams, const GeometryPipelineContext& pipelineContext, lib::Span<const BatchGPUData> gpuBatches)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -311,7 +313,7 @@ static void DrawBatchElements(rg::RenderGraphBuilder& graphBuilder, const Geomet
 
 	using GeometryDrawMeshesDS = typename GeometryPassTraits<passIdx>::DrawMeshesDSType;
 
-	CreateRenderPass<passIdx>(graphBuilder, geometryPassParams, passContext);
+	CreateRenderPass<passIdx>(graphBuilder, geometryPassParams, pipelineContext);
 
 	for (SizeType batchIdx = 0; batchIdx < geometryPassParams.geometryPassData.geometryBatches.size(); ++batchIdx)
 	{
@@ -328,7 +330,7 @@ static void DrawBatchElements(rg::RenderGraphBuilder& graphBuilder, const Geomet
 			drawMeshesDS->u_occludedMeshletsDispatchCommand = batchGPUData.dispatchOccludedMeshletsCommand;
 		}
 
-		const rdr::PipelineStateID pipeline = passContext.pipeline.CreatePipelineForBatch(geometryPassParams, batch, passIdx);
+		const rdr::PipelineStateID pipeline = pipelineContext.pipeline.CreatePipelineForBatch(geometryPassParams, batch, passIdx);
 
 		const Uint32 maxDrawsCount = batch.batchElementsNum;
 
@@ -358,13 +360,13 @@ static void DrawBatchElements(rg::RenderGraphBuilder& graphBuilder, const Geomet
 }
 
 
-static void DrawDisoccludedMeshlets(rg::RenderGraphBuilder& graphBuilder, const GeometryPassParams& geometryPassParams, const GeometryPassContext& passContext, lib::Span<const BatchGPUData> gpuBatches)
+static void DrawDisoccludedMeshlets(rg::RenderGraphBuilder& graphBuilder, const GeometryPassParams& geometryPassParams, const GeometryPipelineContext& pipelineContext, lib::Span<const BatchGPUData> gpuBatches)
 {
 	SPT_PROFILER_FUNCTION();
 
 	constexpr EGeometryPass passIdx = EGeometryPass::DisoccludedMeshletsPass;
 
-	CreateRenderPass<passIdx>(graphBuilder, geometryPassParams, passContext);
+	CreateRenderPass<passIdx>(graphBuilder, geometryPassParams, pipelineContext);
 
 	for (SizeType batchIdx = 0; batchIdx < geometryPassParams.geometryPassData.geometryBatches.size(); ++batchIdx)
 	{
@@ -375,7 +377,7 @@ static void DrawDisoccludedMeshlets(rg::RenderGraphBuilder& graphBuilder, const 
 		drawMeshesDS->u_occludedMeshlets      = batchGPUData.occludedMeshlets;
 		drawMeshesDS->u_occludedMeshletsCount = batchGPUData.occludedMeshletsCount;
 
-		const rdr::PipelineStateID pipeline = passContext.pipeline.CreatePipelineForBatch(geometryPassParams, batch, passIdx);
+		const rdr::PipelineStateID pipeline = pipelineContext.pipeline.CreatePipelineForBatch(geometryPassParams, batch, passIdx);
 
 		IndirectGeometryBatchDrawParams indirectDrawParams;
 		indirectDrawParams.drawCommands = batchGPUData.dispatchOccludedMeshletsCommand;
@@ -399,53 +401,94 @@ static void DrawDisoccludedMeshlets(rg::RenderGraphBuilder& graphBuilder, const 
 }
 
 
-static void DrawGeometryVisibleLastFrame(rg::RenderGraphBuilder& graphBuilder, const GeometryPassParams& geometryPassParams, const GeometryPassContext& passContext, lib::Span<const BatchGPUData> gpuBatches)
+static void DrawGeometryVisibleLastFrame(rg::RenderGraphBuilder& graphBuilder, const GeometryPassParams& geometryPassParams, const GeometryPipelineContext& pipelineContext, lib::Span<const BatchGPUData> gpuBatches)
 {
 	SPT_PROFILER_FUNCTION();
 
 	CullBatchElements<EGeometryPass::VisibleGeometryPass>(graphBuilder, geometryPassParams, gpuBatches);
-	DrawBatchElements<EGeometryPass::VisibleGeometryPass>(graphBuilder, geometryPassParams, passContext, gpuBatches);
+	DrawBatchElements<EGeometryPass::VisibleGeometryPass>(graphBuilder, geometryPassParams, pipelineContext, gpuBatches);
 }
 
 
-static void DrawDisoccludedGeometry(rg::RenderGraphBuilder& graphBuilder, const GeometryPassParams& geometryPassParams, const GeometryPassContext& passContext, lib::Span<const BatchGPUData> gpuBatches)
+static void DrawDisoccludedGeometry(rg::RenderGraphBuilder& graphBuilder, const GeometryPassParams& geometryPassParams, const GeometryPipelineContext& pipelineContext, lib::Span<const BatchGPUData> gpuBatches)
 {
 	SPT_PROFILER_FUNCTION();
 
 	CullBatchElements<EGeometryPass::DisoccludedGeometryPass>(graphBuilder, geometryPassParams, gpuBatches);
-	DrawBatchElements<EGeometryPass::DisoccludedGeometryPass>(graphBuilder, geometryPassParams, passContext, gpuBatches);
-	DrawDisoccludedMeshlets(graphBuilder, geometryPassParams, passContext, gpuBatches);
+	DrawBatchElements<EGeometryPass::DisoccludedGeometryPass>(graphBuilder, geometryPassParams, pipelineContext, gpuBatches);
+	DrawDisoccludedMeshlets(graphBuilder, geometryPassParams, pipelineContext, gpuBatches);
 }
 
 
-static void RenderGeometryRenderPipeline(rg::RenderGraphBuilder& graphBuilder, const GeometryPassParams& geometryPassParams, const GeometryPassContext& passContext)
+struct GeometryPipelineExecutor
+{
+	GeometryPipelineExecutor(rg::RenderGraphBuilder& graphBuilder, const GeometryPassParams& inGeometryPassParams, GeometryRenderingPipeline& inPipeline)
+		 : geometryPassParams(inGeometryPassParams)
+		 , pipelineContext(inPipeline)
+	{
+		cullingDS = CreateCullingDS(geometryPassParams.hiZ, geometryPassParams.historyHiZ);
+
+		gpuBatches = BuildGPUBatches(graphBuilder, geometryPassParams);
+	}
+
+	const GeometryPassParams& geometryPassParams;
+	GeometryPipelineContext pipelineContext;
+
+	lib::MTHandle<GeometryCullingDS> cullingDS;
+
+	lib::DynamicArray<BatchGPUData> gpuBatches;
+};
+
+
+GeometryPipelineExecutor* CreateExecutor(rg::RenderGraphBuilder& graphBuilder, const GeometryPassParams& inGeometryPassParams, GeometryRenderingPipeline& inPipeline)
+{
+	return graphBuilder.GetMemoryArena().AllocateType<GeometryPipelineExecutor>(graphBuilder, inGeometryPassParams, inPipeline);
+}
+
+
+void DestroyExecutor(GeometryPipelineExecutor* executor)
+{
+	executor->~GeometryPipelineExecutor();
+}
+
+
+void ExecuteFirstPass(rg::RenderGraphBuilder& graphBuilder, const GeometryPipelineExecutor& executor)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::MTHandle<GeometryCullingDS> cullingDS = CreateCullingDS(geometryPassParams.hiZ, geometryPassParams.historyHiZ);
+	const rg::BindDescriptorSetsScope geometryCullingDSScope(graphBuilder,
+															 rg::BindDescriptorSets(executor.cullingDS));
+
+	executor.pipelineContext.pipeline.Prologue(graphBuilder, executor.geometryPassParams);
+
+	DrawGeometryVisibleLastFrame(graphBuilder, executor.geometryPassParams, executor.pipelineContext, executor.gpuBatches);
+}
+
+
+void ExecuteSecondPass(rg::RenderGraphBuilder& graphBuilder, const GeometryPipelineExecutor& executor)
+{
+	SPT_PROFILER_FUNCTION();
 
 	const rg::BindDescriptorSetsScope geometryCullingDSScope(graphBuilder,
-															 rg::BindDescriptorSets(cullingDS));
+															 rg::BindDescriptorSets(executor.cullingDS));
 
-	passContext.pipeline.Prologue(graphBuilder, geometryPassParams);
-
-	const lib::DynamicArray<BatchGPUData> gpuBatches = BuildGPUBatches(graphBuilder, geometryPassParams);
-
-	DrawGeometryVisibleLastFrame(graphBuilder, geometryPassParams, passContext, gpuBatches);
-
-	HiZ::CreateHierarchicalZ(graphBuilder, geometryPassParams.depth, geometryPassParams.hiZ->GetTexture());
-
-	DrawDisoccludedGeometry(graphBuilder, geometryPassParams, passContext, gpuBatches);
-
-	HiZ::CreateHierarchicalZ(graphBuilder, geometryPassParams.depth, geometryPassParams.hiZ->GetTexture());
+	DrawDisoccludedGeometry(graphBuilder, executor.geometryPassParams, executor.pipelineContext, executor.gpuBatches);
 }
 
 
 void ExecutePipeline(rg::RenderGraphBuilder& graphBuilder, const GeometryPassParams& geometryPassParams, GeometryRenderingPipeline& pipeline)
 {
-	const GeometryPassContext passContext(pipeline);
+	SPT_PROFILER_FUNCTION();
 
-	RenderGeometryRenderPipeline(graphBuilder, geometryPassParams, passContext);
+	GeometryPipelineExecutor executor(graphBuilder, geometryPassParams, pipeline);
+
+	ExecuteFirstPass(graphBuilder, executor);
+
+	HiZ::CreateHierarchicalZ(graphBuilder, geometryPassParams.depth, geometryPassParams.hiZ->GetTexture());
+
+	ExecuteSecondPass(graphBuilder, executor);
+
+	HiZ::CreateHierarchicalZ(graphBuilder, geometryPassParams.depth, geometryPassParams.hiZ->GetTexture());
 }
 
 } // spt::rsc::gp

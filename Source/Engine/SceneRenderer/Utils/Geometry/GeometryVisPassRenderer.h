@@ -7,6 +7,8 @@
 namespace spt::rsc
 {
 
+struct SceneRendererInterface;
+
 
 struct VisPassParams 
 {
@@ -28,7 +30,7 @@ public:
 
 	VisPassRenderer();
 
-	VisPassResult RenderVisibility(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams);
+	VisPassResult RenderVisibility(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const VisPassParams& visPassParams);
 
 private:
 

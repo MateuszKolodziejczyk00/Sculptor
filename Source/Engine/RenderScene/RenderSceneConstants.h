@@ -8,6 +8,7 @@
 #include "SceneRenderSystems/ShadowMaps/ShadowsRenderingTypes.h"
 #include "SceneRenderSystems/WorldShadowCache/WorldShadowCacheTypes.h"
 #include "SceneRenderSystems/Atmosphere/AtmosphereTypes.h"
+#include "SceneRenderSystems/Terrain/TerrainTypes.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 
 
@@ -41,6 +42,7 @@ BEGIN_SHADER_STRUCT(RenderSceneConstants)
 	SHADER_STRUCT_FIELD(ShadowMapsData,      shadows)
 	SHADER_STRUCT_FIELD(wsc::WSCData,        wsc)
 	SHADER_STRUCT_FIELD(SceneAtmosphereData, atmosphere)
+	SHADER_STRUCT_FIELD(TerrainSceneData,    terrain)
 END_SHADER_STRUCT();
 
 

@@ -21,32 +21,47 @@ class ViewRenderingSpec;
 namespace materials_renderer
 {
 
-struct MaterialsPassParams
+class MaterialBatchDS;
+
+struct MaterialRenderCommand
 {
-	MaterialsPassParams(const ViewRenderingSpec& inViewSpec, const GeometryPassDataCollection& inGeometryPassData)
+	rdr::PipelineStateID           pipelineState;
+	lib::MTHandle<MaterialBatchDS> materialBatchDS;
+};
+
+
+struct MaterialRenderCommands
+{
+	Uint16 geometryMaterialBatchesOffset = idxNone<Uint16>;
+	Uint16 terrainMaterialBatchIdx       = idxNone<Uint16>;
+
+	lib::DynamicArray<MaterialRenderCommand> commands;
+};
+
+
+struct MaterialsPassDefinition
+{
+	explicit MaterialsPassDefinition(const ViewRenderingSpec& inViewSpec)
 		: viewSpec(inViewSpec)
-		, geometryPassData(inGeometryPassData)
 	{
 	}
 
 	const ViewRenderingSpec& viewSpec;
-	const GeometryPassDataCollection& geometryPassData;
 
-	Uint32 materialDepthTileSize;
+	rg::RGBufferViewHandle visibleMeshlets;
 
-	rg::RGTextureViewHandle materialDepthTexture;
-	rg::RGTextureViewHandle materialDepthTileTexture;
 	rg::RGTextureViewHandle depthTexture;
-
 	rg::RGTextureViewHandle visibilityTexture;
 
-	rg::RGBufferViewHandle visibleMeshletsBuffer;
-
-	Bool enablePOM = true;
+	Bool                    enablePOM = true;
 	rg::RGTextureViewHandle pomDepth;
 };
 
-void ExecuteMaterialsPass(rg::RenderGraphBuilder& graphBuilder, const MaterialsPassParams& passParams);
+
+void AppendGeometryMaterialsRenderCommands(rg::RenderGraphBuilder& graphBuilder, const MaterialsPassDefinition& passParams, const GeometryPassDataCollection& geometryPassData, MaterialRenderCommands& renderCommands);
+void AppendTerrainMaterialsRenderCommand(rg::RenderGraphBuilder& graphBuilder, const MaterialsPassDefinition& passParams, const MaterialBatchPermutation& materialPermutation, MaterialRenderCommands& renderCommands);
+
+void RenderMaterials(rg::RenderGraphBuilder& graphBuilder, const MaterialsPassDefinition& passDef, const MaterialRenderCommands& renderCommands);
 
 } // materials_renderer
 

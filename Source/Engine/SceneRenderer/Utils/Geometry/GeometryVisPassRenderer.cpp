@@ -1,5 +1,6 @@
 #include "GeometryVisPassRenderer.h"
 #include "Utils/ViewRenderingSpec.h"
+#include "RenderStages/Utils/hiZRenderer.h"
 
 
 namespace spt::rsc
@@ -140,7 +141,7 @@ VisPassRenderer::VisPassRenderer()
 	m_visibleMeshlets = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Visible Meshlets"), meshletsBufferDef, rhi::EMemoryUsage::GPUOnly);
 }
 
-VisPassResult VisPassRenderer::RenderVisibility(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams)
+VisPassResult VisPassRenderer::RenderVisibility(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const VisPassParams& visPassParams)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -155,7 +156,17 @@ VisPassResult VisPassRenderer::RenderVisibility(rg::RenderGraphBuilder& graphBui
 
 	vis_pass::VisibilityBufferRenderingPipeline pipeline(visPassParams.visibilityTexture, visibleMeshlets, visibleMeshletsCount);
 
-	gp::ExecutePipeline(graphBuilder, visPassParams.geometryPassParams, pipeline);
+	gp::GeometryPipelineExecutor*  gpExecutor = gp::CreateExecutor(graphBuilder, visPassParams.geometryPassParams, pipeline);
+
+	gp::ExecuteFirstPass(graphBuilder, *gpExecutor);
+
+	HiZ::CreateHierarchicalZ(graphBuilder, visPassParams.geometryPassParams.depth, visPassParams.geometryPassParams.hiZ->GetTexture());
+
+	gp::ExecuteSecondPass(graphBuilder, *gpExecutor);
+
+	HiZ::CreateHierarchicalZ(graphBuilder, visPassParams.geometryPassParams.depth, visPassParams.geometryPassParams.hiZ->GetTexture());
+
+	gp::DestroyExecutor(gpExecutor);
 
 	VisPassResult result;
 	result.visibleMeshlets = visibleMeshlets;

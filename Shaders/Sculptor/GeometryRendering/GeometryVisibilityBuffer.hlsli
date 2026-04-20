@@ -43,7 +43,7 @@ void DispatchTriangle(in TriangleDispatchContext context, in CustomMeshletsData 
 	// e.g. second group is processing second visible meshlet 
 	// it doesn't necessarily mean that it's processing second meshlet in the submesh, because some previous meshlets might be culled out
 	const uint visibleMeshletIdx = customMeshletsData.firstVisibleMeshletIdx + context.groupID;
-	primData.packedVisibilityInfo = PackVisibilityInfo(visibleMeshletIdx, context.meshletTriangleIdx);
+	primData.packedVisibilityInfo = PackGeometryVisibilityInfo(visibleMeshletIdx, context.meshletTriangleIdx);
 }
 
 

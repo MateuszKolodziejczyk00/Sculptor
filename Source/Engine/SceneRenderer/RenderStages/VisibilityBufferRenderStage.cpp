@@ -4,8 +4,8 @@
 #include "RenderGraphBuilder.h"
 #include "RenderScene.h"
 #include "SceneRenderSystems/StaticMeshes/StaticMeshesRenderSystem.h"
+#include "SceneRenderSystems/Terrain/TerrainRenderSystem.h"
 #include "Utils/hiZRenderer.h"
-#include "Utils/VisibilityBuffer/MaterialDepthRenderer.h"
 #include "Utils/Geometry/MaterialsRenderer.h"
 #include "SceneRenderer/Utils/LinearizeDepth.h"
 #include "SceneRenderer/Utils/GBufferUtils.h"
@@ -199,19 +199,22 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 	visPassParams.geometryPassParams.hiZ        = hiZ;
 	visPassParams.visibilityTexture             = visibilityTexture;
 
-	const VisPassResult geometryPassesResult = m_VisPassRenderer.RenderVisibility(graphBuilder, visPassParams);
+	const VisPassResult geometryPassesResult = m_VisPassRenderer.RenderVisibility(graphBuilder, rendererInterface, visPassParams);
 
-	const rg::RGTextureViewHandle materialDepth = material_depth_renderer::CreateMaterialDepthTexture(graphBuilder, resolution);
+	if (const TerrainRenderSystem* terrainRenderSystem = rendererInterface.GetRenderSystem<TerrainRenderSystem>())
+	{
+		if (terrainRenderSystem->IsEnabled())
+		{
+			const TerrainVisibilityRenderParams terrainVisibilityParams
+			{
+				.viewSpec          = viewSpec,
+				.depthTexture      = rasterizedDepth,
+				.visibilityTexture = visibilityTexture
+			};
 
-	material_depth_renderer::MaterialDepthParameters materialDepthParams;
-	materialDepthParams.visibilityTexture = visibilityTexture;
-	materialDepthParams.visibleMeshlets   = geometryPassesResult.visibleMeshlets;
-
-	material_depth_renderer::RenderMaterialDepth(graphBuilder, materialDepthParams, materialDepth);
-
-	const rg::RGTextureViewHandle materialTiles = material_depth_tiles_renderer::CreateMaterialDepthTilesTexture(graphBuilder, resolution);
-
-	material_depth_tiles_renderer::RenderMaterialDepthTiles(graphBuilder, materialDepth, materialTiles);
+			terrainRenderSystem->RenderVisibilityBuffer(graphBuilder, terrainVisibilityParams);
+		}
+	}
 
 	rg::RGTextureViewHandle pomDepth;
 	if (enablePOM)
@@ -219,17 +222,23 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 		pomDepth = graphBuilder.CreateTextureView(RG_DEBUG_NAME("POM Depth Texture"), rg::TextureDef(resolution, rhi::EFragmentFormat::R8_UN_Float));
 	}
 
-	materials_renderer::MaterialsPassParams materialsPassParams(viewSpec, cachedGeometryPassData);
-	materialsPassParams.materialDepthTileSize    = material_depth_tiles_renderer::GetMaterialDepthTileSize();
-	materialsPassParams.materialDepthTexture     = materialDepth;
-	materialsPassParams.materialDepthTileTexture = materialTiles;
-	materialsPassParams.depthTexture             = rasterizedDepth;
-	materialsPassParams.visibleMeshletsBuffer    = geometryPassesResult.visibleMeshlets;
-	materialsPassParams.visibilityTexture        = visibilityTexture;
-	materialsPassParams.enablePOM                = enablePOM;
-	materialsPassParams.pomDepth                 = pomDepth;
+	{
+		materials_renderer::MaterialsPassDefinition materialPassDef{ viewSpec };
+		materialPassDef.depthTexture      = rasterizedDepth;
+		materialPassDef.visibleMeshlets   = geometryPassesResult.visibleMeshlets;
+		materialPassDef.visibilityTexture = visibilityTexture;
+		materialPassDef.enablePOM         = enablePOM;
+		materialPassDef.pomDepth          = pomDepth;
 
-	materials_renderer::ExecuteMaterialsPass(graphBuilder, materialsPassParams);
+		// TODO: add support for terrain materials. Right now, this is there just to compile shader, it's not used.
+		const MaterialBatchPermutation terrainMaterial = cachedGeometryPassData.materialBatches[0].permutation;
+
+		materials_renderer::MaterialRenderCommands materialRenderCommands;
+		materials_renderer::AppendGeometryMaterialsRenderCommands(graphBuilder, materialPassDef, cachedGeometryPassData, INOUT materialRenderCommands);
+		materials_renderer::AppendTerrainMaterialsRenderCommand(graphBuilder, materialPassDef, terrainMaterial, INOUT materialRenderCommands);
+
+		materials_renderer::RenderMaterials(graphBuilder, materialPassDef, materialRenderCommands);
+	}
 
 	if (enablePOM)
 	{

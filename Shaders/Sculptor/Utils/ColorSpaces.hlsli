@@ -158,4 +158,26 @@ float3 ComputePlanckLocus(float temperature)
 	return float3(X, Y, Z);
 }
 
+
+float3 Rec709ToRec2020(in float3 c)
+{
+	const float3x3 m = float3x3(
+		0.6274040f, 0.3292820f, 0.0433136f,
+		0.0690970f, 0.9195400f, 0.0113612f,
+		0.0163916f, 0.0880132f, 0.8955952f);
+
+	return mul(m, c);
+}
+
+
+float3 Rec2020ToRec709(in float3 c)
+{
+	const float3x3 m = float3x3(
+		1.6604910f, -0.5876410f, -0.0728508f,
+		-0.1245508f, 1.1328950f, -0.0083442f,
+		-0.0181507f, -0.1005794f, 1.1187298f);
+
+	return mul(m, c);
+}
+
 #endif // COLOR_SPACES_HLSLI

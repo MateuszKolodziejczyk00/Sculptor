@@ -373,6 +373,7 @@ lib::SharedPtr<rdr::Texture> TextureLoader::LoadTexture(lib::StringView path, co
 		textureDefinition.format      = dataView.format;
 		textureDefinition.mipLevels   = dataView.mipLevelsNum;
 		textureDefinition.arrayLayers = dataView.arrayLayersNum;
+		textureDefinition.flags       = rhi::ETextureFlags::GloballyReadable;
 
 		if (params.forceTiling)
 		{

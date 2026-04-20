@@ -149,7 +149,9 @@ void TonemappingCS(CS_INPUT input)
 #if TONEMAPPER == 1
 	GT7ToneMapping tonemapOp;
 	tonemapOp.initializeAsSDR();
+	color = Rec709ToRec2020(color);
 	color = tonemapOp.applyToneMapping(color);
+	color = Rec2020ToRec709(color);
 #elif TONEMAPPER == 2
 	color = TonyMCMapface(color);
 #endif

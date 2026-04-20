@@ -114,7 +114,8 @@ enum class ESceneRenderSystem : Flags32
 	DDGISystem         = BIT(4),
 	RayTracingSystem   = BIT(5),
 	AtmosphereSystem   = BIT(6),
-	NUM                = 7,
+	TerrainSystem      = BIT(7),
+	NUM                = 8,
 
 	ALL = (1u << NUM) - 1
 };

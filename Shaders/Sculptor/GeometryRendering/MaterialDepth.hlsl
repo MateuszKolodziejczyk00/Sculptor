@@ -40,21 +40,26 @@ struct MATERIAL_DEPTH_OUTPUT
 
 MATERIAL_DEPTH_OUTPUT MaterialDepthFS(VS_OUTPUT vertexInput)
 {
-	float materialDepth = 1.f;
-
 	const uint2 pixelCoord = u_materialDepthParams.screenResolution * vertexInput.uv;
 
 	const uint packedVisibilityInfo = u_visibilityTexture.Load(uint3(pixelCoord, 0u));
 
 	uint visibleMeshletIdx = 0;
 	uint visibleTriangleIdx = 0;
-	const bool isValidGeometry = UnpackVisibilityInfo(packedVisibilityInfo, OUT visibleMeshletIdx, OUT visibleTriangleIdx);
+	const uint primType = UnpackVisibilityInfo(packedVisibilityInfo, OUT visibleMeshletIdx, OUT visibleTriangleIdx);
 
-	if (isValidGeometry)
+	uint batchIdx = ~0u;
+	if (primType == VISIBLE_PRIMITIVE_TYPE_GEOMETRY)
 	{
 		const GPUVisibleMeshlet visibleMeshlet = u_visibleMeshlets[visibleMeshletIdx];
-		materialDepth = MaterialBatchIdxToMaterialDepth(visibleMeshlet.materialBatchIdx);
+		batchIdx = visibleMeshlet.materialBatchIdx;
 	}
+	else if (primType == VISIBLE_PRIMITIVE_TYPE_TERRAIN)
+	{
+		batchIdx = u_materialDepthParams.terrainMaterialBatchIdx;
+	}
+
+	const float materialDepth = batchIdx != ~0u ? MaterialBatchIdxToMaterialDepth(batchIdx) : 1.f;
 
 	MATERIAL_DEPTH_OUTPUT output;
 	output.materialDepth = materialDepth;

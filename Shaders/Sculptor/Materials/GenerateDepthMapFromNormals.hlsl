@@ -74,10 +74,10 @@ void GenerateCS(CS_INPUT input)
 
 	const float strength = 0.5f;
 
-	float finalHeight = -(heightSum / samplesNum);
-	finalHeight /= u_constants.maxDepthCm;
-	finalHeight *= strength;
-	finalHeight = saturate(finalHeight + 1.f);
+	float finalDepth = -(heightSum / samplesNum);
+	finalDepth /= u_constants.maxDepthCm;
+	finalDepth *= strength;
+	finalDepth = saturate(finalDepth + 1.f);
 
-	u_constants.rwDepth.Store(coords, 1.f - finalHeight);
+	u_constants.rwDepth.Store(coords, 1.f - finalDepth);
 }
