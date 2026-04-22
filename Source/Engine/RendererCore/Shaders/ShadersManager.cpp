@@ -25,7 +25,7 @@ static sc::ETargetEnvironment SelectCompilationTargetEnvironment()
 
 	switch (rhiType)
 	{
-	case rhi::ERHIType::Vulkan_1_3:		return sc::ETargetEnvironment::Vulkan_1_3;
+	case rhi::ERHIType::Vulkan_1_3: return sc::ETargetEnvironment::Vulkan_1_3;
 
 	default:
 
@@ -43,7 +43,7 @@ static Bool VerifyShaderMetaData(const char* shaderName, const smd::ShaderMetaDa
 		const ShaderStructMetaData* structMetaData = ShaderStructsRegistry::GetStructMetaData(shaderStructVersion.structName);
 		if (!structMetaData || structMetaData->GetVersionHash() != shaderStructVersion.versionHash)
 		{
-			SPT_LOG_ERROR(ShadersManager, "Shader '{}' uses shader struct '{}' with version hash {} which doesn't match current version hash {}. Shader will be recompiled.", shaderName, shaderStructVersion.structName.data(), shaderStructVersion.versionHash, structMetaData ? structMetaData->GetVersionHash() : 0u);
+			SPT_LOG_WARN(ShadersManager, "Shader '{}' uses shader struct '{}' with version hash {} which doesn't match current version hash {}. Shader will be recompiled.", shaderName, shaderStructVersion.structName.data(), shaderStructVersion.versionHash, structMetaData ? structMetaData->GetVersionHash() : 0u);
 			return false;
 		}
 	}

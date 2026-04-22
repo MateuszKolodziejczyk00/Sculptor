@@ -14,6 +14,11 @@
 namespace spt::rdr
 {
 
+namespace constants
+{
+static constexpr Uint64 stagingBufferOffsetAlignment = 16u;
+} // constants
+
 TransfersManager::TransfersManager()
 	: m_currentStagingBufferOffset(idxNone<Uint64>)
 	, m_lastUsedStagingBufferIdx(0)
@@ -186,7 +191,7 @@ void TransfersManager::EnqueueUploadImpl(const lib::SharedRef<rdr::Buffer>& dest
 		m_bufferCommands.emplace_back(command);
 	
 		m_currentStagingBufferOffset += dataSize;
-		m_currentStagingBufferOffset = math::Utils::RoundUp(m_currentStagingBufferOffset, std::max<Uint64>(rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment(), 8u));
+		m_currentStagingBufferOffset = math::Utils::RoundUp(m_currentStagingBufferOffset, std::max<Uint64>(rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment(), constants::stagingBufferOffsetAlignment));
 
 		++m_copiesInProgressNum;
 	}
@@ -239,7 +244,7 @@ void TransfersManager::EnqueueUploadToTextureImpl(const Byte* data, Uint64 dataS
 		m_copyToTextureCommands.emplace_back(command);
 	
 		m_currentStagingBufferOffset += dataSize;
-		m_currentStagingBufferOffset = math::Utils::RoundUp(m_currentStagingBufferOffset, std::max<Uint64>(rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment(), 8u));
+		m_currentStagingBufferOffset = math::Utils::RoundUp(m_currentStagingBufferOffset, std::max<Uint64>(rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment(), constants::stagingBufferOffsetAlignment));
 
 		++m_copiesInProgressNum;
 	}

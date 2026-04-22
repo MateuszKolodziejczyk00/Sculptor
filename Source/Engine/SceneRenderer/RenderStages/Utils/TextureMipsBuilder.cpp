@@ -54,7 +54,7 @@ void BuildTextureMips(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureHandle 
 	for (Uint32 mipIdx = sourceMipLevel; mipIdx < sourceMipLevel + mipLevelsNum; ++mipIdx)
 	{
 		rhi::TextureViewDefinition viewDef;
-		viewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color, mipIdx, 1);
+		viewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Auto, mipIdx, 1);
 		textureMipViews.emplace_back(graphBuilder.CreateTextureView(RG_DEBUG_NAME(std::format("HiZ Mip({})", mipIdx)), texture, viewDef));
 	}
 

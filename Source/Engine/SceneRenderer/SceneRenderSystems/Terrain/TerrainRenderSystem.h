@@ -3,6 +3,7 @@
 #include "SceneRenderSystems/SceneRenderSystem.h"
 #include "TerrainTypes.h"
 #include "RGResources/RGResourceHandles.h"
+#include "MaterialShader.h"
 
 
 namespace spt::rdr
@@ -54,6 +55,8 @@ public:
 	void RenderVisibilityBuffer(rg::RenderGraphBuilder& graphBuilder, const TerrainVisibilityRenderParams& params) const;
 	void RenderShadowMap(rg::RenderGraphBuilder& graphBuilder, const TerrainShadowMapRenderParams& params) const;
 
+	mat::MaterialShader GetTerrainMaterialShader() const { return m_terrainMaterialShader; }
+
 private:
 
 	lib::SharedPtr<rdr::Buffer> m_tilesBuffer;
@@ -62,6 +65,8 @@ private:
 
 	lib::SharedPtr<rdr::TextureView> m_heightMap;
 	Bool m_initialized = false;
+
+	mat::MaterialShader m_terrainMaterialShader;
 };
 
 } // spt::rsc

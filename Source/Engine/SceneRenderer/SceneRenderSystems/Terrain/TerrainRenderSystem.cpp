@@ -7,6 +7,7 @@
 #include "Types/Buffer.h"
 #include "Loaders/TextureLoader.h"
 #include "Engine.h"
+#include "MaterialsSubsystem.h"
 
 
 namespace spt::rsc
@@ -91,7 +92,14 @@ GRAPHICS_PSO(TerrainVisibilityPSO)
 		rhi::GraphicsPipelineDefinition psoDef;
 		psoDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
 		psoDef.rasterizationDefinition.cullMode = rhi::ECullMode::None;
-		psoDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(rhi::EFragmentFormat::R32_U_Int));
+		psoDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(
+			rhi::ColorRenderTargetDefinition
+			{
+				.format         = rhi::EFragmentFormat::R32_U_Int,
+				.colorBlendType = rhi::ERenderTargetBlendType::Disabled,
+				.alphaBlendType = rhi::ERenderTargetBlendType::Disabled,
+			});
+
 		psoDef.renderTargetsDefinition.depthRTDefinition = rhi::DepthRenderTargetDefinition(rhi::EFragmentFormat::D32_S_Float, rhi::ECompareOp::Greater);
 		pso = CompilePSO(compiler, psoDef, {});
 	}
@@ -110,7 +118,6 @@ GRAPHICS_PSO(TerrainDepthPSO)
 		rhi::GraphicsPipelineDefinition psoDef;
 		psoDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
 		psoDef.rasterizationDefinition.cullMode = rhi::ECullMode::None;
-		psoDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(rhi::EFragmentFormat::R32_U_Int));
 		psoDef.renderTargetsDefinition.depthRTDefinition = rhi::DepthRenderTargetDefinition(rhi::EFragmentFormat::D32_S_Float, rhi::ECompareOp::Greater);
 		pso = CompilePSO(compiler, psoDef, {});
 	}
@@ -212,7 +219,7 @@ void RenderShadowMap(rg::RenderGraphBuilder& graphBuilder, const TerrainShadowMa
 
 namespace terrain_consts
 {
-static constexpr Real32 lod0TileSizeMeters  = 8.f;
+static constexpr Real32 tileSizeMeters      = 32.f;
 static constexpr Real32 clipmapExtentMeters = 512.f;
 static constexpr Uint32 lodsNum             = 1u;
 
@@ -225,61 +232,23 @@ static constexpr Uint32 meshletIndicesNum      = meshletQuadsPerEdge * meshletQu
 namespace utils
 {
 
-Int32 FindTileIndex(const lib::DynamicArray<TerrainClipmapTileGPU>& tiles, Uint32 lod, Int32 tileCoordX, Int32 tileCoordY)
-{
-	for (Uint32 tileIdx = 0u; tileIdx < static_cast<Uint32>(tiles.size()); ++tileIdx)
-	{
-		const TerrainClipmapTileGPU& tile = tiles[tileIdx];
-		if (tile.lod == lod && tile.tileCoordX == tileCoordX && tile.tileCoordY == tileCoordY)
-		{
-			return static_cast<Int32>(tileIdx);
-		}
-	}
-
-	return -1;
-}
-
 lib::DynamicArray<rdr::HLSLStorage<TerrainClipmapTileGPU>> BuildInitialClipmapTiles()
 {
 	lib::DynamicArray<rdr::HLSLStorage<TerrainClipmapTileGPU>> tiles;
 
-	float currentLodTileSizeMeters = terrain_consts::lod0TileSizeMeters;
+	const Int32 radiusInTiles = Int32(std::ceil(terrain_consts::clipmapExtentMeters / terrain_consts::tileSizeMeters) + 0.5f);
 
-	Uint32 lod = terrain_consts::lodsNum - 1u;
-	while (true)
+	for (Int32 tileY = -radiusInTiles; tileY <= radiusInTiles; ++tileY)
 	{
-		const Int32 radiusInTiles = Int32(std::ceil(terrain_consts::clipmapExtentMeters / currentLodTileSizeMeters) + 0.5f);
-
-		for (Int32 tileY = -radiusInTiles; tileY <= radiusInTiles; ++tileY)
+		for (Int32 tileX = -radiusInTiles; tileX <= radiusInTiles; ++tileX)
 		{
-			for (Int32 tileX = -radiusInTiles; tileX <= radiusInTiles; ++tileX)
-			{
-				TerrainClipmapTileGPU tileData;
-				tileData.tileCoordX = tileX;
-				tileData.tileCoordY = tileY;
-				tileData.lod        = lod;
-				tileData.childIdx   = -1;
+			TerrainClipmapTileGPU tileData;
+			tileData.tileCoordX = tileX;
+			tileData.tileCoordY = tileY;
 
-				tiles.emplace_back(tileData);
-			}
+			tiles.emplace_back(tileData);
 		}
-
-		if (lod == 0u)
-		{
-			break;
-		}
-
-		--lod;
-		currentLodTileSizeMeters *= 0.5f;
 	}
-
-	//for (TerrainClipmapTileGPU& tile : tiles)
-	//{
-	//	if (tile.lod + 1u < terrain_consts::l)
-	//	{
-	//		tile.childIdx = FindTileIndex(tiles, tile.lod + 1u, tile.tileCoordX * 2, tile.tileCoordY * 2);
-	//	}
-	//}
 
 	return tiles;
 }
@@ -331,6 +300,12 @@ lib::DynamicArray<rdr::HLSLStorage<Uint32>> BuildMeshletIndices()
 
 } // utils
 
+
+BEGIN_SHADER_STRUCT(TerrainMaterialData)
+	SHADER_STRUCT_FIELD(Uint32, unused)
+END_SHADER_STRUCT();
+
+
 TerrainRenderSystem::TerrainRenderSystem(RenderScene& owningScene)
 	: Super(owningScene)
 {
@@ -368,6 +343,19 @@ void TerrainRenderSystem::Update(const SceneUpdateContext& context)
 		m_heightMap = heightMap->CreateView(RENDERER_RESOURCE_NAME("Terrain Heightmap View"));
 	}
 
+	TerrainMaterialData materialData{};
+
+	mat::MaterialDefinition materialDefinition;
+	materialDefinition.name          = "Terrain Material";
+	materialDefinition.customOpacity = false;
+	materialDefinition.transparent   = false;
+	materialDefinition.doubleSided   = true;
+	materialDefinition.emissive      = false;
+
+	ecs::EntityHandle material = mat::MaterialsSubsystem::Get().CreateMaterial(materialDefinition, materialData);
+	const mat::MaterialProxyComponent& materialProxy = material.get<mat::MaterialProxyComponent>();
+	m_terrainMaterialShader = materialProxy.params.shader;
+
 	m_initialized = true;
 }
 
@@ -379,18 +367,18 @@ void TerrainRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
 	heightMapData.texture        = m_heightMap;
 	heightMapData.res            = m_heightMap ? m_heightMap->GetResolution2D() : math::Vector2u{};
 	heightMapData.invRes         = math::Vector2f::Ones().cwiseQuotient(heightMapData.res.cast<Real32>());
-	heightMapData.spanMeters     = math::Vector2f::Constant(terrain_consts::clipmapExtentMeters * 2.f);
+	heightMapData.spanMeters     = math::Vector2f::Constant(terrain_consts::clipmapExtentMeters * 8.f);
 	heightMapData.invSpanMeters  = math::Vector2f::Ones().cwiseQuotient(heightMapData.spanMeters);
 	heightMapData.metersPerTexel = heightMapData.spanMeters.cwiseQuotient(heightMapData.res.cast<Real32>());
 	heightMapData.minHeight      = 0.f;
-	heightMapData.maxHeight      = 100.f;
+	heightMapData.maxHeight      = 40.f;
 
 	TerrainSceneData terrainData;
 	terrainData.heightMap           = heightMapData;
 	terrainData.tiles               = m_tilesBuffer->GetFullView();
 	terrainData.tilesNum            = static_cast<Uint32>(m_tilesBuffer->GetSize() / sizeof(rdr::HLSLStorage<TerrainClipmapTileGPU>));
 	terrainData.lodsNum             = terrain_consts::lodsNum;
-	terrainData.lod0TileSizeMeters  = terrain_consts::lod0TileSizeMeters;
+	terrainData.tileSizeMeters      = terrain_consts::tileSizeMeters;
 	terrainData.clipmapExtentMeters = terrain_consts::clipmapExtentMeters;
 	terrainData.meshletVertices     = m_meshletVerticesBuffer->GetFullView();
 	terrainData.meshletIndices      = m_meshletIndicesBuffer->GetFullView();

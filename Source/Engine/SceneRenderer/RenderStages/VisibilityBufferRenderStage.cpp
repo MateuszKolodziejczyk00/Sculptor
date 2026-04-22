@@ -230,12 +230,18 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 		materialPassDef.enablePOM         = enablePOM;
 		materialPassDef.pomDepth          = pomDepth;
 
-		// TODO: add support for terrain materials. Right now, this is there just to compile shader, it's not used.
-		const MaterialBatchPermutation terrainMaterial = cachedGeometryPassData.materialBatches[0].permutation;
-
 		materials_renderer::MaterialRenderCommands materialRenderCommands;
 		materials_renderer::AppendGeometryMaterialsRenderCommands(graphBuilder, materialPassDef, cachedGeometryPassData, INOUT materialRenderCommands);
-		materials_renderer::AppendTerrainMaterialsRenderCommand(graphBuilder, materialPassDef, terrainMaterial, INOUT materialRenderCommands);
+
+		if (const TerrainRenderSystem* terrainRenderSystem = rendererInterface.GetRenderSystem<TerrainRenderSystem>())
+		{
+			const MaterialBatchPermutation terrainMaterial
+			{
+				.SHADER       = terrainRenderSystem->GetTerrainMaterialShader(),
+				.DOUBLE_SIDED = true
+			};
+			materials_renderer::AppendTerrainMaterialsRenderCommand(graphBuilder, materialPassDef, terrainMaterial, INOUT materialRenderCommands);
+		}
 
 		materials_renderer::RenderMaterials(graphBuilder, materialPassDef, materialRenderCommands);
 	}

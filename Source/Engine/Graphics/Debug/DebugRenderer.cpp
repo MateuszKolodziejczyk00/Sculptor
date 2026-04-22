@@ -5,21 +5,11 @@
 #include "RGDescriptorSetState.h"
 #include "Pipelines/PSOsLibraryTypes.h"
 #include "Utils/TransfersManager.h"
+#include "Utils/IndirectUtils.h"
 
 
 namespace spt::gfx
 {
-
-BEGIN_SHADER_STRUCT(DebugDrawCallData)
-	/* API Command data */
-	SHADER_STRUCT_FIELD(Uint32, vertexCount)
-	SHADER_STRUCT_FIELD(Uint32, instanceCount)
-	SHADER_STRUCT_FIELD(Uint32, firstVertex)
-	SHADER_STRUCT_FIELD(Uint32, firstInstance)
-	
-	/* Custom Data */
-END_SHADER_STRUCT();
-
 
 BEGIN_RG_NODE_PARAMETERS_STRUCT(DebugGeometryIndirectDrawCommandsParameters)
 	RG_BUFFER_VIEW(linesDrawCall,   rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
@@ -109,9 +99,8 @@ GPUDebugGeometryData CreateDebugGeometryData(Uint32 verticesNum, Uint32 maxNum)
 	const rhi::BufferDefinition geometriesBufferDef(sizeof(rdr::HLSLStorage<TDebugGeometry>) * maxNum, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst));
 	data.geometries = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME_FORMATTED("GPU Debug {}", debugGeometryName), geometriesBufferDef, rhi::EMemoryUsage::GPUOnly);
 
-	const rhi::BufferDefinition geometriesDrawCallBufferDef(sizeof(rdr::HLSLStorage<DebugDrawCallData>), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::Indirect));
-	data.drawCall           = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME_FORMATTED("GPU Debug {} Draw Call", debugGeometryName), geometriesDrawCallBufferDef, rhi::EMemoryUsage::GPUOnly);
-	data.geometriesNumView  = data.drawCall->CreateView(sizeof(Uint32), sizeof(Uint32));
+	const rhi::BufferDefinition geometriesCounterBufferDef(sizeof(Uint32), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst));
+	data.geometriesCounter = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME_FORMATTED("GPU Debug {} Draw Call", debugGeometryName), geometriesCounterBufferDef, rhi::EMemoryUsage::GPUOnly);
 
 	data.verticesNum = verticesNum;
 
@@ -120,9 +109,7 @@ GPUDebugGeometryData CreateDebugGeometryData(Uint32 verticesNum, Uint32 maxNum)
 
 void ClearDebugGeometry(rg::RenderGraphBuilder& graphBuilder, const GPUDebugGeometryData& geometryData)
 {
-	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Debug Geometry Num"), graphBuilder.AcquireExternalBufferView(geometryData.drawCall->GetFullView()), 0u);
-	// Set vertex count
-	graphBuilder.FillBuffer(RG_DEBUG_NAME("Clear Debug Geometry Instances Count"), graphBuilder.AcquireExternalBufferView(geometryData.drawCall->GetFullView()), 0u, sizeof(Uint32), geometryData.verticesNum);
+	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Debug Geometry Num"), graphBuilder.AcquireExternalBufferView(geometryData.geometriesCounter->GetFullView()), 0u);
 }
 
 lib::DynamicArray<math::Vector3f> GenerateDebugSphereVertices(Uint32 latitudeSegments, Uint32 longitudeSegments)
@@ -207,11 +194,11 @@ GPUDebugRendererData DebugRenderer::GetGPUDebugRendererData() const
 {
 	GPUDebugRendererData gpuData;
 	gpuData.rwLines      = m_linesData.geometries->GetFullView();
-	gpuData.rwLinesNum   = m_linesData.geometriesNumView;
+	gpuData.rwLinesNum   = m_linesData.geometriesCounter->GetFullView();
 	gpuData.rwMarkers    = m_markersData.geometries->GetFullView();
-	gpuData.rwMarkersNum = m_markersData.geometriesNumView;
+	gpuData.rwMarkersNum = m_markersData.geometriesCounter->GetFullView();
 	gpuData.rwSpheres    = m_spheresData.geometries->GetFullView();
-	gpuData.rwSpheresNum = m_spheresData.geometriesNumView;
+	gpuData.rwSpheresNum = m_spheresData.geometriesCounter->GetFullView();
 	return gpuData;
 }
 
@@ -241,9 +228,9 @@ void DebugRenderer::RenderDebugGeometry(rg::RenderGraphBuilder& graphBuilder, co
 	renderPassDef.SetDepthRenderTarget(depthTargetDef);
 
 	DebugGeometryIndirectDrawCommandsParameters indirectParams;
-	indirectParams.linesDrawCall   = graphBuilder.AcquireExternalBufferView(m_linesData.drawCall->GetFullView());
-	indirectParams.markersDrawCall = graphBuilder.AcquireExternalBufferView(m_markersData.drawCall->GetFullView());
-	indirectParams.spheresDrawCall = graphBuilder.AcquireExternalBufferView(m_spheresData.drawCall->GetFullView());
+	indirectParams.linesDrawCall   = indirect_utils::CreateIndirectInstancedDrawCommand(graphBuilder, graphBuilder.AcquireExternalBufferView(m_linesData.geometriesCounter->GetFullView()), m_linesData.verticesNum);
+	indirectParams.markersDrawCall = indirect_utils::CreateIndirectInstancedDrawCommand(graphBuilder, graphBuilder.AcquireExternalBufferView(m_markersData.geometriesCounter->GetFullView()), m_markersData.verticesNum);
+	indirectParams.spheresDrawCall = indirect_utils::CreateIndirectInstancedDrawCommand(graphBuilder, graphBuilder.AcquireExternalBufferView(m_spheresData.geometriesCounter->GetFullView()), m_spheresData.verticesNum);
 
 	DebugGeometryPassConstants passConstants;
 	passConstants.viewProjectionMatrix = settings.viewProjectionMatrix;
@@ -269,15 +256,14 @@ void DebugRenderer::RenderDebugGeometry(rg::RenderGraphBuilder& graphBuilder, co
 								const rdr::BufferView& spheresDrawCall = indirectParams.spheresDrawCall->GetResourceRef();
 
 								recorder.BindGraphicsPipeline(DebugGeometryPSO::lines);
-								recorder.DrawIndirect(linesDrawCall, 0u, sizeof(rdr::HLSLStorage<DebugDrawCallData>), 1u);
+								recorder.DrawIndirect(linesDrawCall, 0u, sizeof(rdr::HLSLStorage<IndirectDrawCommand>), 1u);
 
 								recorder.BindGraphicsPipeline(DebugGeometryPSO::markers);
-								recorder.DrawIndirect(markersDrawCall, 0u, sizeof(rdr::HLSLStorage<DebugDrawCallData>), 1u);
+								recorder.DrawIndirect(markersDrawCall, 0u, sizeof(rdr::HLSLStorage<IndirectDrawCommand>), 1u);
 
 								recorder.BindGraphicsPipeline(DebugGeometryPSO::spheres);
-								recorder.DrawIndirect(spheresDrawCall, 0u, sizeof(rdr::HLSLStorage<DebugDrawCallData>), 1u);
+								recorder.DrawIndirect(spheresDrawCall, 0u, sizeof(rdr::HLSLStorage<IndirectDrawCommand>), 1u);
 							});
-
 }
 
 } // spt::gfx

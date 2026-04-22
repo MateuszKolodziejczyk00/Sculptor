@@ -61,6 +61,15 @@
 
 struct TextureCoord
 {
+	static TextureCoord Zero()
+	{
+		TextureCoord coord;
+		coord.uv     = 0.f;
+		coord.duv_dx = 0.f;
+		coord.duv_dy = 0.f;
+		return coord;
+	}
+
 	float2 uv;
 	float2 duv_dx;
 	float2 duv_dy;

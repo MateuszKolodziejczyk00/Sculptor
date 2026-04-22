@@ -240,6 +240,7 @@ MaterialEvaluationParameters CreateMaterialEvalParams(in InterpolatedVertexData 
 }
 
 
+#if defined(MATERIAL_DEPTH_DATA_ACCESSOR)
 float ApplyParallax(inout MaterialEvaluationParameters evalParams, in MaterialDepthData materialDepthData, in float3 toView, in float2 uvScale)
 {
 	const float texLevel = 0.f;
@@ -276,6 +277,7 @@ float ApplyParallax(inout MaterialEvaluationParameters evalParams, in MaterialDe
 	const float dist = finalDepth / abs(toView.z);
 	return dist;
 }
+#endif // defined(MATERIAL_DEPTH_DATA_ACCESSOR)
 
 
 struct FS_Output
@@ -353,7 +355,7 @@ FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 		output.gBuffer4  = gBufferOutput.gBuffer4;
 		output.occlusion = evaluatedMaterial.occlusion;
 #if ENABLE_POM
-		output.pomDepth  = pomDepth;
+		output.pomDepth  = 0.f;
 #endif // ENABLE_POM
 	}
 
@@ -375,24 +377,39 @@ FS_Output EmitTerrainGBuffer_FS(in OutputVertex vertexInput)
 	const float3 terrainTangent   = terrain.GetTangent(locationWS.xy);
 	const float3 terrainBitangent = terrain.GetBitangent(locationWS.xy);
 
+	MaterialEvaluationParameters materialEvalParams;
+	materialEvalParams.normal        = terrainNormal;
+	materialEvalParams.tangent       = terrainTangent;
+	materialEvalParams.bitangent     = terrainBitangent;
+	materialEvalParams.hasTangent    = true;
+	materialEvalParams.uv            = TextureCoord::Zero(); // No UVs for terrain, we use world position instead
+	materialEvalParams.worldLocation = locationWS;
+	materialEvalParams.clipSpace     = float4(ndc, 1.f);
+
+
+	MaterialDataHandle materialDataHandle;
+	const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(materialDataHandle); // TODO
+
+	const MaterialEvaluationOutput evaluatedMaterial = EvaluateMaterial(materialEvalParams, materialData);
+
 	GBufferData gBufferData;
-	gBufferData.baseColor = lerp(float3(0.1f, 0.3f, 0.1f), float3(0.4f, 0.6f, 0.4f), saturate(locationWS.z * 0.03f));
-	gBufferData.metallic  = 0.f;
-	gBufferData.normal    = terrainNormal;
+	gBufferData.baseColor = evaluatedMaterial.baseColor;
+	gBufferData.metallic  = evaluatedMaterial.metallic;
+	gBufferData.normal    = evaluatedMaterial.shadingNormal;
 	gBufferData.tangent   = terrainTangent;
 	gBufferData.bitangent = terrainBitangent;
-	gBufferData.roughness = 0.88f;
-	gBufferData.emissive  = 0.f;
+	gBufferData.roughness = evaluatedMaterial.roughness;
+	gBufferData.emissive  = evaluatedMaterial.emissiveColor;
 
 	const GBufferOutput gBufferOutput = EncodeGBuffer(gBufferData);
 
-	FS_Output output;
+	FS_Output output = (FS_Output)0;
 	output.gBuffer0  = gBufferOutput.gBuffer0;
 	output.gBuffer1  = gBufferOutput.gBuffer1;
 	output.gBuffer2  = gBufferOutput.gBuffer2;
 	output.gBuffer3  = gBufferOutput.gBuffer3;
 	output.gBuffer4  = gBufferOutput.gBuffer4;
-	output.occlusion = 1.f;
+	output.occlusion = evaluatedMaterial.occlusion;
 #if ENABLE_POM
 	output.pomDepth  = 0.f;
 #endif // ENABLE_POM

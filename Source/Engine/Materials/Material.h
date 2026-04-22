@@ -36,11 +36,13 @@ Uint8 GetMaterialFeatureID()
 	{
 		return idxNone<Uint8>;
 	}
-
-	static_assert(featureOffset % 16u == 0u, "Material feature offset is not 16-byte aligned");
-	constexpr Uint32 featureOffsetID = featureOffset / 16u;
-	static_assert(featureOffsetID < idxNone<Uint8>, "Material feature offset exceeds maximum allowed value");
-	return static_cast<Uint8>(featureOffsetID);
+	else
+	{
+		static_assert(featureOffset % 16u == 0u, "Material feature offset is not 16-byte aligned");
+		constexpr Uint32 featureOffsetID = featureOffset / 16u;
+		static_assert(featureOffsetID < idxNone<Uint8>, "Material feature offset exceeds maximum allowed value");
+		return static_cast<Uint8>(featureOffsetID);
+	}
 }
 
 

@@ -46,7 +46,7 @@ void Terrain_MS(in MeshShaderInput input,
 
 	const TerrainClipmapTileGPU tile = terrain.GetTile(drawCommand.visibleTileIdx);
 
-	const float tileSizeMeters = u_renderSceneConstants.terrain.lod0TileSizeMeters;
+	const float tileSizeMeters = u_renderSceneConstants.terrain.tileSizeMeters;
 	const float2 tileOffset = float2(tile.tileCoordX, tile.tileCoordY);
 
 	for (uint vertexIdx = input.localID; vertexIdx < verticesNum; vertexIdx += TERRAIN_VISIBILITY_MS_GROUP_SIZE)

@@ -4,7 +4,6 @@
 #include "ShaderStructs.h"
 #include "Bindless/BindlessTypes.h"
 #include "RGResources/RGResourceHandles.h"
-#include "GraphicsMacros.h"
 
 
 namespace spt::rdr
@@ -77,9 +76,8 @@ struct DebugRenderingFrameSettings
 struct GPUDebugGeometryData
 {
 	lib::SharedPtr<rdr::Buffer> geometries;
-	lib::SharedPtr<rdr::Buffer> drawCall;
 
-	lib::SharedPtr<rdr::BindableBufferView> geometriesNumView;
+	lib::SharedPtr<rdr::Buffer> geometriesCounter;
 
 	Uint32 verticesNum = 0u;
 };

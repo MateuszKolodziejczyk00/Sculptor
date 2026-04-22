@@ -62,7 +62,7 @@ void CreateHierarchicalZ(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureView
 	for (Uint32 mipIdx = 0; mipIdx < mipLevels; ++mipIdx)
 	{
 		rhi::TextureViewDefinition viewDef;
-		viewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color, mipIdx, 1);
+		viewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Auto, mipIdx, 1);
 		hiZMipViews.emplace_back(graphBuilder.CreateTextureView(RG_DEBUG_NAME(std::format("HiZ Mip({})", mipIdx)), hiZ, viewDef));
 	}
 

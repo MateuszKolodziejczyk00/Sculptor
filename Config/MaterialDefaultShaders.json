@@ -6,6 +6,13 @@
                 "MacroDefinitions": [],
                 "MaterialShaderPath": "Sculptor/Materials/DefaultPBR.hlsli"
             }
+        ],
+        [
+            "TerrainMaterialData",
+            {
+                "MacroDefinitions": [],
+                "MaterialShaderPath": "Sculptor/Materials/TerrainMaterial.hlsli"
+            }
         ]
     ]
 }
