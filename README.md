@@ -9,23 +9,25 @@ Built from scratch for learning, experimentation, and performance research.
 - Open solution and set SculptorEd as startup project
 # Showcase
 ## Video:
-[![Check out the video](https://img.youtube.com/vi/zHKeeSrpyC0/0.jpg)](https://www.youtube.com/watch?v=zHKeeSrpyC0)
+[![Check out the video](Images/GI2.gif)](https://www.youtube.com/watch?v=zHKeeSrpyC0)
 ## Screenshots:
-|  |  |  |
-|---|---|---|
-| ![](Images/GI2.gif) | ![](Images/GI1.gif) | ![](Images/Clouds.gif) |
-| ![](Images/BistroInterior1.png) | ![](Images/SanMiguel1.png) | ![](Images/SanMiguel2.png) |
-| ![](Images/SanMiguel3.png) | ![](Images/SanMiguel4.png) | ![](Images/SanMiguel5.png) |
-| ![](Images/SunTemple1.png) | ![](Images/SunTemple2.png) | ![](Images/NewSponza1.png) |
-| ![](Images/Sponza1.png) | ![](Images/Sponza2.png) | ![](Images/Bistro1.png) |
-| ![](Images/Battle1.png) | ![](Images/Battle2.png) | ![](Images/Battle3.png) |
+|  |  |
+|---|---|
+| ![](Images/Bistro1.png) | ![](Images/Bistro2.png) |
+| ![](Images/Bistro3.png) | ![](Images/Bistro4.png) |
+| ![](Images/Bistro5.png) | ![](Images/Bistro6.png) |
+| ![](Images/Sponza1.png) | ![](Images/BistroInterior1.png) |
+| ![](Images/SunTemple1.png) | ![](Images/NewSponza1.png) |
+| ![](Images/SanMiguel1.png) | ![](Images/SanMiguel2.png) |
 
 # Features
 - Lighting
   - ReSTIR GI with Variable Rate Tracing
+  - Restir DI
   - Ray Traced shadows (with VRT) and AO
   - Custom denoisers for diffuse and specular GI (based on Nvidia RELAX) and for shadows and AO (based on AMD FidelityFX Denoiser)
   - cascaded DDGI used as irradiance cache for volumetrics and secondary bounces
+  - IES profiles support
   - NVidia Sharc integration
 - Volumetrics & Atmosphere
   - Physically based atmosphere
@@ -35,10 +37,14 @@ Built from scratch for learning, experimentation, and performance research.
 - Scene Rendering
   - GPU-driven pipeline with 2-pass occlusion culling and visibility buffer
   - Instance, meshlets and per-triangle culling
+  - Parallax occlusion mapping
+  - Material compilation pipeline (textures compression, generation of height map from normals, AO, etc.)
   - Implemented in mesh shaders
 - Post Processing
   - Localized tonemapping based on bilarteral grid
   - Automatic exposure
+  - Purkinje shift effect
+  - White balance
   - Bloom and Lens flares
   - Depth of field
   - Temporal AA

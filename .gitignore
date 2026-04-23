@@ -371,3 +371,5 @@ compile_commands.json
 RunPresets.txt
 
 tmp/*
+
+.github/*
