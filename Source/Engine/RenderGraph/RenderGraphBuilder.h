@@ -154,6 +154,10 @@ public:
 	template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
 	void RenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable);
 
+	/** Creates render pass with given descriptor sets and executes full screen triangle draw call inside it */
+	template<typename TDescriptorSetStatesRange, typename TShaderParams = EmptyShaderParams>
+	void FullScreenPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, rdr::PipelineStateID pipelineID, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams = TShaderParams{});
+
 	/** Appends callable with its dependencies to previous render pass (must be called after render pass) */
 	template<typename TDescriptorSetStatesRange, typename TCallable>
 	void AddSubpass(const RenderGraphDebugName& subpassName, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
@@ -408,6 +412,39 @@ void RenderGraphBuilder::RenderPass(const RenderGraphDebugName& renderPassName, 
 	
 	renderPassDef.BuildDependencies(dependenciesBuilder);
 	BuildParametersDependencies(parameters, dependenciesBuilder);
+
+	AddNodeInternal(node, dependencies);
+}
+
+template<typename TDescriptorSetStatesRange, typename TShaderParams /* = EmptyShaderParams */>
+void RenderGraphBuilder::FullScreenPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, rdr::PipelineStateID pipelineID, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams /* = TShaderParams{} */)
+{
+	const math::Vector2u resolution = renderPassDef.GetRenderAreaExtent();
+
+	auto callable = [resolution, pipelineID](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	{
+		recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), resolution.cast<Real32>()), 0.f, 1.f);
+		recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), resolution));
+
+		recorder.BindGraphicsPipeline(pipelineID);
+
+		recorder.DrawInstances(3u, 1u);
+	};
+
+	using CallableType = std::remove_cvref_t<decltype(callable)>;
+
+	RGNode& node = CreateRenderPassNodeInternal(renderPassName, renderPassDef, dsStatesRange, std::forward<CallableType>(callable));
+
+	RGDependeciesContainer dependencies(m_memoryArena);
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::ALL_GRAPHICS_SHADERS);
+
+	const lib::SharedPtr<rdr::Pipeline> pipeline = GetPipelineObject(pipelineID);
+	
+	AssignDescriptorSetsToNode(node, pipeline, { dsStatesRange }, dependenciesBuilder);
+
+	AssignShaderParamsToNode(node, pipeline, shaderParams, dependenciesBuilder);
+	
+	renderPassDef.BuildDependencies(dependenciesBuilder);
 
 	AddNodeInternal(node, dependencies);
 }

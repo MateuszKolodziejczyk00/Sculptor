@@ -15,6 +15,7 @@ struct PBRMaterialDefinition
 
 	lib::Path baseColorTexPath;
 	lib::Path metallicRoughnessTexPath;
+	lib::Path roughnessTexPath;
 	lib::Path normalsTexPath;
 	lib::Path emissiveTexPath;
 	lib::Path depthTexPath;
@@ -33,6 +34,7 @@ struct PBRMaterialDefinition
 	{
 		serializer.Serialize("BaseColorTexPath",         baseColorTexPath);
 		serializer.Serialize("MetallicRoughnessTexPath", metallicRoughnessTexPath);
+		serializer.Serialize("RoughnessTexPath",         roughnessTexPath);
 		serializer.Serialize("NormalsTexPath",           normalsTexPath);
 		serializer.Serialize("EmissiveTexPath",          emissiveTexPath);
 		serializer.Serialize("DepthTexPath",            depthTexPath);

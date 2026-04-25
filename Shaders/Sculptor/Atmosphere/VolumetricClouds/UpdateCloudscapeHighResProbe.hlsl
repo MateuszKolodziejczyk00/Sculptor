@@ -42,10 +42,8 @@ void UpdateCloudscapeHighResProbeCS(CS_INPUT input)
     const float4 newValue = float4(raymarchRes.inScattering, raymarchRes.transmittance);
     const float4 oldValue = u_rwProbe[coords];
 
-    const float weight = 0.1f;
-
     if(WaveIsFirstLane())
     {
-        u_rwProbe[coords] = lerp(oldValue, newValue, weight);
+        u_rwProbe[coords] = lerp(oldValue, newValue, u_constants.blendFactor);
     }
 }

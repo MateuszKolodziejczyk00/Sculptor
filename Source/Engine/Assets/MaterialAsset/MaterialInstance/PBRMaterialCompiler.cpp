@@ -24,6 +24,7 @@ namespace spt::as::material_compiler
 BEGIN_SHADER_STRUCT(CompilePBRMaterialConstants)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, loadedBaseColor)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, loadedMetallicRoughness)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         loadedRoughness)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, loadedNormals)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, loadedEmissive)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         loadedDepth)
@@ -296,6 +297,7 @@ struct PBRMaterialCompilationInput
 {
 	lib::SharedPtr<rdr::TextureView> baseColorTex;
 	lib::SharedPtr<rdr::TextureView> metallicRoughnessTex;
+	lib::SharedPtr<rdr::TextureView> roughnessTex;
 	lib::SharedPtr<rdr::TextureView> normalsTex;
 	lib::SharedPtr<rdr::TextureView> emissiveTex;
 	lib::SharedPtr<rdr::TextureView> depthTex;
@@ -331,7 +333,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 	lib::DynamicArray<Byte> compiledData;
 	compiledData.resize(sizeof(PBRMaterialDataHeader));
 
-	const Bool usesAnyTexture = compilationInput.baseColorTex || compilationInput.metallicRoughnessTex || compilationInput.normalsTex || compilationInput.emissiveTex || compilationInput.depthTex;
+	const Bool usesAnyTexture = compilationInput.baseColorTex || compilationInput.metallicRoughnessTex || compilationInput.roughnessTex || compilationInput.normalsTex || compilationInput.emissiveTex || compilationInput.depthTex;
 
 	if (usesAnyTexture)
 	{
@@ -360,9 +362,19 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 
 		const auto [loadedBaseColor, baseColor]                 = acquireRGTextures(compilationInput.baseColorTex,         rhi::EFragmentFormat::RGBA8_UN_Float);
 		const auto [loadedEmissive, emissive]                   = acquireRGTextures(compilationInput.emissiveTex,          rhi::EFragmentFormat::RGBA8_UN_Float);
-		const auto [loadedMetallicRoughness, metallicRoughness] = acquireRGTextures(compilationInput.metallicRoughnessTex, rhi::EFragmentFormat::RGBA8_UN_Float);
 		const auto [loadedNormals, normals]                     = acquireRGTextures(compilationInput.normalsTex,           rhi::EFragmentFormat::RG8_UN_Float);
-		auto [loadedDepth, depth]                               = acquireRGTextures(compilationInput.depthTex,            rhi::EFragmentFormat::R8_UN_Float);
+		auto [loadedMetallicRoughness, metallicRoughness]       = acquireRGTextures(compilationInput.metallicRoughnessTex, rhi::EFragmentFormat::RGBA8_UN_Float);
+		auto [loadedDepth, depth]                               = acquireRGTextures(compilationInput.depthTex,             rhi::EFragmentFormat::R8_UN_Float);
+		const auto [loadedRoughness, roughness]                 = acquireRGTextures(compilationInput.roughnessTex,         rhi::EFragmentFormat::RGBA8_UN_Float);
+
+		if (!metallicRoughness.IsValid() && roughness.IsValid())
+		{
+			metallicRoughness = roughness;
+		}
+		else
+		{
+			SPT_LOG_ERROR(PBRMaterialCompiler, "Roughness texture provided and MetallicRoughness is also valid. This is not valid, Roughness texture will be ignored. Material: {}", asset.GetName().GetData());
+		}
 
 		rg::RGTextureViewHandle alpha;
 		if (baseColor.IsValid() && compilationInput.customOpacity)
@@ -373,6 +385,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		CompilePBRMaterialConstants compilationConstants;
 		compilationConstants.loadedBaseColor         = loadedBaseColor;
 		compilationConstants.loadedMetallicRoughness = loadedMetallicRoughness;
+		compilationConstants.loadedRoughness         = loadedRoughness;
 		compilationConstants.loadedNormals           = loadedNormals;
 		compilationConstants.loadedEmissive          = loadedEmissive;
 		compilationConstants.loadedDepth             = loadedDepth;
@@ -537,7 +550,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		const lib::Span<lib::Span<Byte>> normalsMipsData           = DownloadMipsAsBC5(tempArena, normalsMipsStagedData, normals);
 		const lib::Span<lib::Span<Byte>> emissiveMipsData          = DownloadMipsAsBC1(tempArena, emissiveMipsStagedData, emissive);
 		const lib::Span<lib::Span<Byte>> alphaMipsData             = DownloadMipsAsBC4(tempArena, alphaMipsStagedData, alpha);
-		const lib::Span<lib::Span<Byte>> depthMipsData            = DownloadMipsAsBC4(tempArena, depthMipsStagedData, depth);
+		const lib::Span<lib::Span<Byte>> depthMipsData             = DownloadMipsAsBC4(tempArena, depthMipsStagedData, depth);
 		const lib::Span<lib::Span<Byte>> occlusionMipsData         = DownloadMipsAsBC4(tempArena, occlusionMipsStagedData, occlusion);
 
 		const auto cacheTextureDefinition = [](MaterialTextureDefinition& textureDefinition, const rg::RGTextureViewHandle& textureView, rhi::EFragmentFormat format, lib::Span<const lib::Span<Byte>> mipsData)
@@ -620,6 +633,7 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 	const lib::Path referencePath         = asset.GetDirectoryPath();
 	const lib::Path baseColorPath         = !definition.baseColorTexPath.empty() ? (referencePath / definition.baseColorTexPath) : lib::Path{};
 	const lib::Path metallicRoughnessPath = !definition.metallicRoughnessTexPath.empty() ? (referencePath / definition.metallicRoughnessTexPath) : lib::Path{};
+	const lib::Path roughnessPath         = !definition.roughnessTexPath.empty() ? (referencePath / definition.roughnessTexPath) : lib::Path{};
 	const lib::Path normalsPath           = !definition.normalsTexPath.empty() ? (referencePath / definition.normalsTexPath) : lib::Path{};
 	const lib::Path emissivePath          = !definition.emissiveTexPath.empty() ? (referencePath / definition.emissiveTexPath) : lib::Path{};
 	const lib::Path depthPath             = !definition.depthTexPath.empty() ? (referencePath / definition.depthTexPath) : lib::Path{};
@@ -627,6 +641,7 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 	PBRMaterialCompilationInput compilationInput;
 	compilationInput.baseColorTex         = TryLoadTexture(baseColorPath);
 	compilationInput.metallicRoughnessTex = TryLoadTexture(metallicRoughnessPath);
+	compilationInput.roughnessTex         = TryLoadTexture(roughnessPath);
 	compilationInput.normalsTex           = TryLoadTexture(normalsPath);
 	compilationInput.emissiveTex          = TryLoadTexture(emissivePath);
 	compilationInput.depthTex             = TryLoadTexture(depthPath);

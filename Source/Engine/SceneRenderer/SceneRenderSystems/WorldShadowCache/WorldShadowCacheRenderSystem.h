@@ -22,7 +22,7 @@ public:
 	explicit WorldShadowCacheRenderSystem(RenderScene& owningScene);
 
 	// Begin SceneRenderSystem overrides
-	void Initialize(RenderScene& renderScene);
+	void Initialize(lib::MemoryArena& arena, RenderScene& renderScene);
 	void Deinitialize(RenderScene& renderScene);
 	void Update(const SceneUpdateContext& context);
 	void UpdateGPUSceneData(RenderSceneConstants& sceneData);

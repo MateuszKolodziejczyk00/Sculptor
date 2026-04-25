@@ -573,6 +573,10 @@ COMPUTE_PSO(PSOName) \
 };
 
 
+#define FULLSCREEN_VS() \
+	VERTEX_SHADER("Sculptor/Utils/FullScreen.hlsli", FullScreenVS)
+
+
 class DebugFeature
 {
 public:

@@ -45,14 +45,9 @@ BEGIN_SHADER_STRUCT(ApplyPOMOffsetConstants)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(ApplyPOMOffsetDS, rg::RGDescriptorSetState<ApplyPOMOffsetDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<ApplyPOMOffsetConstants>), u_constants)
-DS_END()
-
-
 GRAPHICS_PSO(ApplyPOMOffsetPSO)
 {
-	VERTEX_SHADER("Sculptor/GeometryRendering/ApplyPOMOffset.hlsl", ApplyPOMOffsetVS);
+	FULLSCREEN_VS();
 	FRAGMENT_SHADER("Sculptor/GeometryRendering/ApplyPOMOffset.hlsl", ApplyPOMOffsetFS);
 
 	PRESET(pso);
@@ -78,9 +73,6 @@ static void ApplyPOMOffset(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureVi
 	constants.pomDepth   = pomDepth;
 	constants.resolution = resolution;
 
-	const lib::MTHandle<ApplyPOMOffsetDS> ds = graphBuilder.CreateDescriptorSet<ApplyPOMOffsetDS>(RENDERER_RESOURCE_NAME("Apply POM Offset DS"));
-	ds->u_constants = constants;
-
 	rg::RGRenderTargetDef depthRT;
 	depthRT.textureView    = rwDepth;
 	depthRT.loadOperation  = rhi::ERTLoadOperation::DontCare;
@@ -89,18 +81,11 @@ static void ApplyPOMOffset(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureVi
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i::Zero(), resolution);
 	renderPassDef.SetDepthRenderTarget(depthRT);
 
-	graphBuilder.RenderPass(RG_DEBUG_NAME("Apply POM Offset"), 
-							renderPassDef,
-							rg::BindDescriptorSets(ds),
-							[res = resolution](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
-							{
-								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), res.cast<Real32>()), 0.f, 1.f);
-								recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), res));
-
-								recorder.BindGraphicsPipeline(ApplyPOMOffsetPSO::pso);
-
-								recorder.DrawInstances(3u, 1u);
-							});
+	graphBuilder.FullScreenPass(RG_DEBUG_NAME("Apply POM Offset"),
+								renderPassDef,
+								ApplyPOMOffsetPSO::pso,
+								rg::EmptyDescriptorSets(),
+								constants);
 }
 
 } // utils

@@ -1,0 +1,13 @@
+{
+    "Blackboard": {
+        "BlackboardContent": [
+            "spt::as::TerrainMaterialDefinition"
+        ],
+        "spt::as::TerrainMaterialDefinition": {
+            "MaterialAsset": {
+                "Path": "BaseMaterial.sptasset"
+            }
+        }
+    },
+    "Type": "pt::as::TerrainMaterialAsset"
+}

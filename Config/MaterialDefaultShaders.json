@@ -8,7 +8,7 @@
             }
         ],
         [
-            "TerrainMaterialData",
+            "TerrainSampleMaterialData",
             {
                 "MacroDefinitions": [],
                 "MaterialShaderPath": "Sculptor/Materials/TerrainMaterial.hlsli"

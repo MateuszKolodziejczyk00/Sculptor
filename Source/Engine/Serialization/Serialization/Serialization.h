@@ -110,13 +110,27 @@ public:
 		}
 		else
 		{
-			JSON jsonArray = m_json[name];
-			for (int i = 0; i < Cols; ++i)
+			Bool loaded = false;
+			if (m_json.contains(name))
 			{
-				for (int j = 0; j < Rows; ++j)
+				JSON jsonArray = m_json[name];
+				if (jsonArray.size() == Cols * Rows)
 				{
-					data(j, i) = jsonArray[i * Rows + j].get<TType>();
+					for (int i = 0; i < Cols; ++i)
+					{
+						for (int j = 0; j < Rows; ++j)
+						{
+							data(j, i) = jsonArray[i * Rows + j].get<TType>();
+						}
+					}
+
+					loaded = true;
 				}
+			}
+
+			if (!loaded)
+			{
+				data = {};
 			}
 		}
 	}

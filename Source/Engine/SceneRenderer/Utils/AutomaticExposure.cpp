@@ -28,7 +28,7 @@ RendererFloatParameter adaptationSpeed("Adaptation Speed", { "Exposure" }, 6.0f,
 RendererFloatParameter rejectedDarkPixelsPercentage("Rejected Dark Pixels Percentage", { "Exposure" }, 0.6f, 0.f, 0.8f);
 RendererFloatParameter rejectedBrightPixelsPercentage("Rejected Bright Pixels Percentage", { "Exposure" }, 0.05f, 0.f, 0.1f);
 
-RendererFloatParameter ec0("EV Compensation 0", { "Exposure" }, 2.5f, -10.f, 10.f);
+RendererFloatParameter ec0("EV Compensation 0", { "Exposure" }, 1.f, -10.f, 10.f);
 RendererFloatParameter ec1("EV Compensation 1", { "Exposure" }, -2.f, -10.f, 10.f);
 
 RendererIntParameter bilateralGridBlurXKernel("Blur X Kernel", { "LocalTonemap", "BilateralGrid" }, 12, 0, 32);

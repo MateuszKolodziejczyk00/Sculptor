@@ -6,6 +6,12 @@
 #include "Types/Texture.h"
 
 
+namespace spt::engn
+{
+class FrameContext;
+} // spt::engn
+
+
 namespace spt::gfx
 {
 class DebugRenderer;
@@ -20,6 +26,8 @@ class RenderScene;
 
 struct SceneRendererSettings
 {
+	engn::FrameContext& frame;
+
 	rhi::EFragmentFormat outputFormat = rhi::EFragmentFormat::None;
 	Bool resetAccumulation            = false;
 

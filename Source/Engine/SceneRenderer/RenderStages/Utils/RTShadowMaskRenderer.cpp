@@ -445,8 +445,7 @@ rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& gra
 	const RenderSceneRegistry& sceneRegistry     = renderScene.GetRegistry();
 	const DirectionalLightData& directionalLight = sceneRegistry.get<DirectionalLightData>(m_lightEntity);
 
-	const AtmosphereRenderSystem* atmosphereSystem = nullptr;
-	//const lib::SharedPtr<AtmosphereRenderSystem> atmosphereSystem = renderScene.FindRenderSystem<AtmosphereRenderSystem>();
+	const AtmosphereRenderSystem* atmosphereSystem = rendererInterface.GetRenderSystem<AtmosphereRenderSystem>();
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 

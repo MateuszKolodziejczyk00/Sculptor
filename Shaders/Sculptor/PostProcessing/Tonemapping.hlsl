@@ -137,12 +137,12 @@ void TonemappingCS(CS_INPUT input)
 
 	float3 color = u_tonemappingConstants.linearColor.Load(coords).rgb;
 
+	color = ApplyLocalExposure(color, coords);
+
 	if (u_tonemappingConstants.purkinjeShiftIntensity > 0.f)
 	{
 		color = ApplyPurkinjeShift(color, u_tonemappingConstants.purkinjeShiftIntensity);
 	}
-
-	color = ApplyLocalExposure(color, coords);
 
 	color = ApplyWhiteBalance(color, u_tonemappingConstants.whitePointTemperature);
 

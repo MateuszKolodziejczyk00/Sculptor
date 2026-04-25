@@ -38,6 +38,8 @@ enum class EJobFlags
 	ForceGlobalQueue = BIT(3),
 	// Job must be "signaled" before it can be executed
 	EventJob         = BIT(4),
+	// Job is fully initialized, but it has to be explicitly started before scheduling
+	DeferredStart    = BIT(5),
 
 	Default = None
 };

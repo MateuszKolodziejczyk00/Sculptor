@@ -42,12 +42,12 @@ void SceneRenderSystemsAPI::CallDestructor(ESceneRenderSystem systemType, SceneR
 	systemEntry.destructor(system);
 }
 
-void SceneRenderSystemsAPI::CallInitialize(ESceneRenderSystem systemType, SceneRenderSystem& system, RenderScene& scene) const
+void SceneRenderSystemsAPI::CallInitialize(ESceneRenderSystem systemType, SceneRenderSystem& system, lib::MemoryArena& arena, RenderScene& scene) const
 {
 	const SystemEntry& systemEntry = GetSystemEntry(systemType);
 
 	SPT_CHECK(systemEntry.updateFunc.IsValid());
-	systemEntry.initializeFunc(system, scene);
+	systemEntry.initializeFunc(system, arena, scene);
 }
 
 void SceneRenderSystemsAPI::CallDeinitialize(ESceneRenderSystem systemType, SceneRenderSystem& system, RenderScene& scene) const

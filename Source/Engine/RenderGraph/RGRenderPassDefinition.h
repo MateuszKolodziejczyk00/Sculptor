@@ -20,6 +20,8 @@ class RENDER_GRAPH_API RGRenderPassDefinition
 public:
 
 	RGRenderPassDefinition(math::Vector2i renderAreaOffset, math::Vector2u renderAreaExtent, rhi::ERenderingFlags renderingFlags = rhi::ERenderingFlags::Default);
+
+	math::Vector2u GetRenderAreaExtent() const { return m_renderAreaExtent; }
 	
 	SPT_NODISCARD RGRenderTargetDef& AddColorRenderTarget();
 	void AddColorRenderTarget(const RGRenderTargetDef& definition);

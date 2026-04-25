@@ -376,6 +376,15 @@ public:
 		Activate();
 	}
 
+	void Start()
+	{
+		SPT_CHECK(!IsEventJob());
+		SPT_CHECK(IsDeferredStart());
+		SPT_CHECK(m_jobState.load(impl::MemoryOrderSequencial) == EJobState::Inactive);
+
+		Activate();
+	}
+
 	Bool TryExecute()
 	{
 		const Int32 remainingPrerequisites = m_remainingPrerequisitesNum.load(impl::MemoryOrderAcquire);
@@ -560,6 +569,11 @@ public:
 		return lib::HasAnyFlag(GetFlags(), EJobFlags::EventJob);
 	}
 
+	Bool IsDeferredStart() const
+	{
+		return lib::HasAnyFlag(GetFlags(), EJobFlags::DeferredStart);
+	}
+
 	void AddNested(lib::MTHandle<JobInstance> job)
 	{
 		AddPrerequisite(std::move(job));
@@ -641,7 +655,7 @@ private:
 
 	void OnConstructed()
 	{
-		if (!IsEventJob())
+		if (!IsEventJob() && !IsDeferredStart())
 		{
 			Activate();
 		}
@@ -933,7 +947,16 @@ public:
 	{
 		if (m_instance.IsValid())
 		{
+			SPT_CHECK_MSG(m_instance->IsSignaled() || !m_instance->IsDeferredStart(), "Wait() called on deferred job before Start() on job '{}'", m_instance->GetName());
 			m_instance->Wait();
+		}
+	}
+
+	void Start() const
+	{
+		if (m_instance.IsValid())
+		{
+			m_instance->Start();
 		}
 	}
 

@@ -1,3 +1,6 @@
+#ifndef SCULPTOR_SHADER_HLSLI
+#define SCULPTOR_SHADER_HLSLI
+
 #include "Hashing.hlsli"
 
 #define SPT_SINGLE_ARG(...) __VA_ARGS__
@@ -320,3 +323,5 @@ float3x3 Diag(float3 v)
 		0.f, 0.f, v.z
 	);
 }
+
+#endif // SCULPTOR_SHADER_HLSLI

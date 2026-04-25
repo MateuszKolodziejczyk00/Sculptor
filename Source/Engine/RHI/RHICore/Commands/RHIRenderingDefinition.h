@@ -73,21 +73,12 @@ struct ClearColor
 template<typename TextureViewType = RHITextureView>
 struct RTGenericDefinition
 {
-public:
-
-	RTGenericDefinition()
-		: loadOperation(ERTLoadOperation::DontCare)
-		, storeOperation(ERTStoreOperation::DontCare)
-		, resolveMode(ERTResolveMode::Average)
-		, clearColor{ 0.f, 0.f, 0.f, 0.f }
-	{ }
-
-	TextureViewType			textureView;
-	TextureViewType			resolveTextureView;
-	ERTLoadOperation		loadOperation;
-	ERTStoreOperation		storeOperation;
-	ERTResolveMode			resolveMode;
-	ClearColor				clearColor;
+	TextureViewType			textureView        = {};
+	TextureViewType			resolveTextureView = {};
+	ERTLoadOperation		loadOperation      = ERTLoadOperation::DontCare;
+	ERTStoreOperation		storeOperation     = ERTStoreOperation::Store;
+	ERTResolveMode			resolveMode        = ERTResolveMode::Average;
+	ClearColor				clearColor         = ClearColor(0.f, 0.f, 0.f, 0.f);
 };
 
 

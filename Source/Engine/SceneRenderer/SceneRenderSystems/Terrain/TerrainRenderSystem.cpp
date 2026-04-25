@@ -1,4 +1,5 @@
 #include "TerrainRenderSystem.h"
+#include "EngineFrame.h"
 #include "Parameters/SceneRendererParams.h"
 #include "RenderSceneConstants.h"
 #include "RenderGraphBuilder.h"
@@ -13,12 +14,26 @@
 namespace spt::rsc
 {
 
+namespace terrain_consts
+{
+static constexpr Real32 tileSizeMeters      = 32.f;
+static constexpr Real32 clipmapExtentMeters = 1024.f;
+
+static constexpr Uint32 meshletQuadsPerEdge    = 7u;
+static constexpr Uint32 meshletVerticesPerEdge = meshletQuadsPerEdge + 1u;
+static constexpr Uint32 meshletVerticesNum     = meshletVerticesPerEdge * meshletVerticesPerEdge;
+static constexpr Uint32 meshletIndicesNum      = meshletQuadsPerEdge * meshletQuadsPerEdge * 6u;
+} // terrain_consts
+
+
 SPT_REGISTER_SCENE_RENDER_SYSTEM(TerrainRenderSystem);
+
 
 namespace renderer_params
 {
 RendererBoolParameter enableTerrain("Enable Terrain", { "Terrain" }, false);
 } // renderer_params
+
 
 namespace terrain_renderer
 {
@@ -215,19 +230,170 @@ void RenderShadowMap(rg::RenderGraphBuilder& graphBuilder, const TerrainShadowMa
 							});
 }
 
+
+namespace material_cache
+{
+
+struct MaterialCacheState
+{
+	struct LOD
+	{
+		lib::SharedPtr<rdr::TextureView> baseColorMetallic;
+		lib::SharedPtr<rdr::TextureView> normals;
+		lib::SharedPtr<rdr::TextureView> roughnessOcclusion;
+
+		Real32 sizeMeters = 0.f;
+
+		math::Vector2f minBounds = math::Vector2f::Zero();
+		math::Vector2f maxBounds = math::Vector2f::Zero();
+	};
+
+	lib::StaticArray<LOD, terrain_consts::materialCacheLODsNum> lods;
+};
+
+
+void InitializeMaterialCache(MaterialCacheState& state)
+{
+	SPT_PROFILER_FUNCTION();
+
+	for (Uint32 i = 0u; i < terrain_consts::materialCacheLODsNum; ++i)
+	{
+		MaterialCacheState::LOD& lodCache = state.lods[i];
+
+		rhi::TextureDefinition textureDefinition;
+		textureDefinition.resolution = math::Vector2u(2048u, 2048u);
+		textureDefinition.format     = rhi::EFragmentFormat::RGBA8_UN_Float;
+		textureDefinition.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi:: ETextureUsage::ColorRT, rhi::ETextureUsage::TransferDest);
+		textureDefinition.flags      = rhi::ETextureFlags::GloballyReadable;
+		lodCache.baseColorMetallic = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Terrain Base Color Cache"), textureDefinition, rhi::EMemoryUsage::GPUOnly);
+
+		textureDefinition.format = rhi::EFragmentFormat::RG16_UN_Float;
+		lodCache.normals = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Terrain Normals Cache"), textureDefinition, rhi::EMemoryUsage::GPUOnly);
+
+		textureDefinition.format = rhi::EFragmentFormat::RG8_UN_Float;
+		lodCache.roughnessOcclusion = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Terrain Roughness/Occlusion Cache"), textureDefinition, rhi::EMemoryUsage::GPUOnly);
+
+		lodCache.sizeMeters = 7.5f * std::pow(2.f, static_cast<Real32>(i));
+	}
+}
+
+
+struct UpdateMaterialCacheParams
+{
+	MaterialCacheState::LOD* lod = nullptr;
+
+	math::Vector2f prevMinBounds = math::Vector2f::Zero();
+	math::Vector2f prevMaxBounds = math::Vector2f::Zero();
+};
+
+
+GRAPHICS_PSO(RenderTerrainMaterialCachePSO)
+{
+	FULLSCREEN_VS();
+	FRAGMENT_SHADER("Sculptor/Terrain/RenderTerrainMaterialCache.hlsl", RenderTerrainMaterialCacheFS);
+
+	PRESET(pso);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		rhi::GraphicsPipelineDefinition psoDef;
+		psoDef.rasterizationDefinition.cullMode = rhi::ECullMode::None;
+		//psoDef.renderTargetsDefinition.depthRTDefinition = rhi::DepthRenderTargetDefinition(rhi::EFragmentFormat::D32_S_Float, rhi::ECompareOp::Always);
+
+		// Base Color + Metallic
+		psoDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(
+			rhi::ColorRenderTargetDefinition
+			{
+				.format         = rhi::EFragmentFormat::RGBA8_UN_Float,
+				.colorBlendType = rhi::ERenderTargetBlendType::Disabled,
+				.alphaBlendType = rhi::ERenderTargetBlendType::Disabled,
+			});
+
+		// Normals
+		psoDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(
+			rhi::ColorRenderTargetDefinition
+			{
+				.format         = rhi::EFragmentFormat::RG16_UN_Float,
+				.colorBlendType = rhi::ERenderTargetBlendType::Disabled,
+				.alphaBlendType = rhi::ERenderTargetBlendType::Disabled,
+			});
+
+		// Roughness + Occlusion
+		psoDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(
+			rhi::ColorRenderTargetDefinition
+			{
+				.format         = rhi::EFragmentFormat::RG8_UN_Float,
+				.colorBlendType = rhi::ERenderTargetBlendType::Disabled,
+				.alphaBlendType = rhi::ERenderTargetBlendType::Disabled,
+			});
+
+		pso = CompilePSO(compiler, psoDef, {});
+	}
+};
+
+
+BEGIN_SHADER_STRUCT(UpdateMaterialCacheConstants)
+	SHADER_STRUCT_FIELD(TerrainMaterialData, terrainMaterial)
+	SHADER_STRUCT_FIELD(math::Vector2f, minBounds)
+	SHADER_STRUCT_FIELD(math::Vector2f, range)
+END_SHADER_STRUCT();
+
+
+void UpdateMaterialCache(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const UpdateMaterialCacheParams& params)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector2u resolution = params.lod->baseColorMetallic->GetResolution2D();
+
+	rg::RGRenderPassDefinition renderPass(math::Vector2i::Zero(), resolution);
+	renderPass.AddColorRenderTarget(
+		rg::RGRenderTargetDef
+		{
+			.textureView    = graphBuilder.AcquireExternalTextureView(params.lod->baseColorMetallic),
+			.loadOperation  = rhi::ERTLoadOperation::Clear,
+			.storeOperation = rhi::ERTStoreOperation::Store,
+		});
+	renderPass.AddColorRenderTarget(
+		rg::RGRenderTargetDef
+		{
+			.textureView    = graphBuilder.AcquireExternalTextureView(params.lod->normals),
+			.loadOperation  = rhi::ERTLoadOperation::Clear,
+			.storeOperation = rhi::ERTStoreOperation::Store,
+		});
+	renderPass.AddColorRenderTarget(
+		rg::RGRenderTargetDef
+		{
+			.textureView    = graphBuilder.AcquireExternalTextureView(params.lod->roughnessOcclusion),
+			.loadOperation  = rhi::ERTLoadOperation::Clear,
+			.storeOperation = rhi::ERTStoreOperation::Store,
+		});
+
+	const rsc::TerrainDefinition& terrainDef = renderScene.GetTerrainDefinition();
+
+	UpdateMaterialCacheConstants shaderConstants;
+	shaderConstants.terrainMaterial = terrainDef.material;
+	shaderConstants.minBounds = params.lod->minBounds;
+	shaderConstants.range     = params.lod->maxBounds - params.lod->minBounds;
+
+	graphBuilder.FullScreenPass(RG_DEBUG_NAME("Update Terrain Material Cache"),
+								renderPass,
+								RenderTerrainMaterialCachePSO::pso,
+								rg::EmptyDescriptorSets(),
+								shaderConstants);
+}
+
+} // material_cache
+
 } // namespace terrain_renderer
 
-namespace terrain_consts
-{
-static constexpr Real32 tileSizeMeters      = 32.f;
-static constexpr Real32 clipmapExtentMeters = 512.f;
-static constexpr Uint32 lodsNum             = 1u;
 
-static constexpr Uint32 meshletQuadsPerEdge    = 7u;
-static constexpr Uint32 meshletVerticesPerEdge = meshletQuadsPerEdge + 1u;
-static constexpr Uint32 meshletVerticesNum     = meshletVerticesPerEdge * meshletVerticesPerEdge;
-static constexpr Uint32 meshletIndicesNum      = meshletQuadsPerEdge * meshletQuadsPerEdge * 6u;
-} // terrain_consts
+struct TerrainRenderInstance
+{
+	terrain_renderer::material_cache::MaterialCacheState materialCacheState;
+
+	terrain_renderer::material_cache::UpdateMaterialCacheParams materialCacheUpdateParams;
+};
+
 
 namespace utils
 {
@@ -253,6 +419,7 @@ lib::DynamicArray<rdr::HLSLStorage<TerrainClipmapTileGPU>> BuildInitialClipmapTi
 	return tiles;
 }
 
+
 lib::DynamicArray<rdr::HLSLStorage<math::Vector2f>> BuildMeshletVertices()
 {
 	const Real32 invMeshletVerticesPerEdge = 1.f / static_cast<Real32>(terrain_consts::meshletVerticesPerEdge - 1u);
@@ -270,6 +437,7 @@ lib::DynamicArray<rdr::HLSLStorage<math::Vector2f>> BuildMeshletVertices()
 
 	return vertices;
 }
+
 
 lib::DynamicArray<rdr::HLSLStorage<Uint32>> BuildMeshletIndices()
 {
@@ -301,7 +469,7 @@ lib::DynamicArray<rdr::HLSLStorage<Uint32>> BuildMeshletIndices()
 } // utils
 
 
-BEGIN_SHADER_STRUCT(TerrainMaterialData)
+BEGIN_SHADER_STRUCT(TerrainSampleMaterialData)
 	SHADER_STRUCT_FIELD(Uint32, unused)
 END_SHADER_STRUCT();
 
@@ -312,14 +480,11 @@ TerrainRenderSystem::TerrainRenderSystem(RenderScene& owningScene)
 	m_supportedStages = ERenderStage::VisibilityBuffer;
 }
 
-void TerrainRenderSystem::Update(const SceneUpdateContext& context)
+void TerrainRenderSystem::Initialize(lib::MemoryArena& arena, RenderScene& renderScene)
 {
-	Super::Update(context);
+	Super::Initialize(arena, renderScene);
 
-	if (m_initialized)
-	{
-		return;
-	}
+	SPT_CHECK(!m_initialized)
 
 	const lib::DynamicArray<rdr::HLSLStorage<TerrainClipmapTileGPU>> clipmapTiles = utils::BuildInitialClipmapTiles();
 	const rhi::BufferDefinition clipmapTilesDef(std::max<Uint64>(1u, static_cast<Uint64>(clipmapTiles.size())) * sizeof(rdr::HLSLStorage<TerrainClipmapTileGPU>), rhi::EBufferUsage::Storage);
@@ -343,7 +508,7 @@ void TerrainRenderSystem::Update(const SceneUpdateContext& context)
 		m_heightMap = heightMap->CreateView(RENDERER_RESOURCE_NAME("Terrain Heightmap View"));
 	}
 
-	TerrainMaterialData materialData{};
+	TerrainSampleMaterialData materialData{};
 
 	mat::MaterialDefinition materialDefinition;
 	materialDefinition.name          = "Terrain Material";
@@ -356,7 +521,49 @@ void TerrainRenderSystem::Update(const SceneUpdateContext& context)
 	const mat::MaterialProxyComponent& materialProxy = material.get<mat::MaterialProxyComponent>();
 	m_terrainMaterialShader = materialProxy.params.shader;
 
+	m_renderInstance = arena.AllocateType<TerrainRenderInstance>();
+	terrain_renderer::material_cache::InitializeMaterialCache(m_renderInstance->materialCacheState);
+
 	m_initialized = true;
+}
+
+void TerrainRenderSystem::Deinitialize(RenderScene& renderScene)
+{
+	Super::Deinitialize(renderScene);
+
+	m_tilesBuffer.reset();
+	m_meshletVerticesBuffer.reset();
+	m_meshletIndicesBuffer.reset();
+	m_heightMap.reset();
+
+	m_renderInstance->~TerrainRenderInstance();
+	m_renderInstance = nullptr;
+
+	m_initialized = false;
+}
+
+void TerrainRenderSystem::Update(const SceneUpdateContext& context)
+{
+	Super::Update(context);
+
+	if (!IsEnabled())
+	{
+		return;
+	}
+
+	const math::Vector2f cameraLocation = context.mainRenderView.GetLocation().head<2>();
+
+	const Uint32 currentLOD = context.rendererSettings.frame.GetFrameIdx() % terrain_consts::materialCacheLODsNum;
+
+	terrain_renderer::material_cache::UpdateMaterialCacheParams& updateCacheParams = m_renderInstance->materialCacheUpdateParams;
+	updateCacheParams.lod       = &m_renderInstance->materialCacheState.lods[currentLOD];
+	updateCacheParams.prevMinBounds = updateCacheParams.lod->minBounds;
+	updateCacheParams.prevMaxBounds = updateCacheParams.lod->maxBounds;
+
+	const math::Vector2f lodExtent = math::Vector2f::Constant(updateCacheParams.lod->sizeMeters * 0.5f);
+
+	updateCacheParams.lod->minBounds = cameraLocation - lodExtent;
+	updateCacheParams.lod->maxBounds = cameraLocation + lodExtent;
 }
 
 void TerrainRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
@@ -367,17 +574,28 @@ void TerrainRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
 	heightMapData.texture        = m_heightMap;
 	heightMapData.res            = m_heightMap ? m_heightMap->GetResolution2D() : math::Vector2u{};
 	heightMapData.invRes         = math::Vector2f::Ones().cwiseQuotient(heightMapData.res.cast<Real32>());
-	heightMapData.spanMeters     = math::Vector2f::Constant(terrain_consts::clipmapExtentMeters * 8.f);
+	heightMapData.spanMeters     = math::Vector2f::Constant(terrain_consts::clipmapExtentMeters * 6.f);
 	heightMapData.invSpanMeters  = math::Vector2f::Ones().cwiseQuotient(heightMapData.spanMeters);
 	heightMapData.metersPerTexel = heightMapData.spanMeters.cwiseQuotient(heightMapData.res.cast<Real32>());
 	heightMapData.minHeight      = 0.f;
-	heightMapData.maxHeight      = 40.f;
+	heightMapData.maxHeight      = 150.f;
+
+	TerrrainMaterialCache matCache;
+	for (Uint32 i = 0u; i < terrain_consts::materialCacheLODsNum; ++i)
+	{
+		const terrain_renderer::material_cache::MaterialCacheState::LOD& lodCache = m_renderInstance->materialCacheState.lods[i];
+
+		matCache.lods[i].baseColorMetallic  = lodCache.baseColorMetallic;
+		matCache.lods[i].normals            = lodCache.normals;
+		matCache.lods[i].roughnessOcclusion = lodCache.roughnessOcclusion;
+		matCache.lods[i].minBounds          = lodCache.minBounds;
+		matCache.lods[i].rcpRange           = (lodCache.maxBounds - lodCache.minBounds).cwiseInverse();
+	}
 
 	TerrainSceneData terrainData;
 	terrainData.heightMap           = heightMapData;
 	terrainData.tiles               = m_tilesBuffer->GetFullView();
 	terrainData.tilesNum            = static_cast<Uint32>(m_tilesBuffer->GetSize() / sizeof(rdr::HLSLStorage<TerrainClipmapTileGPU>));
-	terrainData.lodsNum             = terrain_consts::lodsNum;
 	terrainData.tileSizeMeters      = terrain_consts::tileSizeMeters;
 	terrainData.clipmapExtentMeters = terrain_consts::clipmapExtentMeters;
 	terrainData.meshletVertices     = m_meshletVerticesBuffer->GetFullView();
@@ -385,8 +603,23 @@ void TerrainRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
 	terrainData.meshletVerticesNum  = terrain_consts::meshletVerticesNum;
 	terrainData.meshletIndicesNum   = terrain_consts::meshletIndicesNum;
 	terrainData.meshletTranglesNum  = terrain_consts::meshletIndicesNum / 3u;
+	terrainData.materialCache       = matCache;
 
 	sceneData.terrain = terrainData;
+}
+
+void TerrainRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const lib::DynamicPushArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings)
+{
+	SPT_PROFILER_FUNCTION();
+
+	if (!IsEnabled())
+	{
+		return;
+	}
+
+	SPT_CHECK(!viewSpecs.IsEmpty());
+
+	terrain_renderer::material_cache::UpdateMaterialCache(graphBuilder, rendererInterface, renderScene, m_renderInstance->materialCacheUpdateParams);
 }
 
 Bool TerrainRenderSystem::IsEnabled() const

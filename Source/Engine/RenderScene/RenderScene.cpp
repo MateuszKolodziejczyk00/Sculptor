@@ -86,6 +86,16 @@ const lib::SharedRef<rdr::Buffer>& RenderScene::GetRenderEntitiesBuffer() const
 	return m_renderEntitiesBuffer;
 }
 
+void RenderScene::SetTerrainDefinition(const TerrainDefinition& definition)
+{
+	m_terrainDefinition = definition;
+}
+
+const TerrainDefinition& RenderScene::GetTerrainDefinition() const
+{
+	return m_terrainDefinition;
+}
+
 lib::SharedRef<rdr::Buffer> RenderScene::CreateInstancesBuffer() const
 {
 	rhi::RHIAllocationInfo renderEntitiesAllocationInfo;

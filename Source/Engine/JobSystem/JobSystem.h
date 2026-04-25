@@ -58,6 +58,12 @@ struct JobDef : public JobDefinitionInternal
 		return *this;
 	}
 
+	JobDef& SetDeferredStart()
+	{
+		lib::AddFlag(flags, EJobFlags::DeferredStart);
+		return *this;
+	}
+
 	JobDef& ExecuteBefore(const Event& event)
 	{
 		executeBeforeEvent = event.GetJobInstance();
@@ -216,6 +222,31 @@ inline Event CreateEvent(const char* name, TCallable&& callable, const Event& ex
 	const EJobFlags flags = lib::Flags(EJobFlags::Inline, EJobFlags::EventJob);
 	lib::MTHandle<JobInstance> instance = JobInstanceBuilder::Build(name, callable, JobDef().SetFlags(flags).ExecuteBefore(executeBefore));
 	return JobBuilder::BuildEvent(std::move(instance));
+}
+
+
+template<typename TCallable, lib::CContainer TPrerequisitesRange>
+auto LaunchDeferred(const char* name, TCallable&& callable, TPrerequisitesRange&& prerequisites, JobDef def = JobDef())
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK_MSG(!lib::HasAnyFlag(def.flags, lib::Flags(EJobFlags::Inline, EJobFlags::Local, EJobFlags::EventJob)), "Invalid flags for LaunchDeferred()");
+	def.SetDeferredStart();
+
+	lib::MTHandle<JobInstance> instance = JobInstanceBuilder::Build(name, std::move(callable), std::move(prerequisites), def);
+	return JobBuilder::Build<TCallable>(instance);
+}
+
+template<typename TCallable>
+auto LaunchDeferred(const char* name, TCallable&& callable, JobDef def = JobDef())
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK_MSG(!lib::HasAnyFlag(def.flags, lib::Flags(EJobFlags::Inline, EJobFlags::Local, EJobFlags::EventJob)), "Invalid flags for LaunchDeferred()");
+	def.SetDeferredStart();
+
+	lib::MTHandle<JobInstance> instance = JobInstanceBuilder::Build(name, std::move(callable), def);
+	return JobBuilder::Build<TCallable>(instance);
 }
 
 } // spt::js

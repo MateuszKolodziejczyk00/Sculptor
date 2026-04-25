@@ -29,7 +29,16 @@ void CompilePBRMaterialTexturesCS(CS_INPUT input)
 
 	if (u_constants.rwMetallicRoughness.IsValid())
 	{
-		const float2 metallicRoughness = u_constants.loadedMetallicRoughness.Load(coords);
+		float2 metallicRoughness = 1.f;
+		if (u_constants.loadedMetallicRoughness.IsValid())
+		{
+			metallicRoughness = u_constants.loadedMetallicRoughness.Load(coords);
+		}
+		else if ( u_constants.loadedRoughness.IsValid())
+		{
+			metallicRoughness.y = u_constants.loadedRoughness.Load(coords);
+		}
+
 		u_constants.rwMetallicRoughness.Store(coords, float4(metallicRoughness, 0.0f, 0.f));
 	}
 

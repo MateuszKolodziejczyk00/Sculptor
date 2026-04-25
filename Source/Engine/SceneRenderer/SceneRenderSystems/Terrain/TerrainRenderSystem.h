@@ -46,8 +46,11 @@ public:
 	explicit TerrainRenderSystem(RenderScene& owningScene);
 
 	// Begin SceneRenderSystem overrides
+	void Initialize(lib::MemoryArena& arena, RenderScene& renderScene);
+	void Deinitialize(RenderScene& renderScene);
 	void Update(const SceneUpdateContext& context);
 	void UpdateGPUSceneData(RenderSceneConstants& sceneData);
+	void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const lib::DynamicPushArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings);
 	// End SceneRenderSystem overrides
 
 	Bool IsEnabled() const;
@@ -67,6 +70,8 @@ private:
 	Bool m_initialized = false;
 
 	mat::MaterialShader m_terrainMaterialShader;
+
+	struct TerrainRenderInstance* m_renderInstance = nullptr;
 };
 
 } // spt::rsc

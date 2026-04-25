@@ -146,9 +146,6 @@ IntegratedVolumetricFog SampleInegratedVolumetricFog(in float2 uv, in float line
 #if VOLUMETRIC_CLOUDS_ENABLED
 float3 CompositeVolumetricClouds(in uint2 coords, in float2 uv, in float2 pixelSize, in float3 background, in float backgroundLinearDepth, in float3 backgroundInScattering)
 {
-	//const float cloudsDepth = u_volumetricCloudsDepth.Load(uint3(coords, 0u));
-	//const float cloudsLinearDepth = ComputeLinearDepth(cloudsDepth, u_sceneView);
-
 	const float cloudsLinearDepth = u_volumetricCloudsDepth.Load(uint3(coords, 0u));
 
 	if(cloudsLinearDepth < 0.f || cloudsLinearDepth > backgroundLinearDepth) // Skip clouds if they are behind opaque geometry
@@ -330,13 +327,15 @@ void CompositeLightingCS(CS_INPUT input)
 	luminance += reflections.specular;
 #endif // RT_REFLECTIONS_ENABLED
 
-#if ATMOSPHERE_ENABLED
-	IntegratedAerialPerspective ap = SampleAerialPerspective(uv, linearDepth);
-	ap.inScattering = ap.inScattering * integratedFog.transmittance;
-#else
 	IntegratedAerialPerspective ap;
 	ap.inScattering  = float3(0.f, 0.f, 0.f);
 	ap.transmittance = 1.f;
+#if ATMOSPHERE_ENABLED
+	if (depth != 0.f)
+	{
+		ap = SampleAerialPerspective(uv, linearDepth);
+		ap.inScattering = ap.inScattering * integratedFog.transmittance;
+	}
 #endif
 
 	luminance = luminance * integratedFog.transmittance * ap.transmittance;

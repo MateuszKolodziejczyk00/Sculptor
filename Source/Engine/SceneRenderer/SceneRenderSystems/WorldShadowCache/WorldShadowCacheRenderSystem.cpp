@@ -17,9 +17,9 @@ WorldShadowCacheRenderSystem::WorldShadowCacheRenderSystem(RenderScene& owningSc
 {
 }
 
-void WorldShadowCacheRenderSystem::Initialize(RenderScene& renderScene)
+void WorldShadowCacheRenderSystem::Initialize(lib::MemoryArena& arena, RenderScene& renderScene)
 {
-	Super::Initialize(renderScene);
+	Super::Initialize(arena, renderScene);
 
 	RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry();
 

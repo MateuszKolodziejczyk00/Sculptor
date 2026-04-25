@@ -1,0 +1,35 @@
+{
+    "Blackboard": {
+        "BlackboardContent": [
+            "spt::as::PBRMaterialDefinition",
+            "spt::as::MaterialTypeInfo"
+        ],
+        "spt::as::MaterialTypeInfo": {
+            "MaterialType": "pt::as::PBRMaterialInstance"
+        },
+        "spt::as::PBRMaterialDefinition": {
+            "BaseColorFactor": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "BaseColorTexPath": "Source/BaseColor.png",
+            "CustomOpacity": false,
+            "DepthTexPath": "Source/Displacement.png",
+            "DoubleSided": true,
+            "EmissionFactor": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "EmissiveTexPath": "",
+            "MaxDepthCm": 0.03999999910593033,
+            "MetallicFactor": 0.0,
+            "MetallicRoughnessTexPath": "",
+            "RoughnessTexPath": "Source/Roughness.png",
+            "NormalsTexPath": "Source/Normals.png",
+            "RoughnessFactor": 1.0
+        }
+    },
+    "Type": "pt::as::MaterialAsset"
+}

@@ -15,7 +15,7 @@
 
 namespace spt::rsc
 {
-	///
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // SceneRendererData =============================================================================
 
@@ -46,7 +46,7 @@ SceneRendererData::SceneRendererData(const SceneRendererDefinition& definition)
 		{
 			const ESceneRenderSystem systemType = static_cast<ESceneRenderSystem>(1u << systemIdx);
 			renderSystems[systemIdx] = systemsAPI.CallConstructor(systemType, rendererArena, definition.scene);
-			systemsAPI.CallInitialize(systemType, *renderSystems[systemIdx], definition.scene);
+			systemsAPI.CallInitialize(systemType, *renderSystems[systemIdx], rendererArena, definition.scene);
 		}
 		else
 		{

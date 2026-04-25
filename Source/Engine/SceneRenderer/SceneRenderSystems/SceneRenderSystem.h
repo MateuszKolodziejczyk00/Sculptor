@@ -32,7 +32,7 @@ public:
 
 	SceneRenderSystem(RenderScene& owningScene);
 
-	void Initialize(RenderScene& renderScene) {};
+	void Initialize(lib::MemoryArena& arena, RenderScene& renderScene) {};
 	void Deinitialize(RenderScene& renderScene) {};
 
 	void Update(const SceneUpdateContext& context) {};
@@ -67,7 +67,7 @@ public:
 
 	SceneRenderSystem* CallConstructor(ESceneRenderSystem systemType, lib::MemoryArena& arena, RenderScene& scene) const;
 	void               CallDestructor(ESceneRenderSystem systemType, SceneRenderSystem& system) const;
-	void               CallInitialize(ESceneRenderSystem systemType, SceneRenderSystem& system, RenderScene& scene) const;
+	void               CallInitialize(ESceneRenderSystem systemType, SceneRenderSystem& system, lib::MemoryArena& arena, RenderScene& scene) const;
 	void               CallDeinitialize(ESceneRenderSystem systemType, SceneRenderSystem& system, RenderScene& scene) const;
 	void               CallUpdateFunc(ESceneRenderSystem systemType, SceneRenderSystem& system, const SceneUpdateContext& context) const;
 	void               CallUpdateGPUSceneDataFunc(ESceneRenderSystem systemType, SceneRenderSystem& system, RenderSceneConstants& sceneData) const;
@@ -91,9 +91,9 @@ public:
 			static_cast<TSystemType&>(system).~TSystemType();
 		};
 
-		const auto initializeFunc = [](SceneRenderSystem& system, RenderScene& renderScene)
+		const auto initializeFunc = [](SceneRenderSystem& system, lib::MemoryArena& arena, RenderScene& renderScene)
 		{
-			static_cast<TSystemType&>(system).Initialize(renderScene);
+			static_cast<TSystemType&>(system).Initialize(arena, renderScene);
 		};
 
 		const auto deinitializeFunc = [](SceneRenderSystem& system, RenderScene& renderScene)
@@ -145,7 +145,7 @@ private:
 	{
 		lib::RawCallable<SceneRenderSystem*(lib::MemoryArena&, RenderScene&)>                                                                                                                                  constructor;
 		lib::RawCallable<void(SceneRenderSystem&)>                                                                                                                                                             destructor;
-		lib::RawCallable<void(SceneRenderSystem&, RenderScene&)>                                                                                                                                               initializeFunc;
+		lib::RawCallable<void(SceneRenderSystem&, lib::MemoryArena&, RenderScene&)>                                                                                                                            initializeFunc;
 		lib::RawCallable<void(SceneRenderSystem&, RenderScene&)>                                                                                                                                               deinitializeFunc;
 		lib::RawCallable<void(SceneRenderSystem&, const SceneUpdateContext&)>                                                                                                                                  updateFunc;
 		lib::RawCallable<void(SceneRenderSystem&, RenderSceneConstants&)>                                                                                                                                      updateGPUSceneDataFunc;

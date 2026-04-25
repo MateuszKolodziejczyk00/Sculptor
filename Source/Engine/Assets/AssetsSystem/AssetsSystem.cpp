@@ -254,6 +254,7 @@ EDeleteResult AssetsSystem::DeleteAsset(const ResourcePath& path)
 	AssetFactory& factory = AssetFactory::GetInstance();
 	factory.DeleteAsset(assetData.type, *this, path, assetData);
 	m_ddc.DeleteDerivedData(AssetDerivedDataKey(path.GetID()));
+	m_assetsDB.DeleteAssetDescriptor(path);
 
 	SPT_CHECK(!IsAssetCompiled(path.GetID())); // Derived data left?
 
@@ -475,18 +476,19 @@ void AssetsSystem::ScheduleAssetInitialization(const AssetHandle& assetInstance)
 		isCompiled = IsAssetCompiled(assetInstance->GetResourcePathID()) && IsAssetUpToDate(path);
 	}
 
-	js::Job initJob = js::Launch(SPT_GENERIC_JOB_NAME,
-								 [this, assetInstance, isCompiled]()
-								 {
-									 if (!isCompiled)
-									 {
-										 CompileAssetImpl(assetInstance);
-									 }
-					
-									 assetInstance->Initialize();
-								 });
+	js::Job initJob = js::LaunchDeferred(SPT_GENERIC_JOB_NAME,
+										 [this, assetInstance, isCompiled]()
+										 {
+											 if (!isCompiled)
+											 {
+												 CompileAssetImpl(assetInstance);
+											 }
+						
+											 assetInstance->Initialize();
+										 });
 
-	assetInstance->AssignInitializationJob(std::move(initJob));
+	assetInstance->AssignInitializationJob(initJob);
+	initJob.Start();
 }
 
 lib::DynamicArray<AssetHandle> AssetsSystem::GetLoadedAssetsList_Locked() const

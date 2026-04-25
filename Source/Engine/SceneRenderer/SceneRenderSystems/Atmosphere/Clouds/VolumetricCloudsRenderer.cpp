@@ -632,6 +632,7 @@ namespace high_res
 BEGIN_SHADER_STRUCT(UpdateCloudscapeHighResProbeConstants)
 	SHADER_STRUCT_FIELD(math::Vector2u, updateOffset)
 	SHADER_STRUCT_FIELD(Uint32,         updateLoopIdx)
+	SHADER_STRUCT_FIELD(Real32,         blendFactor)
 END_SHADER_STRUCT();
 
 
@@ -660,6 +661,8 @@ struct UpdateCloudscapeHighResProbeParams
 	math::Vector2u updateSize   = {};
 
 	Uint32 updateLoopIdx = 0u;
+
+	Real32 blendFactor = 0.1f;
 };
 
 
@@ -674,6 +677,7 @@ void UpdateCloudscapeHighResProbe(rg::RenderGraphBuilder& graphBuilder, ViewRend
 	UpdateCloudscapeHighResProbeConstants shaderConstants;
 	shaderConstants.updateOffset  = params.updateOffset;
 	shaderConstants.updateLoopIdx = params.updateLoopIdx;
+	shaderConstants.blendFactor   = params.blendFactor;
 
 	lib::MTHandle<UpdateCloudscapeHighResProbeDS> ds = graphBuilder.CreateDescriptorSet<UpdateCloudscapeHighResProbeDS>(RENDERER_RESOURCE_NAME("UpdateCloudscapeHighResProbeDS"));
 	ds->u_constants    = shaderConstants;
@@ -801,6 +805,7 @@ void VolumetricCloudsRenderer::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 		highResProbeParams.updateOffset  = math::Vector2u::Zero();
 		highResProbeParams.updateSize    = cloudscapeHighResProbe->GetResolution2D();
 		highResProbeParams.updateLoopIdx = cloudscapeContext.frameIdx;
+		highResProbeParams.blendFactor   = 1.f;
 	}
 	else
 	{
@@ -864,7 +869,7 @@ CloudscapeContext VolumetricCloudsRenderer::CreateFrameCloudscapeContext(rg::Ren
 	const RenderView& renderView = mainView->GetRenderView();
 	const math::Vector3f viewLocation = renderView.GetLocation();
 
-	const math::Vector3f cloudsAtmosphereCenter = math::Vector3f(viewLocation.x(), viewLocation.y(), m_cloudscapeConstants.cloudsAtmosphereCenterZ);
+	const math::Vector3f cloudsAtmosphereCenter = math::Vector3f(0.f, 0.f, m_cloudscapeConstants.cloudsAtmosphereCenterZ);
 
 	m_cloudscapeConstants.baseShapeNoiseScale          = 1.f / renderer_params::baseShapeNoiseMeters;
 	m_cloudscapeConstants.detailShapeNoiseStrength0    = renderer_params::detailShapeNoiseStrength0;

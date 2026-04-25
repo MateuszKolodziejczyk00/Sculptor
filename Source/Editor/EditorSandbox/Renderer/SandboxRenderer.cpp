@@ -1,4 +1,5 @@
 #include "Renderer/SandboxRenderer.h"
+#include "TerrainMaterialAsset.h"
 #include "Types/Texture.h"
 #include "Types/UIBackend.h"
 #include "Types/Window.h"
@@ -85,29 +86,35 @@ void SandboxRenderer::Update(engn::FrameContext& frame)
 	{
 		const Real32 deltaTime = frame.GetDeltaTime();
 
+		Real32 currentCameraSpeed = m_cameraSpeed;
+		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::LShift))
+		{
+			currentCameraSpeed *= 10.f;
+		}
+
 		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::W))
 		{
-			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * math::Vector3f::UnitX());
+			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * currentCameraSpeed * math::Vector3f::UnitX());
 		}
 		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::S))
 		{
-			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * -math::Vector3f::UnitX());
+			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * currentCameraSpeed * -math::Vector3f::UnitX());
 		}
 		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::D))
 		{
-			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * math::Vector3f::UnitY());
+			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * currentCameraSpeed * math::Vector3f::UnitY());
 		}
 		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::A))
 		{
-			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * -math::Vector3f::UnitY());
+			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * currentCameraSpeed * -math::Vector3f::UnitY());
 		}
 		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::E))
 		{
-			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * math::Vector3f::UnitZ());
+			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * currentCameraSpeed * math::Vector3f::UnitZ());
 		}
 		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::Q))
 		{
-			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * -math::Vector3f::UnitZ());
+			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * currentCameraSpeed * -math::Vector3f::UnitZ());
 		}
 
 		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::RightMouseButton))
@@ -226,9 +233,9 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 			   },
 			   js::Prerequisites(graphBuilder.GetGPUFinishedEvent()));
 
-	rsc::SceneRendererSettings rendererSettings;
-	rendererSettings.outputFormat = rhi::EFragmentFormat::RGBA8_UN_Float;
-	rendererSettings.resetAccumulation = resetAccumulation;
+	rsc::SceneRendererSettings rendererSettings{ frame };
+	rendererSettings.outputFormat      = rhi::EFragmentFormat::RGBA8_UN_Float;
+	rendererSettings.resetAccumulation = resetAccumulation || frame.GetFrameIdx() < 2u;
 
 	resetAccumulation = false;
 
@@ -394,6 +401,14 @@ void SandboxRenderer::InitializeRenderScene()
 	as::PrefabAssetHandle sponzaPrefab = assetsSystem.LoadAssetChecked<as::PrefabAsset>(as::ResourcePath("Sponza/Sponza.sptasset"));
 
 	as::IESProfileAssetHandle iesProfiles[] = { iesProfile0, iesProfile1 };
+
+	as::TerrainMaterialAssetHandle terrainMat = assetsSystem.LoadAssetChecked<as::TerrainMaterialAsset>(as::ResourcePath("Terrain/TerrainMaterial.sptasset"));
+	terrainMat->AwaitInitialization();
+	terrainMat->SetPermanent();
+
+	rsc::TerrainDefinition terrainDef;
+	terrainDef.material = terrainMat->GetTerrainMaterialData();
+	m_renderScene->SetTerrainDefinition(terrainDef);
 
 	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
 

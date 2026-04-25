@@ -4,6 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "RenderSceneRegistry.h"
 #include "RenderSceneTypes.h"
+#include "Terrain/TerrainDefinition.h"
 
 
 namespace spt::engn
@@ -53,6 +54,11 @@ public:
 	RenderSceneEntityHandle CreateEntity(const RenderInstanceData& instanceData);
 	void DestroyEntity(RenderSceneEntityHandle entity);
 
+	// Terrain ==============================================================
+
+	void SetTerrainDefinition(const TerrainDefinition& definition);
+	const TerrainDefinition& GetTerrainDefinition() const;
+
 	// Rendering ============================================================
 
 	const lib::SharedRef<rdr::Buffer>& GetRenderEntitiesBuffer() const;
@@ -60,6 +66,8 @@ public:
 private:
 
 	lib::SharedRef<rdr::Buffer> CreateInstancesBuffer() const;
+
+	TerrainDefinition m_terrainDefinition;
 
 	RenderSceneRegistry m_registry;
 
