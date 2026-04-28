@@ -1,6 +1,8 @@
 #ifndef GPU_MATERIALS_HLSLI
 #define GPU_MATERIALS_HLSLI
 
+#ifdef DS_RenderSceneDS
+
 [[shader_struct(GPUMaterialsData)]]
 
 
@@ -10,7 +12,6 @@ struct GPUMaterialsInterface : GPUMaterialsData
 };
 
 
-#ifdef DS_RenderSceneDS
 GPUMaterialsInterface GPUMaterials()
 {
 	return GPUMaterialsInterface(u_renderSceneConstants.materials);

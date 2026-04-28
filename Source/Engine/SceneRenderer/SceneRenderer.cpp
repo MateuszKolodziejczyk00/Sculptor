@@ -1,5 +1,4 @@
 #include "SceneRenderer.h"
-#include "Containers/InlineArray.h"
 #include "Debug/Stats/SceneRendererStatsView.h"
 #include "EngineFrame.h"
 #include "Parameters/SceneRendererParams.h"
@@ -157,7 +156,7 @@ lib::MTHandle<RenderSceneDS> UpdateRenderSystemsPerFrame(SceneRendererData& rend
 		SceneRenderSystem* system;
 		ESceneRenderSystem systemType;
 	};
-	lib::InlineArray<ActiveRenderSystem, static_cast<Uint32>(ESceneRenderSystem::NUM)> activeRenderSystems;
+	lib::InlineDynamicArray<ActiveRenderSystem, static_cast<Uint32>(ESceneRenderSystem::NUM)> activeRenderSystems;
 
 	for (Uint32 systemIdx = 0; systemIdx < static_cast<Uint32>(ESceneRenderSystem::NUM); ++systemIdx)
 	{

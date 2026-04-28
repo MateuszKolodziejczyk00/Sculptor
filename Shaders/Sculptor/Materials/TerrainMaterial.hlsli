@@ -52,11 +52,16 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
 
 	if (!foundCachedMaterial)
 	{
-		baseColor = float3(0.33f, 0.38f, 0.08f);
+		const float2 farLODUV = (evalParams.worldLocation.xy + 1024.f) / 2048.f; // This should match the UV calculation in BakeFarLODCS
+
+		const float3 farLODBaseColor = terrainInterface.farLODBaseColor.SampleLevel(BindlessSamplers::LinearClampEdge(), farLODUV, 0);
+		const float3 farLODProps     = terrainInterface.farLODProps.SampleLevel(BindlessSamplers::LinearClampEdge(), farLODUV, 0);
+
+		baseColor = farLODBaseColor;
 		normal    = terrainInterface.GetNormal(evalParams.worldLocation.xy);
-		metallic  = 0.f;
-		roughness = 1.f;
-		occlusion = 1.f;
+		roughness = farLODProps.x;
+		metallic  = farLODProps.y;
+		occlusion = farLODProps.z;
 	}
 
 	output.shadingNormal  = normal;

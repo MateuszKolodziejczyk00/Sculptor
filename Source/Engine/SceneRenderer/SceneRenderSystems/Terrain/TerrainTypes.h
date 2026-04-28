@@ -52,6 +52,8 @@ END_SHADER_STRUCT();
 
 BEGIN_SHADER_STRUCT(TerrainSceneData)
 	SHADER_STRUCT_FIELD(TerrainHeightMap,                           heightMap)
+	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<math::Vector3f>,     farLODBaseColor)
+	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<math::Vector3f>,     farLODProps) // .r = roughness, .g = metallic, .b = occlusion
 	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<TerrainClipmapTileGPU>, tiles)
 	SHADER_STRUCT_FIELD(Uint32,                                     tilesNum)
 	SHADER_STRUCT_FIELD(Real32,                                     tileSizeMeters)

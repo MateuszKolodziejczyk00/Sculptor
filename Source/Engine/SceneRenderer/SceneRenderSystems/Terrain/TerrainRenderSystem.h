@@ -66,7 +66,6 @@ private:
 	lib::SharedPtr<rdr::Buffer> m_meshletVerticesBuffer;
 	lib::SharedPtr<rdr::Buffer> m_meshletIndicesBuffer;
 
-	lib::SharedPtr<rdr::TextureView> m_heightMap;
 	Bool m_initialized = false;
 
 	mat::MaterialShader m_terrainMaterialShader;

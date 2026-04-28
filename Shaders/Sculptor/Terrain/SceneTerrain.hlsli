@@ -31,6 +31,21 @@ struct TerrainInterface : TerrainSceneData
 	{
 		const float2 sampleOffset = GetHeightSampleOffset(locationXY);
 
+#if 1
+		const float heightPosXPosY = GetHeight(locationXY + float2(sampleOffset.x, sampleOffset.y));
+		const float heightPosX     = GetHeight(locationXY + float2(sampleOffset.x, 0.f));
+		const float heightPosXNegY = GetHeight(locationXY + float2(sampleOffset.x, -sampleOffset.y));
+		const float heightPosY     = GetHeight(locationXY + float2(0.f, sampleOffset.y));
+		const float heightNegY     = GetHeight(locationXY + float2(0.f, -sampleOffset.y));
+		const float heightNegXPosY = GetHeight(locationXY + float2(-sampleOffset.x, sampleOffset.y));
+		const float heightNegX     = GetHeight(locationXY + float2(-sampleOffset.x, 0.f));
+		const float heightNegXNegY = GetHeight(locationXY + float2(-sampleOffset.x, -sampleOffset.y));
+
+		const float dHeightDX = ((heightPosXNegY + 2.f * heightPosX + heightPosXPosY) - (heightNegXNegY + 2.f * heightNegX + heightNegXPosY)) / (8.f * sampleOffset.x);
+		const float dHeightDY = ((heightNegXPosY + 2.f * heightPosY + heightPosXPosY) - (heightNegXNegY + 2.f * heightNegY + heightPosXNegY)) / (8.f * sampleOffset.y);
+
+		return float2(dHeightDX, dHeightDY);
+#else
 		const float heightXP = GetHeight(locationXY + float2(sampleOffset.x, 0.f));
 		const float heightXM = GetHeight(locationXY - float2(sampleOffset.x, 0.f));
 		const float heightYP = GetHeight(locationXY + float2(0.f, sampleOffset.y));
@@ -38,6 +53,7 @@ struct TerrainInterface : TerrainSceneData
 
 		return float2((heightXP - heightXM) / (2.f * sampleOffset.x),
 					  (heightYP - heightYM) / (2.f * sampleOffset.y));
+#endif
 	}
 
 	float3 GetNormal(float2 locationXY)

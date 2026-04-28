@@ -33,6 +33,14 @@ struct TextureLoadParams
 };
 
 
+struct LoadedTextureData
+{
+	lib::Span<Byte>        data;
+	rhi::EFragmentFormat   format = rhi::EFragmentFormat::None;
+	math::Vector3u         resolution = {};
+};
+
+
 class GRAPHICS_API TextureLoader
 {
 public:
@@ -40,6 +48,8 @@ public:
 	static lib::SharedPtr<rdr::Texture> LoadTexture(lib::StringView path, rhi::ETextureUsage usage = TextureLoadParams::defaultUsage, rhi::EMemoryUsage memoryUsage = rhi::EMemoryUsage::GPUOnly);
 
 	static lib::SharedPtr<rdr::Texture> LoadTexture(lib::StringView path, const TextureLoadParams& params);
+
+	static LoadedTextureData            LoadTextureData(lib::StringView path, lib::MemoryArena& arena);
 
 private:
 

@@ -6,7 +6,6 @@
 #include "ResourcesManager.h"
 #include "Utils/TransfersUtils.h"
 #include "Types/Buffer.h"
-#include "Loaders/TextureLoader.h"
 #include "Engine.h"
 #include "MaterialsSubsystem.h"
 
@@ -501,13 +500,6 @@ void TerrainRenderSystem::Initialize(lib::MemoryArena& arena, RenderScene& rende
 	m_meshletIndicesBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Terrain Meshlet Indices"), meshletIndicesDef, rhi::EMemoryUsage::CPUToGPU);
 	rdr::UploadDataToBuffer(lib::Ref(m_meshletIndicesBuffer), 0u, reinterpret_cast<const Byte*>(meshletIndices.data()), static_cast<Uint64>(meshletIndices.size()) * sizeof(rdr::HLSLStorage<Uint32>));
 
-	const lib::String texturePath = (engn::GetEngine().GetPaths().contentPath / "Textures/heightmap.png").generic_string();
-	lib::SharedPtr<rdr::Texture> heightMap = gfx::TextureLoader::LoadTexture(texturePath);
-	if (heightMap)
-	{
-		m_heightMap = heightMap->CreateView(RENDERER_RESOURCE_NAME("Terrain Heightmap View"));
-	}
-
 	TerrainSampleMaterialData materialData{};
 
 	mat::MaterialDefinition materialDefinition;
@@ -534,7 +526,6 @@ void TerrainRenderSystem::Deinitialize(RenderScene& renderScene)
 	m_tilesBuffer.reset();
 	m_meshletVerticesBuffer.reset();
 	m_meshletIndicesBuffer.reset();
-	m_heightMap.reset();
 
 	m_renderInstance->~TerrainRenderInstance();
 	m_renderInstance = nullptr;
@@ -570,13 +561,16 @@ void TerrainRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
 {
 	SPT_CHECK(m_initialized);
 
+	const TerrainDefinition& terrainDef = GetOwningScene().GetTerrainDefinition();
+	const lib::SharedPtr<rdr::TextureView>& heightMap = terrainDef.heightMap;
+
 	TerrainHeightMap heightMapData;
-	heightMapData.texture        = m_heightMap;
-	heightMapData.res            = m_heightMap ? m_heightMap->GetResolution2D() : math::Vector2u{};
-	heightMapData.invRes         = math::Vector2f::Ones().cwiseQuotient(heightMapData.res.cast<Real32>());
+	heightMapData.texture        = heightMap;
+	heightMapData.res            = heightMap ? heightMap->GetResolution2D() : math::Vector2u{};
+	heightMapData.invRes         = heightMap ? math::Vector2f::Ones().cwiseQuotient(heightMapData.res.cast<Real32>()) : math::Vector2f{0.f, 0.f};
 	heightMapData.spanMeters     = math::Vector2f::Constant(terrain_consts::clipmapExtentMeters * 6.f);
 	heightMapData.invSpanMeters  = math::Vector2f::Ones().cwiseQuotient(heightMapData.spanMeters);
-	heightMapData.metersPerTexel = heightMapData.spanMeters.cwiseQuotient(heightMapData.res.cast<Real32>());
+	heightMapData.metersPerTexel = heightMap ? heightMapData.spanMeters.cwiseQuotient(heightMapData.res.cast<Real32>()) : math::Vector2f{0.f, 0.f};
 	heightMapData.minHeight      = 0.f;
 	heightMapData.maxHeight      = 150.f;
 
@@ -594,6 +588,8 @@ void TerrainRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
 
 	TerrainSceneData terrainData;
 	terrainData.heightMap           = heightMapData;
+	terrainData.farLODBaseColor     = terrainDef.farLODBaseColor;
+	terrainData.farLODProps         = terrainDef.farLODProps;
 	terrainData.tiles               = m_tilesBuffer->GetFullView();
 	terrainData.tilesNum            = static_cast<Uint32>(m_tilesBuffer->GetSize() / sizeof(rdr::HLSLStorage<TerrainClipmapTileGPU>));
 	terrainData.tileSizeMeters      = terrain_consts::tileSizeMeters;

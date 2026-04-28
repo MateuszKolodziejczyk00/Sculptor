@@ -415,6 +415,44 @@ lib::SharedPtr<rdr::Texture> TextureLoader::LoadTexture(lib::StringView path, co
 	return loadedTexture;
 }
 
+
+LoadedTextureData TextureLoader::LoadTextureData(lib::StringView path, lib::MemoryArena& arena)
+{
+	SPT_PROFILER_FUNCTION();
+
+	LoadedTextureData loadedData;
+
+	const auto callback = [&loadedData, &arena](const TextureDataView& dataView)
+	{
+		loadedData.format     = dataView.format;
+		loadedData.resolution = dataView.resolution;
+
+		const lib::Span<const Byte> data = dataView.GetSurfaceData(0u, 0u);
+
+		Byte* copiedData = arena.Allocate(data.size());
+		std::memcpy(copiedData, data.data(), data.size());
+
+		loadedData.data = { copiedData, data.size() };
+	};
+
+	const lib::StringView extension = lib::File::GetExtension(path);
+
+	if (extension == "png" || extension == "jpg" || extension == "jpeg")
+	{
+		png_jpg::LoadTextureImpl(callback, path);
+	}
+	else if (extension == "dds")
+	{
+		dds::LoadTextureImpl(callback, path);
+	}
+	else
+	{
+		SPT_LOG_ERROR(ImageLoader, "Unsupported texture format: {} (path: {})", extension, path);
+	}
+
+	return loadedData;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // TextureWriter =================================================================================
 

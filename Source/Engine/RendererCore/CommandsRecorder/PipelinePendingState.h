@@ -15,6 +15,11 @@ class DescriptorSetState;
 class CommandQueue;
 class RenderContext;
 
+namespace constants
+{
+static constexpr Uint32 maxDSNum = 16u;
+} // constants
+
 
 class PipelinePendingState
 {
@@ -56,7 +61,7 @@ public:
 
 private:
 
-	using DynamicOffsetsArray = lib::DynamicArray<Uint32>;
+	using DynamicOffsetsArray = lib::InlineDynamicArray<Uint32, constants::maxDSNum>;
 
 	struct DSBindCommand
 	{
@@ -64,7 +69,7 @@ private:
 		Uint32 heapOffset;
 	};
 
-	using DSBindCommands = lib::DynamicArray<DSBindCommand>;
+	using DSBindCommands = lib::InlineDynamicArray<DSBindCommand, constants::maxDSNum>;
 
 	struct BoundDescriptorSetState
 	{
@@ -74,7 +79,7 @@ private:
 
 	struct PipelineDescriptorsState
 	{
-		lib::DynamicArray<Bool> dirtyDescriptorSets;
+		lib::InlineDynamicArray<Bool, constants::maxDSNum> dirtyDescriptorSets;
 		Bool isBindlessBound = false;
 	};
 
@@ -91,7 +96,7 @@ private:
 	lib::SharedPtr<ComputePipeline>		m_boundComputePipeline;
 	lib::SharedPtr<RayTracingPipeline>	m_boundRayTracingPipeline;
 
-	lib::DynamicArray<BoundDescriptorSetState> m_boundDescriptorSetStates;
+	lib::InlineDynamicArray<BoundDescriptorSetState, 64u> m_boundDescriptorSetStates;
 
 	Uint32 m_pendingShaderParamsOffset = idxNone<Uint32>;
 

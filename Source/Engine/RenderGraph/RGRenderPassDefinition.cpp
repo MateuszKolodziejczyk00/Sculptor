@@ -12,14 +12,14 @@ RGRenderPassDefinition::RGRenderPassDefinition(math::Vector2i renderAreaOffset, 
 
 RGRenderTargetDef& RGRenderPassDefinition::AddColorRenderTarget()
 {
-	return m_colorRenderTargetDefs.emplace_back();
+	return m_colorRenderTargetDefs.EmplaceBack();
 }
 
 void RGRenderPassDefinition::AddColorRenderTarget(const RGRenderTargetDef& definition)
 {
 	SPT_CHECK(!!definition.textureView);
 	definition.textureView->GetTexture()->AddUsageForAccess(ERGTextureAccess::ColorRenderTarget);
-	m_colorRenderTargetDefs.emplace_back(definition);
+	m_colorRenderTargetDefs.EmplaceBack(definition);
 }
 
 RGRenderTargetDef& RGRenderPassDefinition::GetDepthRenderTargetRef()

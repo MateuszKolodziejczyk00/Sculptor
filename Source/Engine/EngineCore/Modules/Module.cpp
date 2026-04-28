@@ -246,7 +246,7 @@ void ModulesManager::ProcessModuleReloads()
 {
 	const lib::LockGuard lock{m_modulesLock};
 
-	lib::InlineArray<ModuleHandle, ModulesManager::s_maxLoadedModules> failedReloads;
+	lib::InlineDynamicArray<ModuleHandle, ModulesManager::s_maxLoadedModules> failedReloads;
 
 	for (const ModuleHandle& moduleHandle : m_modulesToReload)
 	{

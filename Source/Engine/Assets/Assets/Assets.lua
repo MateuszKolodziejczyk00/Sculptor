@@ -4,6 +4,7 @@ function Assets:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("IESProfileAsset")
     self:AddPublicDependency("TextureAsset")
     self:AddPublicDependency("MaterialAsset")
+    self:AddPublicDependency("TerrainAsset")
     self:AddPublicDependency("MeshAsset")
     self:AddPublicDependency("PrefabAsset")
 end

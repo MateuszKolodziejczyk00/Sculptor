@@ -1,10 +1,9 @@
 #pragma once
 
-#include "Containers/InlineArray.h"
 #include "EngineCoreMacros.h"
+#include "SculptorCoreTypes.h"
 #include "FileSystem/DirectoryWatcher.h"
 #include "FileSystem/File.h"
-#include "SculptorCoreTypes.h"
 #include "Utility/ModuleDescriptor.h"
 
 
@@ -130,8 +129,8 @@ private:
 
 	static constexpr SizeType s_maxLoadedModules = 32u;
 
-	lib::InlineArray<LoadedModule, s_maxLoadedModules> m_modules;
-	lib::InlineArray<ModuleHandle, s_maxLoadedModules> m_modulesToReload;
+	lib::InlineDynamicArray<LoadedModule, s_maxLoadedModules> m_modules;
+	lib::InlineDynamicArray<ModuleHandle, s_maxLoadedModules> m_modulesToReload;
 
 	EngineGlobals m_globals;
 

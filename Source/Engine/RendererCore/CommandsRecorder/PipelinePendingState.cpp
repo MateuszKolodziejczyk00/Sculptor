@@ -15,7 +15,6 @@ namespace spt::rdr
 PipelinePendingState::PipelinePendingState()
 	: m_bindlessDescriptorsHeapOffset(GPUApi::GetDescriptorManager().GetHeapOffset())
 {
-	m_boundDescriptorSetStates.reserve(16);
 }
 
 PipelinePendingState::~PipelinePendingState() = default;
@@ -134,7 +133,7 @@ void PipelinePendingState::FlushDirtyDSForRayTracingPipeline(rhi::RHICommandBuff
 void PipelinePendingState::BindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state)
 {
 	state->Flush();
-	m_boundDescriptorSetStates.emplace_back(BoundDescriptorSetState{ state->GetTypeID(), state->GetDescriptorsHeapOffset() });
+	m_boundDescriptorSetStates.EmplaceBack(BoundDescriptorSetState{ state->GetTypeID(), state->GetDescriptorsHeapOffset() });
 
 	TryMarkAsDirty(state);
 }
@@ -148,7 +147,7 @@ void PipelinePendingState::UnbindDescriptorSetState(const lib::MTHandle<Descript
 											  });
 
 	SPT_CHECK(foundDescriptor != std::cend(m_boundDescriptorSetStates));
-	m_boundDescriptorSetStates.erase(foundDescriptor);
+	m_boundDescriptorSetStates.RemoveAtSwap(std::distance(std::cbegin(m_boundDescriptorSetStates), foundDescriptor));
 
 	TryMarkAsDirty(state);
 }
@@ -180,7 +179,7 @@ void PipelinePendingState::TryMarkAsDirtyImpl(const lib::MTHandle<DescriptorSetS
 void PipelinePendingState::UpdateDescriptorSetsOnPipelineChange(const lib::SharedPtr<Pipeline>& prevPipeline, const lib::SharedRef<Pipeline>& newPipeline, PipelineDescriptorsState& descriptorsState)
 {
 	const smd::ShaderMetaData& newMetaData = newPipeline->GetMetaData();
-	descriptorsState.dirtyDescriptorSets.resize(static_cast<SizeType>(newMetaData.GetDescriptorSetsNum()), true);
+	descriptorsState.dirtyDescriptorSets.Resize(static_cast<SizeType>(newMetaData.GetDescriptorSetsNum()), true);
 
 	if (prevPipeline)
 	{
@@ -221,7 +220,7 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 			bindCommand.idx        = static_cast<Uint32>(dsIdx);
 			bindCommand.heapOffset = foundState->heapOffset;
 
-			descriptorSetsToBind.emplace_back(std::move(bindCommand));
+			descriptorSetsToBind.EmplaceBack(std::move(bindCommand));
 		}
 	}
 
@@ -231,7 +230,7 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 		bindlessDescriptorsCommand.idx        = 0u;
 		bindlessDescriptorsCommand.heapOffset = m_bindlessDescriptorsHeapOffset;
 
-		descriptorSetsToBind.emplace_back(bindlessDescriptorsCommand);
+		descriptorSetsToBind.EmplaceBack(bindlessDescriptorsCommand);
 	}
 
 	if (metaData.GetShaderParamsType().IsValid())
@@ -242,7 +241,7 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 		shaderParamsDescriptorCommand.idx        = metaData.GetDescriptorSetsNum();
 		shaderParamsDescriptorCommand.heapOffset = m_pendingShaderParamsOffset;
 
-		descriptorSetsToBind.emplace_back(shaderParamsDescriptorCommand);
+		descriptorSetsToBind.EmplaceBack(shaderParamsDescriptorCommand);
 	}
 
 	// Clear all dirty flags

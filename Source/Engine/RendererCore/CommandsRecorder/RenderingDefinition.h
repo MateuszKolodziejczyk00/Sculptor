@@ -24,7 +24,7 @@ public:
 
 	void AddColorRenderTarget(const RTDefinition& renderTarget)
 	{
-		m_rhiDefinition.colorRTs.push_back(GetRTDefRHI(renderTarget));
+		m_rhiDefinition.colorRTs.EmplaceBack(GetRTDefRHI(renderTarget));
 	}
 
 	void AddDepthRenderTarget(const RTDefinition& renderTarget)

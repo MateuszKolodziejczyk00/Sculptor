@@ -70,6 +70,11 @@ struct ClearColor
 };
 
 
+namespace constants
+{
+static constexpr Uint32 maxColorRTsNum = 8u;
+} // constants
+
 template<typename TextureViewType = RHITextureView>
 struct RTGenericDefinition
 {
@@ -105,12 +110,14 @@ public:
 		, renderAreaExtent(0, 0)
 	{ }
 
-	ERenderingFlags									renderingFlags;
-	math::Vector2i									renderAreaOffset;
-	math::Vector2u									renderAreaExtent;
-	lib::DynamicArray<RHIRenderTargetDefinition>	colorRTs;
-	RHIRenderTargetDefinition						depthRT;
-	RHIRenderTargetDefinition						stencilRT;
+	using ColorRTsArray = lib::InlineDynamicArray<RHIRenderTargetDefinition, constants::maxColorRTsNum>;
+
+	ERenderingFlags				renderingFlags;
+	math::Vector2i				renderAreaOffset;
+	math::Vector2u				renderAreaExtent;
+	ColorRTsArray				colorRTs;
+	RHIRenderTargetDefinition	depthRT;
+	RHIRenderTargetDefinition	stencilRT;
 };
 
 

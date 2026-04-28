@@ -42,9 +42,11 @@ private:
 
 	Bool IsRTDefinitionValid(const RGRenderTargetDef& rgDef) const;
 
-	lib::DynamicArray<RGRenderTargetDef>	m_colorRenderTargetDefs;
-	RGRenderTargetDef						m_depthRenderTargetDef;
-	RGRenderTargetDef						m_stencilRenderTargetDef;
+	using ColorRTsArray = lib::InlineDynamicArray<RGRenderTargetDef, rhi::constants::maxColorRTsNum>;
+
+	ColorRTsArray		m_colorRenderTargetDefs;
+	RGRenderTargetDef	m_depthRenderTargetDef;
+	RGRenderTargetDef	m_stencilRenderTargetDef;
 
 	math::Vector2i			m_renderAreaOffset;
 	math::Vector2u			m_renderAreaExtent;

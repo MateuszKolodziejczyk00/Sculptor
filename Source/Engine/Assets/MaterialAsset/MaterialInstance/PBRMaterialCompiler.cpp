@@ -384,8 +384,6 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 
 		CompilePBRMaterialConstants compilationConstants;
 		compilationConstants.loadedBaseColor         = loadedBaseColor;
-		compilationConstants.loadedMetallicRoughness = loadedMetallicRoughness;
-		compilationConstants.loadedRoughness         = loadedRoughness;
 		compilationConstants.loadedNormals           = loadedNormals;
 		compilationConstants.loadedEmissive          = loadedEmissive;
 		compilationConstants.loadedDepth             = loadedDepth;
@@ -395,6 +393,15 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		compilationConstants.rwNormals               = normals;
 		compilationConstants.rwEmissive              = emissive;
 		compilationConstants.rwDepth                 = depth;
+
+		if (loadedRoughness.IsValid())
+		{
+			compilationConstants.loadedRoughness = loadedRoughness;
+		}
+		else
+		{
+			compilationConstants.loadedMetallicRoughness = loadedMetallicRoughness;
+		}
 
 		CompilePBRMaterialTextures(graphBuilder, maxDimentions, compilationConstants);
 

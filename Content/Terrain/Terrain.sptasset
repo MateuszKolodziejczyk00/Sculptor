@@ -1,0 +1,12 @@
+{
+    "Blackboard": {
+        "BlackboardContent": [
+            "spt::as::TerrainAssetDefinition"
+        ],
+        "spt::as::TerrainAssetDefinition": {
+            "HeightMapTex": "Source/Heightmap.png",
+            "TerrainMaterial": "TerrainMaterial.sptasset"
+        }
+    },
+    "Type": "pt::as::TerrainAsset"
+}

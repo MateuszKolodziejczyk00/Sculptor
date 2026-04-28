@@ -277,9 +277,9 @@ private:
 	lib::DynamicPushArray<RGNodeHandle> m_nodes;
 	RGNodeID m_nodeCounter = 0u;
 
-	lib::DynamicArray<lib::MTHandle<RGDescriptorSetStateBase>> m_boundDSStates;
+	lib::InlineDynamicArray<lib::MTHandle<RGDescriptorSetStateBase>, 32u> m_boundDSStates;
 
-	lib::DynamicArray<lib::SharedPtr<RenderGraphDebugDecorator>> m_debugDecorators;
+	lib::InlineDynamicArray<lib::SharedPtr<RenderGraphDebugDecorator>, 4u> m_debugDecorators;
 
 	lib::SharedPtr<rdr::GPUStatisticsCollector> m_statisticsCollector;
 

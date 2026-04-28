@@ -18,7 +18,7 @@ struct PS_OUTPUT
 {
 	float4 baseColorMetallic  : SV_Target0;
 	float2 normals            : SV_Target1;
-	float2 occlusionRoughness : SV_Target2;
+	float2 roughnessOcclusion : SV_Target2;
 };
 
 
@@ -56,7 +56,7 @@ PS_OUTPUT RenderTerrainMaterialCacheFS(VS_OUTPUT input)
 	PS_OUTPUT output;
 	output.baseColorMetallic  = float4(materialEvalOutput.baseColor, materialEvalOutput.metallic);
 	output.normals            = encodedNormal;
-	output.occlusionRoughness = float2(materialEvalOutput.occlusion, materialEvalOutput.roughness);
+	output.roughnessOcclusion = float2(materialEvalOutput.roughness, materialEvalOutput.occlusion);
 
 	return output;
 }

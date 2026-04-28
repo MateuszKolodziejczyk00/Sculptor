@@ -56,13 +56,24 @@
 #define SPT_MATERIAL_DATA_ALIGNMENT    32
 #define SPT_MATERIAL_FEATURE_ALIGNMENT 16
 
+
+[[shader_struct(MaterialUnifiedData)]]
+
+
+template<typename TMaterialData>
+TMaterialData LoadMaterialData(in MaterialUnifiedData materialsData, in MaterialDataHandle materialDataHandle)
+{
+	const uint materialDataOffset = uint(materialDataHandle.id) * SPT_MATERIAL_DATA_ALIGNMENT;
+	return materialsData.materialsData.Load<TMaterialData>(materialDataOffset);
+}
+
+
 #ifdef DS_RenderSceneDS
 
 template<typename TMaterialData>
 TMaterialData LoadMaterialDataInternal(in MaterialDataHandle materialDataHandle)
 {
-	const uint materialDataOffset = uint(materialDataHandle.id) * SPT_MATERIAL_DATA_ALIGNMENT;
-	return GPUMaterials().data.materialsData.Load<TMaterialData>(materialDataOffset);
+	return LoadMaterialData<TMaterialData>(GPUMaterials().data, materialDataHandle);
 }
 
 #ifdef SPT_MATERIAL_DATA_TYPE

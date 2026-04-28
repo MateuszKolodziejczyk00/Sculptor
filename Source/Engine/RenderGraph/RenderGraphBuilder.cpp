@@ -58,7 +58,7 @@ void RenderGraphBuilder::BindGPUStatisticsCollector(const lib::SharedRef<rdr::GP
 
 void RenderGraphBuilder::AddDebugDecorator(const lib::SharedRef<RenderGraphDebugDecorator>& debugDecorator)
 {
-	m_debugDecorators.emplace_back(std::move(debugDecorator));
+	m_debugDecorators.EmplaceBack(std::move(debugDecorator));
 }
 
 Bool RenderGraphBuilder::IsTextureAcquired(const lib::SharedPtr<rdr::Texture>& texture) const
@@ -683,16 +683,12 @@ void RenderGraphBuilder::ClearTexture(const RenderGraphDebugName& clearName, RGT
 
 void RenderGraphBuilder::BindDescriptorSetState(const lib::MTHandle<RGDescriptorSetStateBase>& dsState)
 {
-	m_boundDSStates.emplace_back(dsState);
+	m_boundDSStates.EmplaceBack(dsState);
 }
 
 void RenderGraphBuilder::UnbindDescriptorSetState(const lib::MTHandle<RGDescriptorSetStateBase>& dsState)
 {
-	const auto foundDS = std::find(std::cbegin(m_boundDSStates), std::cend(m_boundDSStates), dsState);
-	if (foundDS != std::cend(m_boundDSStates))
-	{
-		m_boundDSStates.erase(foundDS);
-	}
+	m_boundDSStates.RemoveElementSwap(dsState);
 }
 
 const js::Event& RenderGraphBuilder::GetGPUFinishedEvent() const
