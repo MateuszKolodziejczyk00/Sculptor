@@ -74,22 +74,11 @@ DDGIScene::DDGIScene(RenderScene& renderScene)
 	: m_owningScene(renderScene)
 	, m_ddgiSceneDS(rdr::ResourcesManager::CreateDescriptorSetState<DDGISceneDS>(RENDERER_RESOURCE_NAME("DDGI Scene DS")))
 {
-	RenderSceneRegistry& registry = m_owningScene.GetRegistry();
-
-	registry.on_construct<DirectionalLightData>().connect<&DDGIScene::OnDirectionalLightUpdated>(this);
-	registry.on_update<DirectionalLightData>().connect<&DDGIScene::OnDirectionalLightUpdated>(this);
-	registry.on_destroy<DirectionalLightData>().connect<&DDGIScene::OnDirectionalLightUpdated>(this);
 }
 
 DDGIScene::~DDGIScene()
 {
 	DeinitializeLODs();
-
-	RenderSceneRegistry& registry = m_owningScene.GetRegistry();
-
-	registry.on_construct<DirectionalLightData>().disconnect<&DDGIScene::OnDirectionalLightUpdated>(this);
-	registry.on_update<DirectionalLightData>().disconnect<&DDGIScene::OnDirectionalLightUpdated>(this);
-	registry.on_destroy<DirectionalLightData>().disconnect<&DDGIScene::OnDirectionalLightUpdated>(this);
 }
 
 void DDGIScene::Initialize(const DDGIConfig& config)
@@ -100,6 +89,14 @@ void DDGIScene::Initialize(const DDGIConfig& config)
 void DDGIScene::Update(const SceneView& mainView)
 {
 	SPT_PROFILER_FUNCTION();
+
+	if (m_owningScene.lighting.IsDirectionalLightDirty())
+	{
+		for (DDGIVolume* volume : m_volumes)
+		{
+			volume->MarkSunLightDirectionDirty();
+		}
+	}
 
 	UpdateLODs(mainView);
 
@@ -355,14 +352,6 @@ void DDGIScene::UpdatePriorities(const SceneView& mainView)
 	for (DDGIVolume* volume : m_volumes)
 	{
 		volume->UpdateRelitPriority(mainView, currentTime, deltaTime);
-	}
-}
-
-void DDGIScene::OnDirectionalLightUpdated(RenderSceneRegistry& registry, RenderSceneEntity entity)
-{
-	for (DDGIVolume* volume : m_volumes)
-	{
-		volume->MarkSunLightDirectionDirty();
 	}
 }
 

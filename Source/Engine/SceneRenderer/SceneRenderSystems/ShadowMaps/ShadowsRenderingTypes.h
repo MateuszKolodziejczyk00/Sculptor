@@ -4,6 +4,7 @@
 #include "RenderSceneRegistry.h"
 #include "RHICore/RHITextureTypes.h"
 #include "ShaderStructs/ShaderStructs.h"
+#include "Lights/LightTypes.h"
 #include "Bindless/BindlessTypes.h"
 
 
@@ -41,7 +42,7 @@ struct ShadowMapViewComponent
 	{ }
 
 	lib::SharedPtr<rdr::Texture>           shadowMap;
-	RenderSceneEntity                      owningLight;
+	LocalLightHandle                       owningLight;
 	Uint32                                 faceIdx;
 	EShadowMapType                         shadowMapType;
 	std::optional<EShadowMappingTechnique> techniqueOverride;

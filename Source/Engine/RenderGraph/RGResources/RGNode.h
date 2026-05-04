@@ -187,7 +187,7 @@ public:
 	
 	const lib::HashedString& GetName() const;
 
-	void BindDSState(lib::MTHandle<rdr::DescriptorSetState> ds);
+	void AddDescriptorSetState(lib::MTHandle<rdr::DescriptorSetState> dsState);
 
 	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context);
 

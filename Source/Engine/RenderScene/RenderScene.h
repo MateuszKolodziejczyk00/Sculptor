@@ -1,9 +1,13 @@
 #pragma once
 
+#include "Lights/LightingScene.h"
+#include "Materials/MaterialsRenderingCommon.h"
+#include "RayTracing/RTScene.h"
 #include "RenderSceneMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RenderSceneRegistry.h"
 #include "RenderSceneTypes.h"
+#include "StaticMeshes/RetainedDraws.h"
 #include "Terrain/TerrainDefinition.h"
 
 
@@ -16,22 +20,13 @@ class FrameContext;
 namespace spt::rsc
 {
 
-struct EntityGPUDataHandle
+using RenderInstances = lib::PagedGenerationalPool<RenderInstance>;
+
+
+struct RenderInstanceDef
 {
-	EntityGPUDataHandle() = default;
-
-	explicit EntityGPUDataHandle(const rhi::RHIVirtualAllocation& inSuballocation)
-		: transformSuballocation(inSuballocation)
-	{ }
-
-	RenderEntityGPUPtr GetGPUDataPtr() const
-	{
-		return RenderEntityGPUPtr(static_cast<Uint32>(transformSuballocation.GetOffset()));
-	}
-
-	rhi::RHIVirtualAllocation transformSuballocation;
+	math::Affine3f transform;
 };
-SPT_REGISTER_COMPONENT_TYPE(EntityGPUDataHandle, RenderSceneRegistry);
 
 
 class RENDER_SCENE_API RenderScene
@@ -40,19 +35,14 @@ public:
 
 	RenderScene();
 
-	RenderSceneRegistry& GetRegistry();
-	const RenderSceneRegistry& GetRegistry() const;
-
 	void BeginFrame(const engn::FrameContext& frame);
 	void EndFrame();
 
 	const engn::FrameContext& GetCurrentFrameRef() const;
 
-	// Entities =============================================================
+	// Instances ============================================================
 
-	RenderSceneEntityHandle CreateEntity();
-	RenderSceneEntityHandle CreateEntity(const RenderInstanceData& instanceData);
-	void DestroyEntity(RenderSceneEntityHandle entity);
+	RenderInstanceHandle CreateInstance(const RenderInstanceDef& def);
 
 	// Terrain ==============================================================
 
@@ -63,13 +53,25 @@ public:
 
 	const lib::SharedRef<rdr::Buffer>& GetRenderEntitiesBuffer() const;
 
+	// Scene Data ===========================================================
+
+	RTScene rt;
+
+	SceneMaterials materials;
+
+	RetainedDraws draws;
+
+	LightingScene lighting;
+
+	const RenderInstances& GetInstances() const { return m_instances; }
+
 private:
 
 	lib::SharedRef<rdr::Buffer> CreateInstancesBuffer() const;
 
 	TerrainDefinition m_terrainDefinition;
 
-	RenderSceneRegistry m_registry;
+	RenderInstances m_instances;
 
 	lib::SharedRef<rdr::Buffer> m_renderEntitiesBuffer;
 

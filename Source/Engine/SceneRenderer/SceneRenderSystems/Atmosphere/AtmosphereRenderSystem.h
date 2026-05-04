@@ -2,6 +2,7 @@
 
 #include "SceneRenderSystems/SceneRenderSystem.h"
 #include "Clouds/VolumetricCloudsRenderer.h"
+#include "Lights/LightTypes.h"
 
 
 namespace spt::rsc
@@ -32,6 +33,8 @@ public:
 
 	Bool AreVolumetricCloudsEnabled() const { return m_volumetricCloudsRenderer.AreVolumetricCloudsEnabled(); }
 
+	const DirectionalLightIlluminance& GetDirectionalLightIlluminance() const { return m_directionalLightIlluminance; }
+
 private:
 
 	void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
@@ -40,12 +43,9 @@ private:
 
 	void InitializeResources();
 
-	void OnDirectionalLightUpdated(RenderSceneRegistry& registry, RenderSceneEntity entity);
-	void OnDirectionalLightRemoved(RenderSceneRegistry& registry, RenderSceneEntity entity);
-
 	void UpdateAtmosphereContext();
 
-	void UpdateDirectionalLightIlluminance(RenderSceneEntity entity);
+	void UpdateDirectionalLightIlluminance(const DirectionalLightData& dirLight);
 
 	clouds::VolumetricCloudsRenderer m_volumetricCloudsRenderer;
 
@@ -53,12 +53,13 @@ private:
 
 	AtmosphereParams m_atmosphereParams;
 
-	Bool m_isAtmosphereContextDirty;
 	Bool m_isAtmosphereTextureDirty;
 
 	Bool m_shouldUpdateTransmittanceLUT;;
 
 	math::Vector3f m_transmittanceAtZenith;
+
+	DirectionalLightIlluminance m_directionalLightIlluminance;
 };
 
 } // spt::rsc

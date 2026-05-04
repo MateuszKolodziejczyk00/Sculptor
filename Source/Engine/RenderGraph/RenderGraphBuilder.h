@@ -225,6 +225,7 @@ private:
 	void AssignShaderParamsToNode(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, const TShaderParams& shaderParams, RGDependenciesBuilder& dependenciesBuilder);
 
 	void AssignDescriptorSetsToNode(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<lib::MTHandle<RGDescriptorSetStateBase> const> dsStatesRange, RGDependenciesBuilder& dependenciesBuilder);
+	void AssignDescriptorSetsToSubpass(RGSubpass& subpass, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<lib::MTHandle<RGDescriptorSetStateBase> const> dsStatesRange, RGDependenciesBuilder& dependenciesBuilder);
 
 	Bool AssignShaderParamsToNodeInternal(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<const Byte> paramsData, const lib::HashedString& paramsType, RGDependenciesBuilder& dependenciesBuilder);
 
@@ -464,18 +465,18 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 	using SubpassType  = RGLambdaSubpass<CallableType>;
 	RGSubpassHandle subpass = m_memoryArena.AllocateType<SubpassType>(m_memoryArena, subpassName, std::forward<TCallable>(callable));
 
-	for (const lib::MTHandle<rdr::DescriptorSetState>& dsState : dsStatesRange)
-	{
-		if (dsState.IsValid())
-		{
-			subpass->BindDSState(dsState);
-		}
-	}
+	//for (const lib::MTHandle<rdr::DescriptorSetState>& dsState : dsStatesRange)
+	//{
+	//	if (dsState.IsValid())
+	//	{
+	//		subpass->BindDSState(dsState);
+	//	}
+	//}
 
-	for (const lib::MTHandle<rdr::DescriptorSetState>& dsState : m_boundDSStates)
-	{
-		subpass->BindDSState(dsState);
-	}
+	//for (const lib::MTHandle<rdr::DescriptorSetState>& dsState : m_boundDSStates)
+	//{
+	//	subpass->BindDSState(dsState);
+	//}
 	
 	m_lastRenderPassNode->AppendSubpass(subpass);
 
@@ -483,7 +484,7 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 	RGDependenciesBuilder subpassDependenciesBuilder(*this, subpassDependencies, rhi::EPipelineStage::ALL_GRAPHICS_SHADERS);
 	
 	BuildParametersDependencies(parameters, subpassDependenciesBuilder);
-	AssignDescriptorSetsToNode(*m_lastRenderPassNode, nullptr, { dsStatesRange }, subpassDependenciesBuilder);
+	AssignDescriptorSetsToSubpass(*subpass, nullptr, { dsStatesRange }, subpassDependenciesBuilder);
 
 	ResolveNodeDependecies(*m_lastRenderPassNode, subpassDependencies);
 

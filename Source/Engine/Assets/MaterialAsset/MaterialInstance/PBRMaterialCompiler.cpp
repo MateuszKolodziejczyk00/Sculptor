@@ -367,13 +367,14 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		auto [loadedDepth, depth]                               = acquireRGTextures(compilationInput.depthTex,             rhi::EFragmentFormat::R8_UN_Float);
 		const auto [loadedRoughness, roughness]                 = acquireRGTextures(compilationInput.roughnessTex,         rhi::EFragmentFormat::RGBA8_UN_Float);
 
+		if (metallicRoughness.IsValid() && roughness.IsValid())
+		{
+			SPT_LOG_ERROR(PBRMaterialCompiler, "Roughness texture provided and MetallicRoughness is also valid. This is not valid, Roughness texture will be ignored. Material: {}", asset.GetName().GetData());
+		}
+
 		if (!metallicRoughness.IsValid() && roughness.IsValid())
 		{
 			metallicRoughness = roughness;
-		}
-		else
-		{
-			SPT_LOG_ERROR(PBRMaterialCompiler, "Roughness texture provided and MetallicRoughness is also valid. This is not valid, Roughness texture will be ignored. Material: {}", asset.GetName().GetData());
 		}
 
 		rg::RGTextureViewHandle alpha;

@@ -61,31 +61,30 @@ void RayTracingRenderSystem::UpdateTLAS()
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RenderSceneRegistry& sceneRegistry = GetOwningScene().GetRegistry();
+	RenderScene& scene = GetOwningScene();
 
 	rhi::TLASDefinition tlasDefinition;
 
-	const auto rayTracedObjectsEntities = sceneRegistry.view<const EntityGPUDataHandle, const TransformComponent, const rsc::MaterialSlotsComponent, const RayTracingGeometryProviderComponent>();
-	const SizeType rayTracedEntitiesNum = static_cast<SizeType>(rayTracedObjectsEntities.size_hint() * 2.2f);
-	tlasDefinition.instances.reserve(rayTracedEntitiesNum);
-
 	lib::DynamicArray<RTInstanceData> rtInstances;
-	rtInstances.reserve(rayTracedObjectsEntities.size_hint());
 
-	for (const auto& [entity, gpuEntity, transform, materialsSlots, rtGeoProvider] : rayTracedObjectsEntities.each())
+	const auto processRTInstance = [&](RTInstanceHandle handle, const RTInstance& instance)
 	{
-		SPT_CHECK(rtGeoProvider.provider != nullptr);
+		const RayTracingGeometryProvider& rtGeo = instance.rtGeometry;
 
-		const lib::Span<const RayTracingGeometryDefinition> rtGeometries = rtGeoProvider.provider->GetRayTracingGeometries();
+		const lib::Span<const RayTracingGeometryDefinition> rtGeometries = rtGeo.GetRayTracingGeometries();
 
-		const rhi::TLASInstanceDefinition::TransformMatrix transformMatrix = transform.GetTransform().matrix().topLeftCorner<3, 4>();
+		MaterialSlotsChunk* materialsSlots = scene.materials.slots.Get(instance.materialSlots);
+		Uint32 currentSlotIdxInChunk = 0u;
 
-		SPT_CHECK(rtGeometries.size() == materialsSlots.slots.size());
+		const RenderInstance* renderInstance = scene.GetInstances().Get(instance.instance);
+		SPT_CHECK(renderInstance != nullptr);
+
+		const rhi::TLASInstanceDefinition::TransformMatrix transformMatrix = renderInstance->transform.matrix().topLeftCorner<3, 4>();
 
 		for(SizeType idx = 0; idx < rtGeometries.size(); ++idx)
 		{
 			const RayTracingGeometryDefinition& rtGeometry   = rtGeometries[idx];
-			const ecs::EntityHandle material                 = materialsSlots.slots[idx];
+			const ecs::EntityHandle material                 = materialsSlots->slots[currentSlotIdxInChunk++];
 			const mat::MaterialProxyComponent& materialProxy = material.get<const mat::MaterialProxyComponent>();
 
 			if(materialProxy.SupportsRayTracing())
@@ -97,7 +96,7 @@ void RayTracingRenderSystem::UpdateTLAS()
 				}
 
 				RTInstanceData& rtInstance = rtInstances.emplace_back();
-				rtInstance.entity                 = gpuEntity.GetGPUDataPtr();
+				rtInstance.entity                 = GetInstanceGPUDataPtr(instance.instance);
 				rtInstance.materialDataHandle     = materialProxy.GetMaterialDataHandle();
 				rtInstance.metarialRTFlags        = static_cast<Uint16>(materialRTFlags);
 				rtInstance.indicesDataUGBOffset   = rtGeometry.indicesDataUGBOffset;
@@ -134,8 +133,17 @@ void RayTracingRenderSystem::UpdateTLAS()
 					lib::AddFlag(tlasInstance.flags, rhi::ETLASInstanceFlags::FacingCullDisable);
 				}
 			}
+
+			if (currentSlotIdxInChunk >= materialsSlots->slots.size())
+			{
+				currentSlotIdxInChunk = 0u;
+				materialsSlots = scene.materials.slots.Get(instance.materialSlots);
+				SPT_CHECK(materialsSlots != nullptr);
+			}
 		}
-	}
+	};
+
+	scene.rt.instances.ForEach(processRTInstance);
 
 	m_rtInstancesDataBuffer = BuildRTInstancesBuffer(rtInstances);
 

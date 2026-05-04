@@ -33,9 +33,7 @@ public:
 
 private:
 
-	void PrepareRenderers(const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
-
-	lib::HashMap<RenderSceneEntity, RTShadowMaskRenderer> m_shadowMaskRenderers;
+	RTShadowMaskRenderer m_shadowMaskRenderer;
 };
 
 } // spt::rsc

@@ -21,28 +21,8 @@ void WorldShadowCacheRenderSystem::Initialize(lib::MemoryArena& arena, RenderSce
 {
 	Super::Initialize(arena, renderScene);
 
-	RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry();
-
-	sceneRegistry.on_construct<DirectionalLightData>().connect<&WorldShadowCacheRenderSystem::OnDirectionalLightAdded>(this);
-	sceneRegistry.on_destroy<DirectionalLightData>().connect<&WorldShadowCacheRenderSystem::OnDirectionalLightRemoved>(this);
-
-	const auto dirLightsView = sceneRegistry.view<DirectionalLightData>();
-	for (const auto& [entity, dirLight] : dirLightsView.each())
-	{
-		OnDirectionalLightAdded(sceneRegistry, entity);
-	}
+	m_dirLightData = CreatePerLightData();
 }
-
-void WorldShadowCacheRenderSystem::Deinitialize(RenderScene& renderScene)
-{
-	RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry();
-
-	sceneRegistry.on_construct<DirectionalLightData>().disconnect<&WorldShadowCacheRenderSystem::OnDirectionalLightAdded>(this);
-	sceneRegistry.on_destroy<DirectionalLightData>().disconnect<&WorldShadowCacheRenderSystem::OnDirectionalLightRemoved>(this);
-
-	Super::Deinitialize(renderScene);
-}
-
 
 void WorldShadowCacheRenderSystem::Update(const SceneUpdateContext& context)
 {
@@ -50,36 +30,27 @@ void WorldShadowCacheRenderSystem::Update(const SceneUpdateContext& context)
 
 	Super::Update(context);
 
-	const SizeType dirLightsNum = m_perLightData.size();
-	if (dirLightsNum == 0)
-	{
-		return;
-	}
-
 	const engn::FrameContext& frame = GetOwningScene().GetCurrentFrameRef();
 
 	const Bool fullUpdate = context.rendererSettings.resetAccumulation;
 
-	const SizeType cascadesToUpdateNum = dirLightsNum * (fullUpdate ? constants::cascadeCount : 1u);
+	const SizeType cascadesToUpdateNum = fullUpdate ? constants::cascadeCount : 1u;
 	m_cascadesToUpdate = frame.GetFrameMemoryArena().AllocateSpanUninitialized<RenderView*>(cascadesToUpdateNum);
 
 	Uint32 cascadeUpdateIdx = 0u;
-	for (auto& dirLightData : m_perLightData)
+	if (fullUpdate)
 	{
-		if (fullUpdate)
+		for (Uint32 cascadeIdx = 0u; cascadeIdx < constants::cascadeCount; ++cascadeIdx)
 		{
-			for (Uint32 cascadeIdx = 0u; cascadeIdx < constants::cascadeCount; ++cascadeIdx)
-			{
-				UpdateCascadeViewsMatrices(context.mainRenderView, dirLightData, cascadeIdx);
-				m_cascadesToUpdate[cascadeUpdateIdx++] = dirLightData.shadowCascadeViews[cascadeIdx];
-			}
+			UpdateCascadeViewsMatrices(context.mainRenderView, m_dirLightData, cascadeIdx);
+			m_cascadesToUpdate[cascadeUpdateIdx++] = m_dirLightData.shadowCascadeViews[cascadeIdx];
 		}
-		else
-		{
-			const Uint32 cascadeIdx = frame.GetFrameIdx() % constants::cascadeCount;
-			UpdateCascadeViewsMatrices(context.mainRenderView, dirLightData, cascadeIdx);
-			m_cascadesToUpdate[cascadeUpdateIdx++] = dirLightData.shadowCascadeViews[cascadeIdx];
-		}
+	}
+	else
+	{
+		const Uint32 cascadeIdx = frame.GetFrameIdx() % constants::cascadeCount;
+		UpdateCascadeViewsMatrices(context.mainRenderView, m_dirLightData, cascadeIdx);
+		m_cascadesToUpdate[cascadeUpdateIdx++] = m_dirLightData.shadowCascadeViews[cascadeIdx];
 	}
 }
 
@@ -88,17 +59,11 @@ void WorldShadowCacheRenderSystem::UpdateGPUSceneData(RenderSceneConstants& scen
 	Super::UpdateGPUSceneData(sceneData);
 
 	WSCData wscData;
-	SPT_CHECK(m_perLightData.size() <= 1u); // currently support only one directional light, so only one shadow cache
 
-	if (!m_perLightData.empty())
+	for (Uint32 cascadeIdx = 0u; cascadeIdx < constants::cascadeCount; ++cascadeIdx)
 	{
-		const PerLightData& dirLightData = m_perLightData.front();
-
-		for (Uint32 cascadeIdx = 0u; cascadeIdx < constants::cascadeCount; ++cascadeIdx)
-		{
-			wscData.dirLightsData.cascades[cascadeIdx].shadowMap = dirLightData.shadowMapsViews[cascadeIdx];
-			wscData.dirLightsData.cascades[cascadeIdx].viewProj  = dirLightData.shadowCascadeViews[cascadeIdx]->GenerateViewProjectionMatrix();
-		}
+		wscData.dirLightsData.cascades[cascadeIdx].shadowMap = m_dirLightData.shadowMapsViews[cascadeIdx];
+		wscData.dirLightsData.cascades[cascadeIdx].viewProj  = m_dirLightData.shadowCascadeViews[cascadeIdx]->GenerateViewProjectionMatrix();
 	}
 
 	sceneData.wsc = wscData;
@@ -114,10 +79,9 @@ void WorldShadowCacheRenderSystem::CollectRenderViews(const SceneRendererInterfa
 	}
 }
 
-void WorldShadowCacheRenderSystem::OnDirectionalLightAdded(RenderSceneRegistry& registry, RenderSceneEntity entity)
+WorldShadowCacheRenderSystem::PerLightData WorldShadowCacheRenderSystem::CreatePerLightData() const
 {
 	PerLightData lightData;
-	lightData.dirLightEntity = entity;
 
 	const math::Vector2u shadowMapRes(2048u, 2048u);
 
@@ -141,7 +105,6 @@ void WorldShadowCacheRenderSystem::OnDirectionalLightAdded(RenderSceneRegistry& 
 
 		ShadowMapViewComponent shadowMapViewComponent;
 		shadowMapViewComponent.shadowMap         = shadowMap;
-		shadowMapViewComponent.owningLight       = entity;
 		shadowMapViewComponent.shadowMapType     = EShadowMapType::DirectionalLightCascade;
 		shadowMapViewComponent.faceIdx           = 0u;
 		shadowMapViewComponent.techniqueOverride = EShadowMappingTechnique::CSM;
@@ -151,18 +114,12 @@ void WorldShadowCacheRenderSystem::OnDirectionalLightAdded(RenderSceneRegistry& 
 		lightData.shadowCascadeViews[cascadeIdx] = std::move(cascadeView);
 	}
 
-	m_perLightData.emplace_back(std::move(lightData));
-}
-
-
-void WorldShadowCacheRenderSystem::OnDirectionalLightRemoved(RenderSceneRegistry& registry, RenderSceneEntity entity)
-{
-	lib::RemoveAllBy(m_perLightData, [entity](const PerLightData& data) { return data.dirLightEntity == entity; });
+	return lightData;
 }
 
 void WorldShadowCacheRenderSystem::UpdateCascadeViewsMatrices(const RenderView& mainView, PerLightData& dirLightShadowsData, Uint32 cascadeIdx) const
 {
-	const DirectionalLightData& dirLightData = GetOwningScene().GetRegistry().get<DirectionalLightData>(dirLightShadowsData.dirLightEntity);
+	const DirectionalLightData& dirLightData = GetOwningScene().lighting.GetDirectionalLight();
 	const math::Vector3f lightDirection = dirLightData.direction;
 
 	RenderView& cascadeView = *dirLightShadowsData.shadowCascadeViews[cascadeIdx];

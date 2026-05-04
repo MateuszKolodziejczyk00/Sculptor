@@ -40,6 +40,12 @@ protected:
 	Byte* AllocateImpl(priv::ThreadSafeExtension&    extension, Uint64 size, Uint64 alignment);
 	Byte* AllocateImpl(priv::NonThreadSafeExtension& extension, Uint64 size, Uint64 alignment);
 
+	void GrowToImpl(priv::ThreadSafeExtension&    extension, Uint64 newSize);
+	void GrowToImpl(priv::NonThreadSafeExtension& extension, Uint64 newSize);
+
+	Bool IsLastAllocationImpl(const void* allocation, Uint64 size) const;
+	void GrowLastAllocationImpl(priv::NonThreadSafeExtension& extension, const void* allocation, Uint64 currentSize, Uint64 newSize);
+
 	template<typename TConcreteArena>
 	TConcreteArena CreateSubArenaImpl(const char* subArenaName, Byte* startPtr, Uint64 size)
 	{
@@ -73,6 +79,21 @@ public:
 	using MemoryArenaBase::MemoryArenaBase;
 
 	Byte* Allocate(Uint64 size, Uint64 alignment = alignof(std::max_align_t));
+	void GrowTo(Uint64 newSize) { GrowToImpl(m_extension, newSize); }
+
+	template<Bool B = isThreadSafe>
+	Bool IsLastAllocation(const void* allocation, Uint64 size) const
+	{
+		static_assert(!B, "IsLastAllocation is supported only for non-threadsafe arenas");
+		return IsLastAllocationImpl(allocation, size);
+	}
+
+	template<Bool B = isThreadSafe>
+	void GrowLastAllocation(const void* allocation, Uint64 currentSize, Uint64 newSize)
+	{
+		static_assert(!B, "GrowLastAllocation is supported only for non-threadsafe arenas");
+		GrowLastAllocationImpl(m_extension, allocation, currentSize, newSize);
+	}
 
 	template<typename TType, typename... TArgs>
 	TType* AllocateType(TArgs&&... args)

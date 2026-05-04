@@ -111,8 +111,6 @@ private:
 
 	rg::RenderGraphResourcesPool		m_resourcesPool;
 
-	rsc::RenderSceneEntityHandle m_directionalLightEntity;
-
 	Bool m_isViewportFocused;
 
 	lib::SharedPtr<rg::capture::RGCaptureSourceContext> m_captureSourceContext;

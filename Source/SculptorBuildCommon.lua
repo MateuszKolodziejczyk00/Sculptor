@@ -219,6 +219,7 @@ function Project:GetProjectFiles(configuration, platform)
 		"**.h",
 		"**.cpp",
 		"**.inl",
+        "**.natvis",
         "**.c",
         self.name .. ".lua"
     }

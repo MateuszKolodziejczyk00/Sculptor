@@ -20,15 +20,13 @@ public:
 
 	RTShadowMaskRenderer();
 
-	void Initialize(RenderSceneEntity entity);
+	void Initialize();
 
 	void BeginFrame(const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
 
 	rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
 
 private:
-
-	RenderSceneEntity m_lightEntity;
 
 	vrt::VariableRateRenderer m_variableRateRenderer;
 	visibility_denoiser::Denoiser m_denoiser;

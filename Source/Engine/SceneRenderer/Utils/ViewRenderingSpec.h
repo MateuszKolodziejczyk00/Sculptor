@@ -202,6 +202,8 @@ struct ShadingViewContext
 	rg::RGTextureViewHandle historyRoughness;
 
 	rg::RGTextureViewHandle ambientOcclusion;
+
+	rg::RGTextureViewHandle dirLightShadowMask;
 	
 	rg::RGTextureViewHandle skyViewLUT;
 	rg::RGTextureViewHandle skyProbe;

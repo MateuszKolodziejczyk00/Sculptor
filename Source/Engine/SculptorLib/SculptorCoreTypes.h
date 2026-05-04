@@ -18,6 +18,7 @@
 #include "Containers/HashSet.h"
 #include "Containers/Span.h"
 #include "Containers/Stack.h"
+#include "Containers/StackArenaArray.h"
 
 // Utility
 #include "Utility/Concepts.h"

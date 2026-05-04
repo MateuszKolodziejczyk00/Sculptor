@@ -396,17 +396,8 @@ void ApplyCloudsShadows(rg::RenderGraphBuilder& graphBuilder, const ApplyCloudsS
 } // apply_clouds_shadows
 
 RTShadowMaskRenderer::RTShadowMaskRenderer()
-	: m_lightEntity(nullRenderSceneEntity)
-	, m_denoiser(RG_DEBUG_NAME("Directional Light Denoiser"))
+	: m_denoiser(RG_DEBUG_NAME("Directional Light Denoiser"))
 {
-}
-
-void RTShadowMaskRenderer::Initialize(RenderSceneEntity entity)
-{
-	SPT_CHECK(m_lightEntity == nullRenderSceneEntity);
-
-	m_lightEntity = entity;
-
 	vrt::VariableRateSettings vrtSettings;
 	vrtSettings.debugName                           = RG_DEBUG_NAME("RT Shadow Mask");
 	vrtSettings.xThreshold2                         = 0.04f;
@@ -440,10 +431,7 @@ rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& gra
 
 	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Shadow Mask");
 
-	SPT_CHECK(m_lightEntity != nullRenderSceneEntity);
-
-	const RenderSceneRegistry& sceneRegistry     = renderScene.GetRegistry();
-	const DirectionalLightData& directionalLight = sceneRegistry.get<DirectionalLightData>(m_lightEntity);
+	const DirectionalLightData& directionalLight = renderScene.lighting.GetDirectionalLight();
 
 	const AtmosphereRenderSystem* atmosphereSystem = rendererInterface.GetRenderSystem<AtmosphereRenderSystem>();
 

@@ -42,11 +42,4 @@ public:
 	virtual lib::Span<const RayTracingGeometryDefinition> GetRayTracingGeometries() const = 0;
 };
 
-
-struct RayTracingGeometryProviderComponent
-{
-	RayTracingGeometryProvider* provider = nullptr;
-};
-SPT_REGISTER_COMPONENT_TYPE(RayTracingGeometryProviderComponent, RenderSceneRegistry)
-
 } // spt::rsc

@@ -199,6 +199,27 @@ public:
 		--m_size;
 	}
 
+	void RemoveAt(SizeType index)
+	{
+		SPT_CHECK(index < m_size);
+
+		for (SizeType i = index; i < m_size - 1u; ++i)
+		{
+			if constexpr (std::is_move_assignable_v<ValueType>)
+			{
+				m_inlineData[i].Get() = std::move(m_inlineData[i + 1u].Get());
+			}
+			else
+			{
+				m_inlineData[i].Destroy();
+				m_inlineData[i].Construct(std::move(m_inlineData[i + 1u].Get()));
+			}
+		}
+
+		m_inlineData[m_size - 1u].Destroy();
+		--m_size;
+	}
+
 	void RemoveElementSwap(const ValueType& value)
 	{
 		for (SizeType i = 0; i < m_size; ++i)

@@ -88,15 +88,15 @@ void ShadowMapsRenderSystem::Update(const SceneUpdateContext& context)
 
 	FindShadowMapsToUpdate();
 
-	RenderSceneRegistry& sceneRegistry = GetOwningScene().GetRegistry();
+	LightingScene& lightingScene = GetOwningScene().lighting;
 
 	lib::DynamicArray<lib::UniquePtr<RenderView>> shadowMapViws;
 
-	const lib::DynamicArray<RenderSceneEntity>& m_pointLightsWithShadowMapsToUpdate = GetPointLightsWithShadowMapsToUpdate();
-	for (const RenderSceneEntity lightEntity : m_pointLightsWithShadowMapsToUpdate)
+	const lib::DynamicArray<PointLightHandle>& m_pointLightsWithShadowMapsToUpdate = GetPointLightsWithShadowMapsToUpdate();
+	for (const PointLightHandle lightEntity : m_pointLightsWithShadowMapsToUpdate)
 	{
-		const PointLightData& pointLightData					= sceneRegistry.get<PointLightData>(lightEntity);
-		const PointLightShadowMapComponent& pointLightShadowMap	= sceneRegistry.get<PointLightShadowMapComponent>(lightEntity);
+		const PointLightData& pointLightData           = lightingScene.pointLights.GetRef(lightEntity);
+		const LocalLightShadowMap& pointLightShadowMap = m_localLightsShadowMaps.At(lightEntity);
 
 		UpdateShadowMapRenderViews(lightEntity, pointLightData, pointLightShadowMap.shadowMapFirstFaceIdx);
 	}
@@ -145,7 +145,7 @@ Bool ShadowMapsRenderSystem::CanRenderShadows() const
 	return !m_shadowMapViews.empty();
 }
 
-const lib::DynamicArray<RenderSceneEntity>& ShadowMapsRenderSystem::GetPointLightsWithShadowMapsToUpdate() const
+const lib::DynamicArray<PointLightHandle>& ShadowMapsRenderSystem::GetPointLightsWithShadowMapsToUpdate() const
 {
 	return m_lightsWithShadowMapsToUpdate;
 }
@@ -154,16 +154,14 @@ lib::DynamicArray<RenderView*> ShadowMapsRenderSystem::GetShadowMapViewsToUpdate
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RenderSceneRegistry& sceneRegistry = GetOwningScene().GetRegistry();
-
-	const lib::DynamicArray<RenderSceneEntity>& lightsToUpdate = GetPointLightsWithShadowMapsToUpdate();
+	const lib::DynamicArray<PointLightHandle>& lightsToUpdate = GetPointLightsWithShadowMapsToUpdate();
 
 	lib::DynamicArray<RenderView*> renderViewsToUpdate;
 	renderViewsToUpdate.reserve(lightsToUpdate.size() * 6);
 
-	for (RenderSceneEntity light : lightsToUpdate)
+	for (PointLightHandle light : lightsToUpdate)
 	{
-		const PointLightShadowMapComponent& pointLightShadowMap	= sceneRegistry.get<PointLightShadowMapComponent>(light);
+		const LocalLightShadowMap& pointLightShadowMap = m_localLightsShadowMaps.At(light);
 		
 		for (SizeType faceIdx = 0; faceIdx < 6; ++faceIdx)
 		{
@@ -174,39 +172,22 @@ lib::DynamicArray<RenderView*> ShadowMapsRenderSystem::GetShadowMapViewsToUpdate
 	return renderViewsToUpdate;
 }
 
-lib::DynamicArray<RenderView*> ShadowMapsRenderSystem::GetPointLightShadowMapViews(const PointLightShadowMapComponent& pointLightShadowMap) const
+void ShadowMapsRenderSystem::SetPointLightShadowMapsBeginIdx(PointLightHandle pointLightEntity, Uint32 shadowMapBeginIdx)
 {
-	SPT_PROFILER_FUNCTION();
-
-	lib::DynamicArray<RenderView*> views;
-	views.reserve(6);
-
-	for (SizeType faceIdx = 0; faceIdx < 6; ++faceIdx)
-	{
-		views.emplace_back(m_shadowMapsRenderViews[static_cast<SizeType>(pointLightShadowMap.shadowMapFirstFaceIdx) + faceIdx]);
-	}
-
-	return views;
-}
-
-void ShadowMapsRenderSystem::SetPointLightShadowMapsBeginIdx(RenderSceneEntity pointLightEntity, Uint32 shadowMapBeginIdx)
-{
-	RenderSceneRegistry& registry = GetOwningScene().GetRegistry();
-	registry.emplace<PointLightShadowMapComponent>(pointLightEntity, PointLightShadowMapComponent{ shadowMapBeginIdx });
+	m_localLightsShadowMaps.Emplace(pointLightEntity, LocalLightShadowMap{ shadowMapBeginIdx });
 	m_lightsWithShadowMapsToUpdate.emplace_back(pointLightEntity);
 	m_updatePriorities.emplace_back(LightUpdatePriority{ pointLightEntity, 0.f });
 }
 
-Uint32 ShadowMapsRenderSystem::ResetPointLightShadowMap(RenderSceneEntity pointLightEntity)
+Uint32 ShadowMapsRenderSystem::ResetPointLightShadowMap(PointLightHandle pointLightEntity)
 {
 	Uint32 shadowMapFirstFaceIdx = idxNone<Uint32>;
 
-	RenderSceneRegistry& registry = GetOwningScene().GetRegistry();
-	const PointLightShadowMapComponent* shadowMapComp = registry.try_get<PointLightShadowMapComponent>(pointLightEntity);
+	const LocalLightShadowMap* shadowMapComp = m_localLightsShadowMaps.TryGet(pointLightEntity);
 	if (shadowMapComp)
 	{
 		shadowMapFirstFaceIdx = shadowMapComp->shadowMapFirstFaceIdx;
-		registry.remove<PointLightShadowMapComponent>(pointLightEntity);
+		m_localLightsShadowMaps.Erase(pointLightEntity);
 
 		const auto foundUpdatePriority = std::find_if(std::cbegin(m_updatePriorities), std::cend(m_updatePriorities),
 													  [pointLightEntity](const LightUpdatePriority& updatePriority)
@@ -217,7 +198,7 @@ Uint32 ShadowMapsRenderSystem::ResetPointLightShadowMap(RenderSceneEntity pointL
 		SPT_CHECK(foundUpdatePriority != std::cend(m_updatePriorities));
 		m_updatePriorities.erase(foundUpdatePriority);
 
-		m_pointLightsWithAssignedShadowMaps.erase(pointLightEntity);
+		m_localLightsShadowMaps.erase(pointLightEntity);
 	}
 	return shadowMapFirstFaceIdx;
 }
@@ -236,10 +217,10 @@ EShadowMapQuality ShadowMapsRenderSystem::GetShadowMapQuality(SizeType pointLigh
 	return EShadowMapQuality::Low;
 }
 
-EShadowMapQuality ShadowMapsRenderSystem::GetShadowMapQuality(RenderSceneEntity light) const
+EShadowMapQuality ShadowMapsRenderSystem::GetShadowMapQuality(PointLightHandle light) const
 {
-	const auto foundPriority = m_pointLightsWithAssignedShadowMaps.find(light);
-	return foundPriority != std::cend(m_pointLightsWithAssignedShadowMaps) ? foundPriority->second : EShadowMapQuality::None;
+	const auto foundPriority = m_localLightsShadowMaps.find(light);
+	return foundPriority != std::cend(m_localLightsShadowMaps) ? foundPriority->second.quality : EShadowMapQuality::None;
 }
 
 void ShadowMapsRenderSystem::ReleaseShadowMap(EShadowMapQuality quality, Uint32 shadowMapIdx)
@@ -354,52 +335,53 @@ void ShadowMapsRenderSystem::AssignShadowMaps(const RenderView& mainView)
 		return;
 	}
 
-	const SizeType availableShadowMapsNum = m_shadowMapViews.size() / 6;
+	const LightingScene& lightingScene = GetOwningScene().lighting;
 
-	const RenderSceneRegistry& registry = GetOwningScene().GetRegistry();
-	const auto pointLightsView = registry.view<PointLightData>();
+	const Uint32 availableShadowMapsNum = static_cast<Uint32>(m_shadowMapViews.size() / 6);
 
-	const SizeType shadowMapsInUse = std::min(availableShadowMapsNum, pointLightsView.size());
+	const Uint32 shadowMapsInUse = std::min(availableShadowMapsNum, lightingScene.pointLights.GetNum());
 		
-	lib::DynamicArray<std::pair<RenderSceneEntity, Real32>> lightPriorities;
-	lightPriorities.reserve(pointLightsView.size());
+	lib::DynamicArray<std::pair<PointLightHandle, Real32>> lightPriorities;
+	lightPriorities.reserve(lightingScene.pointLights.GetNum());
 
-	for (const auto& [lightEntity, pointLightData] : pointLightsView.each())
+	const auto processLight = [&](PointLightHandle lightEntity, const PointLightData& pointLightData)
 	{
 		lightPriorities.emplace_back(std::make_pair(lightEntity, ComputeLocalLightShadowMapPriority(mainView, lightEntity)));
-	}
+	};
+
+	lightingScene.pointLights.ForEach(processLight);
 
 	const auto compareOp = [](const auto& lhs, const auto& rhs) { return lhs.second > rhs.second; };
 
 	std::nth_element(std::begin(lightPriorities), std::begin(lightPriorities) + shadowMapsInUse, std::end(lightPriorities), compareOp);
 	std::sort(std::begin(lightPriorities), std::begin(lightPriorities) + shadowMapsInUse, compareOp);
 
-	lib::DynamicArray<std::pair<RenderSceneEntity, EShadowMapQuality>> shadowMapsToUpgrade;
+	lib::DynamicArray<std::pair<PointLightHandle, EShadowMapQuality>> shadowMapsToUpgrade;
 
 	struct ShadowMapReleaseInfo
 	{
-		RenderSceneEntity entity;
+		PointLightHandle entity;
 		EShadowMapQuality desiredQualityToAcquire;
 	};
 	
 	// current quality -> release info
 	lib::HashMap<EShadowMapQuality, lib::DynamicArray<ShadowMapReleaseInfo>> shadowMapsToRelease;
 
-	const lib::HashMap<RenderSceneEntity, EShadowMapQuality> pointLightsWithAssignedShadowMapsPrevFrame = std::move(m_pointLightsWithAssignedShadowMaps);
+	const auto pointLightsWithAssignedShadowMapsPrevFrame = std::move(m_localLightsShadowMaps);
 
-	lib::HashSet<RenderSceneEntity> lightsVisibleCurrentFrame;
+	lib::HashSet<PointLightHandle> lightsVisibleCurrentFrame;
 	lightsVisibleCurrentFrame.reserve(shadowMapsInUse);
 
 	// Iterate over lights that currently use shadow maps to determine if their quality should be changed
 
 	for (SizeType lightIdx = 0; lightIdx < shadowMapsInUse; ++lightIdx)
 	{
-		const RenderSceneEntity lightEntity = lightPriorities[lightIdx].first;
+		const PointLightHandle lightEntity = lightPriorities[lightIdx].first;
 
 		lightsVisibleCurrentFrame.emplace(lightEntity);
 
 		const auto foundCurrentQuality = pointLightsWithAssignedShadowMapsPrevFrame.find(lightEntity);
-		const EShadowMapQuality currentQuality = foundCurrentQuality != std::cend(pointLightsWithAssignedShadowMapsPrevFrame) ? foundCurrentQuality->second : EShadowMapQuality::None;
+		const EShadowMapQuality currentQuality = foundCurrentQuality != std::cend(pointLightsWithAssignedShadowMapsPrevFrame) ? foundCurrentQuality->second.quality : EShadowMapQuality::None;
 		const EShadowMapQuality desiredQuality = GetShadowMapQuality(lightIdx);
 
 		if (static_cast<Uint32>(currentQuality) < static_cast<Uint32>(desiredQuality))
@@ -430,18 +412,18 @@ void ShadowMapsRenderSystem::AssignShadowMaps(const RenderView& mainView)
 		else
 		{
 			// This light use shadow map of proper quality
-			m_pointLightsWithAssignedShadowMaps[lightEntity] = desiredQuality;
+			m_localLightsShadowMaps[lightEntity].quality = desiredQuality;
 		}
 	}
 
-	lib::DynamicArray<RenderSceneEntity> releasedShadowMaps;
+	lib::DynamicArray<PointLightHandle> releasedShadowMaps;
 
 	// release all shadow maps that are not visible
-	for (const auto [entity, quality] : pointLightsWithAssignedShadowMapsPrevFrame)
+	for (const auto [entity, sm] : pointLightsWithAssignedShadowMapsPrevFrame)
 	{
 		if (!lightsVisibleCurrentFrame.contains(entity))
 		{
-			ReleaseShadowMap(quality, ResetPointLightShadowMap(entity));
+			ReleaseShadowMap(sm.quality, ResetPointLightShadowMap(entity));
 			releasedShadowMaps.emplace_back(entity);
 		}
 	}
@@ -472,7 +454,7 @@ void ShadowMapsRenderSystem::AssignShadowMaps(const RenderView& mainView)
 		}
 	
 		SetPointLightShadowMapsBeginIdx(acquireLightEntity, shadowMapIdx);
-		m_pointLightsWithAssignedShadowMaps[acquireLightEntity] = acquireDesiredQuality;
+		m_localLightsShadowMaps[acquireLightEntity].quality = acquireDesiredQuality;
 	}
 
 	// Some lights had shadow maps that should be downgraded but there were no other lights to acquire their shadow maps
@@ -484,13 +466,13 @@ void ShadowMapsRenderSystem::AssignShadowMaps(const RenderView& mainView)
 		{
 			if (lightsVisibleCurrentFrame.contains(releaseInfo.entity))
 			{
-				m_pointLightsWithAssignedShadowMaps[releaseInfo.entity] = releasedQuality;
+				m_localLightsShadowMaps[releaseInfo.entity].quality = releasedQuality;
 			}
 		}
 	}
 }
 
-void ShadowMapsRenderSystem::UpdateShadowMapRenderViews(RenderSceneEntity owningLight, const PointLightData& pointLight, Uint32 shadowMapBeginIdx)
+void ShadowMapsRenderSystem::UpdateShadowMapRenderViews(PointLightHandle owningLight, const PointLightData& pointLight, Uint32 shadowMapBeginIdx)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -552,7 +534,7 @@ void ShadowMapsRenderSystem::FindShadowMapsToUpdate()
 	};
 
 	// Create hash set of lights that are already scheduled for update to be able to filter them faster
-	lib::HashSet<RenderSceneEntity> lightsToUpdate;
+	lib::HashSet<PointLightHandle> lightsToUpdate;
 	lightsToUpdate.reserve(m_lightsWithShadowMapsToUpdate.size());
 	std::copy(std::cbegin(m_lightsWithShadowMapsToUpdate), std::cend(m_lightsWithShadowMapsToUpdate), std::inserter(lightsToUpdate, std::begin(lightsToUpdate)));
 
@@ -565,7 +547,7 @@ void ShadowMapsRenderSystem::FindShadowMapsToUpdate()
 		}
 		else
 		{
-			lightUpdatePriority.updatePriority += deltaTime * GetPriorityMultiplierForQuality(m_pointLightsWithAssignedShadowMaps.at(lightUpdatePriority.light));
+			lightUpdatePriority.updatePriority += deltaTime * GetPriorityMultiplierForQuality(m_localLightsShadowMaps.at(lightUpdatePriority.light).quality);
 		}
 	}
 
@@ -580,7 +562,7 @@ void ShadowMapsRenderSystem::FindShadowMapsToUpdate()
 		// Add lights that have greatest update priority
 		for (SizeType idx = 0; idx < m_updatePriorities.size() && m_lightsWithShadowMapsToUpdate.size() < params::maxShadowMapsUpdatedPerFrame; ++idx)
 		{
-			const RenderSceneEntity light = m_updatePriorities[idx].light;
+			const PointLightHandle light = m_updatePriorities[idx].light;
 			if (!lightsToUpdate.contains(light))
 			{
 				m_lightsWithShadowMapsToUpdate.emplace_back(light);
@@ -592,14 +574,14 @@ void ShadowMapsRenderSystem::FindShadowMapsToUpdate()
 
 void ShadowMapsRenderSystem::ReleaseAllShadowMaps()
 {
-	for (const auto [entity, quality] : m_pointLightsWithAssignedShadowMaps)
+	for (const auto [entity, sm] : m_localLightsShadowMaps)
 	{
-		ReleaseShadowMap(quality, ResetPointLightShadowMap(entity));
+		ReleaseShadowMap(sm.quality, ResetPointLightShadowMap(entity));
 	}
-	m_pointLightsWithAssignedShadowMaps.clear();
+	m_localLightsShadowMaps.clear();
 }
 
-Real32 ShadowMapsRenderSystem::ComputeLocalLightShadowMapPriority(const SceneView& view, RenderSceneEntity light) const
+Real32 ShadowMapsRenderSystem::ComputeLocalLightShadowMapPriority(const SceneView& view, PointLightHandle  light) const
 {
 	const auto getLightCurrentQualityPriority = [](EShadowMapQuality currentQuality)
 	{
@@ -618,7 +600,7 @@ Real32 ShadowMapsRenderSystem::ComputeLocalLightShadowMapPriority(const SceneVie
 	const math::Vector3f viewLocation = view.GetLocation();
 	const math::Vector3f viewForward = view.GetForwardVector();
 
-	const PointLightData& pointLightData = GetOwningScene().GetRegistry().get<PointLightData>(light);
+	const PointLightData& pointLightData = GetOwningScene().lighting.pointLights.GetRef(light);
 
 	const Real32 maxDistanceToLight	= 15.f;
 	const Real32 maxRadius			= 5.f;

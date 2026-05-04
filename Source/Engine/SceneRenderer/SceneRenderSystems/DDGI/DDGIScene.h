@@ -104,10 +104,6 @@ private:
 
 	void UpdatePriorities(const SceneView& mainView);
 
-	// Callbacks
-
-	void OnDirectionalLightUpdated(RenderSceneRegistry& registry, RenderSceneEntity entity);
-
 	RenderScene& m_owningScene;
 
 	DDGIVolumesDefinition m_ddgiVolumesDef;

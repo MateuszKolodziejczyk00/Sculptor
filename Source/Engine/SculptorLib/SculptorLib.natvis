@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+    <Type Name="spt::lib::TypeStorage&lt;*&gt;">
+        <Intrinsic Name="value_ptr" Expression="($T1*)m_genericStorage.m_storage"/>
+        <DisplayString>{{{*value_ptr()}}}</DisplayString>
+        <Expand>
+            <Item Name="[value]">*value_ptr()</Item>
+            <Item Name="[address]">value_ptr()</Item>
+            <ExpandedItem>*value_ptr(),view(simple)</ExpandedItem>
+        </Expand>
+    </Type>
+</AutoVisualizer>

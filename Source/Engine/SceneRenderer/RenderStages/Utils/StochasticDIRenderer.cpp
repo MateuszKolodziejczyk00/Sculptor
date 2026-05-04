@@ -9,7 +9,6 @@
 #include "Material.h"
 #include "MaterialsSubsystem.h"
 #include "StaticMeshes/RenderMesh.h"
-#include "Utils/Geometry/StaticMeshRenderingCommon.h"
 #include "Utils/ScreenSpaceTracer.h"
 #include "Utils/TransfersUtils.h"
 #include "Utils/SceneRenderingTypes.h"
@@ -47,40 +46,46 @@ BEGIN_SHADER_STRUCT(EmissivesSampler)
 END_SHADER_STRUCT();
 
 
-static EmissivesSampler CreateEmissivesSampler(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
+static EmissivesSampler CreateEmissivesSampler(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterface& rendererInterface, const RenderScene& scene)
 {
 	SPT_PROFILER_FUNCTION();
 
 	EmissivesSampler sampler;
 
-	const auto meshesView = renderScene.GetRegistry().view<const StaticMeshInstanceRenderData, const EntityGPUDataHandle, const rsc::MaterialSlotsComponent>();
+	lib::StackArenaArray<rdr::HLSLStorage<EmissiveElement>> emissiveElements(rendererInterface.GetSceneRendererFrameArena());
 
-	lib::DynamicArray<rdr::HLSLStorage<EmissiveElement>> emissiveElements;
-
-	for (const auto& [entity, staticMeshRenderData, entityGPUDataHandle, materialsSlots] : meshesView.each())
+	const auto processMesh = [&](const RetainedDrawHandle handle, const RetainedDraw& draw)
 	{
-		const RenderMesh* mesh = staticMeshRenderData.staticMesh.Get();
-		SPT_CHECK(!!mesh);
+		const lib::Span<const SubmeshRenderingDefinition> submeshes = draw.mesh.GetSubmeshes();
 
-		const lib::Span<const SubmeshRenderingDefinition> submeshes = mesh->GetSubmeshes();
+		MaterialSlotsChunk* currentSlotsChunk = scene.materials.slots.Get(draw.materialSlots);
+		Uint32 matSlotInChunkIdx = 0u;
 
 		for (Uint32 idx = 0; idx < submeshes.size(); ++idx)
 		{
-			const ecs::EntityHandle material = materialsSlots.slots[idx];
+			const ecs::EntityHandle material = currentSlotsChunk->slots[matSlotInChunkIdx++];
 			const mat::MaterialProxyComponent& materialProxy = material.get<mat::MaterialProxyComponent>();
 
 			if (materialProxy.params.emissive)
 			{
 				EmissiveElement elem;
-				elem.entityPtr            = entityGPUDataHandle.GetGPUDataPtr();
-				elem.submeshPtr           = mesh->GetSubmeshesGPUPtr() + idx;
+				elem.entityPtr            = GetInstanceGPUDataPtr(draw.instance);
+				elem.submeshPtr           = draw.mesh.GetSubmeshesGPUPtr() + idx;
 				elem.materialDataHandle   = materialProxy.GetMaterialDataHandle();
 				elem.emissiveMatFeatureID = materialProxy.params.features.emissiveDataID;
 
-				emissiveElements.emplace_back(elem);
+				emissiveElements.EmplaceBack(elem);
+			}
+
+			if (matSlotInChunkIdx >= currentSlotsChunk->slots.size())
+			{
+				currentSlotsChunk = scene.materials.slots.Get(currentSlotsChunk->next);
+				matSlotInChunkIdx = 0u;
 			}
 		}
-	}
+	};
+
+	scene.draws.draws.ForEach(processMesh);
 
 	if (!emissiveElements.empty())
 	{
@@ -238,7 +243,7 @@ Renderer::Renderer()
 {
 }
 
-void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const StochasticDIParams& diParams)
+void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const StochasticDIParams& diParams)
 {
 	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Stochastic DI");
 
@@ -276,7 +281,7 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 		shaderConstants.motion                   = viewContext.motion;
 		shaderConstants.gBuffer                  = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
 		shaderConstants.ssTracer                 = ssTracer;
-		shaderConstants.emissivesSampler         = CreateEmissivesSampler(graphBuilder, renderScene);
+		shaderConstants.emissivesSampler         = CreateEmissivesSampler(graphBuilder, rendererInterface, renderScene);
 		shaderConstants.outReservoirs            = reservoirsBuffer;
 		shaderConstants.reservoirsResolution     = reservoirsResolution;
 		shaderConstants.risSamplesNum            = renderer_params::risSamplesNum;

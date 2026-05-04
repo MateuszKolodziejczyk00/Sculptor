@@ -160,7 +160,7 @@ void DeferredShadingRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, 
 			.outputLuminance = luminance
 		};
 
-		m_stochasticDIRenderer.Render(graphBuilder, renderScene, viewSpec, diParams);
+		m_stochasticDIRenderer.Render(graphBuilder, rendererInterface, renderScene, viewSpec, diParams);
 	}
 	else
 	{

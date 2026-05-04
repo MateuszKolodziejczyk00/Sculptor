@@ -18,12 +18,7 @@ void DirectionalLightShadowMasksRenderStage::BeginFrame(const RenderScene& rende
 
 	Base::BeginFrame(renderScene, viewSpec);
 
-	PrepareRenderers(renderScene, viewSpec);
-
-	for (auto& [entity, renderer] : m_shadowMaskRenderers)
-	{
-		renderer.BeginFrame(renderScene, viewSpec);
-	}
+	m_shadowMaskRenderer.BeginFrame(renderScene, viewSpec);
 }
 
 void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext)
@@ -32,49 +27,11 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 
 	SPT_CHECK(rdr::GPUApi::IsRayTracingEnabled());
 
+	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
+
 	viewSpec.GetRenderViewEntry(ERenderViewEntry::RenderCloudsTransmittanceMap).Broadcast(graphBuilder, rendererInterface, renderScene, viewSpec, RenderViewEntryContext{});
 
-	ViewDirectionalShadowMasksData& frameShadowMasks = viewSpec.GetBlackboard().Create<ViewDirectionalShadowMasksData>();
-	for (auto& [entity, renderer] : m_shadowMaskRenderers)
-	{
-		frameShadowMasks.shadowMasks[entity] = renderer.Render(graphBuilder, rendererInterface, renderScene, viewSpec);
-	}
-}
-
-void DirectionalLightShadowMasksRenderStage::PrepareRenderers(const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const rsc::RenderSceneRegistry& registry = renderScene.GetRegistry();
-
-	// Remove renderers for removed lights
-	{
-		lib::DynamicArray<RenderSceneEntity> lightsToRemove;
-
-		for (const auto& [entityID, renderer] : m_shadowMaskRenderers)
-		{
-			if (!registry.valid(entityID))
-			{
-				lightsToRemove.emplace_back(entityID);
-			}
-		}
-
-		for (RenderSceneEntity lightToRemove : lightsToRemove)
-		{
-			m_shadowMaskRenderers.erase(lightToRemove);
-		}
-	}
-
-	// Add renderers for new lights
-	const auto directionalLights = registry.view<DirectionalLightData>();
-	for (const auto& [entity, directionalLight] : directionalLights.each())
-	{
-		if (m_shadowMaskRenderers.find(entity) == m_shadowMaskRenderers.end())
-		{
-			RTShadowMaskRenderer& renderer = m_shadowMaskRenderers[entity];
-			renderer.Initialize(entity);
-		}
-	}
+	viewContext.dirLightShadowMask = m_shadowMaskRenderer.Render(graphBuilder, rendererInterface, renderScene, viewSpec);
 }
 
 } // spt::rsc

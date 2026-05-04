@@ -10,9 +10,9 @@ namespace spt::rsc
 
 struct GeometryDefinition
 {
-	rsc::RenderEntityGPUPtr entityPtr;
-	rsc::SubmeshGPUPtr      submeshPtr;
-	Uint32                  meshletsNum = 0;
+	RenderEntityGPUPtr entityPtr;
+	SubmeshGPUPtr      submeshPtr;
+	Uint32             meshletsNum = 0;
 };
 
 

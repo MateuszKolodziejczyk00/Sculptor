@@ -258,16 +258,10 @@ static rg::RGTextureViewHandle RenderAerialPerspective(rg::RenderGraphBuilder& g
 
 AtmosphereRenderSystem::AtmosphereRenderSystem(RenderScene& owningScene)
 	: Super(owningScene)
-	, m_isAtmosphereContextDirty(true)
+	//, m_isAtmosphereContextDirty(true)
 	, m_isAtmosphereTextureDirty(false)
 	, m_shouldUpdateTransmittanceLUT(true)
 {
-	RenderSceneRegistry& registry = owningScene.GetRegistry();
-
-	registry.on_construct<DirectionalLightData>().connect<&AtmosphereRenderSystem::OnDirectionalLightUpdated>(this);
-	registry.on_update<DirectionalLightData>().connect<&AtmosphereRenderSystem::OnDirectionalLightUpdated>(this);
-	registry.on_destroy<DirectionalLightData>().connect<&AtmosphereRenderSystem::OnDirectionalLightRemoved>(this);
-
 	m_atmosphereParams.groundRadiusMM        = 6.360f;
 	m_atmosphereParams.atmosphereRadiusMM    = 6.460f;
 	m_atmosphereParams.groundAlbedo          = math::Vector3f::Constant(0.3f);
@@ -298,10 +292,10 @@ void AtmosphereRenderSystem::Update(const SceneUpdateContext& context)
 
 	m_isAtmosphereTextureDirty = false;
 
-	if (m_isAtmosphereContextDirty)
+	if (GetOwningScene().lighting.IsDirectionalLightDirty())
 	{
+		UpdateDirectionalLightIlluminance(GetOwningScene().lighting.GetDirectionalLight());
 		UpdateAtmosphereContext();
-		m_isAtmosphereContextDirty = false;
 		m_isAtmosphereTextureDirty = true;
 	}
 }
@@ -418,65 +412,30 @@ void AtmosphereRenderSystem::InitializeResources()
 
 void AtmosphereRenderSystem::UpdateAtmosphereContext()
 {
-	RenderSceneRegistry& registry = GetOwningScene().GetRegistry();
-
-	const auto directionalLightsView = registry.view<const DirectionalLightData, const DirectionalLightIlluminance>();
-	const SizeType directionalLightsNum = registry.view<const DirectionalLightData>().size();
-
-	const Uint64 requiredBufferSize = std::max<SizeType>(directionalLightsNum, 1) * sizeof(rdr::HLSLStorage<DirectionalLightGPUData>);
+	const Uint64 requiredBufferSize = sizeof(rdr::HLSLStorage<DirectionalLightGPUData>);
 	if (!m_atmosphereContext.directionalLightsBuffer || m_atmosphereContext.directionalLightsBuffer->GetSize() < requiredBufferSize)
 	{
-		m_atmosphereContext.directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Atmosphere Directional Lights Buffer"), rhi::BufferDefinition(requiredBufferSize, rhi::EBufferUsage::Storage), rhi::EMemoryUsage::CPUToGPU);
+		m_atmosphereContext.directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Atmosphere Directional Light Buffer"), rhi::BufferDefinition(requiredBufferSize, rhi::EBufferUsage::Storage), rhi::EMemoryUsage::CPUToGPU);
 	}
 
-	rhi::RHIMappedBuffer<rdr::HLSLStorage<DirectionalLightGPUData>> lightsGPUData(m_atmosphereContext.directionalLightsBuffer->GetRHI());
+	rhi::RHIMappedBuffer<rdr::HLSLStorage<DirectionalLightGPUData>> lightGPUData(m_atmosphereContext.directionalLightsBuffer->GetRHI());
 
-	SizeType lightIndex = 0;
-	directionalLightsView.each([ & ](const DirectionalLightData& lightData, const DirectionalLightIlluminance& illuminance)
-							   {
-								   lightsGPUData[lightIndex++] = GPUDataBuilder::CreateDirectionalLightGPUData(lightData, illuminance);
-							   });
+	const DirectionalLightGPUData directionalLightGPUData = GPUDataBuilder::CreateDirectionalLightGPUData(GetOwningScene().lighting.GetDirectionalLight(), m_directionalLightIlluminance);
+	lightGPUData[0] = directionalLightGPUData;
 
-	if (lightIndex > 0u)
-	{
-		const DirectionalLightData& light              = directionalLightsView.get<DirectionalLightData>(directionalLightsView.front());
-		const DirectionalLightIlluminance& illuminance = directionalLightsView.get<DirectionalLightIlluminance>(directionalLightsView.front());
+	m_atmosphereContext.mainDirectionalLight = directionalLightGPUData;
 
-		m_atmosphereContext.mainDirectionalLight = GPUDataBuilder::CreateDirectionalLightGPUData(light, illuminance);
-	}
-	else
-	{
-		m_atmosphereContext.mainDirectionalLight.reset();
-	}
-
-	m_atmosphereParams.directionalLightsNum = static_cast<Uint32>(directionalLightsNum);
+	m_atmosphereParams.directionalLightsNum = 1u;
 
 	rhi::RHIMappedBuffer<rdr::HLSLStorage<AtmosphereParams>> atmosphereParamsGPUData(m_atmosphereContext.atmosphereParamsBuffer->GetRHI());
 	atmosphereParamsGPUData[0] = m_atmosphereParams;
 }
 
-
-void AtmosphereRenderSystem::OnDirectionalLightUpdated(RenderSceneRegistry& registry, RenderSceneEntity entity)
+void AtmosphereRenderSystem::UpdateDirectionalLightIlluminance(const DirectionalLightData& dirLight)
 {
-	m_isAtmosphereContextDirty = true;
-	UpdateDirectionalLightIlluminance(entity);
-}
+	const math::Vector3f illuminanceAtZenith = dirLight.color * dirLight.zenithIlluminance;
 
-void AtmosphereRenderSystem::OnDirectionalLightRemoved(RenderSceneRegistry& registry, RenderSceneEntity entity)
-{
-	m_isAtmosphereContextDirty = true;
-}
-
-void AtmosphereRenderSystem::UpdateDirectionalLightIlluminance(RenderSceneEntity entity)
-{
-	RenderSceneRegistry& registry = GetOwningScene().GetRegistry();
-
-	const DirectionalLightData& lightData = registry.get<DirectionalLightData>(entity);
-
-	const math::Vector3f illuminanceAtZenith = lightData.color * lightData.zenithIlluminance;
-
-	const DirectionalLightIlluminance illuminance = atmosphere_utils::ComputeDirectionalLightIlluminanceInAtmosphere(m_atmosphereParams, lightData.direction, illuminanceAtZenith, lightData.lightConeAngle);
-	registry.emplace_or_replace<DirectionalLightIlluminance>(entity, illuminance);
+	m_directionalLightIlluminance = atmosphere_utils::ComputeDirectionalLightIlluminanceInAtmosphere(m_atmosphereParams, dirLight.direction, illuminanceAtZenith, dirLight.lightConeAngle);
 }
 
 } // spt::rsc

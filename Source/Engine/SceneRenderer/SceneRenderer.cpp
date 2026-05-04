@@ -81,6 +81,7 @@ struct SceneRendererRuntime : public SceneRendererInterface
 
 	// Begin SceneRendererInterface
 	virtual SceneRenderSystem* GetRenderSystem(ESceneRenderSystem type) const override;
+	virtual lib::MemoryArena& GetSceneRendererFrameArena() const override { return rendererData.perFrameArena; }
 	// End SceneRendererInterface
 
 	SceneRendererData& rendererData;
@@ -160,10 +161,13 @@ lib::MTHandle<RenderSceneDS> UpdateRenderSystemsPerFrame(SceneRendererData& rend
 
 	for (Uint32 systemIdx = 0; systemIdx < static_cast<Uint32>(ESceneRenderSystem::NUM); ++systemIdx)
 	{
-		activeRenderSystems.EmplaceBack(ActiveRenderSystem{
-			.system     = rendererData.renderSystems[systemIdx],
-			.systemType = GetSceneRenderSystemByIdx(systemIdx)
-		});
+		if (rendererData.renderSystems[systemIdx])
+		{
+			activeRenderSystems.EmplaceBack(ActiveRenderSystem{
+				.system     = rendererData.renderSystems[systemIdx],
+				.systemType = GetSceneRenderSystemByIdx(systemIdx)
+			});
+		}
 	}
 
 	js::InlineParallelForEach("Update Scene Render Systems",

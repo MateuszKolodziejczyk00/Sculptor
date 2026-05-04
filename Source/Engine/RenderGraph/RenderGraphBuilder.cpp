@@ -723,6 +723,26 @@ void RenderGraphBuilder::AssignDescriptorSetsToNode(RGNode& node, const lib::Sha
 	processDSStatesRange(m_boundDSStates);
 }
 
+void RenderGraphBuilder::AssignDescriptorSetsToSubpass(RGSubpass& subpass, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<lib::MTHandle<RGDescriptorSetStateBase> const> dsStatesRange, RGDependenciesBuilder& dependenciesBuilder)
+{
+	const smd::ShaderMetaData* metaData = pipeline ? &pipeline->GetMetaData() : nullptr;
+
+	const auto processDSStatesRange = [&metaData, &subpass, &dependenciesBuilder](const auto& range)
+	{
+		for (const lib::MTHandle<RGDescriptorSetStateBase>& ds : range)
+		{
+			if (ds.IsValid() && (!metaData || metaData->FindDescriptorSetOfType(ds->GetTypeID()) != idxNone<Uint32>))
+			{
+				subpass.AddDescriptorSetState(ds);
+				ds->BuildRGDependencies(dependenciesBuilder);
+			}
+		}
+	};
+
+	processDSStatesRange(dsStatesRange);
+	processDSStatesRange(m_boundDSStates);
+}
+
 Bool RenderGraphBuilder::AssignShaderParamsToNodeInternal(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<const Byte> paramsData, const lib::HashedString& paramsType, RGDependenciesBuilder& dependenciesBuilder)
 {
 	if (!pipeline)

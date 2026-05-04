@@ -36,11 +36,7 @@ void CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir, inout T
 
 		if (any(illuminance > 0.f) && dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
 		{
-			float visibility = 1.f;
-			if(directionalLight.shadowMaskIdx != IDX_NONE_32)
-			{
-				visibility = u_shadowMasks[directionalLight.shadowMaskIdx].SampleLevel(u_nearestSampler, surface.uv, 0).x;
-			}
+			float visibility = u_shadowMask.SampleLevel(u_nearestSampler, surface.uv, 0).x;
 
 			if(visibility > 0.f)
 			{

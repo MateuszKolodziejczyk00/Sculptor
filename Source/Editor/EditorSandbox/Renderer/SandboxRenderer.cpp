@@ -1,5 +1,5 @@
 #include "Renderer/SandboxRenderer.h"
-#include "TerrainMaterialAsset.h"
+#include "TerrainAsset.h"
 #include "Types/Texture.h"
 #include "Types/UIBackend.h"
 #include "Types/Window.h"
@@ -145,7 +145,6 @@ void SandboxRenderer::UpdatePreRender(engn::FrameContext& frame)
 	m_renderView->Rotate(math::AngleAxisf(cameraDeltaRotation.x(), math::Vector3f::UnitZ()));
 	m_renderView->Rotate(math::AngleAxisf(cameraDeltaRotation.y(), m_renderView->GetRotation() * math::Vector3f::UnitY()));
 
-
 	if (sunMovement)
 	{
 		sunAngleYaw   = pi<Real32> * 0.5f;
@@ -157,34 +156,32 @@ void SandboxRenderer::UpdatePreRender(engn::FrameContext& frame)
 	{
 		sunAngleDirty = false;
 
-		m_directionalLightEntity.patch<rsc::DirectionalLightData>([this](rsc::DirectionalLightData& data)
-																  {
+		rsc::DirectionalLightData dirLightData = m_renderScene->lighting.GetDirectionalLight();
 																	  const math::Quaternionf pitchQuat = math::Utils::EulerToQuaternionRadians(0.f, sunAnglePitch, 0.f);
 																	  const math::Quaternionf yawQuat = math::Utils::EulerToQuaternionRadians(0.f, 0.f, sunAngleYaw);
-																	  data.direction = yawQuat * pitchQuat * math::Vector3f::UnitX();
-																  });
+		dirLightData.direction = yawQuat * pitchQuat * math::Vector3f::UnitX();
+		m_renderScene->lighting.SetDirectionalLight(dirLightData);
 	}
 
 	if (dirLightTypeDirty)
 	{
 		dirLightTypeDirty = false;
 
-		m_directionalLightEntity.patch<rsc::DirectionalLightData>([this](rsc::DirectionalLightData& data)
-																  {
+		rsc::DirectionalLightData dirLightData = m_renderScene->lighting.GetDirectionalLight();
 																	  if (dirLightType == EDirLightType::Sun)
 																	  {
-																			data.color             = math::Vector3f(1.f, 0.956f, 0.839f);
-																			data.sunDiskEC         = 13.4f;
-																			data.zenithIlluminance = 120000.f;
+			dirLightData.color             = math::Vector3f(1.f, 0.956f, 0.839f);
+			dirLightData.sunDiskEC         = 13.4f;
+			dirLightData.zenithIlluminance = 120000.f;
 																	  }
 																	  else
 																	  {
-																			data.color             = math::Vector3f(0.3f, 0.3f, 0.35f);
-																			data.sunDiskEC         = 0.4f;
-																			data.zenithIlluminance = 0.1f;
+			dirLightData.color             = math::Vector3f(0.3f, 0.3f, 0.35f);
+			dirLightData.sunDiskEC         = 0.4f;
+			dirLightData.zenithIlluminance = 0.1f;
 																	  }
-																  });
 
+		m_renderScene->lighting.SetDirectionalLight(dirLightData);
 	}
 }
 
@@ -402,13 +399,11 @@ void SandboxRenderer::InitializeRenderScene()
 
 	as::IESProfileAssetHandle iesProfiles[] = { iesProfile0, iesProfile1 };
 
-	as::TerrainMaterialAssetHandle terrainMat = assetsSystem.LoadAssetChecked<as::TerrainMaterialAsset>(as::ResourcePath("Terrain/TerrainMaterial.sptasset"));
-	terrainMat->AwaitInitialization();
-	terrainMat->SetPermanent();
+	as::TerrainAssetHandle terrain = assetsSystem.LoadAssetChecked<as::TerrainAsset>(as::ResourcePath("Terrain/Terrain.sptasset"));
+	terrain->AwaitInitialization();
+	terrain->SetPermanent();
 
-	rsc::TerrainDefinition terrainDef;
-	terrainDef.material = terrainMat->GetTerrainMaterialData();
-	m_renderScene->SetTerrainDefinition(terrainDef);
+	m_renderScene->SetTerrainDefinition(terrain->GetTerrainDefinition());
 
 	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
 
@@ -453,29 +448,26 @@ void SandboxRenderer::InitializeRenderScene()
 	// }
 
 	{
-		const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 		rsc::PointLightData pointLightData;
 		pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
 		pointLightData.luminousPower = 3200.f;
 		pointLightData.location = math::Vector3f(8.30f, -3.8f, 1.55f);
 		pointLightData.radius = 5.f;
 		pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
-		lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
+		m_renderScene->lighting.pointLights.Add(pointLightData);
 	}
 	
 	{
-		const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 		rsc::PointLightData pointLightData;
 		pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
 		pointLightData.luminousPower = 3200.f;
 		pointLightData.location = math::Vector3f(-4.24f, -14.85f, 2.05f);
 		pointLightData.radius = 8.f;
 		pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
-		lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
+		m_renderScene->lighting.pointLights.Add(pointLightData);
 	}
 
 	{
-		m_directionalLightEntity = m_renderScene->CreateEntity();
 		rsc::DirectionalLightData directionalLightData;
 		directionalLightData.color                  = math::Vector3f(1.f, 0.956f, 0.839f);
 		directionalLightData.zenithIlluminance      = 120000.f;
@@ -483,7 +475,7 @@ void SandboxRenderer::InitializeRenderScene()
 		directionalLightData.lightConeAngle         = 0.0046f;
 		directionalLightData.sunDiskAngleMultiplier = 3.8f;
 		directionalLightData.sunDiskEC              = 9.4f;
-		m_directionalLightEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
+		m_renderScene->lighting.SetDirectionalLight(directionalLightData);
 	}
 
 	dirLightTypeDirty = true;

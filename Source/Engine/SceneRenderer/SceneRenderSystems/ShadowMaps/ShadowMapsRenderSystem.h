@@ -6,6 +6,7 @@
 #include "View/RenderView.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "ShadowsRenderingTypes.h"
+#include "Containers/FlatMap.h"
 
 
 namespace spt::rdr
@@ -29,20 +30,14 @@ enum class EShadowMapQuality
 };
 
 
-struct PointLightShadowMapComponent
+struct LocalLightShadowMap
 {
-	// Idx of first shadow map view used for this point lights
-	// Shadow maps for different sides of point lights must be continuous
 	Uint32 shadowMapFirstFaceIdx;
+	EShadowMapQuality quality;
 };
-SPT_REGISTER_COMPONENT_TYPE(PointLightShadowMapComponent, RenderSceneRegistry);
 
 
-struct VisibleLightEntityInfo
-{
-	RenderSceneEntity	entity;
-	Real32				areaOnScreen;
-};
+using LocalLightsShadowMaps = lib::FlatMap<PointLightHandle, LocalLightShadowMap>;
 
 
 class RENDER_SCENE_API ShadowMapsRenderSystem : public SceneRenderSystem
@@ -71,19 +66,19 @@ public:
 
 	Bool CanRenderShadows() const;
 
-	const lib::DynamicArray<RenderSceneEntity>& GetPointLightsWithShadowMapsToUpdate() const;
+	const lib::DynamicArray<PointLightHandle >& GetPointLightsWithShadowMapsToUpdate() const;
 	
 	lib::DynamicArray<RenderView*> GetShadowMapViewsToUpdate() const;
 
-	lib::DynamicArray<RenderView*> GetPointLightShadowMapViews(const PointLightShadowMapComponent& pointLightShadowMap) const;
+	const LocalLightsShadowMaps& GetLocalLightsShadowMaps() const { return m_localLightsShadowMaps; }
 
 private:
 
-	void SetPointLightShadowMapsBeginIdx(RenderSceneEntity pointLightEntity, Uint32 shadowMapBeginIdx);
-	Uint32 ResetPointLightShadowMap(RenderSceneEntity pointLightEntity);
+	void SetPointLightShadowMapsBeginIdx(PointLightHandle pointLightEntity, Uint32 shadowMapBeginIdx);
+	Uint32 ResetPointLightShadowMap(PointLightHandle pointLightEntity);
 
 	EShadowMapQuality GetShadowMapQuality(SizeType pointLightIdx) const;
-	EShadowMapQuality GetShadowMapQuality(RenderSceneEntity light) const;
+	EShadowMapQuality GetShadowMapQuality(PointLightHandle light) const;
 
 	void ReleaseShadowMap(EShadowMapQuality quality, Uint32 shadowMapIdx);
 	Uint32 AcquireAvaialableShadowMap(EShadowMapQuality quality);
@@ -93,13 +88,13 @@ private:
 	
 	void AssignShadowMaps(const RenderView& mainView);
 
-	void UpdateShadowMapRenderViews(RenderSceneEntity owningLight, const PointLightData& pointLight, Uint32 shadowMapBeginIdx);
+	void UpdateShadowMapRenderViews(PointLightHandle owningLight, const PointLightData& pointLight, Uint32 shadowMapBeginIdx);
 
 	void FindShadowMapsToUpdate();
 
 	void ReleaseAllShadowMaps();
 
-	Real32 ComputeLocalLightShadowMapPriority(const SceneView& view, RenderSceneEntity light) const;
+	Real32 ComputeLocalLightShadowMapPriority(const SceneView& view, PointLightHandle light) const;
 
 	void RecreateShadowMaps();
 
@@ -111,17 +106,17 @@ private:
 	Uint32 m_highQualityShadowMapLightEndIdx;
 	Uint32 m_mediumQualityShadowMapsLightEndIdx;
 
-	lib::HashMap<RenderSceneEntity, EShadowMapQuality> m_pointLightsWithAssignedShadowMaps;
+	LocalLightsShadowMaps m_localLightsShadowMaps;
 
 	struct LightUpdatePriority
 	{
-		RenderSceneEntity	light;
-		Real32				updatePriority;
+		PointLightHandle light;
+		Real32           updatePriority;
 	};
 
 	lib::DynamicArray<LightUpdatePriority> m_updatePriorities;
 
-	lib::DynamicArray<RenderSceneEntity> m_lightsWithShadowMapsToUpdate;
+	lib::DynamicArray<PointLightHandle> m_lightsWithShadowMapsToUpdate;
 
 	lib::DynamicArray<ShadowMapViewData> m_shadowMapViewsData;
 

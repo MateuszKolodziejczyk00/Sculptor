@@ -80,12 +80,6 @@ using SubmeshGPUPtr   = gfx::GPUNamedElemPtr<SubmeshesArray, SubmeshGPUData>;
 using SubmeshsGPUSpan = gfx::GPUNamedElemsSpan<SubmeshesArray, SubmeshGPUData>;
 
 
-struct StaticMeshInstanceRenderData
-{
-	lib::MTHandle<RenderMesh> staticMesh;
-};
-SPT_REGISTER_COMPONENT_TYPE(StaticMeshInstanceRenderData, RenderSceneRegistry);
-
 
 BEGIN_SHADER_STRUCT(StaticMeshGeometryBuffers)
 	SHADER_STRUCT_FIELD(SubmeshesArray, submeshesArray)

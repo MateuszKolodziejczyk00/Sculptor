@@ -12,6 +12,8 @@
 namespace spt::rdr
 {
 
+SPT_DEFINE_LOG_CATEGORY(PipelinePendingState, false);
+
 PipelinePendingState::PipelinePendingState()
 	: m_bindlessDescriptorsHeapOffset(GPUApi::GetDescriptorManager().GetHeapOffset())
 {
@@ -132,24 +134,36 @@ void PipelinePendingState::FlushDirtyDSForRayTracingPipeline(rhi::RHICommandBuff
 
 void PipelinePendingState::BindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state)
 {
+	SPT_CHECK(state.IsValid());
+
 	state->Flush();
 	m_boundDescriptorSetStates.EmplaceBack(BoundDescriptorSetState{ state->GetTypeID(), state->GetDescriptorsHeapOffset() });
+
+	SPT_LOG_INFO(PipelinePendingState, "Bound descriptor set state: {} with heap offset: {} for pipeline pending state", state->GetName().GetData(), state->GetDescriptorsHeapOffset());
 
 	TryMarkAsDirty(state);
 }
 
 void PipelinePendingState::UnbindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state)
 {
-	const auto foundDescriptor = std::find_if(std::cbegin(m_boundDescriptorSetStates), std::cend(m_boundDescriptorSetStates),
-											  [statePtr = state](const BoundDescriptorSetState& boundState)
-											  {
-												  return boundState.typeID == statePtr->GetTypeID();
-											  });
-
-	SPT_CHECK(foundDescriptor != std::cend(m_boundDescriptorSetStates));
-	m_boundDescriptorSetStates.RemoveAtSwap(std::distance(std::cbegin(m_boundDescriptorSetStates), foundDescriptor));
-
 	TryMarkAsDirty(state);
+
+	Bool found = false;
+
+	for (SizeType i = m_boundDescriptorSetStates.size(); i > 0; --i)
+	{
+		if (m_boundDescriptorSetStates[i - 1].typeID == state->GetTypeID() && m_boundDescriptorSetStates[i - 1].heapOffset == state->GetDescriptorsHeapOffset())
+		{
+			m_boundDescriptorSetStates.RemoveAt(i - 1);
+			found = true;
+
+			SPT_LOG_INFO(PipelinePendingState, "Unbound descriptor set state: {} with heap offset: {} from pipeline pending state", state->GetName().GetData(), state->GetDescriptorsHeapOffset());
+
+			break;
+		}
+	}
+
+	SPT_CHECK(found);
 }
 
 void PipelinePendingState::BindShaderParams(Uint32 heapOffset)
@@ -202,6 +216,8 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 
 	DSBindCommands descriptorSetsToBind;
 
+	SPT_LOG_INFO(PipelinePendingState, "Flushing pending descriptor sets for pipeline: {}. Total sets to check: {}.", pipeline->GetRHI().GetName().GetData(), metaData.GetDescriptorSetsNum());
+
 	for (SizeType dsIdx = 0; dsIdx < descriptorsState.dirtyDescriptorSets.size(); ++dsIdx)
 	{
 		if (descriptorsState.dirtyDescriptorSets[dsIdx])
@@ -212,7 +228,6 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 				// This is unused set idx
 				continue;
 			}
-
 			const BoundDescriptorSetState* foundState = GetBoundDescriptorSetState(dsTypeID);
 			SPT_CHECK_MSG(!!foundState, "Cannot find descriptor state for pipeline {0} at descriptor set idx: {1}\nTry removing Saved/Shaders/Cache directory", pipeline->GetRHI().GetName().GetData(), dsIdx);
 
@@ -221,6 +236,8 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 			bindCommand.heapOffset = foundState->heapOffset;
 
 			descriptorSetsToBind.EmplaceBack(std::move(bindCommand));
+
+			SPT_LOG_INFO(PipelinePendingState, "Marked descriptor set idx: {} with heap offset: {} as dirty for pipeline: {}.", dsIdx, foundState->heapOffset, pipeline->GetRHI().GetName().GetData());
 		}
 	}
 
@@ -254,13 +271,16 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 
 const PipelinePendingState::BoundDescriptorSetState* PipelinePendingState::GetBoundDescriptorSetState(DSStateTypeID dsTypeID) const
 {
-	const auto foundState = std::find_if(std::cbegin(m_boundDescriptorSetStates), std::cend(m_boundDescriptorSetStates),
-										 [dsTypeID](const BoundDescriptorSetState& state)
-										 {
-											 return state.typeID == dsTypeID;
-										 });
+	// Iterate backwards to get stack-like behavior in case of multiple bound states of the same type (e.g. when a descriptor set state is bound, then another one of the same type is bound, then the first one is unbound - we want to get the second one as the currently bound state)
+	for (SizeType i = m_boundDescriptorSetStates.size(); i > 0; --i)
+	{
+		if (m_boundDescriptorSetStates[i - 1].typeID == dsTypeID)
+		{
+			return &m_boundDescriptorSetStates[i - 1];
+		}
+	}
 
-	return foundState != std::cend(m_boundDescriptorSetStates) ? &(*foundState) : nullptr;
+	return nullptr;
 }
 
 } // spt::rdr

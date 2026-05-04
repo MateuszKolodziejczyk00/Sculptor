@@ -97,4 +97,60 @@ Byte* MemoryArenaBase::AllocateImpl(priv::NonThreadSafeExtension& extension, Uin
 	return (Byte*)allocPtr;
 }
 
+void MemoryArenaBase::GrowToImpl(priv::ThreadSafeExtension& extension, Uint64 newSize)
+{
+	const Uint64 requestedEnd = m_baseAddress + newSize;
+
+	if (requestedEnd > m_commitedEnd)
+	{
+		lib::LockGuard lock{ extension.m_lock };
+
+		if (requestedEnd > m_commitedEnd) // another thread might have already committed required memory
+		{
+			const Uint64 newCommitedEnd = math::Utils::AlignUpPow2(requestedEnd, mem::GetPageSize());
+			SPT_CHECK(newCommitedEnd <= m_reservedEnd);
+
+			mem::CommitVirtualMemory((Byte*)m_commitedEnd, newCommitedEnd - m_commitedEnd);
+			m_commitedEnd = newCommitedEnd;
+		}
+	}
+}
+
+void MemoryArenaBase::GrowToImpl(priv::NonThreadSafeExtension& extension, Uint64 newSize)
+{
+	const Uint64 requestedEnd = m_baseAddress + newSize;
+
+	if (requestedEnd > m_commitedEnd)
+	{
+		const Uint64 newCommitedEnd = math::Utils::AlignUpPow2(requestedEnd, mem::GetPageSize());
+		SPT_CHECK(newCommitedEnd <= m_reservedEnd);
+
+		mem::CommitVirtualMemory((Byte*)m_commitedEnd, newCommitedEnd - m_commitedEnd);
+		m_commitedEnd = newCommitedEnd;
+	}
+}
+
+Bool MemoryArenaBase::IsLastAllocationImpl(const void* allocation, Uint64 size) const
+{
+	if (!allocation)
+	{
+		return false;
+	}
+
+	const Uint64 allocationAddress = reinterpret_cast<Uint64>(allocation);
+	return allocationAddress >= m_baseAddress && allocationAddress + size == m_currentAddress;
+}
+
+void MemoryArenaBase::GrowLastAllocationImpl(priv::NonThreadSafeExtension& extension, const void* allocation, Uint64 currentSize, Uint64 newSize)
+{
+	SPT_CHECK(allocation);
+	SPT_CHECK(newSize >= currentSize);
+	SPT_CHECK(IsLastAllocationImpl(allocation, currentSize));
+
+	const Uint64 allocationAddress = reinterpret_cast<Uint64>(allocation);
+	m_currentAddress = allocationAddress + newSize;
+
+	GrowToImpl(extension, m_currentAddress - m_baseAddress);
+}
+
 } // spt::lib

@@ -22,6 +22,7 @@ namespace spt::rsc
 
 class RenderScene;
 class ViewRenderingSpec;
+struct SceneRendererInterface;
 
 
 namespace stochastic_di
@@ -39,7 +40,7 @@ public:
 
 	Renderer();
 	
-	void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const StochasticDIParams& diParams);
+	void Render(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const StochasticDIParams& diParams);
 
 private:
 

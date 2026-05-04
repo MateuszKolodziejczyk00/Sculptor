@@ -2,7 +2,6 @@
 
 #include "SculptorCoreTypes.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "RenderSceneRegistry.h"
 #include "Bindless/BindlessTypes.h"
 
 
@@ -15,19 +14,8 @@ BEGIN_SHADER_STRUCT(DirectionalLightGPUData)
 	SHADER_STRUCT_FIELD(math::Vector3f, direction)
 	SHADER_STRUCT_FIELD(Real32,         sunDiskMinCosAngle)
 	SHADER_STRUCT_FIELD(math::Vector3f, outerSpaceIlluminance) // Lux
-	SHADER_STRUCT_FIELD(Uint32,         shadowMaskIdx)
 	SHADER_STRUCT_FIELD(Uint32,         firstShadowCascadeIdx)
 	SHADER_STRUCT_FIELD(Uint32,         shadowCascadesNum)
-END_SHADER_STRUCT();
-
-
-BEGIN_SHADER_STRUCT(PointLightGPUData)
-	SHADER_STRUCT_FIELD(math::Vector3f, color)
-	SHADER_STRUCT_FIELD(Real32, luminousPower) // Lumens
-	SHADER_STRUCT_FIELD(math::Vector3f, location)
-	SHADER_STRUCT_FIELD(Real32, radius)
-	SHADER_STRUCT_FIELD(Uint32, entityID)
-	SHADER_STRUCT_FIELD(Uint32, shadowMapFirstFaceIdx)
 END_SHADER_STRUCT();
 
 
@@ -45,7 +33,6 @@ BEGIN_SHADER_STRUCT(LocalLightGPUData)
 	SHADER_STRUCT_FIELD(Real32,                         luminousPower) // Lumens
 	SHADER_STRUCT_FIELD(math::Vector3f,                 location)
 	SHADER_STRUCT_FIELD(Real32,                         range)
-	SHADER_STRUCT_FIELD(Uint32,                         entityID)
 	SHADER_STRUCT_FIELD(Uint32,                         shadowMapFirstFaceIdx)
 	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<Real32>, iesProfile)
 	// Spot only begin
@@ -66,7 +53,6 @@ struct DirectionalLightIlluminance
 	math::Vector3f outerSpaceIlluminance;
 	math::Vector3f illuminance; // based on atmosphere transmittance in the direction of the light
 };
-SPT_REGISTER_COMPONENT_TYPE(DirectionalLightIlluminance, RenderSceneRegistry);
 
 
 struct DirectionalLightData
@@ -83,7 +69,6 @@ struct DirectionalLightData
 	Real32 sunDiskAngleMultiplier = 1.f;
 	Real32 sunDiskEC              = 0.f;
 };
-SPT_REGISTER_COMPONENT_TYPE(DirectionalLightData, RenderSceneRegistry);
 
 
 struct PointLightData
@@ -98,7 +83,6 @@ struct PointLightData
 
 	lib::SharedPtr<rdr::TextureView> iesProfileTexture;
 };
-SPT_REGISTER_COMPONENT_TYPE(PointLightData, RenderSceneRegistry);
 
 
 struct SpotLightData
@@ -114,7 +98,6 @@ struct SpotLightData
 	Real32         innerHalfAngle = 22.5f;
 	Real32         outerHalfAngle = 45.f;
 };
-SPT_REGISTER_COMPONENT_TYPE(PointLightData, RenderSceneRegistry);
 
 
 struct GPUDataBuilder

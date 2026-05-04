@@ -291,9 +291,9 @@ const lib::HashedString& RGSubpass::GetName() const
 #endif // DEBUG_RENDER_GRAPH
 }
 
-void RGSubpass::BindDSState(lib::MTHandle<rdr::DescriptorSetState> ds)
+void RGSubpass::AddDescriptorSetState(lib::MTHandle<rdr::DescriptorSetState> dsState)
 {
-	m_dsStatesToBind.EmplaceBack(std::move(ds));
+	m_dsStatesToBind.EmplaceBack(std::move(dsState));
 }
 
 void RGSubpass::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context)

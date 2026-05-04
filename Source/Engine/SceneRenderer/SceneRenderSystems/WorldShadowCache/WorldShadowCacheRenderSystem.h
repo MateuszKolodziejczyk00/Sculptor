@@ -23,7 +23,6 @@ public:
 
 	// Begin SceneRenderSystem overrides
 	void Initialize(lib::MemoryArena& arena, RenderScene& renderScene);
-	void Deinitialize(RenderScene& renderScene);
 	void Update(const SceneUpdateContext& context);
 	void UpdateGPUSceneData(RenderSceneConstants& sceneData);
 	void CollectRenderViews(const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const RenderView& mainRenderView, INOUT RenderViewsCollector& viewsCollector);
@@ -40,8 +39,7 @@ private:
 		PerLightData& operator=(const PerLightData&) = delete;
 
 		PerLightData(PerLightData&& other)
-			: dirLightEntity(other.dirLightEntity)
-			, shadowMaps(std::move(other.shadowMaps))
+			: shadowMaps(std::move(other.shadowMaps))
 			, shadowMapsViews(std::move(other.shadowMapsViews))
 			, shadowCascadeViews(std::move(other.shadowCascadeViews))
 		{
@@ -52,7 +50,6 @@ private:
 		{
 			if (this != &other)
 			{
-				dirLightEntity = other.dirLightEntity;
 				shadowMaps = std::move(other.shadowMaps);
 				shadowMapsViews = std::move(other.shadowMapsViews);
 				shadowCascadeViews = std::move(other.shadowCascadeViews);
@@ -61,22 +58,17 @@ private:
 			return *this;
 		}
 
-
-
-		RenderSceneEntity dirLightEntity;
-
 		lib::StaticArray<lib::SharedPtr<rdr::Texture>,     constants::cascadeCount> shadowMaps;
 		lib::StaticArray<lib::SharedPtr<rdr::TextureView>, constants::cascadeCount> shadowMapsViews;
 
 		lib::StaticArray<RenderView*, constants::cascadeCount> shadowCascadeViews;
 	};
 
-	void OnDirectionalLightAdded(RenderSceneRegistry& registry, RenderSceneEntity entity);
-	void OnDirectionalLightRemoved(RenderSceneRegistry& registry, RenderSceneEntity entity);
+	PerLightData CreatePerLightData() const;
 
 	void UpdateCascadeViewsMatrices(const RenderView& mainView, PerLightData& dirLightData, Uint32 cascadeIdx) const;
 
-	lib::DynamicArray<PerLightData> m_perLightData;
+	PerLightData m_dirLightData;
 
 	lib::Span<RenderView*> m_cascadesToUpdate;
 };

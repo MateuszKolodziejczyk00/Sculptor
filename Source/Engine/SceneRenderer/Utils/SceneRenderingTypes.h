@@ -26,6 +26,7 @@ struct SceneRendererInterface
 	{ }
 
 	virtual SceneRenderSystem* GetRenderSystem(ESceneRenderSystem type) const = 0;
+	virtual lib::MemoryArena& GetSceneRendererFrameArena() const = 0;
 
 	template<typename TRenderSystem>
 	TRenderSystem* GetRenderSystem() const

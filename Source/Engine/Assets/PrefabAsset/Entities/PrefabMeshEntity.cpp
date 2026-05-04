@@ -71,29 +71,36 @@ void PrefabMeshEntity::Spawn(const PrefabSpawningContext& context, lib::Span<con
 
 	const math::Affine3f localTransform = compiledMesh.transform;
 
-	math::Affine3f transform = context.transform * localTransform;
+	const math::Affine3f transform = context.transform * localTransform;
 
-	rsc::RenderInstanceData instanceData;
-	instanceData.transformComp.SetTransform(transform);
-	const rsc::RenderSceneEntityHandle entity = context.scene.CreateEntity(instanceData);
+	rsc::RenderInstanceDef instanceDef;
+	instanceDef.transform = transform;
+	const rsc::RenderInstanceHandle instance = context.scene.CreateInstance(instanceDef);
 
-	rsc::StaticMeshInstanceRenderData staticMeshData;
-	staticMeshData.staticMesh = meshAsset->GetRenderMesh();
-	entity.emplace<rsc::StaticMeshInstanceRenderData>(staticMeshData);
-
-	rsc::MaterialSlotsComponent materialSlots;
-	materialSlots.slots.reserve(materialAssets.size());
+	lib::InlineDynamicArray<ecs::EntityHandle, 256u> materialSlotsArray;
 	for (Uint32 matIdx = 0u; matIdx < materialAssets.size(); ++matIdx)
 	{
 		const MaterialAssetHandle material = context.assetsSystem.GetLoadedAsset<MaterialAsset>(materialAssets[matIdx]);
-		materialSlots.slots.emplace_back(material->GetMaterialEntity());
+		materialSlotsArray.EmplaceBack(material->GetMaterialEntity());
 	}
-	
-	entity.emplace<rsc::MaterialSlotsComponent>(std::move(materialSlots));
 
-	rsc::RayTracingGeometryProviderComponent rtGeoProvider;
-	rtGeoProvider.provider = meshAsset->GetRenderMesh().Get();
-	entity.emplace<rsc::RayTracingGeometryProviderComponent>(rtGeoProvider);
+	const rsc::MaterialSlotsChunkHandle materialSlotsHandle = context.scene.materials.CreateMaterialSlotsChain({ materialSlotsArray.GetData(), materialSlotsArray.GetSize()});
+
+	context.scene.draws.draws.Add(
+			rsc::RetainedDraw
+			{
+				.instance      = instance,
+				.mesh          = *meshAsset->GetRenderMesh(),
+				.materialSlots = materialSlotsHandle
+			});
+
+	context.scene.rt.instances.Add(
+			rsc::RTInstance
+			{
+				.instance      = instance,
+				.rtGeometry    = *meshAsset->GetRenderMesh(),
+				.materialSlots = materialSlotsHandle
+			});
 }
 
 } // spt::as

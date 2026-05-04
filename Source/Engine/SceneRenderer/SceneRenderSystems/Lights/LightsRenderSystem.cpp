@@ -288,7 +288,7 @@ struct LightsInfo
 	Uint32 spotLightsNum  = 0u;
 };
 
-static LightsInfo CreateLocalLightsData(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, rg::RGBufferViewHandle& OUT localLightsRGBuffer, rg::RGBufferViewHandle& OUT lightZRangesRGBuffer)
+static LightsInfo CreateLocalLightsData(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, rg::RGBufferViewHandle& OUT localLightsRGBuffer, rg::RGBufferViewHandle& OUT lightZRangesRGBuffer)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -305,28 +305,28 @@ static LightsInfo CreateLocalLightsData(rg::RenderGraphBuilder& graphBuilder, co
 		return viewSpaceZ;
 	};
 
-	const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry();
-
-	const auto pointLightsView = sceneRegistry.view<const PointLightData>();
-	const auto spotLightsView  = sceneRegistry.view<const SpotLightData>();
-
-	const SizeType maxLocalLightsNum = pointLightsView.size() + spotLightsView.size();
+	const SizeType maxLocalLightsNum = renderScene.lighting.pointLights.GetNum() + renderScene.lighting.spotLights.GetNum();
 
 	lib::DynamicArray<Real32> localLightsViewSpaceZ;
 	localLights.reserve(maxLocalLightsNum);
 	localLightsViewSpaceZ.reserve(maxLocalLightsNum);
 
+	const ShadowMapsRenderSystem& smSystem = rendererInterface.GetRenderSystemChecked<ShadowMapsRenderSystem>();
+	const LocalLightsShadowMaps& shadowMaps =  smSystem.GetLocalLightsShadowMaps();
+
+	auto shadowMapIt = shadowMaps.begin();
+
 	Uint32 pointLightsNum = 0u;
 
-	for (const auto& [entity, pointLight] : pointLightsView.each())
+	const auto processPointLight = [&](PointLightHandle handle, const PointLightData& pointLight)
 	{
 		LocalLightGPUData gpuLightData = GPUDataBuilder::CreatePointLightGPUData(pointLight);
-		gpuLightData.entityID = static_cast<Uint32>(entity);
 		gpuLightData.shadowMapFirstFaceIdx = idxNone<Uint32>;
-		if (const PointLightShadowMapComponent* shadowMapComp = sceneRegistry.try_get<const PointLightShadowMapComponent>(entity))
+
+		if (shadowMapIt != shadowMaps.end() && shadowMapIt->first == handle)
 		{
-			gpuLightData.shadowMapFirstFaceIdx = shadowMapComp->shadowMapFirstFaceIdx;
-			SPT_CHECK(gpuLightData.shadowMapFirstFaceIdx != idxNone<Uint32>);
+			gpuLightData.shadowMapFirstFaceIdx = shadowMapIt->second.shadowMapFirstFaceIdx;
+			++shadowMapIt;
 		}
 
 		const Real32 lightViewSpaceZ = getViewSpaceZ(gpuLightData);
@@ -341,21 +341,14 @@ static LightsInfo CreateLocalLightsData(rg::RenderGraphBuilder& graphBuilder, co
 
 			++pointLightsNum;
 		}
-	}
+	};
 
 	Uint32 spotLightsNum = 0u;
 
-	for (const auto& [entity, spotLight] : spotLightsView.each())
+	const auto processSpotLight = [&](SpotLightHandle handle, const SpotLightData& spotLight)
 	{
 		LocalLightGPUData gpuLightData = GPUDataBuilder::CreateSpotLightGPUData(spotLight);
-		gpuLightData.entityID = static_cast<Uint32>(entity);
 		gpuLightData.shadowMapFirstFaceIdx = idxNone<Uint32>;
-
-		if (const PointLightShadowMapComponent* shadowMapComp = sceneRegistry.try_get<const PointLightShadowMapComponent>(entity))
-		{
-			gpuLightData.shadowMapFirstFaceIdx = shadowMapComp->shadowMapFirstFaceIdx;
-			SPT_CHECK(gpuLightData.shadowMapFirstFaceIdx != idxNone<Uint32>);
-		}
 
 		const Real32 lightViewSpaceZ = getViewSpaceZ(gpuLightData);
 		if (lightViewSpaceZ + gpuLightData.range > 0.f)
@@ -367,7 +360,10 @@ static LightsInfo CreateLocalLightsData(rg::RenderGraphBuilder& graphBuilder, co
 
 			++spotLightsNum;
 		}
-	}
+	};
+
+	renderScene.lighting.pointLights.ForEach(processPointLight);
+	renderScene.lighting.spotLights.ForEach(processSpotLight);
 
 	for (SizeType idx = 0; idx < localLights.size(); ++idx)
 	{
@@ -400,49 +396,29 @@ static LightsInfo CreateLocalLightsData(rg::RenderGraphBuilder& graphBuilder, co
 	};
 }
 
-static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const lib::MTHandle<ViewShadingInputDS>& shadingInputDS)
+static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const lib::MTHandle<ViewShadingInputDS>& shadingInputDS)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const ViewDirectionalShadowMasksData* viewShadowMasks = viewSpec.GetBlackboard().Find<ViewDirectionalShadowMasksData>();
+	const ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
+	SPT_CHECK(shadingViewContext.dirLightShadowMask.IsValid())
 
-	const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry(); 
+	shadingInputDS->u_shadowMask = shadingViewContext.dirLightShadowMask;
 
-	const auto directionalLightsView = sceneRegistry.view<const DirectionalLightData, const DirectionalLightIlluminance>();
-	const SizeType directionalLightsNum = sceneRegistry.view<const DirectionalLightData>().size();
+	const AtmosphereRenderSystem& atmosphereSystem = rendererInterface.GetRenderSystemChecked<AtmosphereRenderSystem>();
 
-	if (directionalLightsNum > 0)
-	{
-		lib::DynamicArray<rdr::HLSLStorage<DirectionalLightGPUData>> directionalLightsData;
-		directionalLightsData.reserve(directionalLightsNum);
+	const DirectionalLightGPUData lightGPUData = GPUDataBuilder::CreateDirectionalLightGPUData(renderScene.lighting.GetDirectionalLight(), atmosphereSystem.GetDirectionalLightIlluminance());
 
-		for (const auto& [entity, directionalLight, illuminance] : directionalLightsView.each())
-		{
-			DirectionalLightGPUData lightGPUData = GPUDataBuilder::CreateDirectionalLightGPUData(directionalLight, illuminance);
-			lightGPUData.shadowMaskIdx = idxNone<Uint32>;
-			
-			if (viewShadowMasks)
-			{
-				const auto lightShadowMask = viewShadowMasks->shadowMasks.find(entity);
-				if (lightShadowMask != std::cend(viewShadowMasks->shadowMasks))
-				{
-					const Uint32 shadowMaskIdx = shadingInputDS->u_shadowMasks.BindTexture(lightShadowMask->second);
-					lightGPUData.shadowMaskIdx = shadowMaskIdx;
-				}
-			}
+	rdr::HLSLStorage<DirectionalLightGPUData> directionalLightData = lightGPUData;
 
-			directionalLightsData.emplace_back(lightGPUData);
-		}
+	const Uint64 directionalLightsBufferSize = sizeof(rdr::HLSLStorage<DirectionalLightGPUData>);
+	const rhi::BufferDefinition directionalLightsBufferDefinition(directionalLightsBufferSize, rhi::EBufferUsage::Storage);
+	const lib::SharedRef<rdr::Buffer> directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("View Directional Lights Buffer"), directionalLightsBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
+	rdr::UploadDataToBuffer(directionalLightsBuffer, 0, reinterpret_cast<const Byte*>(&directionalLightData), directionalLightsBufferSize);
 
-		const Uint64 directionalLightsBufferSize = directionalLightsData.size() * sizeof(rdr::HLSLStorage<DirectionalLightGPUData>);
-		const rhi::BufferDefinition directionalLightsBufferDefinition(directionalLightsBufferSize, rhi::EBufferUsage::Storage);
-		const lib::SharedRef<rdr::Buffer> directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("View Directional Lights Buffer"), directionalLightsBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
-		rdr::UploadDataToBuffer(directionalLightsBuffer, 0, reinterpret_cast<const Byte*>(directionalLightsData.data()), directionalLightsBufferSize);
+	shadingInputDS->u_directionalLights = directionalLightsBuffer->GetFullView();
 
-		shadingInputDS->u_directionalLights = directionalLightsBuffer->GetFullView();
-	}
-
-	return static_cast<Uint32>(directionalLightsNum);
+	return 1u;
 }
 
 
@@ -468,7 +444,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 	
 	rg::RGBufferViewHandle localLightsBuffer;
 	rg::RGBufferViewHandle localLightsZRangesBuffer;
-	const LightsInfo lightsInfo = CreateLocalLightsData(graphBuilder, renderScene, viewSpec, OUT localLightsBuffer, OUT localLightsZRangesBuffer);
+	const LightsInfo lightsInfo = CreateLocalLightsData(graphBuilder, rendererInterface, renderScene, viewSpec, OUT localLightsBuffer, OUT localLightsZRangesBuffer);
 	const Uint32 localLightsNum = lightsInfo.pointLightsNum + lightsInfo.spotLightsNum;
 
 	lightsRenderingDataPerView.spotLightsToRenderNum  = lightsInfo.spotLightsNum;
@@ -576,7 +552,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		lightsRenderingDataPerView.spotLightDrawCommandsCountBuffer = spotLightDrawCommandsCount;
 	}
 
-	const Uint32 directionalLightsNum = CreateDirectionalLightsData(graphBuilder, renderScene, viewSpec, INOUT shadingInputDS);
+	const Uint32 directionalLightsNum = CreateDirectionalLightsData(graphBuilder, rendererInterface, renderScene, viewSpec, INOUT shadingInputDS);
 	lightsData.directionalLightsNum = directionalLightsNum;
 
 	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
@@ -753,13 +729,10 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 
 void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterface& rendererInterface, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context)
 {
-	const RenderSceneRegistry& sceneRegistry = scene.GetRegistry();
-
 	const ParticipatingMediaViewRenderSystem& pmSystem = viewSpec.GetRenderSystemChecked<ParticipatingMediaViewRenderSystem>();
 
-	const auto pointLightsView = sceneRegistry.view<const PointLightData>();
-	const auto spotLightsView  = sceneRegistry.view<const SpotLightData>();
-	const SizeType localLightsNum = pointLightsView.size() + spotLightsView.size();
+	const SizeType localLightsNum = scene.lighting.pointLights.GetNum() + scene.lighting.spotLights.GetNum();
+
 
 	lib::SharedPtr<rdr::Buffer> localLightsBuffer;
 	if (localLightsNum > 0)
@@ -771,59 +744,54 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 
 		SizeType localLightIdx = 0;
 
-		for (const auto& [entity, pointLight] : pointLightsView.each())
+		const ShadowMapsRenderSystem& smSystem = rendererInterface.GetRenderSystemChecked<ShadowMapsRenderSystem>();
+		const LocalLightsShadowMaps& shadowMaps =  smSystem.GetLocalLightsShadowMaps();
+	
+		auto shadowMapIt = shadowMaps.begin();
+
+		const auto processPointLight = [&](PointLightHandle handle, const PointLightData& pointLight)
 		{
 			LocalLightGPUData gpuLightData = GPUDataBuilder::CreatePointLightGPUData(pointLight);
-			gpuLightData.entityID = static_cast<Uint32>(entity);
 			gpuLightData.shadowMapFirstFaceIdx = idxNone<Uint32>;
 
-			if (const PointLightShadowMapComponent* shadowMapComp = sceneRegistry.try_get<const PointLightShadowMapComponent>(entity))
+			if (shadowMapIt != shadowMaps.end() && shadowMapIt->first == handle)
 			{
-				gpuLightData.shadowMapFirstFaceIdx = shadowMapComp->shadowMapFirstFaceIdx;
-				SPT_CHECK(gpuLightData.shadowMapFirstFaceIdx != idxNone<Uint32>);
+				gpuLightData.shadowMapFirstFaceIdx = shadowMapIt->second.shadowMapFirstFaceIdx;
+				++shadowMapIt;
 			}
 
 			localLightsData[localLightIdx++] = gpuLightData;
-		}
+		};
 
-		for (const auto& [entity, spotLight] : spotLightsView.each())
+		const auto processSpotLight = [&](SpotLightHandle handle, const SpotLightData& spotLight)
 		{
 			LocalLightGPUData gpuLightData = GPUDataBuilder::CreateSpotLightGPUData(spotLight);
-			gpuLightData.entityID = static_cast<Uint32>(entity);
 			gpuLightData.shadowMapFirstFaceIdx = idxNone<Uint32>;
 
-			if (const PointLightShadowMapComponent* shadowMapComp = sceneRegistry.try_get<const PointLightShadowMapComponent>(entity))
-			{
-				gpuLightData.shadowMapFirstFaceIdx = shadowMapComp->shadowMapFirstFaceIdx;
-				SPT_CHECK(gpuLightData.shadowMapFirstFaceIdx != idxNone<Uint32>);
-			}
-
 			localLightsData[localLightIdx++] = gpuLightData;
-		}
+		};
+
+		scene.lighting.pointLights.ForEach(processPointLight);
+		scene.lighting.spotLights.ForEach(processSpotLight);
 	}
 
-	const auto directionalLightsView = sceneRegistry.view<const DirectionalLightData, const DirectionalLightIlluminance>();
-	const SizeType directionalLightsNum = sceneRegistry.view<const DirectionalLightData>().size();
+	const SizeType directionalLightsNum = 1u;
 
 	lib::SharedPtr<rdr::Buffer> directionalLightsBuffer;
-	if (directionalLightsNum > 0)
 	{
 		const Uint64 directionalLightsDataSize = directionalLightsNum * sizeof(rdr::HLSLStorage<DirectionalLightGPUData>);
 		const rhi::BufferDefinition directionalLightsDataBufferDef(directionalLightsDataSize, rhi::EBufferUsage::Storage);
 		directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Global Directional Lights Buffer"), directionalLightsDataBufferDef, rhi::EMemoryUsage::CPUToGPU);
 		rhi::RHIMappedBuffer<rdr::HLSLStorage<DirectionalLightGPUData>> directionalLightsData(directionalLightsBuffer->GetRHI());
 
-		SizeType directionalLightIdx = 0;
+		const AtmosphereRenderSystem& atmosphereSystem = rendererInterface.GetRenderSystemChecked<AtmosphereRenderSystem>();
 
-		for (const auto& [entity, directionalLight, illuminance] : directionalLightsView.each())
-		{
-			SPT_CHECK(directionalLightIdx < directionalLightsData.GetElementsNum());
+		const DirectionalLightData& directionalLight   = scene.lighting.GetDirectionalLight();
+		const DirectionalLightIlluminance& illuminance = atmosphereSystem.GetDirectionalLightIlluminance();
 
-			DirectionalLightGPUData lightGPUData = GPUDataBuilder::CreateDirectionalLightGPUData(directionalLight, illuminance);
-			lightGPUData.shadowMaskIdx = idxNone<Uint32>;
+		DirectionalLightGPUData lightGPUData = GPUDataBuilder::CreateDirectionalLightGPUData(directionalLight, illuminance);
 
-			directionalLightsData[directionalLightIdx++] = lightGPUData;
-		}
+		directionalLightsData[0u] = lightGPUData;
 	}
 
 	GlobalLightsParams lightsParams;
