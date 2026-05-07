@@ -63,9 +63,8 @@ void RayTracingRenderSystem::UpdateTLAS()
 
 	RenderScene& scene = GetOwningScene();
 
-	rhi::TLASDefinition tlasDefinition;
-
-	lib::DynamicArray<RTInstanceData> rtInstances;
+	lib::DynamicArray<RTInstanceData>              rtInstances;
+	lib::DynamicArray<rhi::TLASInstanceDefinition> rtInstancesDefinitions;
 
 	const auto processRTInstance = [&](RTInstanceHandle handle, const RTInstance& instance)
 	{
@@ -116,7 +115,7 @@ void RayTracingRenderSystem::UpdateTLAS()
 					mask = ETLASGeometryMask::Transparent;
 				}
 
-				rhi::TLASInstanceDefinition& tlasInstance = tlasDefinition.instances.emplace_back();
+				rhi::TLASInstanceDefinition& tlasInstance = rtInstancesDefinitions.emplace_back();
 				tlasInstance.transform       = transformMatrix;
 				tlasInstance.blasAddress     = rtGeometry.blas->GetRHI().GetDeviceAddress();
 				tlasInstance.customIdx       = static_cast<Uint32>(rtInstances.size() - 1);
@@ -147,9 +146,19 @@ void RayTracingRenderSystem::UpdateTLAS()
 
 	m_rtInstancesDataBuffer = BuildRTInstancesBuffer(rtInstances);
 
-	if (!tlasDefinition.instances.empty())
+	rhi::TLASDefinition tlasDefinition;
+	tlasDefinition.maxInstancesNum = static_cast<Uint32>(rtInstances.size());
+
+	if (tlasDefinition.maxInstancesNum > 0)
 	{
 		m_tlas = rdr::ResourcesManager::CreateTLAS(RENDERER_RESOURCE_NAME("Scene TLAS"), tlasDefinition);
+
+		rhi::BufferDefinition instancesDefsBufferDef;
+		instancesDefsBufferDef.size  = rhi::RHIASUtils::GetInstancesBufferSize(static_cast<Uint32>(rtInstancesDefinitions.size()));
+		instancesDefsBufferDef.usage = lib::Flags(rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::DeviceAddress);
+		const lib::SharedRef<rdr::Buffer> instancesDataBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("TLAS Instances Data Buffer"), instancesDefsBufferDef, rhi::EMemoryUsage::CPUToGPU);
+
+		rhi::RHIASUtils::CopyInstancesDefinitionsToBuffer(instancesDataBuffer->GetRHI(), rtInstancesDefinitions);
 
 		const rhi::BufferDefinition scratchBufferDef(m_tlas->GetRHI().GetBuildScratchSize(), lib::Flags(rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::Storage));
 		const lib::SharedRef<rdr::Buffer> scratchBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("TLASBuilderScratchBuffer"), scratchBufferDef, rhi::EMemoryUsage::GPUOnly);
@@ -162,13 +171,14 @@ void RayTracingRenderSystem::UpdateTLAS()
 																									 context,
 																									 cmdBufferDef);
 
-		recorder->BuildTLAS(lib::Ref(m_tlas), scratchBuffer, 0, lib::Ref(m_tlas->GetInstancesBuildDataBuffer()));
+		rhi::TLASBuildInfo buildInfo;
+		buildInfo.instancesNum     = static_cast<Uint32>(rtInstancesDefinitions.size());
+		buildInfo.instancesAddress = instancesDataBuffer->GetRHI().GetDeviceAddress();
+		recorder->BuildTLAS(lib::Ref(m_tlas), buildInfo, scratchBuffer, 0);
 
 		const lib::SharedRef<rdr::GPUWorkload> workload = recorder->FinishRecording();
 
 		rdr::GPUApi::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
-
-		m_tlas->ReleaseInstancesBuildData();
 	}
 
 	m_isTLASDirty = true;

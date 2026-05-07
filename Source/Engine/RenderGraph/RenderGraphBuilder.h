@@ -50,6 +50,32 @@ inline decltype(auto) EmptyDescriptorSets()
 	static lib::StaticArray<lib::MTHandle<rg::RGDescriptorSetStateBase>, 0> empty;
 	return empty;
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Acceleration Structures =======================================================================
+
+struct BLASBuildCommand
+{
+	lib::SharedPtr<rdr::BottomLevelAS> blas;
+	RGBufferViewHandle                 vertexBufferView;
+	RGBufferViewHandle                 indexBufferView;
+	Uint32                             vertexLocationsStride = sizeof(math::Vector3f);
+
+	RGBufferViewHandle scratchBufferView;
+	Uint64             scratchBufferOffset = 0u;
+};
+
+
+struct TLASBuildCommand
+{
+	lib::SharedPtr<rdr::TopLevelAS> tlas;
+	RGBufferViewHandle              instancesBufferView;
+	Uint32                          instancesNum = 0u;
+
+	RGBufferViewHandle scratchBufferView;
+	Uint64             scratchBufferOffset = 0u;
+};
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Shader Params =================================================================================
 
@@ -174,6 +200,10 @@ public:
 
 	template<typename TPassParameters, typename TCallable>
 	void AddLambdaPass(const RenderGraphDebugName& passName, const TPassParameters& parameters, TCallable&& callable);
+
+	void BuildBLASes(const RenderGraphDebugName& commandName, lib::Span<const BLASBuildCommand> buildCommands);
+
+	void BuildTLAS(const RenderGraphDebugName& commandName, const TLASBuildCommand& buildCommand);
 
 	void FillBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range, Uint32 data);
 

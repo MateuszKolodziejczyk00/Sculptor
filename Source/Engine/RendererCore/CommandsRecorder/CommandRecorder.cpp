@@ -62,14 +62,14 @@ void CommandRecorder::BindDescriptorHeap(const DescriptorHeap& descriptorHeap)
 	GetCommandBufferRHI().BindDescriptorHeap(descriptorHeap.GetRHI());
 }
 
-void CommandRecorder::BuildBLAS(const lib::SharedRef<BottomLevelAS>& blas, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset)
+void CommandRecorder::BuildBLAS(const lib::SharedRef<BottomLevelAS>& blas, const rhi::BLASBuildInfo& buildInfo, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset)
 {
-	GetCommandBufferRHI().BuildBLAS(blas->GetRHI(), scratchBuffer->GetRHI(), scratchBufferOffset);
+	GetCommandBufferRHI().BuildBLAS(blas->GetRHI(), buildInfo, scratchBuffer->GetRHI(), scratchBufferOffset);
 }
 
-void CommandRecorder::BuildTLAS(const lib::SharedRef<TopLevelAS>& tlas, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset, const lib::SharedRef<Buffer>& instancesBuildDataBuffer)
+void CommandRecorder::BuildTLAS(const lib::SharedRef<TopLevelAS>& tlas, const rhi::TLASBuildInfo& buildInfo, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset)
 {
-	GetCommandBufferRHI().BuildTLAS(tlas->GetRHI(), scratchBuffer->GetRHI(), scratchBufferOffset, instancesBuildDataBuffer->GetRHI());
+	GetCommandBufferRHI().BuildTLAS(tlas->GetRHI(), buildInfo, scratchBuffer->GetRHI(), scratchBufferOffset);
 }
 
 void CommandRecorder::BeginRendering(const RenderingDefinition& definition)

@@ -45,8 +45,8 @@ public:
 
 	void									BindDescriptorHeap(const DescriptorHeap& descriptorHeap);
 
-	void									BuildBLAS(const lib::SharedRef<BottomLevelAS>& blas, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset);
-	void									BuildTLAS(const lib::SharedRef<TopLevelAS>& tlas, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset, const lib::SharedRef<Buffer>& instancesBuildDataBuffer);
+	void									BuildBLAS(const lib::SharedRef<BottomLevelAS>& blas, const rhi::BLASBuildInfo& buildInfo, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset);
+	void									BuildTLAS(const lib::SharedRef<TopLevelAS>& tlas, const rhi::TLASBuildInfo& buildInfo, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset);
 
 	void									BeginRendering(const RenderingDefinition& definition);
 	void									EndRendering();

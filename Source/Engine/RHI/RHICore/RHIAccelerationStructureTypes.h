@@ -23,20 +23,8 @@ enum class EGeometryFlags
 
 struct BLASTrianglesGeometryDefinition
 {
-	BLASTrianglesGeometryDefinition()
-		: vertexLocationsAddress(0)
-		, vertexLocationsStride(0)
-		, maxVerticesNum(0)
-		, indicesAddress(0)
-		, indicesNum(0)
-	{ }
-
-	Uint64 vertexLocationsAddress;
-	Uint32 vertexLocationsStride;
-	Uint32 maxVerticesNum;
-
-	Uint64 indicesAddress;
-	Uint32 indicesNum;
+	Uint32 maxPrimitivesNum = 0u;
+	Uint32 maxVerticesNum   = 0u;
 };
 
 
@@ -47,12 +35,27 @@ struct BLASDefinition
 		, geometryFlags(EGeometryFlags::Default)
 	{ }
 
-	EBLASGeometryType	geometryType;
-	EGeometryFlags		geometryFlags;
+	EBLASGeometryType geometryType;
+	EGeometryFlags    geometryFlags;
 	union
 	{
 		BLASTrianglesGeometryDefinition trianglesGeometry;
 	};
+};
+
+
+struct BLASTriangleBuildInfo
+{
+	Uint64 vertexLocationsAddress = 0u;
+	Uint64 indicesAddress         = 0u;
+	Uint32 vertexLocationsStride  = 0u;
+	Uint32 primitivesNum          = 0u;
+};
+
+
+struct BLASBuildInfo
+{
+	BLASTriangleBuildInfo trianglesBuildInfo;
 };
 
 
@@ -91,10 +94,14 @@ struct TLASInstanceDefinition
 
 struct TLASDefinition
 {
-	TLASDefinition()
-	{ }
+	Uint32 maxInstancesNum = 0u;
+};
 
-	lib::DynamicArray<TLASInstanceDefinition> instances;
+
+struct TLASBuildInfo
+{
+	Uint64 instancesAddress = 0u;
+	Uint32 instancesNum     = 0u;
 };
 
 } // spt::rhi

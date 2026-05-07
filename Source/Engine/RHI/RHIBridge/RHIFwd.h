@@ -29,6 +29,7 @@ class RHIDescriptorSetLayout;
 class RHISampler;
 class RHITopLevelAS;
 class RHIBottomLevelAS;
+class RHIASUtils;
 class RHIShaderBindingTable;
 class RHIQueryPool;
 class RHIGPUMemoryPool;

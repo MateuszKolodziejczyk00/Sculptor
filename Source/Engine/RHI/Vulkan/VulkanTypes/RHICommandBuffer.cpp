@@ -359,20 +359,46 @@ void RHICommandBuffer::DispatchIndirect(const RHIBuffer& indirectArgsBuffer, Uin
 	vkCmdDispatchIndirect(m_cmdBufferHandle, indirectArgsBuffer.GetHandle(), indirectArgsOffset);
 }
 
-void RHICommandBuffer::BuildBLAS(const RHIBottomLevelAS& blas, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset)
+void RHICommandBuffer::BuildBLAS(const RHIBottomLevelAS& blas, const rhi::BLASBuildInfo& buildInfo, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset)
 {
-	VkAccelerationStructureGeometryKHR geometry;
-	VkAccelerationStructureBuildGeometryInfoKHR buildInfo = blas.CreateBuildGeometryInfo(OUT geometry);
+	SPT_CHECK(scratchBuffer.IsValid());
+	SPT_CHECK(scratchBufferOffset + blas.GetBuildScratchSize() <= scratchBuffer.GetSize());
+	SPT_CHECK(buildInfo.trianglesBuildInfo.primitivesNum > 0);
 
-	BuildASImpl(blas, buildInfo, scratchBuffer, scratchBufferOffset);
+	SPT_CHECK(buildInfo.trianglesBuildInfo.primitivesNum <= blas.GetMaxPrimitivesCount());
+
+	VkAccelerationStructureGeometryKHR geometry;
+	VkAccelerationStructureBuildGeometryInfoKHR vkBuildInfo = blas.CreateBuildGeometryInfo(OUT geometry, &buildInfo);
+
+	vkBuildInfo.dstAccelerationStructure  = blas.GetHandle();
+	vkBuildInfo.scratchData.deviceAddress = scratchBuffer.GetDeviceAddress() + scratchBufferOffset;
+
+	VkAccelerationStructureBuildRangeInfoKHR buildRangeInfo{};
+	buildRangeInfo.primitiveCount = buildInfo.trianglesBuildInfo.primitivesNum;
+
+	const VkAccelerationStructureBuildRangeInfoKHR* buildRanges = &buildRangeInfo;
+
+	BuildASImpl(blas, vkBuildInfo, buildRanges);
 }
 
-void RHICommandBuffer::BuildTLAS(const RHITopLevelAS& tlas, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset, const RHIBuffer& instancesBuildDataBuffer)
+void RHICommandBuffer::BuildTLAS(const RHITopLevelAS& tlas, const rhi::TLASBuildInfo& buildInfo, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset)
 {
-	VkAccelerationStructureGeometryKHR geometry;
-	VkAccelerationStructureBuildGeometryInfoKHR buildInfo = tlas.CreateBuildGeometryInfo(instancesBuildDataBuffer, OUT geometry);
+	SPT_CHECK(scratchBuffer.IsValid());
+	SPT_CHECK(scratchBufferOffset + tlas.GetBuildScratchSize() <= scratchBuffer.GetSize());
+	SPT_CHECK(buildInfo.instancesNum > 0);
+	SPT_CHECK(buildInfo.instancesNum <= tlas.GetMaxPrimitivesCount());
 
-	BuildASImpl(tlas, buildInfo, scratchBuffer, scratchBufferOffset);
+	VkAccelerationStructureGeometryKHR geometry;
+	VkAccelerationStructureBuildGeometryInfoKHR vkBuildInfo = tlas.CreateBuildGeometryInfo(OUT geometry, &buildInfo);
+
+	vkBuildInfo.dstAccelerationStructure  = tlas.GetHandle();
+	vkBuildInfo.scratchData.deviceAddress = scratchBuffer.GetDeviceAddress() + scratchBufferOffset;
+
+	VkAccelerationStructureBuildRangeInfoKHR buildRangeInfo{};
+	buildRangeInfo.primitiveCount = buildInfo.instancesNum;
+	const VkAccelerationStructureBuildRangeInfoKHR* buildRanges = &buildRangeInfo;
+
+	BuildASImpl(tlas, vkBuildInfo, buildRanges);
 }
 
 void RHICommandBuffer::BindRayTracingPipeline(const RHIPipeline& pipeline)
@@ -753,19 +779,10 @@ void RHICommandBuffer::BindDescriptorsImpl(VkPipelineBindPoint bindPoint, const 
 	vkCmdSetDescriptorBufferOffsetsEXT(m_cmdBufferHandle, bindPoint, layout.GetHandle(), dsIdx, 1u, &bufferIdx, &bufferOffset);
 }
 
-void RHICommandBuffer::BuildASImpl(const RHIAccelerationStructure& as, VkAccelerationStructureBuildGeometryInfoKHR& buildInfo, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset)
+void RHICommandBuffer::BuildASImpl(const RHIAccelerationStructure& as, const VkAccelerationStructureBuildGeometryInfoKHR& buildInfo, const VkAccelerationStructureBuildRangeInfoKHR* buildRanges)
 {
 	SPT_CHECK(IsValid());
 	SPT_CHECK(as.IsValid());
-	SPT_CHECK(scratchBuffer.IsValid());
-
-	SPT_CHECK(scratchBufferOffset + as.GetBuildScratchSize() <= scratchBuffer.GetSize());
-
-	buildInfo.dstAccelerationStructure	= as.GetHandle();
-	buildInfo.scratchData.deviceAddress	= scratchBuffer.GetDeviceAddress() + scratchBufferOffset;
-
-	const VkAccelerationStructureBuildRangeInfoKHR buildRangeInfo = as.CreateBuildRangeInfo();
-	const VkAccelerationStructureBuildRangeInfoKHR* buildRanges = &buildRangeInfo;
 
 	vkCmdBuildAccelerationStructuresKHR(m_cmdBufferHandle, 1, &buildInfo, &buildRanges);
 }

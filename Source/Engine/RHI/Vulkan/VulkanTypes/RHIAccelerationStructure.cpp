@@ -25,7 +25,7 @@ void RHIAccelerationStructureReleaseTicket::ExecuteReleaseRHI()
 RHIAccelerationStructure::RHIAccelerationStructure()
 	: m_handle(VK_NULL_HANDLE)
 	, m_buildScratchSize(0)
-	, m_primitivesCount(0)
+	, m_maxPrimitivesCount(0)
 { }
 
 Bool RHIAccelerationStructure::IsValid() const
@@ -53,17 +53,6 @@ Uint64 RHIAccelerationStructure::GetBuildScratchSize() const
 	return m_buildScratchSize;
 }
 
-VkAccelerationStructureBuildRangeInfoKHR RHIAccelerationStructure::CreateBuildRangeInfo() const
-{
-	VkAccelerationStructureBuildRangeInfoKHR buildRangeInfo{};
-	buildRangeInfo.primitiveCount	= m_primitivesCount;
-	buildRangeInfo.primitiveOffset	= 0;
-	buildRangeInfo.firstVertex		= 0;
-	buildRangeInfo.transformOffset	= 0;
-
-	return buildRangeInfo;
-}
-
 RHIAccelerationStructureReleaseTicket RHIAccelerationStructure::DeferredReleaseInternal()
 {
 	SPT_PROFILER_FUNCTION();
@@ -82,7 +71,7 @@ RHIAccelerationStructureReleaseTicket RHIAccelerationStructure::DeferredReleaseI
 	m_handle = VK_NULL_HANDLE;
 
 	m_buildScratchSize	= 0;
-	m_primitivesCount	= 0;
+	m_maxPrimitivesCount	= 0;
 
 	SPT_CHECK(!IsValid());
 
@@ -114,10 +103,6 @@ void RHIAccelerationStructure::CopySRVDescriptor(Byte* dst) const
 // RHIBottomLevelAS ==============================================================================
 
 RHIBottomLevelAS::RHIBottomLevelAS()
-	: m_locationsDeviceAddress(0)
-	, m_maxVerticesNum(0)
-	, m_indicesDeviceAddress(0)
-	, m_geometryFlags(0)
 { }
 
 void RHIBottomLevelAS::InitializeRHI(const rhi::BLASDefinition& definition, INOUT RHIBuffer& accelerationStructureBuffer, INOUT Uint64& accelerationStructureBufferOffset)
@@ -127,20 +112,16 @@ void RHIBottomLevelAS::InitializeRHI(const rhi::BLASDefinition& definition, INOU
 	SPT_CHECK(!IsValid());
 	SPT_CHECK(definition.geometryType == rhi::EBLASGeometryType::Triangles);
 
-	m_locationsDeviceAddress	= definition.trianglesGeometry.vertexLocationsAddress;
-	m_maxVerticesNum			= definition.trianglesGeometry.maxVerticesNum;
-	m_indicesDeviceAddress		= definition.trianglesGeometry.indicesAddress;
-	m_geometryFlags				= RHIToVulkan::GetGeometryFlags(definition.geometryFlags);
+	m_maxPrimitivesCount = definition.trianglesGeometry.maxPrimitivesNum;
+	m_maxVerticesNum     = definition.trianglesGeometry.maxVerticesNum;
+	m_geometryFlags      = RHIToVulkan::GetGeometryFlags(definition.geometryFlags);
+	m_geometryType       = definition.geometryType;
 	
 	VkAccelerationStructureGeometryKHR geometry;
-	const VkAccelerationStructureBuildGeometryInfoKHR buildGeometryInfo = CreateBuildGeometryInfo(OUT geometry);
-
-	const Uint32 indicesNum = definition.trianglesGeometry.indicesNum;
-	SPT_CHECK(indicesNum % 3 == 0 && indicesNum > 0);
-	m_primitivesCount = indicesNum / 3;
+	const VkAccelerationStructureBuildGeometryInfoKHR buildGeometryInfo = CreateBuildGeometryInfo(OUT geometry, nullptr);
 
 	VkAccelerationStructureBuildSizesInfoKHR buildSizeInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
-	vkGetAccelerationStructureBuildSizesKHR(VulkanRHI::GetDeviceHandle(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildGeometryInfo, &m_primitivesCount, &buildSizeInfo);
+	vkGetAccelerationStructureBuildSizesKHR(VulkanRHI::GetDeviceHandle(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildGeometryInfo, &m_maxPrimitivesCount, &buildSizeInfo);
 
 	const Uint64 accelerationStructureSize = buildSizeInfo.accelerationStructureSize;
 
@@ -156,10 +137,10 @@ void RHIBottomLevelAS::InitializeRHI(const rhi::BLASDefinition& definition, INOU
 	SPT_CHECK(accelerationStructureBufferOffset + accelerationStructureSize <= accelerationStructureBuffer.GetSize());
 
 	VkAccelerationStructureCreateInfoKHR asInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR };
-    asInfo.buffer	= accelerationStructureBuffer.GetHandle();
-    asInfo.offset	= accelerationStructureBufferOffset;
-    asInfo.size		= accelerationStructureSize;
-    asInfo.type		= VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+	asInfo.buffer = accelerationStructureBuffer.GetHandle();
+	asInfo.offset = accelerationStructureBufferOffset;
+	asInfo.size   = accelerationStructureSize;
+	asInfo.type   = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
 
 	SPT_VK_CHECK(vkCreateAccelerationStructureKHR(VulkanRHI::GetDeviceHandle(), &asInfo, VulkanRHI::GetAllocationCallbacks(), &m_handle));
 	
@@ -176,42 +157,40 @@ RHIAccelerationStructureReleaseTicket RHIBottomLevelAS::DeferredReleaseRHI()
 {
 	RHIAccelerationStructureReleaseTicket releaseTicket = DeferredReleaseInternal();
 
-	m_locationsDeviceAddress	= 0;
-	m_maxVerticesNum			= 0;
-	m_indicesDeviceAddress		= 0;
-	m_geometryFlags				= 0;
+	m_maxVerticesNum = 0;
+	m_geometryFlags  = 0;
 
 	return releaseTicket;
 }
 
-VkAccelerationStructureBuildGeometryInfoKHR RHIBottomLevelAS::CreateBuildGeometryInfo(OUT VkAccelerationStructureGeometryKHR& geometry) const
+VkAccelerationStructureBuildGeometryInfoKHR RHIBottomLevelAS::CreateBuildGeometryInfo(OUT VkAccelerationStructureGeometryKHR& geometry, const rhi::BLASBuildInfo* buildInfo) const
 {
-	geometry = CreateGeometryData();
+	geometry = CreateGeometryData(buildInfo);
 
 	VkAccelerationStructureBuildGeometryInfoKHR buildGeometryInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
-	buildGeometryInfo.type			= VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-	buildGeometryInfo.flags			= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
-	buildGeometryInfo.mode			= VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-	buildGeometryInfo.geometryCount	= 1;
-	buildGeometryInfo.pGeometries	= &geometry;
+	buildGeometryInfo.type          = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+	buildGeometryInfo.flags         = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+	buildGeometryInfo.mode          = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+	buildGeometryInfo.geometryCount = 1;
+	buildGeometryInfo.pGeometries   = &geometry;
 
 	return buildGeometryInfo;
 }
 
-VkAccelerationStructureGeometryKHR RHIBottomLevelAS::CreateGeometryData() const
+VkAccelerationStructureGeometryKHR RHIBottomLevelAS::CreateGeometryData(const rhi::BLASBuildInfo* buildInfo) const
 {
 	VkAccelerationStructureGeometryTrianglesDataKHR triangles{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR };
-	triangles.vertexFormat				= VK_FORMAT_R32G32B32_SFLOAT;
-	triangles.vertexData.deviceAddress	= m_locationsDeviceAddress;
-	triangles.vertexStride				= sizeof(math::Vector3f);
-	triangles.maxVertex					= m_maxVerticesNum;
-	triangles.indexType					= VK_INDEX_TYPE_UINT32;
-	triangles.indexData.deviceAddress	= m_indicesDeviceAddress;
+	triangles.vertexData.deviceAddress = buildInfo ? buildInfo->trianglesBuildInfo.vertexLocationsAddress : 0u;
+	triangles.indexData.deviceAddress  = buildInfo ? buildInfo->trianglesBuildInfo.indicesAddress : 0u;
+	triangles.vertexFormat             = VK_FORMAT_R32G32B32_SFLOAT;
+	triangles.vertexStride             = buildInfo ? buildInfo->trianglesBuildInfo.vertexLocationsStride : 0u;
+	triangles.maxVertex                = m_maxVerticesNum;
+	triangles.indexType                = VK_INDEX_TYPE_UINT32;
 
 	VkAccelerationStructureGeometryKHR geometry{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR };
-	geometry.geometryType		= VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-	geometry.geometry.triangles	= triangles;
-	geometry.flags				= m_geometryFlags;
+	geometry.geometryType       = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+	geometry.geometry.triangles = triangles;
+	geometry.flags              = m_geometryFlags;
 
 	return geometry;
 }
@@ -222,46 +201,19 @@ VkAccelerationStructureGeometryKHR RHIBottomLevelAS::CreateGeometryData() const
 RHITopLevelAS::RHITopLevelAS()
 { }
 
-void RHITopLevelAS::InitializeRHI(const rhi::TLASDefinition& definition, INOUT RHIBuffer& accelerationStructureBuffer, INOUT Uint64& accelerationStructureBufferOffset, OUT RHIBuffer& instancesBuildBuffer)
+void RHITopLevelAS::InitializeRHI(const rhi::TLASDefinition& definition, INOUT RHIBuffer& accelerationStructureBuffer, INOUT Uint64& accelerationStructureBufferOffset)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsValid());
-	SPT_CHECK(!instancesBuildBuffer.IsValid());
 
-	const Uint32 instancesNum = static_cast<Uint32>(definition.instances.size());
-	const Uint64 instancesBufferSize = instancesNum * sizeof(VkAccelerationStructureInstanceKHR);
-
-	m_primitivesCount = static_cast<Uint32>(instancesNum);
-
-	const rhi::BufferDefinition instancesBufferDef(instancesBufferSize, lib::Flags(rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::ASBuildInputReadOnly));
-	instancesBuildBuffer.InitializeRHI(instancesBufferDef, rhi::RHICommittedAllocationDefinition(rhi::EMemoryUsage::CPUToGPU));
-	
-	// Init buffer of VkAccelerationStructureInstanceKHR from TLASInstanceDefinitions
-	{
-		const RHIMappedBuffer<VkAccelerationStructureInstanceKHR> instancesMappedBuffer(instancesBuildBuffer);
-
-		for(SizeType instanceIdx = 0; instanceIdx < definition.instances.size(); ++instanceIdx)
-		{
-			const rhi::TLASInstanceDefinition& instance = definition.instances[instanceIdx];
-			// We need to transpose matrix because VkTransformMatrixKHR stores transform in row-major order
-			const math::Matrix<Real32, 4, 3> transposedMatrix = instance.transform.transpose();
-
-			VkAccelerationStructureInstanceKHR& instanceData = instancesMappedBuffer[instanceIdx];
-			std::memcpy(instanceData.transform.matrix, transposedMatrix.data(), sizeof(VkTransformMatrixKHR));
-			instanceData.instanceCustomIndex												= instance.customIdx;
-			instanceData.mask																= instance.mask;
-			instanceData.instanceShaderBindingTableRecordOffset								= instance.sbtRecordOffset;
-			instanceData.flags																= RHIToVulkan::GetGeometryInstanceFlags(instance.flags);
-			instanceData.accelerationStructureReference										= instance.blasAddress;
-		}
-	}
+	m_maxPrimitivesCount = definition.maxInstancesNum;
 
 	VkAccelerationStructureGeometryKHR geometry;
-	const VkAccelerationStructureBuildGeometryInfoKHR buildGeometryInfo = CreateBuildGeometryInfo(instancesBuildBuffer, OUT geometry);
+	const VkAccelerationStructureBuildGeometryInfoKHR buildGeometryInfo = CreateBuildGeometryInfo(OUT geometry, nullptr);
 
 	VkAccelerationStructureBuildSizesInfoKHR buildSizeInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
-	vkGetAccelerationStructureBuildSizesKHR(VulkanRHI::GetDeviceHandle(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildGeometryInfo, &m_primitivesCount, &buildSizeInfo);
+	vkGetAccelerationStructureBuildSizesKHR(VulkanRHI::GetDeviceHandle(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildGeometryInfo, &m_maxPrimitivesCount, &buildSizeInfo);
 
 	const Uint64 accelerationStructureSize = buildSizeInfo.accelerationStructureSize;
 
@@ -295,9 +247,9 @@ RHIAccelerationStructureReleaseTicket RHITopLevelAS::DeferredReleaseRHI()
 	return DeferredReleaseInternal();
 }
 
-VkAccelerationStructureBuildGeometryInfoKHR RHITopLevelAS::CreateBuildGeometryInfo(const RHIBuffer& instancesBuildBuffer, OUT VkAccelerationStructureGeometryKHR& geometry) const
+VkAccelerationStructureBuildGeometryInfoKHR RHITopLevelAS::CreateBuildGeometryInfo(OUT VkAccelerationStructureGeometryKHR& geometry, const rhi::TLASBuildInfo* buildInfo) const
 {
-	geometry = CreateGeometryData(instancesBuildBuffer);
+	geometry = CreateGeometryData(buildInfo);
 
 	VkAccelerationStructureBuildGeometryInfoKHR buildGeometryInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
 	buildGeometryInfo.flags			= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
@@ -309,18 +261,47 @@ VkAccelerationStructureBuildGeometryInfoKHR RHITopLevelAS::CreateBuildGeometryIn
 	return buildGeometryInfo;
 }
 
-VkAccelerationStructureGeometryKHR RHITopLevelAS::CreateGeometryData(const RHIBuffer& instancesBuildBuffer) const
+VkAccelerationStructureGeometryKHR RHITopLevelAS::CreateGeometryData(const rhi::TLASBuildInfo* buildInfo) const
 {
-	SPT_CHECK(instancesBuildBuffer.IsValid());
-
 	VkAccelerationStructureGeometryInstancesDataKHR instancesData{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR };
-	instancesData.data.deviceAddress = instancesBuildBuffer.GetDeviceAddress();
+	instancesData.data.deviceAddress = buildInfo ? buildInfo->instancesAddress : 0u;
 
 	VkAccelerationStructureGeometryKHR geometry{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR };
 	geometry.geometryType		= VK_GEOMETRY_TYPE_INSTANCES_KHR;
 	geometry.geometry.instances	= instancesData;
 
 	return geometry;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIASUtils ====================================================================================
+
+Uint64 RHIASUtils::GetInstancesBufferSize(Uint32 instancesNum)
+{
+	return instancesNum * sizeof(VkAccelerationStructureInstanceKHR);
+}
+
+void RHIASUtils::CopyInstancesDefinitionsToBuffer(const RHIBuffer& instancesBuffer, lib::Span<const rhi::TLASInstanceDefinition> instanceDefs)
+{
+	SPT_CHECK(instancesBuffer.IsValid());
+	SPT_CHECK(GetInstancesBufferSize(static_cast<Uint32>(instanceDefs.size())) <= instancesBuffer.GetSize());
+
+	const RHIMappedBuffer<VkAccelerationStructureInstanceKHR> instancesMappedBuffer(instancesBuffer);
+
+	for(SizeType instanceIdx = 0; instanceIdx < instanceDefs.size(); ++instanceIdx)
+	{
+		const rhi::TLASInstanceDefinition& instance = instanceDefs[instanceIdx];
+		// We need to transpose matrix because VkTransformMatrixKHR stores transform in row-major order
+		const math::Matrix<Real32, 4, 3> transposedMatrix = instance.transform.transpose();
+
+		VkAccelerationStructureInstanceKHR& instanceData = instancesMappedBuffer[instanceIdx];
+		std::memcpy(instanceData.transform.matrix, transposedMatrix.data(), sizeof(VkTransformMatrixKHR));
+		instanceData.instanceCustomIndex												= instance.customIdx;
+		instanceData.mask																= instance.mask;
+		instanceData.instanceShaderBindingTableRecordOffset								= instance.sbtRecordOffset;
+		instanceData.flags																= RHIToVulkan::GetGeometryInstanceFlags(instance.flags);
+		instanceData.accelerationStructureReference										= instance.blasAddress;
+	}
 }
 
 } // spt::vulkan

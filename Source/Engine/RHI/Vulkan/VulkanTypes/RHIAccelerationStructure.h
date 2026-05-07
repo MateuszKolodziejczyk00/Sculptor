@@ -31,14 +31,15 @@ public:
 
 	Bool IsValid() const;
 
-	void						SetName(const lib::HashedString& name);
-	const lib::HashedString&	GetName() const;
+	void                     SetName(const lib::HashedString& name);
+	const lib::HashedString& GetName() const;
+
+	Uint64 GetMaxPrimitivesCount() const { return m_maxPrimitivesCount; }
+	Uint64 GetStratchBufferSize() const  { return m_buildScratchSize; }
 
 	VkAccelerationStructureKHR GetHandle() const;
 
 	Uint64 GetBuildScratchSize() const;
-
-	VkAccelerationStructureBuildRangeInfoKHR CreateBuildRangeInfo() const;
 
 	DeviceAddress GetDeviceAddress() const;
 
@@ -48,10 +49,10 @@ protected:
 
 	RHIAccelerationStructureReleaseTicket DeferredReleaseInternal();
 
-	VkAccelerationStructureKHR m_handle;
+	VkAccelerationStructureKHR m_handle = VK_NULL_HANDLE;
 
-	Uint64 m_buildScratchSize;
-	Uint32 m_primitivesCount;
+	Uint64 m_buildScratchSize = 0u;
+	Uint32 m_maxPrimitivesCount  = 0u;
 
 	DebugName m_name;
 };
@@ -68,16 +69,16 @@ public:
 
 	RHIAccelerationStructureReleaseTicket DeferredReleaseRHI();
 
-	VkAccelerationStructureBuildGeometryInfoKHR CreateBuildGeometryInfo(OUT VkAccelerationStructureGeometryKHR& geometry) const;
+	VkAccelerationStructureBuildGeometryInfoKHR CreateBuildGeometryInfo(OUT VkAccelerationStructureGeometryKHR& geometry, const rhi::BLASBuildInfo* buildInfo) const;
 
 private:
 
-	VkAccelerationStructureGeometryKHR CreateGeometryData() const;
+	VkAccelerationStructureGeometryKHR CreateGeometryData(const rhi::BLASBuildInfo* buildInfo) const;
 
-	Uint64					m_locationsDeviceAddress;
-	Uint32					m_maxVerticesNum;
-	Uint64					m_indicesDeviceAddress;
-	VkGeometryFlagsKHR		m_geometryFlags;
+	Uint32             m_maxVerticesNum = 0u;
+	VkGeometryFlagsKHR m_geometryFlags  = 0u;
+
+	rhi::EBLASGeometryType m_geometryType = rhi::EBLASGeometryType::Triangles;
 };
 
 
@@ -87,16 +88,26 @@ public:
 
 	RHITopLevelAS();
 
-	void InitializeRHI(const rhi::TLASDefinition& definition, INOUT RHIBuffer& accelerationStructureBuffer, INOUT Uint64& accelerationStructureBufferOffset, OUT RHIBuffer& instancesBuildBuffer);
+	void InitializeRHI(const rhi::TLASDefinition& definition, INOUT RHIBuffer& accelerationStructureBuffer, INOUT Uint64& accelerationStructureBufferOffset);
 	void ReleaseRHI();
 
 	RHIAccelerationStructureReleaseTicket DeferredReleaseRHI();
 
-	VkAccelerationStructureBuildGeometryInfoKHR CreateBuildGeometryInfo(const RHIBuffer& instancesBuildBuffer, OUT VkAccelerationStructureGeometryKHR& geometry) const;
+	VkAccelerationStructureBuildGeometryInfoKHR CreateBuildGeometryInfo(OUT VkAccelerationStructureGeometryKHR& geometry, const rhi::TLASBuildInfo* buildInfo) const;
 
 private:
 
-	VkAccelerationStructureGeometryKHR CreateGeometryData(const RHIBuffer& instancesBuildBuffer) const;
+	VkAccelerationStructureGeometryKHR CreateGeometryData(const rhi::TLASBuildInfo* buildInfo) const;
+};
+
+
+class RHI_API RHIASUtils
+{
+public:
+
+	static Uint64 GetInstancesBufferSize(Uint32 instancesNum);
+
+	static void CopyInstancesDefinitionsToBuffer(const RHIBuffer& instancesBuffer, lib::Span<const rhi::TLASInstanceDefinition> instanceDefs);
 };
 
 } // spt::vulkan

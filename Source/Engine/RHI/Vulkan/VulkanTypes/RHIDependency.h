@@ -36,6 +36,8 @@ public:
 
 	void		StageBarrier(rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess);
 
+	void		FlushPipeline();
+
 	// Execution ==============================================================
 
 	void ExecuteBarrier(const RHICommandBuffer& cmdBuffer) const;

@@ -9,6 +9,7 @@
 #include "RHICore/Commands/RHICopyDefinition.h"
 #include "RHICore/RHISamplerTypes.h"
 #include "RHICore/RHITextureTypes.h"
+#include "RHICore/RHIAccelerationStructureTypes.h"
 
 namespace spt::vulkan
 {
@@ -82,8 +83,8 @@ public:
 
 	// Acceleration Structures ==============================
 
-	void	BuildBLAS(const RHIBottomLevelAS& blas, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset);
-	void	BuildTLAS(const RHITopLevelAS& tlas, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset, const RHIBuffer& instancesBuildDataBuffer);
+	void	BuildBLAS(const RHIBottomLevelAS& blas, const rhi::BLASBuildInfo& buildInfo, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset);
+	void	BuildTLAS(const RHITopLevelAS& tlas, const rhi::TLASBuildInfo& buildInfo, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset);
 	
 	// Ray Tracing ==========================================
 
@@ -143,7 +144,7 @@ private:
 
 	void BindDescriptorsImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset);
 
-	void BuildASImpl(const RHIAccelerationStructure& as, VkAccelerationStructureBuildGeometryInfoKHR& buildInfo, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset);
+	void BuildASImpl(const RHIAccelerationStructure& as, const VkAccelerationStructureBuildGeometryInfoKHR& buildInfo, const VkAccelerationStructureBuildRangeInfoKHR* buildRanges);
 
 	VkCommandBuffer					m_cmdBufferHandle;
 

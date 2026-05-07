@@ -30,16 +30,13 @@ TopLevelAS::TopLevelAS(const RendererResourceName& name, const rhi::TLASDefiniti
 	: m_accelerationStructureOffset(0)
 {
 	rhi::RHIBuffer accelrationStructureBuffer;
-	rhi::RHIBuffer instancesBuildDataBuffer;
 
-	GetRHI().InitializeRHI(definition, OUT accelrationStructureBuffer, OUT m_accelerationStructureOffset, OUT instancesBuildDataBuffer);
+	GetRHI().InitializeRHI(definition, OUT accelrationStructureBuffer, OUT m_accelerationStructureOffset);
 	GetRHI().SetName(name.Get());
 
 	SPT_CHECK(accelrationStructureBuffer.IsValid());
-	SPT_CHECK(instancesBuildDataBuffer.IsValid());
 
 	m_accelerationStructureBuffer = ResourcesManager::CreateBuffer(name, accelrationStructureBuffer);
-	m_instancesBuildDataBuffer    = ResourcesManager::CreateBuffer(name, instancesBuildDataBuffer);
 
 	InitializeSRVDescriptor();
 }
@@ -63,11 +60,6 @@ TopLevelAS::~TopLevelAS()
 	}));
 }
 
-void TopLevelAS::ReleaseInstancesBuildData()
-{
-	m_instancesBuildDataBuffer.reset();
-}
-
 void TopLevelAS::InitializeSRVDescriptor()
 {
 	rdr::DescriptorManager& descriptorManager = rdr::GPUApi::GetDescriptorManager();
@@ -86,21 +78,21 @@ BLASBuilder::BLASBuilder()
 
 Bool BLASBuilder::IsEmpty() const
 {
-	return m_blases.empty();
+	return m_commands.empty();
 }
 
-lib::SharedRef<BottomLevelAS> BLASBuilder::CreateBLAS(const RendererResourceName& name, const rhi::BLASDefinition& definition)
+lib::SharedRef<BottomLevelAS> BLASBuilder::CreateBLAS(const RendererResourceName& name, const rhi::BLASDefinition& definition, const rhi::BLASBuildInfo& buildInfo)
 {
 	const lib::SharedRef<BottomLevelAS> blas = ResourcesManager::CreateBLAS(name, definition);
 
-	m_blases.emplace_back(blas);
+	m_commands.emplace_back(BuildCommand{ blas, buildInfo });
 
 	return blas;
 }
 
-void BLASBuilder::AddBLASToBuild(const lib::SharedRef<BottomLevelAS>& blas)
+void BLASBuilder::AddBLASToBuild(BuildCommand command)
 {
-	m_blases.emplace_back(blas);
+	m_commands.emplace_back(std::move(command));
 }
 
 void BLASBuilder::Build(CommandRecorder& recorder) const
@@ -109,19 +101,19 @@ void BLASBuilder::Build(CommandRecorder& recorder) const
 
 	SPT_CHECK(!IsEmpty());
 
-	const Uint64 scratchBufferSize = std::accumulate(std::cbegin(m_blases), std::cend(m_blases), Uint64(0),
-													 [](Uint64 value, const lib::SharedRef<BottomLevelAS>& blas)
+	const Uint64 scratchBufferSize = std::accumulate(std::cbegin(m_commands), std::cend(m_commands), Uint64(0),
+													 [](Uint64 value, const BuildCommand& command)
 													 {
-														 const Uint64 requiredScratchSize = blas->GetRHI().GetBuildScratchSize();
+														 const Uint64 requiredScratchSize = command.blas->GetRHI().GetBuildScratchSize();
 														 return std::max<Uint64>(value, requiredScratchSize);
 													 });
 
 	const rhi::BufferDefinition scratchBufferDefinition(scratchBufferSize, lib::Flags(rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::Storage));
 	const lib::SharedRef<Buffer> scratchBuffer = ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("BLASBuilderScratchBuffer"), scratchBufferDefinition, rhi::EMemoryUsage::GPUOnly);
 
-	for (const lib::SharedRef<BottomLevelAS>& blas : m_blases)
+	for (const BuildCommand& command : m_commands)
 	{
-		recorder.BuildBLAS(blas, scratchBuffer, 0);
+		recorder.BuildBLAS(command.blas, command.buildInfo, scratchBuffer, 0);
 
 		rhi::RHIDependency dependency;
 		const SizeType bufferDependencyIdx = dependency.AddBufferDependency(scratchBuffer->GetRHI(), 0, scratchBuffer->GetRHI().GetSize());

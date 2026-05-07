@@ -272,6 +272,93 @@ void RenderGraphBuilder::PopProfilerScope()
 }
 #endif // RG_ENABLE_DIAGNOSTICS
 
+void RenderGraphBuilder::BuildBLASes(const RenderGraphDebugName& commandName, lib::Span<const BLASBuildCommand> buildCommands)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!buildCommands.empty());
+
+	lib::Span<BLASBuildCommand> commands = m_memoryArena.AllocateSpanUninitialized<BLASBuildCommand>(buildCommands.size());
+	for (SizeType i = 0; i < buildCommands.size(); ++i)
+	{
+		new (&commands[i]) BLASBuildCommand(buildCommands[i]);
+	}
+
+	auto executeLambda = [commands](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	{
+		for (const BLASBuildCommand& command : commands)
+		{
+			const rdr::BindableBufferView& vertexBufferView = command.vertexBufferView->GetResourceRef();
+			const rdr::BindableBufferView& indexBufferView  = command.indexBufferView->GetResourceRef();
+
+			const lib::SharedPtr<rdr::Buffer>& scratchBuffer = command.scratchBufferView->GetBuffer()->GetResource();
+			const Uint64 scratchBufferOffset = command.scratchBufferView->GetOffset() + command.scratchBufferOffset;
+
+			rhi::BLASBuildInfo buildInfo;
+			buildInfo.trianglesBuildInfo.vertexLocationsAddress = vertexBufferView.GetBuffer()->GetRHI().GetDeviceAddress() + vertexBufferView.GetOffset();
+			buildInfo.trianglesBuildInfo.vertexLocationsStride  = command.vertexLocationsStride;
+			buildInfo.trianglesBuildInfo.indicesAddress         = indexBufferView.GetBuffer()->GetRHI().GetDeviceAddress() + indexBufferView.GetOffset();
+
+
+			recorder.BuildBLAS(lib::Ref(command.blas), buildInfo, lib::Ref(scratchBuffer), scratchBufferOffset);
+		}
+	};
+
+	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;
+	using NodeType = RGLambdaNode<LambdaType>;
+
+	NodeType& node = AllocateNode<NodeType>(commandName, ERenderGraphNodeType::Generic, std::move(executeLambda));
+
+	RGDependeciesContainer dependencies(m_memoryArena);
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
+	for (const BLASBuildCommand& command : buildCommands)
+	{
+		dependenciesBuilder.AddBufferAccess(command.vertexBufferView, ERGBufferAccess::Read, rhi::EPipelineStage::ASBuild);
+		dependenciesBuilder.AddBufferAccess(command.indexBufferView, ERGBufferAccess::Read, rhi::EPipelineStage::ASBuild);
+		dependenciesBuilder.AddBufferAccess(command.scratchBufferView, ERGBufferAccess::ReadWrite, rhi::EPipelineStage::ASBuild);
+	}
+
+	AddNodeInternal(node, dependencies);
+}
+
+void RenderGraphBuilder::BuildTLAS(const RenderGraphDebugName& commandName, const TLASBuildCommand& buildCommand)
+{
+	SPT_PROFILER_FUNCTION();
+
+	auto executeLambda = [buildCommand](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	{
+		// Render Graph doesn't track individual BLASes. Because of now, this has to be conservative and flush whole pipeline to make sure that all inputs are ready
+		rhi::RHIDependency dependency;
+		dependency.FlushPipeline();
+
+		recorder.ExecuteBarrier(dependency);
+
+		const rdr::BindableBufferView& instancesBufferView = buildCommand.instancesBufferView->GetResourceRef();
+
+		const lib::SharedPtr<rdr::Buffer>& scratchBuffer = buildCommand.scratchBufferView->GetBuffer()->GetResource();
+		const Uint64 scratchBufferOffset = buildCommand.scratchBufferView->GetOffset() + buildCommand.scratchBufferOffset;
+
+		rhi::TLASBuildInfo buildInfo;
+		buildInfo.instancesAddress = instancesBufferView.GetBuffer()->GetRHI().GetDeviceAddress() + instancesBufferView.GetOffset();
+		buildInfo.instancesNum     = buildCommand.instancesNum;
+
+		recorder.BuildTLAS(lib::Ref(buildCommand.tlas), buildInfo, lib::Ref(scratchBuffer), scratchBufferOffset);
+	};
+
+	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;
+	using NodeType = RGLambdaNode<LambdaType>;
+
+	NodeType& node = AllocateNode<NodeType>(commandName, ERenderGraphNodeType::Generic, std::move(executeLambda));
+
+	RGDependeciesContainer dependencies(m_memoryArena);
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
+
+	dependenciesBuilder.AddBufferAccess(buildCommand.instancesBufferView, ERGBufferAccess::Read, rhi::EPipelineStage::ASBuild);
+	dependenciesBuilder.AddBufferAccess(buildCommand.scratchBufferView, ERGBufferAccess::ReadWrite, rhi::EPipelineStage::ASBuild);
+
+	AddNodeInternal(node, dependencies);
+}
+
 void RenderGraphBuilder::FillBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range, Uint32 data)
 {
 	SPT_CHECK(bufferView.IsValid());

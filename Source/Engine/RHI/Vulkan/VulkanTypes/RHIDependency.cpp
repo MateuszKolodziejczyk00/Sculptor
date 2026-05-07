@@ -280,6 +280,14 @@ void RHIDependency::StageBarrier(rhi::EPipelineStage sourceStage, rhi::EAccessTy
 	m_memoryBarrier.dstAccessMask |= priv::GetVulkanBufferAccessFlags(destAccess, destStage);
 }
 
+void RHIDependency::FlushPipeline()
+{
+	m_memoryBarrier.srcStageMask  |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+	m_memoryBarrier.srcAccessMask |= VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+	m_memoryBarrier.dstStageMask  |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+	m_memoryBarrier.dstAccessMask |= VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+}
+
 void RHIDependency::ExecuteBarrier(const RHICommandBuffer& cmdBuffer) const
 {
 	const VkDependencyInfo dependencyInfo = GetDependencyInfo();

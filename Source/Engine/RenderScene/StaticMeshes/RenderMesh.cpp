@@ -121,13 +121,16 @@ void RenderMesh::BuildBLASes(rdr::BLASBuilder& blasBuilder)
 		SPT_CHECK(rtGeoDef.blas == nullptr);
 
 		rhi::BLASDefinition submeshBLAS;
-		submeshBLAS.trianglesGeometry.vertexLocationsAddress = submeshRenderingDef.locationsAddress;
-		submeshBLAS.trianglesGeometry.vertexLocationsStride  = sizeof(math::Vector3f);
-		submeshBLAS.trianglesGeometry.maxVerticesNum         = submeshRenderingDef.verticesNum;
-		submeshBLAS.trianglesGeometry.indicesAddress         = submeshRenderingDef.indicesAddress;
-		submeshBLAS.trianglesGeometry.indicesNum             = submeshRenderingDef.trianglesNum * 3;
+		submeshBLAS.trianglesGeometry.maxPrimitivesNum = submeshRenderingDef.trianglesNum;
+		submeshBLAS.trianglesGeometry.maxVerticesNum   = submeshRenderingDef.verticesNum;
 
-		rtGeoDef.blas = blasBuilder.CreateBLAS(RENDERER_RESOURCE_NAME("Temp BLAS Name"), submeshBLAS);
+		rhi::BLASBuildInfo submeshBLASBuildInfo;
+		submeshBLASBuildInfo.trianglesBuildInfo.vertexLocationsAddress = submeshRenderingDef.locationsAddress;
+		submeshBLASBuildInfo.trianglesBuildInfo.vertexLocationsStride  = sizeof(math::Vector3f);
+		submeshBLASBuildInfo.trianglesBuildInfo.indicesAddress         = submeshRenderingDef.indicesAddress;
+		submeshBLASBuildInfo.trianglesBuildInfo.primitivesNum          = submeshRenderingDef.trianglesNum;
+
+		rtGeoDef.blas = blasBuilder.CreateBLAS(RENDERER_RESOURCE_NAME("Temp BLAS Name"), submeshBLAS, submeshBLASBuildInfo);
 	}
 }
 
