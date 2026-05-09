@@ -21,7 +21,7 @@ public:
 
 	static constexpr ESceneRenderSystem systemType = ESceneRenderSystem::StaticMeshesSystem;
 	
-	explicit StaticMeshesRenderSystem(RenderScene& owningScene);
+	explicit StaticMeshesRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene);
 
 	// Begin SceneRenderSystem overrides
 	void Update(const SceneUpdateContext& context);

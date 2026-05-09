@@ -15,8 +15,8 @@ SPT_REGISTER_SCENE_RENDER_SYSTEM(StaticMeshesRenderSystem);
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // StaticMeshesRenderSystem ======================================================================
 
-StaticMeshesRenderSystem::StaticMeshesRenderSystem(RenderScene& owningScene)
-	: Super(owningScene)
+StaticMeshesRenderSystem::StaticMeshesRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene)
+	: Super(arena, owningScene)
 {
 	m_supportedStages = lib::Flags(ERenderStage::ForwardOpaque, ERenderStage::DepthPrepass, ERenderStage::ShadowMap);
 }

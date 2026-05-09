@@ -473,8 +473,8 @@ BEGIN_SHADER_STRUCT(TerrainSampleMaterialData)
 END_SHADER_STRUCT();
 
 
-TerrainRenderSystem::TerrainRenderSystem(RenderScene& owningScene)
-	: Super(owningScene)
+TerrainRenderSystem::TerrainRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene)
+	: Super(arena, owningScene)
 {
 	m_supportedStages = ERenderStage::VisibilityBuffer;
 }

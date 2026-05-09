@@ -19,7 +19,7 @@ public:
 
 	static constexpr ESceneRenderSystem systemType = ESceneRenderSystem::WorldShadowCache;
 
-	explicit WorldShadowCacheRenderSystem(RenderScene& owningScene);
+	explicit WorldShadowCacheRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene);
 
 	// Begin SceneRenderSystem overrides
 	void Initialize(lib::MemoryArena& arena, RenderScene& renderScene);

@@ -256,8 +256,8 @@ static rg::RGTextureViewHandle RenderAerialPerspective(rg::RenderGraphBuilder& g
 } // aerial_perspective
 
 
-AtmosphereRenderSystem::AtmosphereRenderSystem(RenderScene& owningScene)
-	: Super(owningScene)
+AtmosphereRenderSystem::AtmosphereRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene)
+	: Super(arena, owningScene)
 	//, m_isAtmosphereContextDirty(true)
 	, m_isAtmosphereTextureDirty(false)
 	, m_shouldUpdateTransmittanceLUT(true)

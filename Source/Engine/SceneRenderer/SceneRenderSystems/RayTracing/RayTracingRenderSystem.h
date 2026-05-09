@@ -34,31 +34,25 @@ public:
 
 	static constexpr ESceneRenderSystem systemType = ESceneRenderSystem::RayTracingSystem;
 
-	explicit RayTracingRenderSystem(RenderScene& owningScene);
+	explicit RayTracingRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene);
 
 	// Begin RenderSceneSubsystem overrides
-	void Update(const SceneUpdateContext& context);
 	void UpdateGPUSceneData(RenderSceneConstants& sceneData);
+	void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const lib::DynamicPushArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings);
 	// End RenderSceneSubsystem overrides
+
+	void OnBuildTLAS(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterface& rendererInterface, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context);
 
 	const lib::SharedPtr<rdr::TopLevelAS>& GetSceneTLAS() const { return m_tlas; }
 
-	const lib::SharedPtr<rdr::Buffer>& GetRTInstancesDataBuffer() const;
-
-	Bool IsTLASDirty() const;
-
 private:
-
-	void UpdateTLAS();
-
-	lib::SharedPtr<rdr::Buffer> BuildRTInstancesBuffer(const lib::DynamicArray<RTInstanceData>& instances) const;
 
 	lib::SharedPtr<rdr::TopLevelAS> m_tlas;
 
 	lib::SharedPtr<rdr::Buffer> m_rtInstancesDataBuffer;
+	lib::SharedPtr<rdr::Buffer> m_rtInstancesDataStagingBuffer;
 
-	Bool m_isTLASDirty;
-	Bool m_areSBTRecordsDirty;
+	lib::SharedPtr<rdr::Buffer> m_instancesDefsBuffer;
 };
 
 } // spt::rsc

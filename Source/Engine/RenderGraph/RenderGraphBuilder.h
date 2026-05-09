@@ -69,7 +69,7 @@ struct BLASBuildCommand
 struct TLASBuildCommand
 {
 	lib::SharedPtr<rdr::TopLevelAS> tlas;
-	RGBufferViewHandle              instancesBufferView;
+	RGBufferViewHandle              instanceDefsBufferView;
 	Uint32                          instancesNum = 0u;
 
 	RGBufferViewHandle scratchBufferView;
@@ -133,7 +133,7 @@ public:
 	/** Creates buffer and returns view of full buffer */
 	RGBufferViewHandle CreateBufferView(const RenderGraphDebugName& name, const rhi::BufferDefinition& bufferDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
 
-	RGBufferViewHandle CreateStorageBufferView(const RenderGraphDebugName& name, Uint32 size, const rhi::RHIAllocationInfo& allocationInfo = rhi::EMemoryUsage::GPUOnly);
+	RGBufferViewHandle CreateStorageBufferView(const RenderGraphDebugName& name, Uint64 size, const rhi::RHIAllocationInfo& allocationInfo = rhi::EMemoryUsage::GPUOnly);
 
 	void ExtractBuffer(RGBufferHandle buffer, lib::SharedPtr<rdr::Buffer>& extractDestination);
 	

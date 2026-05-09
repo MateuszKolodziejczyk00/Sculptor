@@ -18,7 +18,7 @@ public:
 
 	static constexpr ESceneRenderSystem systemType = ESceneRenderSystem::AtmosphereSystem;
 
-	AtmosphereRenderSystem(RenderScene& owningScene);
+	AtmosphereRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene);
 
 	// Begin SceneRenderSystem overrides
 	void Update(const SceneUpdateContext& context);

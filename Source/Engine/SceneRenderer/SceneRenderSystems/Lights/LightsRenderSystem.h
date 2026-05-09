@@ -51,7 +51,7 @@ public:
 
 	static constexpr ESceneRenderSystem systemType = ESceneRenderSystem::LightsSystem;
 
-	explicit LightsRenderSystem(RenderScene& owningScene);
+	explicit LightsRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene);
 
 	// Begin SceneRenderSystem overrides
 	void CollectRenderViews(const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const RenderView& mainRenderView, INOUT RenderViewsCollector& viewsCollector);

@@ -108,6 +108,8 @@ public:
 	static Uint64 GetInstancesBufferSize(Uint32 instancesNum);
 
 	static void CopyInstancesDefinitionsToBuffer(const RHIBuffer& instancesBuffer, lib::Span<const rhi::TLASInstanceDefinition> instanceDefs);
+
+	static void CopyInstanceDefinitionToBuffer(const RHIMappedByteBuffer& mappedBuffer, Uint32 instanceIdx, const rhi::TLASInstanceDefinition& instanceDef);
 };
 
 } // spt::vulkan

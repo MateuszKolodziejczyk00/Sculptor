@@ -30,7 +30,7 @@ class SceneRenderSystem abstract
 {
 public:
 
-	SceneRenderSystem(RenderScene& owningScene);
+	SceneRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene);
 
 	void Initialize(lib::MemoryArena& arena, RenderScene& renderScene) {};
 	void Deinitialize(RenderScene& renderScene) {};
@@ -83,7 +83,7 @@ public:
 
 		const auto constructor = [](lib::MemoryArena& arena, RenderScene& scene) -> SceneRenderSystem*
 		{
-			return arena.AllocateType<TSystemType>(scene);
+			return arena.AllocateType<TSystemType>(arena, scene);
 		};
 
 		const auto destructor = [](SceneRenderSystem& system)

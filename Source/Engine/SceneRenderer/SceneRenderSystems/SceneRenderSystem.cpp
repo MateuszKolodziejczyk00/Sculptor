@@ -7,7 +7,7 @@ namespace spt::rsc
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // SceneRenderSystem =============================================================================
 
-SceneRenderSystem::SceneRenderSystem(RenderScene& owningScene)
+SceneRenderSystem::SceneRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene)
 	: m_supportedStages(ERenderStage::None)
 	, m_owningScene(owningScene)
 { }

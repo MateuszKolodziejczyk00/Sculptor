@@ -25,8 +25,11 @@ using RTInstanceHandle = lib::PagedGenerationalPool<RTInstance>::Handle;
 
 struct RTScene
 {
+	static constexpr Uint32 committedInstancesNum = 1024u;
+	static constexpr Uint32 maxInstancesNum       = 8096u;
+
 	RTScene()
-		: instances("RTScene_InstancesPool")
+		: instances("RTScene_InstancesPool", committedInstancesNum, maxInstancesNum)
 	{
 	}
 

@@ -14,6 +14,8 @@ void PreRenderingRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, Sce
 	SPT_PROFILER_FUNCTION();
 	
 	viewSpec.GetRenderViewEntry(ERenderViewEntry::PreRendering).Broadcast(graphBuilder, rendererInterface, renderScene, viewSpec, RenderViewEntryContext{});
+
+	viewSpec.GetRenderViewEntry(ERenderViewEntry::BuildTLAS).Broadcast(graphBuilder, rendererInterface, renderScene, viewSpec, RenderViewEntryContext{});
 }
 
 } // spt::rsc

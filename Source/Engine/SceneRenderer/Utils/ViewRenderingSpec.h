@@ -107,6 +107,7 @@ using RenderViewEntryDelegate = lib::MulticastDelegate<void(rg::RenderGraphBuild
 enum class ERenderViewEntry
 {
 	PreRendering,
+	BuildTLAS,
 	RenderAerialPerspective,
 	RenderCloudsTransmittanceMap,
 	RenderParticipatingMedia,

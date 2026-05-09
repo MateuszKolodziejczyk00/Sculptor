@@ -239,7 +239,7 @@ RGBufferViewHandle RenderGraphBuilder::CreateBufferView(const RenderGraphDebugNa
 	return CreateBufferView(name, buffer, 0, bufferDefinition.size, flags);
 }
 
-RGBufferViewHandle RenderGraphBuilder::CreateStorageBufferView(const RenderGraphDebugName& name, Uint32 size, const rhi::RHIAllocationInfo& allocationInfo /* = rhi::EMemoryUsage::GPUOnly */)
+RGBufferViewHandle RenderGraphBuilder::CreateStorageBufferView(const RenderGraphDebugName& name, Uint64 size, const rhi::RHIAllocationInfo& allocationInfo /* = rhi::EMemoryUsage::GPUOnly */)
 {
 	rhi::BufferDefinition bufferDefinition;
 	bufferDefinition.size  = size;
@@ -333,7 +333,7 @@ void RenderGraphBuilder::BuildTLAS(const RenderGraphDebugName& commandName, cons
 
 		recorder.ExecuteBarrier(dependency);
 
-		const rdr::BindableBufferView& instancesBufferView = buildCommand.instancesBufferView->GetResourceRef();
+		const rdr::BindableBufferView& instancesBufferView = buildCommand.instanceDefsBufferView->GetResourceRef();
 
 		const lib::SharedPtr<rdr::Buffer>& scratchBuffer = buildCommand.scratchBufferView->GetBuffer()->GetResource();
 		const Uint64 scratchBufferOffset = buildCommand.scratchBufferView->GetOffset() + buildCommand.scratchBufferOffset;
@@ -343,6 +343,10 @@ void RenderGraphBuilder::BuildTLAS(const RenderGraphDebugName& commandName, cons
 		buildInfo.instancesNum     = buildCommand.instancesNum;
 
 		recorder.BuildTLAS(lib::Ref(buildCommand.tlas), buildInfo, lib::Ref(scratchBuffer), scratchBufferOffset);
+
+		rhi::RHIDependency postBuildDependency;
+		postBuildDependency.FlushPipeline();
+		recorder.ExecuteBarrier(postBuildDependency);
 	};
 
 	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;
@@ -353,7 +357,7 @@ void RenderGraphBuilder::BuildTLAS(const RenderGraphDebugName& commandName, cons
 	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
 
-	dependenciesBuilder.AddBufferAccess(buildCommand.instancesBufferView, ERGBufferAccess::Read, rhi::EPipelineStage::ASBuild);
+	dependenciesBuilder.AddBufferAccess(buildCommand.instanceDefsBufferView, ERGBufferAccess::Read, rhi::EPipelineStage::ASBuild);
 	dependenciesBuilder.AddBufferAccess(buildCommand.scratchBufferView, ERGBufferAccess::ReadWrite, rhi::EPipelineStage::ASBuild);
 
 	AddNodeInternal(node, dependencies);

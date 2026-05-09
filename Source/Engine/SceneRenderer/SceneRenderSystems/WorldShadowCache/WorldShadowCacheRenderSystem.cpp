@@ -12,8 +12,8 @@ namespace spt::rsc::wsc
 
 SPT_REGISTER_SCENE_RENDER_SYSTEM(WorldShadowCacheRenderSystem);
 
-WorldShadowCacheRenderSystem::WorldShadowCacheRenderSystem(RenderScene& owningScene)
-	: Super(owningScene)
+WorldShadowCacheRenderSystem::WorldShadowCacheRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene)
+	: Super(arena, owningScene)
 {
 }
 

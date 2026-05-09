@@ -43,7 +43,7 @@ public:
 
 	static constexpr ESceneRenderSystem systemType = ESceneRenderSystem::TerrainSystem;
 
-	explicit TerrainRenderSystem(RenderScene& owningScene);
+	explicit TerrainRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene);
 
 	// Begin SceneRenderSystem overrides
 	void Initialize(lib::MemoryArena& arena, RenderScene& renderScene);

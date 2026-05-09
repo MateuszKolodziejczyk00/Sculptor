@@ -18,24 +18,30 @@ namespace spt::rsc
 SPT_REGISTER_SCENE_RENDER_SYSTEM(RayTracingRenderSystem);
 
 
-RayTracingRenderSystem::RayTracingRenderSystem(RenderScene& owningScene)
-	: Super(owningScene)
-	, m_isTLASDirty(false)
-{ }
-
-void RayTracingRenderSystem::Update(const SceneUpdateContext& context)
+RayTracingRenderSystem::RayTracingRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene)
+	: Super(arena, owningScene)
 {
-	Super::Update(context);
+	m_supportedStages = ERenderStage::PreRendering;
 
-	m_isTLASDirty = false;
+	const Uint32 maxInstancesNum = RTScene::maxInstancesNum;
 
-	// We should update TLAS every frame if any of the objects has been moved or updated
-	// The problem is that Nsight Graphics is crashing if we capture frame with TLAS build, so for now we will update TLAS only once
-	// TODO: Refactor to update TLAS every frame if any of the objects has been moved or updated
-	if (!m_tlas)
+	const rhi::TLASDefinition tlasDef
 	{
-		UpdateTLAS();
-	}
+		.maxInstancesNum = maxInstancesNum
+	};
+
+	m_tlas = rdr::ResourcesManager::CreateTLAS(RENDERER_RESOURCE_NAME("Scene TLAS"), tlasDef);
+
+	rhi::BufferDefinition instancesBufferDef;
+	instancesBufferDef.size  = maxInstancesNum * sizeof(rdr::HLSLStorage<RTInstanceData>);
+	instancesBufferDef.usage = lib::Flags(rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
+	m_rtInstancesDataBuffer        = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("TLAS Instances Data Buffer"), instancesBufferDef, rhi::EMemoryUsage::GPUOnly);
+	m_rtInstancesDataStagingBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("TLAS Instances Data Staging Buffer"), instancesBufferDef, rhi::EMemoryUsage::CPUToGPU);
+
+	rhi::BufferDefinition instancesDefsBufferDef;
+	instancesDefsBufferDef.size  = rhi::RHIASUtils::GetInstancesBufferSize(maxInstancesNum);
+	instancesDefsBufferDef.usage = lib::Flags(rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::ASBuildInputReadOnly);
+	m_instancesDefsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("TLAS Instances Definitions Buffer"), instancesDefsBufferDef, rhi::EMemoryUsage::CPUToGPU);
 }
 
 void RayTracingRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
@@ -47,24 +53,24 @@ void RayTracingRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
 	sceneData.rtScene = rtSceneData;
 }
 
-const lib::SharedPtr<rdr::Buffer>& RayTracingRenderSystem::GetRTInstancesDataBuffer() const
-{
-	return m_rtInstancesDataBuffer;
-}
-
-Bool RayTracingRenderSystem::IsTLASDirty() const
-{
-	return m_isTLASDirty;
-}
-
-void RayTracingRenderSystem::UpdateTLAS()
+void RayTracingRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const lib::DynamicPushArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings)
 {
 	SPT_PROFILER_FUNCTION();
 
-	RenderScene& scene = GetOwningScene();
+	Super::RenderPerFrame(graphBuilder, rendererInterface, renderScene, viewSpecs, settings);
 
-	lib::DynamicArray<RTInstanceData>              rtInstances;
-	lib::DynamicArray<rhi::TLASInstanceDefinition> rtInstancesDefinitions;
+	ViewRenderingSpec* mainView = *viewSpecs.begin();
+	mainView->GetRenderViewEntry(ERenderViewEntry::BuildTLAS).AddRawMember(this, &RayTracingRenderSystem::OnBuildTLAS);
+}
+
+void RayTracingRenderSystem::OnBuildTLAS(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterface& rendererInterface, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context)
+{
+	SPT_PROFILER_FUNCTION();
+
+	rhi::RHIMappedBuffer<rdr::HLSLStorage<RTInstanceData>> rtInstances(m_rtInstancesDataStagingBuffer->GetRHI());
+	rhi::RHIMappedByteBuffer rtInstancesDefs(m_instancesDefsBuffer->GetRHI());
+
+	Uint32 currentInstanceIdx = 0u;
 
 	const auto processRTInstance = [&](RTInstanceHandle handle, const RTInstance& instance)
 	{
@@ -88,13 +94,16 @@ void RayTracingRenderSystem::UpdateTLAS()
 
 			if(materialProxy.SupportsRayTracing())
 			{
+				const Uint32 instanceIdx = currentInstanceIdx++;
+				SPT_CHECK(instanceIdx < RTScene::maxInstancesNum);
+
 				EMaterialRTFlags materialRTFlags = EMaterialRTFlags::None;
 				if (materialProxy.params.doubleSided)
 				{
 					lib::AddFlag(materialRTFlags, EMaterialRTFlags::DoubleSided);
 				}
 
-				RTInstanceData& rtInstance = rtInstances.emplace_back();
+				RTInstanceData rtInstance;
 				rtInstance.entity                 = GetInstanceGPUDataPtr(instance.instance);
 				rtInstance.materialDataHandle     = materialProxy.GetMaterialDataHandle();
 				rtInstance.metarialRTFlags        = static_cast<Uint16>(materialRTFlags);
@@ -104,6 +113,8 @@ void RayTracingRenderSystem::UpdateTLAS()
 				rtInstance.normalsDataUGBOffset   = rtGeometry.normalsDataUGBOffset;
 				rtInstance.uvsMin                 = rtGeometry.uvsMin;
 				rtInstance.uvsRange               = rtGeometry.uvsRange;
+
+				rtInstances[instanceIdx] = rtInstance;
 
 				mat::RTHitGroupPermutation hitGroupPermutation;
 				hitGroupPermutation.SHADER = materialProxy.params.shader;
@@ -115,12 +126,14 @@ void RayTracingRenderSystem::UpdateTLAS()
 					mask = ETLASGeometryMask::Transparent;
 				}
 
-				rhi::TLASInstanceDefinition& tlasInstance = rtInstancesDefinitions.emplace_back();
+				rhi::TLASInstanceDefinition tlasInstance;
 				tlasInstance.transform       = transformMatrix;
 				tlasInstance.blasAddress     = rtGeometry.blas->GetRHI().GetDeviceAddress();
-				tlasInstance.customIdx       = static_cast<Uint32>(rtInstances.size() - 1);
+				tlasInstance.customIdx       = instanceIdx;
 				tlasInstance.sbtRecordOffset = hitGroupIdx;
 				tlasInstance.mask            = static_cast<Uint32>(mask);
+
+				rhi::RHIASUtils::CopyInstanceDefinitionToBuffer(rtInstancesDefs, instanceIdx, tlasInstance);
 
 				if (!materialProxy.params.customOpacity)
 				{
@@ -144,67 +157,28 @@ void RayTracingRenderSystem::UpdateTLAS()
 
 	scene.rt.instances.ForEach(processRTInstance);
 
-	m_rtInstancesDataBuffer = BuildRTInstancesBuffer(rtInstances);
+	const Uint32 instancesNum = currentInstanceIdx;
 
-	rhi::TLASDefinition tlasDefinition;
-	tlasDefinition.maxInstancesNum = static_cast<Uint32>(rtInstances.size());
-
-	if (tlasDefinition.maxInstancesNum > 0)
+	if (instancesNum > 0)
 	{
-		m_tlas = rdr::ResourcesManager::CreateTLAS(RENDERER_RESOURCE_NAME("Scene TLAS"), tlasDefinition);
+		const rg::RGBufferViewHandle scratchBuffer = graphBuilder.CreateStorageBufferView(RG_DEBUG_NAME("TLAS Builder Scratch Buffer"), m_tlas->GetRHI().GetBuildScratchSize(), rhi::EMemoryUsage::GPUOnly);
 
-		rhi::BufferDefinition instancesDefsBufferDef;
-		instancesDefsBufferDef.size  = rhi::RHIASUtils::GetInstancesBufferSize(static_cast<Uint32>(rtInstancesDefinitions.size()));
-		instancesDefsBufferDef.usage = lib::Flags(rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::DeviceAddress);
-		const lib::SharedRef<rdr::Buffer> instancesDataBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("TLAS Instances Data Buffer"), instancesDefsBufferDef, rhi::EMemoryUsage::CPUToGPU);
+		graphBuilder.BuildTLAS(RG_DEBUG_NAME("Build Scene TLAS"), 
+				rg::TLASBuildCommand
+				{
+					.tlas                   = m_tlas,
+					.instanceDefsBufferView = graphBuilder.AcquireExternalBufferView(m_instancesDefsBuffer->GetFullView()),
+					.instancesNum           = instancesNum,
+					.scratchBufferView      = scratchBuffer
+				});
 
-		rhi::RHIASUtils::CopyInstancesDefinitionsToBuffer(instancesDataBuffer->GetRHI(), rtInstancesDefinitions);
-
-		const rhi::BufferDefinition scratchBufferDef(m_tlas->GetRHI().GetBuildScratchSize(), lib::Flags(rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::Storage));
-		const lib::SharedRef<rdr::Buffer> scratchBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("TLASBuilderScratchBuffer"), scratchBufferDef, rhi::EMemoryUsage::GPUOnly);
-
-		// build TLAS
-		lib::SharedRef<rdr::RenderContext> context = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("BuildTLASContext"), rhi::ContextDefinition());
-
-		const rhi::CommandBufferDefinition cmdBufferDef(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
-		lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::ResourcesManager::CreateCommandRecorder(RENDERER_RESOURCE_NAME("BuildTLASCmdBuffer"),
-																									 context,
-																									 cmdBufferDef);
-
-		rhi::TLASBuildInfo buildInfo;
-		buildInfo.instancesNum     = static_cast<Uint32>(rtInstancesDefinitions.size());
-		buildInfo.instancesAddress = instancesDataBuffer->GetRHI().GetDeviceAddress();
-		recorder->BuildTLAS(lib::Ref(m_tlas), buildInfo, scratchBuffer, 0);
-
-		const lib::SharedRef<rdr::GPUWorkload> workload = recorder->FinishRecording();
-
-		rdr::GPUApi::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
+		const rg::RGBufferViewHandle rtInstancesBuffer = graphBuilder.AcquireExternalBufferView(m_rtInstancesDataBuffer->GetFullView());
+		const rg::RGBufferViewHandle rtInstancesStagingBuffer = graphBuilder.AcquireExternalBufferView(m_rtInstancesDataStagingBuffer->GetFullView());
+		graphBuilder.CopyBuffer(RG_DEBUG_NAME("Upload RT Instances Data"),
+								rtInstancesStagingBuffer, 0,
+								rtInstancesBuffer, 0,
+								instancesNum * sizeof(rdr::HLSLStorage<RTInstanceData>));
 	}
-
-	m_isTLASDirty = true;
-}
-
-lib::SharedPtr<rdr::Buffer> RayTracingRenderSystem::BuildRTInstancesBuffer(const lib::DynamicArray<RTInstanceData>& instances) const
-{
-	if (instances.empty())
-	{
-		return lib::SharedPtr<rdr::Buffer>();
-	}
-
-	rhi::BufferDefinition bufferDef;
-	bufferDef.size	= instances.size() * sizeof(rdr::HLSLStorage<RTInstanceData>);
-	bufferDef.usage	= rhi::EBufferUsage::Storage;
-
-	lib::SharedPtr<rdr::Buffer> instancesDataBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("RT Instances Data"), bufferDef, rhi::EMemoryUsage::CPUToGPU);
-
-	rhi::RHIMappedBuffer<rdr::HLSLStorage<RTInstanceData>> mappedInstancesData(instancesDataBuffer->GetRHI());
-
-	for (SizeType instanceIdx = 0; instanceIdx < instances.size(); ++instanceIdx)
-	{
-		mappedInstancesData[instanceIdx] = instances[instanceIdx];
-	}
-
-	return instancesDataBuffer;
 }
 
 } // spt::rsc

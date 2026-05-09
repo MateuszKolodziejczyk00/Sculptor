@@ -304,4 +304,22 @@ void RHIASUtils::CopyInstancesDefinitionsToBuffer(const RHIBuffer& instancesBuff
 	}
 }
 
+void RHIASUtils::CopyInstanceDefinitionToBuffer(const RHIMappedByteBuffer& mappedBuffer, Uint32 instanceIdx, const rhi::TLASInstanceDefinition& instanceDef)
+{
+	SPT_CHECK(mappedBuffer.GetSize() >= (instanceIdx + 1) * sizeof(VkAccelerationStructureInstanceKHR));
+
+	// We need to transpose matrix because VkTransformMatrixKHR stores transform in row-major order
+	const math::Matrix<Real32, 4, 3> transposedMatrix = instanceDef.transform.transpose();
+
+	VkAccelerationStructureInstanceKHR instanceData{};
+	std::memcpy(instanceData.transform.matrix, transposedMatrix.data(), sizeof(VkTransformMatrixKHR));
+	instanceData.instanceCustomIndex					= instanceDef.customIdx;
+	instanceData.mask									= instanceDef.mask;
+	instanceData.instanceShaderBindingTableRecordOffset	= instanceDef.sbtRecordOffset;
+	instanceData.flags									= RHIToVulkan::GetGeometryInstanceFlags(instanceDef.flags);
+	instanceData.accelerationStructureReference			= instanceDef.blasAddress;
+
+	std::memcpy(mappedBuffer.GetPtr() + instanceIdx * sizeof(VkAccelerationStructureInstanceKHR), &instanceData, sizeof(VkAccelerationStructureInstanceKHR));
+}
+
 } // spt::vulkan

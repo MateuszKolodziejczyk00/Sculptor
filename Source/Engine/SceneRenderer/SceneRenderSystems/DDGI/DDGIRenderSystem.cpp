@@ -236,8 +236,8 @@ struct DDGIDebugRaysViewData
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DDGIRenderSystem ==============================================================================
 
-DDGIRenderSystem::DDGIRenderSystem(RenderScene& owningScene)
-	: Super(owningScene)
+DDGIRenderSystem::DDGIRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene)
+	: Super(arena, owningScene)
 	, m_ddgiScene(owningScene)
 {
 	engn::ConfigUtils::LoadConfigData(m_config, "DDGIConfig.json");

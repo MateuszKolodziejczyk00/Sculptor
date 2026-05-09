@@ -101,7 +101,7 @@ public:
 
 	static constexpr ESceneRenderSystem systemType = ESceneRenderSystem::DDGISystem;
 
-	explicit DDGIRenderSystem(RenderScene& owningScene);
+	explicit DDGIRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene);
 
 	// Begin SceneRenderSystem overrides
 	void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const lib::DynamicPushArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings);

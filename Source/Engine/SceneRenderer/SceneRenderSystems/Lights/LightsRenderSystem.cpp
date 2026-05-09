@@ -579,8 +579,8 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // LightsRenderSystem ============================================================================
 
-LightsRenderSystem::LightsRenderSystem(RenderScene& owningScene)
-	: Super(owningScene)
+LightsRenderSystem::LightsRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene)
+	: Super(arena, owningScene)
 {
 	m_supportedStages = lib::Flags(ERenderStage::ForwardOpaque, ERenderStage::DeferredShading);
 	

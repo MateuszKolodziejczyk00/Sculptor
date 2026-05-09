@@ -50,7 +50,7 @@ public:
 
 	static constexpr ESceneRenderSystem systemType = ESceneRenderSystem::ShadowMapsSystem;
 
-	explicit ShadowMapsRenderSystem(RenderScene& owningScene);
+	explicit ShadowMapsRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene);
 	~ShadowMapsRenderSystem();
 
 	ShadowMapsRenderSystem(const ShadowMapsRenderSystem& rhs) = delete;

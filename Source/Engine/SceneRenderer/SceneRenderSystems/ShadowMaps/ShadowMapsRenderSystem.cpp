@@ -61,8 +61,8 @@ const Real32 projectionNearPlane = 0.04f;
 } // constants
 
 
-ShadowMapsRenderSystem::ShadowMapsRenderSystem(RenderScene& owningScene)
-	: Super(owningScene)
+ShadowMapsRenderSystem::ShadowMapsRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene)
+	: Super(arena, owningScene)
 	, m_highQualityShadowMapLightEndIdx(0)
 	, m_mediumQualityShadowMapsLightEndIdx(0)
 	, m_shadowMapTechnique(EShadowMappingTechnique::DPCF)
