@@ -327,14 +327,28 @@ public:
 				Page& page = m_pages[pageIdx];
 
 				Uint64 pageMask = page.isOccpuedied.load() & ~page.isPendingDelete.load();
-				while (pageMask != 0ull)
+				if (pageMask == ~0ull) // Full page fast path
 				{
-					const Uint64 instanceIdxInPage = math::Utils::LowestSetBitIdx(pageMask);
-					pageMask &= ~(1ull << instanceIdxInPage);
+					for (Uint64 instanceIdxInPage = 0; instanceIdxInPage < 64u; ++instanceIdxInPage)
+					{
+						const Handle handle{ .idx = static_cast<Uint32>((pageIdx * 64u) + instanceIdxInPage), .generation = page.generation[instanceIdxInPage] };
 
-					const Handle handle{ .idx = static_cast<Uint32>((pageIdx * 64u) + instanceIdxInPage), .generation = page.generation[instanceIdxInPage] };
+						func(handle, page.instances[instanceIdxInPage].Get());
+					}
 
-					func(handle, page.instances[instanceIdxInPage].Get());
+					pageMask = 0ull;
+				}
+				else
+				{
+					while (pageMask != 0ull)
+					{
+						const Uint64 instanceIdxInPage = math::Utils::LowestSetBitIdx(pageMask);
+						pageMask &= ~(1ull << instanceIdxInPage);
+
+						const Handle handle{ .idx = static_cast<Uint32>((pageIdx * 64u) + instanceIdxInPage), .generation = page.generation[instanceIdxInPage] };
+
+						func(handle, page.instances[instanceIdxInPage].Get());
+					}
 				}
 			}
 		}

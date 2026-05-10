@@ -84,6 +84,8 @@ rsc::TerrainDefinition TerrainAsset::GetTerrainDefinition() const
 	terrainDefinition.heightMap       = m_heightMap;
 	terrainDefinition.farLODBaseColor = m_farLODBaseColor;
 	terrainDefinition.farLODProps     = m_farLODProps;
+	terrainDefinition.farLODMinBounds = m_farLODMinBounds;
+	terrainDefinition.farLODMaxBounds = m_farLODMaxBounds;
 	terrainDefinition.material        = m_terrainMaterialAsset.IsValid() ? m_terrainMaterialAsset->GetTerrainMaterialData() : rsc::TerrainMaterialData{};
 
 	return terrainDefinition;
@@ -164,6 +166,9 @@ void TerrainAsset::OnInitialize()
 			SPT_LOG_ERROR(TerrainAsset, "Failed to load terrain material asset with path ID {}. Reason: {}", terrainDataHeader.terrainMaterialAssetID, AssetLoadErrorToString(loadRes.GetError()));
 		}
 	}
+
+	m_farLODMinBounds = terrainDataHeader.farLODMinBounds;
+	m_farLODMaxBounds = terrainDataHeader.farLODMaxBounds;
 
 	gfx::GPUDeferredCommandsQueue& commandsQueue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
 

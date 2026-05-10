@@ -4,6 +4,9 @@
 [[shader_struct(TerrainSceneData)]]
 
 
+#define TERRAIN_MESHLETS_PER_TILE 1u
+
+
 struct TerrainInterface : TerrainSceneData
 {
 	TerrainClipmapTileGPU GetTile(uint tileIdx)
@@ -24,7 +27,7 @@ struct TerrainInterface : TerrainSceneData
 	float GetHeight(float2 locationXY)
 	{
 		const float heightMapValue = heightMap.texture.SampleLevel(BindlessSamplers::LinearClampEdge(), GetHeightMapUV(locationXY), 0);
-		return lerp(heightMap.minHeight, heightMap.maxHeight, heightMapValue);
+		return lerp(heightMap.minHeight, 8.f * heightMap.maxHeight, heightMapValue);
 	}
 
 	float2 GetHeightDerivatives(float2 locationXY)
@@ -72,6 +75,18 @@ struct TerrainInterface : TerrainSceneData
 	{
 		const float dHeightDY = GetHeightDerivatives(locationXY).y;
 		return normalize(float3(0.f, 1.f, dHeightDY));
+	}
+
+	void EvaluateFarLODMaterial(float2 locationXY, out float3 baseColor, out float roughness, out float metallic, out float occlusion)
+	{
+		const float2 uv = (locationXY - farLODMinBounds) * farLODRcpBounds;
+
+		baseColor    = farLODBaseColor.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0);
+		float3 props = farLODProps.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0);
+
+		roughness = props.x;
+		metallic  = props.y;
+		occlusion = props.z;
 	}
 };
 

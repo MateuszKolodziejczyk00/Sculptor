@@ -60,6 +60,8 @@ void RayTracingRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder
 	Super::RenderPerFrame(graphBuilder, rendererInterface, renderScene, viewSpecs, settings);
 
 	ViewRenderingSpec* mainView = *viewSpecs.begin();
+	SPT_CHECK(mainView != nullptr);
+
 	mainView->GetRenderViewEntry(ERenderViewEntry::BuildTLAS).AddRawMember(this, &RayTracingRenderSystem::OnBuildTLAS);
 }
 
@@ -82,9 +84,9 @@ void RayTracingRenderSystem::OnBuildTLAS(rg::RenderGraphBuilder& graphBuilder, S
 		Uint32 currentSlotIdxInChunk = 0u;
 
 		const RenderInstance* renderInstance = scene.GetInstances().Get(instance.instance);
-		SPT_CHECK(renderInstance != nullptr);
 
-		const rhi::TLASInstanceDefinition::TransformMatrix transformMatrix = renderInstance->transform.matrix().topLeftCorner<3, 4>();
+		const math::Matrix4f transform = renderInstance ? renderInstance->transform.matrix() : math::Matrix4f::Identity();
+		const rhi::TLASInstanceDefinition::TransformMatrix transformMatrix = transform.topLeftCorner<3, 4>();
 
 		for(SizeType idx = 0; idx < rtGeometries.size(); ++idx)
 		{
@@ -107,6 +109,7 @@ void RayTracingRenderSystem::OnBuildTLAS(rg::RenderGraphBuilder& graphBuilder, S
 				rtInstance.entity                 = GetInstanceGPUDataPtr(instance.instance);
 				rtInstance.materialDataHandle     = materialProxy.GetMaterialDataHandle();
 				rtInstance.metarialRTFlags        = static_cast<Uint16>(materialRTFlags);
+				rtInstance.instanceType           = static_cast<Uint16>(instance.type);
 				rtInstance.indicesDataUGBOffset   = rtGeometry.indicesDataUGBOffset;
 				rtInstance.locationsDataUGBOffset = rtGeometry.locationsDataUGBOffset;
 				rtInstance.uvsDataUGBOffset       = rtGeometry.uvsDataUGBOffset;

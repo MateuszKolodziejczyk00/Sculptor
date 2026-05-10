@@ -11,10 +11,17 @@
 namespace spt::rsc
 {
 
+enum class ERTInstanceType : Uint16
+{
+	StaticMesh,
+	Terrain
+};
+
 
 struct RTInstance
 {
 	RenderInstanceHandle              instance;
+	ERTInstanceType                   type = ERTInstanceType::StaticMesh;
 	const RayTracingGeometryProvider& rtGeometry;
 	MaterialSlotsChunkHandle          materialSlots;
 };

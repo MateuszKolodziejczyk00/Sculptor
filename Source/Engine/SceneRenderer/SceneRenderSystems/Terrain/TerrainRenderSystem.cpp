@@ -30,7 +30,7 @@ SPT_REGISTER_SCENE_RENDER_SYSTEM(TerrainRenderSystem);
 
 namespace renderer_params
 {
-RendererBoolParameter enableTerrain("Enable Terrain", { "Terrain" }, false);
+RendererBoolParameter enableTerrain("Enable Terrain", { "Terrain" }, true);
 } // renderer_params
 
 
@@ -81,6 +81,37 @@ TerrainIndirectDrawParams BuildTerrainDrawTilesCommandsBuffers(rg::RenderGraphBu
 						  shaderConstants);
 
 	return buffers;
+}
+
+
+SIMPLE_COMPUTE_PSO(TerrainBuildTilesVerticesPSO, "Sculptor/Terrain/TerrainBuildTilesVertices.hlsl", BuildTerrainTilesVerticesCS);
+
+
+BEGIN_SHADER_STRUCT(TerrainBuildTilesVerticesConstants)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<math::Vector3f>, rwRuntimeVertices)
+END_SHADER_STRUCT();
+
+
+rg::RGBufferViewHandle BuildTerrainVertexBuffer(rg::RenderGraphBuilder& graphBuilder, Uint32 tilesNum)
+{
+	const Uint64 verticesNum = std::max<Uint64>(static_cast<Uint64>(tilesNum) * terrain_consts::meshletVerticesNum, 1u);
+
+	rhi::BufferDefinition verticesBufferDef;
+	verticesBufferDef.size  = verticesNum * sizeof(rdr::HLSLStorage<math::Vector3f>);
+	verticesBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::ASBuildInputReadOnly);
+
+	const rg::RGBufferViewHandle runtimeVertices = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Terrain Runtime Vertices"), verticesBufferDef, rhi::EMemoryUsage::GPUOnly);
+
+	TerrainBuildTilesVerticesConstants shaderConstants;
+	shaderConstants.rwRuntimeVertices = runtimeVertices;
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Build Terrain Runtime Vertices"),
+						  TerrainBuildTilesVerticesPSO::pso,
+						  tilesNum,
+						  rg::EmptyDescriptorSets(),
+						  shaderConstants);
+
+	return runtimeVertices;
 }
 
 
@@ -385,7 +416,6 @@ void UpdateMaterialCache(rg::RenderGraphBuilder& graphBuilder, const SceneRender
 
 } // namespace terrain_renderer
 
-
 struct TerrainRenderInstance
 {
 	terrain_renderer::material_cache::MaterialCacheState materialCacheState;
@@ -468,6 +498,12 @@ lib::DynamicArray<rdr::HLSLStorage<Uint32>> BuildMeshletIndices()
 } // utils
 
 
+lib::Span<const RayTracingGeometryDefinition> TerrainRTGeometryProvider::GetRayTracingGeometries() const
+{
+	return renderer_params::enableTerrain ? terrainTiles : lib::Span<const RayTracingGeometryDefinition>();
+}
+
+
 BEGIN_SHADER_STRUCT(TerrainSampleMaterialData)
 	SHADER_STRUCT_FIELD(Uint32, unused)
 END_SHADER_STRUCT();
@@ -496,7 +532,7 @@ void TerrainRenderSystem::Initialize(lib::MemoryArena& arena, RenderScene& rende
 	rdr::UploadDataToBuffer(lib::Ref(m_meshletVerticesBuffer), 0u, reinterpret_cast<const Byte*>(meshletVertices.data()), static_cast<Uint64>(meshletVertices.size()) * sizeof(rdr::HLSLStorage<math::Vector2f>));
 
 	const lib::DynamicArray<rdr::HLSLStorage<Uint32>> meshletIndices = utils::BuildMeshletIndices();
-	const rhi::BufferDefinition meshletIndicesDef(std::max<Uint64>(1u, static_cast<Uint64>(meshletIndices.size())) * sizeof(rdr::HLSLStorage<Uint32>), rhi::EBufferUsage::Storage);
+	const rhi::BufferDefinition meshletIndicesDef(std::max<Uint64>(1u, static_cast<Uint64>(meshletIndices.size())) * sizeof(rdr::HLSLStorage<Uint32>), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::ASBuildInputReadOnly));
 	m_meshletIndicesBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Terrain Meshlet Indices"), meshletIndicesDef, rhi::EMemoryUsage::CPUToGPU);
 	rdr::UploadDataToBuffer(lib::Ref(m_meshletIndicesBuffer), 0u, reinterpret_cast<const Byte*>(meshletIndices.data()), static_cast<Uint64>(meshletIndices.size()) * sizeof(rdr::HLSLStorage<Uint32>));
 
@@ -515,6 +551,34 @@ void TerrainRenderSystem::Initialize(lib::MemoryArena& arena, RenderScene& rende
 
 	m_renderInstance = arena.AllocateType<TerrainRenderInstance>();
 	terrain_renderer::material_cache::InitializeMaterialCache(m_renderInstance->materialCacheState);
+
+	{
+		rhi::BLASDefinition blasesDef;
+		blasesDef.geometryFlags = rhi::EGeometryFlags::Opaque;
+		blasesDef.trianglesGeometry.maxPrimitivesNum = static_cast<Uint32>(meshletIndices.size() / 3u);
+		blasesDef.trianglesGeometry.maxVerticesNum   = static_cast<Uint32>(meshletVertices.size());
+
+		m_rtGeometryProvider.terrainTiles = arena.AllocateArray<RayTracingGeometryDefinition>(clipmapTiles.size());
+		for (SizeType i = 0; i < clipmapTiles.size(); ++i)
+		{
+			RayTracingGeometryDefinition& rtGeometryDef = m_rtGeometryProvider.terrainTiles[i];
+			rtGeometryDef.blas = rdr::ResourcesManager::CreateBLAS(RENDERER_RESOURCE_NAME("Terrain Tile BLAS"), blasesDef);
+		}
+
+		lib::DynamicArray<ecs::EntityHandle> materialSlotsArray;
+		materialSlotsArray.resize(clipmapTiles.size(), material);
+
+		MaterialSlotsChunkHandle materialSlots = renderScene.materials.CreateMaterialSlotsChain(materialSlotsArray);
+
+		RTInstance rtTerrainInstance
+		{
+			.type          = ERTInstanceType::Terrain,
+			.rtGeometry    = m_rtGeometryProvider,
+			.materialSlots = materialSlots
+		};
+
+		m_rtInstanceHandle = renderScene.rt.instances.Add(rtTerrainInstance);
+	}
 
 	m_initialized = true;
 }
@@ -568,7 +632,7 @@ void TerrainRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
 	heightMapData.texture        = heightMap;
 	heightMapData.res            = heightMap ? heightMap->GetResolution2D() : math::Vector2u{};
 	heightMapData.invRes         = heightMap ? math::Vector2f::Ones().cwiseQuotient(heightMapData.res.cast<Real32>()) : math::Vector2f{0.f, 0.f};
-	heightMapData.spanMeters     = math::Vector2f::Constant(terrain_consts::clipmapExtentMeters * 6.f);
+	heightMapData.spanMeters     = math::Vector2f::Constant(terrain_consts::clipmapExtentMeters * 2.f);
 	heightMapData.invSpanMeters  = math::Vector2f::Ones().cwiseQuotient(heightMapData.spanMeters);
 	heightMapData.metersPerTexel = heightMap ? heightMapData.spanMeters.cwiseQuotient(heightMapData.res.cast<Real32>()) : math::Vector2f{0.f, 0.f};
 	heightMapData.minHeight      = 0.f;
@@ -590,6 +654,8 @@ void TerrainRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
 	terrainData.heightMap           = heightMapData;
 	terrainData.farLODBaseColor     = terrainDef.farLODBaseColor;
 	terrainData.farLODProps         = terrainDef.farLODProps;
+	terrainData.farLODMinBounds     = terrainDef.farLODMinBounds;
+	terrainData.farLODRcpBounds     = (terrainDef.farLODMaxBounds - terrainDef.farLODMinBounds).cwiseInverse();
 	terrainData.tiles               = m_tilesBuffer->GetFullView();
 	terrainData.tilesNum            = static_cast<Uint32>(m_tilesBuffer->GetSize() / sizeof(rdr::HLSLStorage<TerrainClipmapTileGPU>));
 	terrainData.tileSizeMeters      = terrain_consts::tileSizeMeters;
@@ -616,6 +682,14 @@ void TerrainRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, c
 	SPT_CHECK(!viewSpecs.IsEmpty());
 
 	terrain_renderer::material_cache::UpdateMaterialCache(graphBuilder, rendererInterface, renderScene, m_renderInstance->materialCacheUpdateParams);
+
+	ViewRenderingSpec* mainView = *viewSpecs.begin();
+	SPT_CHECK(mainView != nullptr);
+
+	if (m_rtDataDirty)
+	{
+		mainView->GetRenderViewEntry(ERenderViewEntry::PreRendering).AddRawMember(this, &TerrainRenderSystem::OnPreRendering);
+	}
 }
 
 Bool TerrainRenderSystem::IsEnabled() const
@@ -651,6 +725,44 @@ void TerrainRenderSystem::RenderShadowMap(rg::RenderGraphBuilder& graphBuilder, 
 	constants.drawCommands = terrainDraws.drawCommands;
 
 	terrain_renderer::RenderShadowMap(graphBuilder, params, constants, terrainDraws, std::max(tilesNum, 1u));
+}
+
+void TerrainRenderSystem::OnPreRendering(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterface& rendererInterface, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const Uint32 tilesNum = static_cast<Uint32>(m_tilesBuffer->GetSize() / sizeof(rdr::HLSLStorage<TerrainClipmapTileGPU>));
+	const rg::RGBufferViewHandle terrainVertices = terrain_renderer::BuildTerrainVertexBuffer(graphBuilder, tilesNum);
+
+	const lib::ManagedSpan<rg::BLASBuildCommand> blasBuilds = rendererInterface.GetSceneRendererFrameArena().AllocateArray<rg::BLASBuildCommand>(tilesNum);
+
+	const Uint32 scratchBytesPerBLAS = static_cast<Uint32>(m_rtGeometryProvider.terrainTiles[0].blas->GetRHI().GetStratchBufferSize());
+	const Uint32 scratchSize = scratchBytesPerBLAS * tilesNum;
+
+	rhi::BufferDefinition scratchBufferDef;
+	scratchBufferDef.size  = scratchSize;
+	scratchBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::ASBuildInputReadOnly);
+	const rg::RGBufferViewHandle scratchBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Terrain BLAS Build Scratch Buffer"), scratchBufferDef, rhi::EMemoryUsage::GPUOnly);
+
+	const rg::RGBufferViewHandle indexBuffer = graphBuilder.AcquireExternalBufferView(m_meshletIndicesBuffer->GetFullView());
+
+	for (Uint32 i = 0u; i < tilesNum; ++i)
+	{
+		rg::BLASBuildCommand& buildCommand = blasBuilds[i];
+		buildCommand.blas                  = m_rtGeometryProvider.terrainTiles[i].blas;
+		buildCommand.vertexBufferView      = terrainVertices;
+		buildCommand.vertexBufferOffset    = i * terrain_consts::meshletVerticesNum * sizeof(math::Vector3f);
+		buildCommand.indexBufferView       = indexBuffer;
+		buildCommand.primitivesNum         = terrain_consts::meshletIndicesNum / 3u;
+		buildCommand.vertexLocationsStride = sizeof(math::Vector3f);
+
+		buildCommand.scratchBufferView   = scratchBuffer;
+		buildCommand.scratchBufferOffset = i * scratchBytesPerBLAS;
+	}
+
+	graphBuilder.BuildBLASes(RG_DEBUG_NAME("Build Terrain BLASes"), blasBuilds);
+
+	m_rtDataDirty = false;
 }
 
 } // spt::rsc

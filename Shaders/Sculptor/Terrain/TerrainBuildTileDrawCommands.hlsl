@@ -31,8 +31,8 @@ void BuildTerrainTileDrawCommandsCS(CS_INPUT input)
 		const uint outputIdx = u_constants.rwDrawCommandsCount.AtomicAdd(0u, 1u);
 
 		TerrainDrawMeshTaskCommand drawCommand;
-		drawCommand.dispatchGroupsX = 1u;
-		drawCommand.dispatchGroupsY = 1u;
+		drawCommand.dispatchGroupsX = TERRAIN_MESHLETS_PER_TILE;
+		drawCommand.dispatchGroupsY = TERRAIN_MESHLETS_PER_TILE;
 		drawCommand.dispatchGroupsZ = 1u;
 		drawCommand.visibleTileIdx  = tileIdx;
 

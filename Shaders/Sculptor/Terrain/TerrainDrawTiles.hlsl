@@ -25,7 +25,8 @@ struct MeshVertex
 
 struct MeshShaderInput
 {
-	uint localID : SV_GroupIndex;
+	uint3 meshletID : SV_GroupID;
+	uint localID    : SV_GroupIndex;
 	[[vk::builtin("DrawIndex")]] uint drawCommandIndex : DRAW_INDEX;
 };
 
@@ -49,10 +50,13 @@ void Terrain_MS(in MeshShaderInput input,
 	const float tileSizeMeters = u_renderSceneConstants.terrain.tileSizeMeters;
 	const float2 tileOffset = float2(tile.tileCoordX, tile.tileCoordY);
 
+	const float meshletSize = 1.f / TERRAIN_MESHLETS_PER_TILE;
+	const float2 meshletOffset = tileOffset + float2(input.meshletID.x, input.meshletID.y) * meshletSize;
+
 	for (uint vertexIdx = input.localID; vertexIdx < verticesNum; vertexIdx += TERRAIN_VISIBILITY_MS_GROUP_SIZE)
 	{
 		const float2 meshletVertex = terrain.meshletVertices.Load(vertexIdx).xy;
-		const float2 locationXY    = (tileOffset + meshletVertex - 0.5f.xx) * tileSizeMeters;
+		const float2 locationXY    = (meshletOffset + meshletVertex * meshletSize) * tileSizeMeters;
 		const float height         = terrain.GetHeight(locationXY);
 
 		outVertices[vertexIdx].clipSpace = mul(u_sceneView.viewProjectionMatrix, float4(locationXY, height, 1.f));

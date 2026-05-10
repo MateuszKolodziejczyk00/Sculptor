@@ -4,7 +4,7 @@
             "spt::as::TerrainAssetDefinition"
         ],
         "spt::as::TerrainAssetDefinition": {
-            "HeightMapTex": "Source/Heightmap.png",
+            "HeightMapTex": "Source/Heightmap.exr",
             "TerrainMaterial": "TerrainMaterial.sptasset"
         }
     },

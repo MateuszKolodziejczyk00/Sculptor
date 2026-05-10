@@ -3,14 +3,18 @@
         [
             "MaterialPBRData",
             {
-                "MacroDefinitions": [],
+                "MacroDefinitions": [
+                    "SPT_MATERIAL_FORCE_STATIC_MESH_RT_INSTANCE_TYPE"
+                ],
                 "MaterialShaderPath": "Sculptor/Materials/DefaultPBR.hlsli"
             }
         ],
         [
             "TerrainSampleMaterialData",
             {
-                "MacroDefinitions": [],
+                "MacroDefinitions": [
+                    "SPT_MATERIAL_FORCE_TERRAIN_RT_INSTANCE_TYPE"
+                ],
                 "MaterialShaderPath": "Sculptor/Materials/TerrainMaterial.hlsli"
             }
         ]

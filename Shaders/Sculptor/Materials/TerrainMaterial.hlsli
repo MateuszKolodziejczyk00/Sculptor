@@ -27,6 +27,8 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
 	float  occlusion;
 
 	bool foundCachedMaterial = false;
+
+#if !SPT_RAY_TRACING_SHADER 
 	for (int i = 0; i < 6; ++i)
 	{
 		TerrrainMaterialCacheLOD matCacheLOD = terrainInterface.materialCache.lods[i];
@@ -49,19 +51,12 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
 			break;
 		}
 	}
+#endif // !SPT_RAY_TRACING_SHADER
 
 	if (!foundCachedMaterial)
 	{
-		const float2 farLODUV = (evalParams.worldLocation.xy + 1024.f) / 2048.f; // This should match the UV calculation in BakeFarLODCS
-
-		const float3 farLODBaseColor = terrainInterface.farLODBaseColor.SampleLevel(BindlessSamplers::LinearClampEdge(), farLODUV, 0);
-		const float3 farLODProps     = terrainInterface.farLODProps.SampleLevel(BindlessSamplers::LinearClampEdge(), farLODUV, 0);
-
-		baseColor = farLODBaseColor;
-		normal    = terrainInterface.GetNormal(evalParams.worldLocation.xy);
-		roughness = farLODProps.x;
-		metallic  = farLODProps.y;
-		occlusion = farLODProps.z;
+		normal = terrainInterface.GetNormal(evalParams.worldLocation.xy);
+		terrainInterface.EvaluateFarLODMaterial(evalParams.worldLocation.xy, baseColor, roughness, metallic, occlusion);
 	}
 
 	output.shadingNormal  = normal;

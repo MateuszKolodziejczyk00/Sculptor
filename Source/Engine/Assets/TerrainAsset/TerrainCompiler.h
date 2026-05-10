@@ -32,6 +32,9 @@ struct CompiledTerrainHeader
 	TextureInfo farLODBaseColor;
 	TextureInfo farLODProps;
 
+	math::Vector2f farLODMinBounds = math::Vector2f::Zero();
+	math::Vector2f farLODMaxBounds = math::Vector2f::Zero();
+
 	ResourcePathID       terrainMaterialAssetID = InvalidResourcePathID;
 };
 

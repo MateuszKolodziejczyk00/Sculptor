@@ -13,6 +13,11 @@ struct GPUPtr
 		StructuredBuffer<TDataType> buffer = ResourceDescriptorHeap[descriptorIdx];
 		return buffer[dataIdx];
 	}
+
+	bool IsValid()
+	{
+		return descriptorIdx != IDX_NONE_32;
+	}
 };
 
 

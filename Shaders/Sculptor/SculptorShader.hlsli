@@ -61,6 +61,11 @@
 
 #endif // defined(SPT_META_PARAM_DEBUG_FEATURES)
 
+#if defined(SPT_RT_GENERATION_SHADER) || defined(SPT_RT_ANY_HIT_SHADER) || defined(SPT_RT_CLOSEST_HIT_SHADER) || defined(SPT_RT_MISS_SHADER) || defined(SPT_RT_INTERSECTION_SHADER)
+#define SPT_RAY_TRACING_SHADER 1
+#else
+#define SPT_RAY_TRACING_SHADER 0
+#endif
 
 struct TextureCoord
 {

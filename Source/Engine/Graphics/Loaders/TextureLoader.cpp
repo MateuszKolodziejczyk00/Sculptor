@@ -20,6 +20,17 @@
 
 #include "dds.h"
 
+#pragma warning(push)
+#pragma warning(disable: 4245)
+#pragma warning(disable: 4505)
+#pragma warning(disable: 4702)
+#pragma warning(disable: 4127)
+#define TINYEXR_IMPLEMENTATION 1
+#define TINYEXR_USE_MINIZ 0
+#define TINYEXR_USE_STB_ZLIB 1
+#include "tinyexr.h"
+#pragma warning(pop)
+
 
 SPT_DEFINE_LOG_CATEGORY(ImageLoader, true);
 
@@ -345,6 +356,74 @@ Bool SaveTextureImpl(const lib::SharedRef<rdr::Texture>& texture, const lib::Str
 
 } // dds
 
+namespace exr
+{
+
+struct EXRTextureDataView : public TextureDataView
+{
+	// Begin TextureDataView overrides
+	virtual lib::Span<const Byte> GetSurfaceData(Uint32 mipLevel, Uint32 arrayLayer) const override
+	{
+		SPT_CHECK(!!imageData);
+		SPT_CHECK(mipLevel == 0u);
+		SPT_CHECK(arrayLayer == 0u);
+
+		return { reinterpret_cast<const Byte*>(imageData), imageDataSize };
+	}
+	// End TextureDataView overrides
+
+	Real32* imageData      = nullptr;
+	Uint64  imageDataSize  = 0u;
+};
+
+
+template<typename TCallback>
+Bool LoadTextureImpl(TCallback&& callback, lib::StringView path)
+{
+	float* imageData = nullptr;
+	int width = 0;
+	int height = 0;
+	const char* errorMessage = nullptr;
+
+	const int result = LoadEXR(&imageData, &width, &height, path.data(), &errorMessage);
+
+	if (result != TINYEXR_SUCCESS)
+	{
+		if (errorMessage)
+		{
+			SPT_LOG_ERROR(ImageLoader, "Failed to load EXR texture: {} (path: {})", errorMessage, path);
+			FreeEXRErrorMessage(errorMessage);
+		}
+		else
+		{
+			SPT_LOG_ERROR(ImageLoader, "Failed to load EXR texture, error code: {} (path: {})", result, path);
+		}
+
+		return false;
+	}
+
+	SPT_CHECK(width > 0);
+	SPT_CHECK(height > 0);
+
+	constexpr int componentsNum = 4;
+
+	EXRTextureDataView dataView;
+	dataView.format         = rhi::EFragmentFormat::RGBA32_S_Float;
+	dataView.resolution     = math::Vector3u(static_cast<Uint32>(width), static_cast<Uint32>(height), 1u);
+	dataView.mipLevelsNum   = 1u;
+	dataView.arrayLayersNum = 1u;
+	dataView.imageData      = imageData;
+	dataView.imageDataSize  = static_cast<Uint64>(width) * static_cast<Uint64>(height) * componentsNum * sizeof(Real32);
+
+	callback(dataView);
+
+	std::free(imageData);
+
+	return true;
+}
+
+} // exr
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // TextureLoader =================================================================================
 
@@ -403,6 +482,10 @@ lib::SharedPtr<rdr::Texture> TextureLoader::LoadTexture(lib::StringView path, co
 	{
 		png_jpg::LoadTextureImpl(callback, path);
 	}
+	else if (extension == "exr")
+	{
+		exr::LoadTextureImpl(callback, path);
+	}
 	else if (extension == "dds")
 	{
 		dds::LoadTextureImpl(callback, path);
@@ -440,6 +523,10 @@ LoadedTextureData TextureLoader::LoadTextureData(lib::StringView path, lib::Memo
 	if (extension == "png" || extension == "jpg" || extension == "jpeg")
 	{
 		png_jpg::LoadTextureImpl(callback, path);
+	}
+	else if (extension == "exr")
+	{
+		exr::LoadTextureImpl(callback, path);
 	}
 	else if (extension == "dds")
 	{

@@ -11,6 +11,7 @@
 #include "Pipelines/PSOsLibraryTypes.h"
 #include "Transfers/GPUDeferredCommandsQueue.h"
 #include "Utils/TransfersUtils.h"
+#include "Types/Texture.h"
 
 
 SPT_DEFINE_LOG_CATEGORY(TerrainCompiler, true);
@@ -48,6 +49,40 @@ void Execute(rg::RenderGraphBuilder& graphBuilder, const BakeFarLODConstants& co
 
 } // bake_far_lod
 
+namespace compile_height_map
+{
+
+BEGIN_SHADER_STRUCT(CompileHeightMapConstants)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, sourceHeightMap)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         rwHeightMap)
+END_SHADER_STRUCT()
+
+
+SIMPLE_COMPUTE_PSO(CompileHeightMapPSO, "Sculptor/Terrain/CompileHeightMap.hlsl", CompileHeightMapCS)
+
+
+rg::RGTextureViewHandle Execute(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle sourceHeightMap)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector2u resolution = sourceHeightMap->GetResolution2D();
+	const rg::RGTextureViewHandle compiledHeightMap = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Terrain Height Map"), rg::TextureDef(resolution, rhi::EFragmentFormat::R16_UN_Float));
+
+	CompileHeightMapConstants constants{};
+	constants.sourceHeightMap = sourceHeightMap;
+	constants.rwHeightMap     = compiledHeightMap;
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Compile Height Map"),
+						  CompileHeightMapPSO::pso,
+						  math::Utils::DivideCeil(resolution, math::Vector2u(16u, 16u)),
+						  rg::EmptyDescriptorSets(),
+						  constants);
+
+	return compiledHeightMap;
+}
+
+} // compile_height_map
+
 std::optional<TerrainCompilationResult> CompileTerrain(const AssetInstance& asset, const TerrainAssetDefinition& definition)
 {
 	SPT_PROFILER_FUNCTION();
@@ -59,41 +94,41 @@ std::optional<TerrainCompilationResult> CompileTerrain(const AssetInstance& asse
 	CompiledTerrainHeader header{};
 	result.blob.resize(sizeof(CompiledTerrainHeader));
 
-	lib::MemoryArena tempArena("TerrainCompilationTempArena", 1024u * 1024u, 64u * 1024u * 1024u);
+	lib::MemoryArena tempArena("TerrainCompilationTempArena", 1024u * 1024u, 512u * 1024u * 1024u);
 
 	if (!definition.heightMapTex.empty())
 	{
 		const lib::Path heightMapPath = asset.GetDirectoryPath() / definition.heightMapTex;
-		const gfx::LoadedTextureData heightMapData = gfx::TextureLoader::LoadTextureData(heightMapPath.generic_string(), tempArena);
+		const lib::SharedPtr<rdr::Texture> loadedHeightMap = gfx::TextureLoader::LoadTexture(heightMapPath.generic_string());
 
-		if (!heightMapData.data.empty())
+		if (loadedHeightMap)
 		{
-			SPT_CHECK(heightMapData.resolution.x() % 4u == 0u && heightMapData.resolution.y() % 4u == 0u);
-			SPT_CHECK(heightMapData.format == rhi::EFragmentFormat::R8_UN_Float || heightMapData.format == rhi::EFragmentFormat::RGBA8_UN_Float);
+			const math::Vector2u heightMapResolution = loadedHeightMap->GetResolution2D();
+			SPT_CHECK(heightMapResolution.x() % 4u == 0u && heightMapResolution.y() % 4u == 0u);
 
-			const Uint64 sizeBC4 = gfx::compressor::ComputeCompressedSizeBC4(heightMapData.resolution.head<2>());
-			lib::Span<Byte> heightBC4 = tempArena.AllocateSpanUninitialized<Byte>(sizeBC4);
+			const lib::SharedRef<rdr::TextureView> sourceHeightMapView = loadedHeightMap->CreateView(RENDERER_RESOURCE_NAME("Terrain Height Map Source"));
 
-			lib::Span<Byte> heightMapDataSpan(heightMapData.data.data(), heightMapData.data.size());
-			if (heightMapData.format == rhi::EFragmentFormat::RGBA8_UN_Float)
-			{
-				for (Uint64 i = 0; i < heightMapData.data.size(); i += 4)
-				{
-					// Convert RGBA8_UN_Float to R8_UN_Float by taking the red channel and discarding the rest
-					heightMapData.data[i / 4] = heightMapData.data[i];
-				}
+			rdr::FlushPendingUploads();
 
-				heightMapDataSpan = lib::Span<Byte>(heightMapData.data.data(), heightMapData.data.size() / 4);
-			}
+			rg::RenderGraphResourcesPool renderResourcesPool;
+			rg::RenderGraphBuilder graphBuilder(tempArena, renderResourcesPool);
 
-			gfx::compressor::CompressSurfaceToBC4(heightBC4, gfx::compressor::Surface2D{ heightMapData.resolution.head<2>(), heightMapDataSpan });
+			SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Terrain Height Map Compilation (GPU)");
 
-			header.heightMap.resolution = heightMapData.resolution.head<2>();
-			header.heightMap.format     = rhi::EFragmentFormat::BC4_UN;
+			const rg::RGTextureViewHandle compiledHeightMap = compile_height_map::Execute(graphBuilder, graphBuilder.AcquireExternalTextureView(sourceHeightMapView.ToSharedPtr()));
+			const lib::SharedRef<rdr::Buffer> heightMapData = graphBuilder.DownloadTextureToBuffer(RG_DEBUG_NAME("Download Height Map"), compiledHeightMap);
+
+			graphBuilder.Execute();
+			rdr::GPUApi::WaitIdle();
+
+			const rhi::RHIMappedByteBuffer heightMapMappedData(heightMapData->GetRHI());
+
+			header.heightMap.resolution = heightMapResolution;
+			header.heightMap.format     = rhi::EFragmentFormat::R16_UN_Float;
 			header.heightMap.dataOffset = static_cast<Uint32>(result.blob.size());
-			header.heightMap.dataSize   = static_cast<Uint32>(heightBC4.size());
+			header.heightMap.dataSize   = static_cast<Uint32>(heightMapMappedData.GetSpan().size());
 
-			result.blob.insert(result.blob.end(), heightBC4.begin(), heightBC4.end());
+			result.blob.insert(result.blob.end(), heightMapMappedData.GetSpan().begin(), heightMapMappedData.GetSpan().end());
 		}
 		else
 		{
@@ -119,6 +154,9 @@ std::optional<TerrainCompilationResult> CompileTerrain(const AssetInstance& asse
 
 		if (header.terrainMaterialAssetID != InvalidResourcePathID)
 		{
+			const math::Vector2f minBounds = math::Vector2f(-1024.f, -1024.f);
+			const math::Vector2f maxBounds = math::Vector2f(1024.f, 1024.f);
+
 			TerrainMaterialAssetHandle terrainMaterial = assetSystem.LoadAndInitAssetChecked<TerrainMaterialAsset>(terrainMaterialPath);
 
 			// Flush terrain material uploads
@@ -129,7 +167,7 @@ std::optional<TerrainCompilationResult> CompileTerrain(const AssetInstance& asse
 			rg::RenderGraphResourcesPool renderResourcesPool;
 			rg::RenderGraphBuilder graphBuilder(tempArena, renderResourcesPool);
 
-			SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Terrain Compilation (GPU)");
+			SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Terrain Far LOD Compilation (GPU)");
 
 			const math::Vector2u farLODResolution = math::Vector2u(2048u, 2048u);
 
@@ -138,8 +176,8 @@ std::optional<TerrainCompilationResult> CompileTerrain(const AssetInstance& asse
 
 			bake_far_lod::BakeFarLODConstants bakeConstants{};
 			bakeConstants.resolution        = farLODResolution;
-			bakeConstants.minBounds         = math::Vector2f(-1024.f, -1024.f);
-			bakeConstants.maxBounds         = math::Vector2f(1024.f, 1024.f);
+			bakeConstants.minBounds         = minBounds;
+			bakeConstants.maxBounds         = maxBounds;
 			bakeConstants.terrainMaterial   = terrainMaterial->GetTerrainMaterialData();
 			bakeConstants.rwFarLODBaseColor = farLODBaseColor;
 			bakeConstants.rwFarLODProps     = farLODProps;
@@ -182,6 +220,9 @@ std::optional<TerrainCompilationResult> CompileTerrain(const AssetInstance& asse
 
 				result.blob.insert(result.blob.end(), farLODOC4.begin(), farLODOC4.end());
 			}
+
+			header.farLODMinBounds = minBounds;
+			header.farLODMaxBounds = maxBounds;
 		}
 	}
 

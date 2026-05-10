@@ -27,6 +27,7 @@ RenderGraphBuilder::RenderGraphBuilder(lib::MemoryArena& memoryArena, RenderGrap
 	, m_bufferViews(memoryArena)
 	, m_nodes(memoryArena)
 	, m_onGraphExecutionFinished(js::CreateEvent("Render Graph Execution Finished Event"))
+	, m_preGPUWorkSubmittedEvent(js::CreateEvent("Render Graph Pre GPU Work Submitted Event"))
 	, m_resourcesPool(resourcesPool)
 	, m_dsAllocator(1024u * 1024u)
 	, m_memoryArena(memoryArena)
@@ -295,12 +296,17 @@ void RenderGraphBuilder::BuildBLASes(const RenderGraphDebugName& commandName, li
 			const Uint64 scratchBufferOffset = command.scratchBufferView->GetOffset() + command.scratchBufferOffset;
 
 			rhi::BLASBuildInfo buildInfo;
-			buildInfo.trianglesBuildInfo.vertexLocationsAddress = vertexBufferView.GetBuffer()->GetRHI().GetDeviceAddress() + vertexBufferView.GetOffset();
+			buildInfo.trianglesBuildInfo.vertexLocationsAddress = vertexBufferView.GetBuffer()->GetRHI().GetDeviceAddress() + vertexBufferView.GetOffset() + command.vertexBufferOffset;
 			buildInfo.trianglesBuildInfo.vertexLocationsStride  = command.vertexLocationsStride;
-			buildInfo.trianglesBuildInfo.indicesAddress         = indexBufferView.GetBuffer()->GetRHI().GetDeviceAddress() + indexBufferView.GetOffset();
-
+			buildInfo.trianglesBuildInfo.indicesAddress         = indexBufferView.GetBuffer()->GetRHI().GetDeviceAddress() + indexBufferView.GetOffset() + command.indexBufferOffset;
+			buildInfo.trianglesBuildInfo.primitivesNum          = command.primitivesNum;
 
 			recorder.BuildBLAS(lib::Ref(command.blas), buildInfo, lib::Ref(scratchBuffer), scratchBufferOffset);
+		}
+
+		for (BLASBuildCommand& command : commands)
+		{
+			command.~BLASBuildCommand();
 		}
 	};
 
@@ -782,11 +788,6 @@ void RenderGraphBuilder::UnbindDescriptorSetState(const lib::MTHandle<RGDescript
 	m_boundDSStates.RemoveElementSwap(dsState);
 }
 
-const js::Event& RenderGraphBuilder::GetGPUFinishedEvent() const
-{
-	return m_onGraphExecutionFinished;
-}
-
 void RenderGraphBuilder::Execute()
 {
 	PostBuild();
@@ -1244,6 +1245,9 @@ void RenderGraphBuilder::ExecuteGraph()
 	lib::SharedRef<rdr::GPUWorkload> workload = commandRecorder->FinishRecording();
 
 	workload->BindEvent(m_onGraphExecutionFinished);
+
+	m_preGPUWorkSubmittedEvent.Signal();
+	m_preGPUWorkSubmittedEvent.Wait();
 
 	rdr::GPUApi::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
 

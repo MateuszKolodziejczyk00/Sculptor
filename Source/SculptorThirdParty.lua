@@ -12,6 +12,7 @@ IncludeProject("NsightAftermath")
 IncludeProject("TileableVolumeNoise")
 
 IncludeProject("TinyGLTF")
+IncludeProject("TinyEXR")
 
 IncludeProject("DDS")
 IncludeProject("STB")

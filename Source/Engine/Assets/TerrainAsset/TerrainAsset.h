@@ -72,6 +72,8 @@ private:
 	lib::SharedPtr<rdr::TextureView> m_heightMap;
 	lib::SharedPtr<rdr::TextureView> m_farLODBaseColor;
 	lib::SharedPtr<rdr::TextureView> m_farLODProps;
+	math::Vector2f m_farLODMinBounds;
+	math::Vector2f m_farLODMaxBounds;
 	TerrainMaterialAssetHandle       m_terrainMaterialAsset;
 };
 SPT_REGISTER_ASSET_TYPE(TerrainAsset);

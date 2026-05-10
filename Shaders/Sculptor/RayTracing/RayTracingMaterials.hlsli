@@ -2,11 +2,16 @@
 #define RAY_TRACING_MATERIALS_HLSLI
 
 #include "SceneRendering/GPUScene.hlsli"
+#include "Terrain/SceneTerrain.hlsli"
 
 
 #define SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL 2
 
 #include "Materials/MaterialSystem.hlsli"
+
+
+#define RT_INSTANCE_TYPE_STATIC_MESH 0
+#define RT_INSTANCE_TYPE_TERRAIN     1
 
 
 struct RTMaterialEvaluationParams
@@ -53,10 +58,19 @@ namespace RTMaterial
 
 #ifdef SPT_MATERIAL_SHADER_PATH
 
-MaterialEvaluationOutput EvaluateMat(in RTMaterialEvaluationParams evalParams)
+uint GetInstanceType(const RTInstanceInterface instanceData)
 {
-	const RTInstanceInterface instanceData = evalParams.hitInstance.Load();
+#if defined(SPT_MATERIAL_FORCE_TERRAIN_RT_INSTANCE_TYPE)
+	return RT_INSTANCE_TYPE_TERRAIN;
+#elif defined(SPT_MATERIAL_FORCE_STATIC_MESH_RT_INSTANCE_TYPE)
+	return RT_INSTANCE_TYPE_STATIC_MESH;
+#else
+	return instanceData.instanceType;
+#endif
+}
 
+MaterialEvaluationOutput EvaluateMat_StaticMesh(const RTInstanceInterface instanceData, in RTMaterialEvaluationParams evalParams)
+{
 	const float3 barycentricCoords = float3(1.f - evalParams.barycentricCoords.x - evalParams.barycentricCoords.y, evalParams.barycentricCoords.x, evalParams.barycentricCoords.y);
 
 	uint3 indices;
@@ -101,6 +115,46 @@ MaterialEvaluationOutput EvaluateMat(in RTMaterialEvaluationParams evalParams)
 	const MaterialEvaluationOutput evaluatedMaterial = EvaluateMaterial(materialEvalParams, materialData);
 
 	return evaluatedMaterial;
+}
+
+MaterialEvaluationOutput EvaluateMat_Terrain(const RTInstanceInterface instanceData, in RTMaterialEvaluationParams evalParams)
+{
+	TerrainInterface terrainInterface = SceneTerrain();
+
+	const float3 worldLocation = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
+	const float3 normal = terrainInterface.GetNormal(worldLocation.xy);
+
+	const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(instanceData.materialDataHandle);
+
+	MaterialEvaluationParameters materialEvalParams;
+	materialEvalParams.clipSpace     = -1.f;
+	materialEvalParams.normal        = normal;
+	materialEvalParams.hasTangent    = false;
+	materialEvalParams.uv            = 0.f;
+	materialEvalParams.worldLocation = worldLocation;
+
+	const MaterialEvaluationOutput evaluatedMaterial = EvaluateMaterial(materialEvalParams, materialData);
+
+	return evaluatedMaterial;
+}
+
+MaterialEvaluationOutput EvaluateMat(in RTMaterialEvaluationParams evalParams)
+{
+	const RTInstanceInterface instanceData = evalParams.hitInstance.Load();
+	const uint instanceType = GetInstanceType(instanceData);
+
+	if (instanceType == RT_INSTANCE_TYPE_STATIC_MESH)
+	{
+		return EvaluateMat_StaticMesh(instanceData, evalParams);
+	}
+	else if (instanceType == RT_INSTANCE_TYPE_TERRAIN)
+	{
+		return EvaluateMat_Terrain(instanceData, evalParams);
+	}
+	else
+	{
+		return (MaterialEvaluationOutput)0;
+	}
 }
 
 

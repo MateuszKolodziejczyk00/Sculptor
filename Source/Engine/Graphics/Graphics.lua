@@ -5,9 +5,10 @@ function Graphics:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("RenderGraph")
     self:AddPublicDependency("JobSystem")
     self:AddPublicDependency("SculptorDLSS")
-	
+
     self:AddPrivateDependency("STB")
     self:AddPrivateDependency("DDS")
+    self:AddPrivateDependency("TinyEXR")
 end
 
 Graphics:SetupProject()

@@ -58,7 +58,10 @@ struct BLASBuildCommand
 {
 	lib::SharedPtr<rdr::BottomLevelAS> blas;
 	RGBufferViewHandle                 vertexBufferView;
+	Uint32                             vertexBufferOffset = 0u;
 	RGBufferViewHandle                 indexBufferView;
+	Uint32                             indexBufferOffset = 0u;
+	Uint32                             primitivesNum = 0u;
 	Uint32                             vertexLocationsStride = sizeof(math::Vector3f);
 
 	RGBufferViewHandle scratchBufferView;
@@ -233,7 +236,8 @@ public:
 	void BindDescriptorSetState(const lib::MTHandle<RGDescriptorSetStateBase>& dsState);
 	void UnbindDescriptorSetState(const lib::MTHandle<RGDescriptorSetStateBase>& dsState);
 
-	const js::Event& GetGPUFinishedEvent() const;
+	const js::Event& GetGPUFinishedEvent() const         { return m_onGraphExecutionFinished; }
+	const js::Event& GetPreGPUWorkSubmittedEvent() const { return m_preGPUWorkSubmittedEvent; }
 
 	void Execute();
 
@@ -323,6 +327,7 @@ private:
 #endif // SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME
 
 	js::Event m_onGraphExecutionFinished;
+	js::Event m_preGPUWorkSubmittedEvent;
 
 	RenderGraphResourcesPool& m_resourcesPool;
 
