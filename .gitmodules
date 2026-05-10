@@ -48,3 +48,6 @@
 [submodule "Source/ThirdParty/JSON/JSON"]
 	path = Source/ThirdParty/JSON/JSON
 	url = https://github.com/nlohmann/json
+[submodule "Source/ThirdParty/TinyEXR/TinyEXR"]
+	path = Source/ThirdParty/TinyEXR/TinyEXR
+	url = https://github.com/syoyo/tinyexr
