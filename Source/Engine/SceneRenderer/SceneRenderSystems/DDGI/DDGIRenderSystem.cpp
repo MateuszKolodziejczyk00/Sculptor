@@ -501,7 +501,7 @@ DDGIRelitGPUParams DDGIRenderSystem::CreateRelitParams(const DDGIRelitZone& zone
 	DDGIRelitGPUParams params;
 	params.probesToUpdateCoords     = zoneProbesBoundingBox.min();
 	params.probesToUpdateCount      = zoneProbesBoundingBox.sizes();
-	params.probeRaysMaxT            = 100.f;
+	params.probeRaysMaxT            = 1000.f;
 	params.probeRaysMinT            = 0.0f;
 	params.raysNumPerProbe          = raysNumPerProbe;
 	params.probesNumToUpdate        = params.probesToUpdateCount.x() * params.probesToUpdateCount.y() * params.probesToUpdateCount.z();

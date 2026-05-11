@@ -46,6 +46,8 @@ TEST_F(MaterialAssetsTests, CreateMaterial)
 	const ResourcePath assetPath = "Material/CreateMaterial/Material.sptasset";
 	m_assetsSystem.DeleteAsset(assetPath); // Delete leftover asset if exists
 
+	lib::MemoryArena tempArena("MeshAssetsTestsTempArena", 8u * 1024u, 512u * 1024u * 1024u);
+
 	PBRMaterialInitializer materialInitializer
 	{
 		PBRMaterialDefinition
@@ -66,7 +68,7 @@ TEST_F(MaterialAssetsTests, CreateMaterial)
 	EXPECT_TRUE(result);
 
 	gfx::GPUDeferredCommandsQueue& queue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
-	queue.ForceFlushCommands();
+	queue.ForceFlushCommands(tempArena);
 
 	result.GetValue().Reset();
 
@@ -77,7 +79,7 @@ TEST_F(MaterialAssetsTests, CreateMaterial)
 	EXPECT_TRUE(asset.IsValid());
 	asset.Reset();
 
-	queue.ForceFlushCommands();
+	queue.ForceFlushCommands(tempArena);
 
 	const EDeleteResult deleteResult = m_assetsSystem.DeleteAsset(assetPath);
 
@@ -91,6 +93,8 @@ TEST_F(MaterialAssetsTests, CreateTerrainMaterial)
 
 	m_assetsSystem.DeleteAsset(terrainMaterialAssetPath);
 	m_assetsSystem.DeleteAsset(materialAssetPath);
+
+	lib::MemoryArena tempArena("MeshAssetsTestsTempArena", 8u * 1024u, 512u * 1024u * 1024u);
 
 	PBRMaterialInitializer materialInitializer
 	{
@@ -129,7 +133,7 @@ TEST_F(MaterialAssetsTests, CreateTerrainMaterial)
 	EXPECT_TRUE(terrainMaterialCreateResult);
 
 	gfx::GPUDeferredCommandsQueue& queue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
-	queue.ForceFlushCommands();
+	queue.ForceFlushCommands(tempArena);
 
 	materialCreateResult.GetValue().Reset();
 	terrainMaterialCreateResult.GetValue().Reset();
@@ -141,11 +145,11 @@ TEST_F(MaterialAssetsTests, CreateTerrainMaterial)
 	EXPECT_TRUE(terrainMaterialAsset.IsValid());
 	EXPECT_TRUE(terrainMaterialAsset->GetMaterialAsset().IsValid());
 
-	queue.ForceFlushCommands();
+	queue.ForceFlushCommands(tempArena);
 
 	terrainMaterialAsset.Reset();
 
-	queue.ForceFlushCommands();
+	queue.ForceFlushCommands(tempArena);
 
 	const EDeleteResult deleteTerrainMaterialResult = m_assetsSystem.DeleteAsset(terrainMaterialAssetPath);
 	EXPECT_TRUE(deleteTerrainMaterialResult == EDeleteResult::Success);

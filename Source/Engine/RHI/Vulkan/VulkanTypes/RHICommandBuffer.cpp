@@ -53,9 +53,10 @@ void RHICommandBuffer::InitializeRHI(RHIRenderContext& renderContext, const rhi:
 {
 	SPT_CHECK(!IsValid());
 
-	m_cmdBufferHandle	= renderContext.AcquireCommandBuffer(bufferDefinition);
-	m_queueType			= bufferDefinition.queueType;
-	m_cmdBufferType		= bufferDefinition.cmdBufferType;
+	m_memArena        = &renderContext.GetMemoryArena();
+	m_cmdBufferHandle = renderContext.AcquireCommandBuffer(bufferDefinition);
+	m_queueType       = bufferDefinition.queueType;
+	m_cmdBufferType   = bufferDefinition.cmdBufferType;
 }
 
 void RHICommandBuffer::ReleaseRHI()
@@ -64,6 +65,7 @@ void RHICommandBuffer::ReleaseRHI()
 
 	m_name.Reset(reinterpret_cast<Uint64>(m_cmdBufferHandle), VK_OBJECT_TYPE_COMMAND_BUFFER);
 	m_cmdBufferHandle = VK_NULL_HANDLE;
+	m_memArena = nullptr;
 }
 
 Bool RHICommandBuffer::IsValid() const
@@ -89,19 +91,16 @@ void RHICommandBuffer::StartRecording(const rhi::CommandBufferUsageDefinition& u
 
 	VkCommandBufferInheritanceRenderingInfo vkInheritanceRenderingInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO };
 
-	lib::DynamicArray<VkFormat> colorRTFormats;
+	lib::InlineDynamicArray<VkFormat, rhi::constants::maxColorRTsNum> colorRTFormats;
 
 	if (usageDefinition.renderingInheritance)
 	{
 		const rhi::RenderingInheritanceDefinition& renderingInheritance = *usageDefinition.renderingInheritance;
 
-		colorRTFormats.reserve(renderingInheritance.colorRTFormats.size());
-		std::transform(renderingInheritance.colorRTFormats.cbegin(), renderingInheritance.colorRTFormats.cend(),
-					   std::back_inserter(colorRTFormats),
-					   [](rhi::EFragmentFormat format)
-					   {
-						   return RHIToVulkan::GetVulkanFormat(format);
-					   });
+		for (rhi::EFragmentFormat format : renderingInheritance.colorRTFormats)
+		{
+			colorRTFormats.EmplaceBack(RHIToVulkan::GetVulkanFormat(format));
+		}
 
 		vkInheritanceRenderingInfo.flags                   = RHIToVulkan::GetRenderingFlags(renderingInheritance.flags);
 		vkInheritanceRenderingInfo.colorAttachmentCount    = static_cast<Uint32>(renderingInheritance.colorRTFormats.size());
@@ -155,7 +154,7 @@ void RHICommandBuffer::BeginRendering(const rhi::RenderingDefinition& renderingD
 {
 	SPT_CHECK(IsValid());
 	
-	const auto CreateAttachmentInfo = [this](const rhi::RHIRenderTargetDefinition& renderTarget, Bool isColor)
+	const auto CreateAttachmentInfo = [](const rhi::RHIRenderTargetDefinition& renderTarget, Bool isColor)
 	{
 		VkRenderingAttachmentInfo attachmentInfo{ VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 
@@ -200,12 +199,12 @@ void RHICommandBuffer::BeginRendering(const rhi::RenderingDefinition& renderingD
 		return CreateAttachmentInfo(renderTarget, false);
 	};
 
-	lib::DynamicArray<VkRenderingAttachmentInfo> colorAttachments;
-	colorAttachments.reserve(renderingDefinition.colorRTs.size());
+	lib::InlineDynamicArray<VkRenderingAttachmentInfo, rhi::constants::maxColorRTsNum> colorAttachments;
 
-	std::transform(renderingDefinition.colorRTs.cbegin(), renderingDefinition.colorRTs.end(),
-				   std::back_inserter(colorAttachments),
-				   CreateColorAttachmentInfo);
+	for (const rhi::RHIRenderTargetDefinition& colorRT : renderingDefinition.colorRTs)
+	{
+		colorAttachments.EmplaceBack(CreateColorAttachmentInfo(colorRT));
+	}
 
 	const Bool hasDepthAttachment = renderingDefinition.depthRT.textureView.IsValid();
 	VkRenderingAttachmentInfo depthAttachmentInfo{};
@@ -399,6 +398,59 @@ void RHICommandBuffer::BuildTLAS(const RHITopLevelAS& tlas, const rhi::TLASBuild
 	const VkAccelerationStructureBuildRangeInfoKHR* buildRanges = &buildRangeInfo;
 
 	BuildASImpl(tlas, vkBuildInfo, buildRanges);
+}
+
+void RHICommandBuffer::BeginBLASBuildBatch(Uint32 maxNumBuilds)
+{
+	SPT_CHECK(IsValid());
+	SPT_CHECK(maxNumBuilds > 0);
+
+	SPT_CHECK(m_BLASBuildsBatchState.buildRanges.empty());
+
+	m_BLASBuildsBatchState.buildInfos  = m_memArena->AllocateSpanUninitialized<VkAccelerationStructureBuildGeometryInfoKHR>(maxNumBuilds);
+	m_BLASBuildsBatchState.buildRanges = m_memArena->AllocateSpanUninitialized<const VkAccelerationStructureBuildRangeInfoKHR*>(maxNumBuilds);
+	m_BLASBuildsBatchState.buildsNum = 0;
+}
+
+void RHICommandBuffer::AddBatchedBLASBuild(const RHIBottomLevelAS& blas, const rhi::BLASBuildInfo& buildInfo, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset)
+{
+	SPT_CHECK(m_BLASBuildsBatchState.buildInfos.data());
+	SPT_CHECK(m_BLASBuildsBatchState.buildRanges.data());
+	SPT_CHECK(m_BLASBuildsBatchState.buildsNum  < m_BLASBuildsBatchState.buildInfos.size());
+
+	SPT_CHECK(scratchBuffer.IsValid());
+	SPT_CHECK(scratchBufferOffset + blas.GetBuildScratchSize() <= scratchBuffer.GetSize());
+	SPT_CHECK(buildInfo.trianglesBuildInfo.primitivesNum > 0);
+	SPT_CHECK(buildInfo.trianglesBuildInfo.primitivesNum <= blas.GetMaxPrimitivesCount());
+
+	VkAccelerationStructureGeometryKHR* geometry = m_memArena->AllocateType<VkAccelerationStructureGeometryKHR>();
+
+	VkAccelerationStructureBuildGeometryInfoKHR& vkBuildInfo = m_BLASBuildsBatchState.buildInfos[m_BLASBuildsBatchState.buildsNum];
+	vkBuildInfo = blas.CreateBuildGeometryInfo(OUT *geometry, &buildInfo);
+	vkBuildInfo.dstAccelerationStructure  = blas.GetHandle();
+	vkBuildInfo.scratchData.deviceAddress = scratchBuffer.GetDeviceAddress() + scratchBufferOffset;
+
+	VkAccelerationStructureBuildRangeInfoKHR* buildRangeInfo = m_memArena->AllocateType<VkAccelerationStructureBuildRangeInfoKHR>();
+	buildRangeInfo->primitiveCount = buildInfo.trianglesBuildInfo.primitivesNum;
+
+	m_BLASBuildsBatchState.buildRanges[m_BLASBuildsBatchState.buildsNum] = buildRangeInfo;
+
+	++m_BLASBuildsBatchState.buildsNum;
+}
+
+void RHICommandBuffer::ExecuteBLASesBuildBatch()
+{
+	SPT_CHECK(IsValid());
+
+	SPT_CHECK(m_BLASBuildsBatchState.buildInfos.data());
+	SPT_CHECK(m_BLASBuildsBatchState.buildRanges.data());
+	SPT_CHECK(m_BLASBuildsBatchState.buildsNum > 0);
+
+	vkCmdBuildAccelerationStructuresKHR(m_cmdBufferHandle, m_BLASBuildsBatchState.buildsNum, m_BLASBuildsBatchState.buildInfos.data(), m_BLASBuildsBatchState.buildRanges.data());
+
+	m_BLASBuildsBatchState.buildInfos  = {};
+	m_BLASBuildsBatchState.buildRanges = {};
+	m_BLASBuildsBatchState.buildsNum   = 0;
 }
 
 void RHICommandBuffer::BindRayTracingPipeline(const RHIPipeline& pipeline)

@@ -85,6 +85,10 @@ public:
 
 	void	BuildBLAS(const RHIBottomLevelAS& blas, const rhi::BLASBuildInfo& buildInfo, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset);
 	void	BuildTLAS(const RHITopLevelAS& tlas, const rhi::TLASBuildInfo& buildInfo, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset);
+
+	void	BeginBLASBuildBatch(Uint32 maxNumBuilds);
+	void	AddBatchedBLASBuild(const RHIBottomLevelAS& blas, const rhi::BLASBuildInfo& buildInfo, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset);
+	void	ExecuteBLASesBuildBatch();
 	
 	// Ray Tracing ==========================================
 
@@ -146,6 +150,8 @@ private:
 
 	void BuildASImpl(const RHIAccelerationStructure& as, const VkAccelerationStructureBuildGeometryInfoKHR& buildInfo, const VkAccelerationStructureBuildRangeInfoKHR* buildRanges);
 
+	lib::MemoryArena*				m_memArena = nullptr;
+
 	VkCommandBuffer					m_cmdBufferHandle;
 
 	rhi::EDeviceCommandQueueType	m_queueType;
@@ -154,6 +160,13 @@ private:
 	std::optional<Uint32>			m_boundDescriptorHeapSize;
 
 	DebugName						m_name;
+
+	struct BLASBuildsBatchState
+	{
+		lib::Span<VkAccelerationStructureBuildGeometryInfoKHR>     buildInfos;
+		lib::Span<const VkAccelerationStructureBuildRangeInfoKHR*> buildRanges;
+		Uint32 buildsNum = 0u;
+	} m_BLASBuildsBatchState;
 };
 
 } // spt::vulkan

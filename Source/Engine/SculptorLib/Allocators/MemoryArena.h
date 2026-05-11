@@ -55,6 +55,7 @@ protected:
 		subArena.m_currentAddress = subArena.m_baseAddress;
 		subArena.m_commitedEnd    = subArena.m_baseAddress + size;
 		subArena.m_reservedEnd    = subArena.m_baseAddress + size;
+		subArena.m_isSubArena     = true;
 
 		return subArena;
 	}
@@ -68,6 +69,7 @@ private:
 	Uint64 m_currentAddress  = 0u;
 	Uint64 m_commitedEnd     = 0u;
 	Uint64 m_reservedEnd     = 0u;
+	Bool  m_isSubArena       = false;
 };
 
 

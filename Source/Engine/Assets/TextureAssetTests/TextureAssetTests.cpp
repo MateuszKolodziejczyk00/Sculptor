@@ -44,6 +44,8 @@ TEST_F(TextureAssetsSystemTests, CreateTexture)
 	const ResourcePath assetPath = "CreateTextureDDS/Texture.sptasset";
 	m_assetsSystem.DeleteAsset(assetPath); // Delete leftover asset if exists
 
+	lib::MemoryArena tempArena("MeshAssetsTestsTempArena", 8u * 1024u, 512u * 1024u * 1024u);
+
 	TextureDataInitializer textureInitializer
 	{
 		TextureSourceDefinition{ .path = "Source/test.png" }
@@ -59,7 +61,7 @@ TEST_F(TextureAssetsSystemTests, CreateTexture)
 	EXPECT_TRUE(result);
 
 	gfx::GPUDeferredCommandsQueue& queue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
-	queue.ForceFlushCommands();
+	queue.ForceFlushCommands(tempArena);
 
 	result.GetValue().Reset();
 
@@ -67,7 +69,7 @@ TEST_F(TextureAssetsSystemTests, CreateTexture)
 
 	AssetHandle asset = m_assetsSystem.LoadAndInitAssetChecked(assetPath);
 
-	queue.ForceFlushCommands();
+	queue.ForceFlushCommands(tempArena);
 
 	EXPECT_TRUE(asset.IsValid());
 	asset.Reset();

@@ -33,7 +33,7 @@ public:
 	void RequestUpload(lib::UniquePtr<GPUDeferredUploadRequest> request);
 	void RequestBLASBuild(lib::UniquePtr<GPUDeferredBLASBuildRequest> request);
 
-	void ForceFlushCommands();
+	void ForceFlushCommands(lib::MemoryArena& memArena);
 
 	void AddPostDeferredUploadsDelegate(PostDeferredUploadsMulticastDelegate::Delegate delegate)
 	{
@@ -48,7 +48,7 @@ protected:
 
 private:
 
-	void ExecuteCommands();
+	void ExecuteCommands(lib::MemoryArena& memArena);
 
 	void ExecutePreUploadBarriers(const lib::SharedPtr<rdr::RenderContext>& renderContext);
 	void ExecutePostUploadBarriers(const lib::SharedPtr<rdr::RenderContext>& renderContext);

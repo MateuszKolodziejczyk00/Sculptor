@@ -85,7 +85,7 @@ public:
 	static GPUApiFactoryData* Initialize();
 	static void               InitializeModule(GPUApiFactoryData* data);
 
-	SPT_NODISCARD static lib::SharedRef<RenderContext> CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef = rhi::ContextDefinition());
+	SPT_NODISCARD static lib::SharedRef<RenderContext> CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef);
 
 	SPT_NODISCARD static lib::UniquePtr<CommandRecorder> CreateCommandRecorder(const rdr::RendererResourceName& name, const lib::SharedRef<RenderContext>& context, const rhi::CommandBufferDefinition& cmdBufferDef, const rhi::CommandBufferUsageDefinition& commandBufferUsage = rhi::CommandBufferUsageDefinition());
 	

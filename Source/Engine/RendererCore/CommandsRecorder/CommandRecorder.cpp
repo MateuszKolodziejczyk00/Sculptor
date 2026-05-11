@@ -72,6 +72,21 @@ void CommandRecorder::BuildTLAS(const lib::SharedRef<TopLevelAS>& tlas, const rh
 	GetCommandBufferRHI().BuildTLAS(tlas->GetRHI(), buildInfo, scratchBuffer->GetRHI(), scratchBufferOffset);
 }
 
+void CommandRecorder::BeginBLASBuildBatch(Uint32 maxNumBuilds)
+{
+	GetCommandBufferRHI().BeginBLASBuildBatch(maxNumBuilds);
+}
+
+void CommandRecorder::AddBatchedBLASBuild(const lib::SharedRef<BottomLevelAS>& blas, const rhi::BLASBuildInfo& buildInfo, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset)
+{
+	GetCommandBufferRHI().AddBatchedBLASBuild(blas->GetRHI(), buildInfo, scratchBuffer->GetRHI(), scratchBufferOffset);
+}
+
+void CommandRecorder::ExecuteBLASesBuildBatch()
+{
+	GetCommandBufferRHI().ExecuteBLASesBuildBatch();
+}
+
 void CommandRecorder::BeginRendering(const RenderingDefinition& definition)
 {
 	 GetCommandBufferRHI().BeginRendering(definition.GetRHI());

@@ -52,6 +52,8 @@ public:
 
 	rhi::ContextID GetID() const;
 
+	lib::MemoryArena& GetMemoryArena() const { return *m_memoryArena; }
+
 	void                     SetName(const lib::HashedString& name);
 	const lib::HashedString& GetName() const;
 	
@@ -60,6 +62,8 @@ public:
 	VkCommandBuffer AcquireCommandBuffer(const rhi::CommandBufferDefinition& cmdBufferDef);
 
 private:
+
+	lib::MemoryArena* m_memoryArena = nullptr;
 
 	rhi::ContextID m_id;
 

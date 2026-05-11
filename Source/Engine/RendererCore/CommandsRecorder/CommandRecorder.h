@@ -48,6 +48,10 @@ public:
 	void									BuildBLAS(const lib::SharedRef<BottomLevelAS>& blas, const rhi::BLASBuildInfo& buildInfo, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset);
 	void									BuildTLAS(const lib::SharedRef<TopLevelAS>& tlas, const rhi::TLASBuildInfo& buildInfo, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset);
 
+	void									BeginBLASBuildBatch(Uint32 maxNumBuilds);
+	void									AddBatchedBLASBuild(const lib::SharedRef<BottomLevelAS>& blas, const rhi::BLASBuildInfo& buildInfo, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset);
+	void									ExecuteBLASesBuildBatch();
+
 	void									BeginRendering(const RenderingDefinition& definition);
 	void									EndRendering();
 	

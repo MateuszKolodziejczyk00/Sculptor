@@ -19,7 +19,10 @@ MemoryArenaBase::MemoryArenaBase(const char* arenaName, Uint64 commitedSize, Uin
 
 	m_currentAddress = m_baseAddress;
 
-	mem::CommitVirtualMemory((Byte*)m_baseAddress, commitedSize);
+	if (commitedSize > 0u)
+	{
+		mem::CommitVirtualMemory((Byte*)m_baseAddress, commitedSize);
+	}
 
 	m_commitedEnd = m_baseAddress + commitedSize;
 	m_reservedEnd = m_baseAddress + reservedSize;
@@ -27,7 +30,7 @@ MemoryArenaBase::MemoryArenaBase(const char* arenaName, Uint64 commitedSize, Uin
 
 MemoryArenaBase::~MemoryArenaBase()
 {
-	if (m_baseAddress)
+	if (m_baseAddress && !m_isSubArena)
 	{
 		mem::ReleaseVirtualMemory((Byte*)m_baseAddress, m_reservedEnd - m_baseAddress);
 	}

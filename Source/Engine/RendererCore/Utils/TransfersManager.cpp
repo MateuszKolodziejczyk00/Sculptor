@@ -22,6 +22,7 @@ static constexpr Uint64 stagingBufferOffsetAlignment = 16u;
 TransfersManager::TransfersManager()
 	: m_currentStagingBufferOffset(idxNone<Uint64>)
 	, m_lastUsedStagingBufferIdx(0)
+	, m_renderContextArena("TransfersManager_RenderContextArena", 32u * 1024u, 32u * 1024u)
 {
 	rhi::BufferDefinition stagingBuffersDef;
 	stagingBuffersDef.size = stagingBufferSize;
@@ -259,7 +260,8 @@ void TransfersManager::FlushPendingUploads_AssumesLocked()
 {
 	SPT_PROFILER_FUNCTION();
 
-	lib::SharedRef<rdr::RenderContext> context = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("FlushPendingUploadsContext"), rhi::ContextDefinition());
+	m_renderContextArena.Reset();
+	lib::SharedRef<rdr::RenderContext> context = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("FlushPendingUploadsContext"), rhi::ContextDefinition(m_renderContextArena));
 
 	const rhi::CommandBufferDefinition cmdBufferDef(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
 	lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::ResourcesManager::CreateCommandRecorder(RENDERER_RESOURCE_NAME("TransfersCommandBuffer"), context, cmdBufferDef);

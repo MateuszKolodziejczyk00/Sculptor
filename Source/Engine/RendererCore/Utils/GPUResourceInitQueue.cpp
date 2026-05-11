@@ -8,6 +8,7 @@ namespace spt::rdr
 {
 
 GPUResourceInitQueue::GPUResourceInitQueue()
+	: m_renderContextArena("GPUResourceInitQueue_RenderContextArena", 8u * 1024u, 8u * 1024u)
 {
 }
 
@@ -31,7 +32,8 @@ lib::SharedPtr<GPUWorkload> GPUResourceInitQueue::RecordGPUInitializations()
 
 	if (!dependencyCopy.IsEmpty())
 	{
-		lib::SharedRef<RenderContext> renderContext = ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("GPU Resource Init Queue Context"));
+		m_renderContextArena.Reset();
+		lib::SharedRef<RenderContext> renderContext = ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("GPU Resource Init Queue Context"), rhi::ContextDefinition(m_renderContextArena));
 		const rhi::CommandBufferDefinition cmdBufferDef(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
 		lib::UniquePtr<CommandRecorder> commandRecorder = ResourcesManager::CreateCommandRecorder(RENDERER_RESOURCE_NAME("GPU Resource Init Queue Command Recorder"), renderContext, cmdBufferDef);
 

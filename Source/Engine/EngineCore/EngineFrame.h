@@ -91,7 +91,7 @@ public:
 
 	// Frame Flow =====================================================
 
-	void BeginFrame(const FrameDefinition& definition, lib::SharedPtr<FrameContext> prevFrame, lib::MemoryArena& memArena);
+	void BeginFrame(const FrameDefinition& definition, lib::SharedPtr<FrameContext> prevFrame, lib::ThreadSafeMemoryArena& memArena);
 
 	void WaitUpdateEnded();
 	void WaitRenderingEnded();
@@ -110,7 +110,7 @@ public:
 
 	EFrameState GetFrameState() const { return m_frameState; }
 
-	lib::MemoryArena& GetFrameMemoryArena() const { return *m_frameMemArena; }
+	lib::ThreadSafeMemoryArena& GetFrameMemoryArena() const { return *m_frameMemArena; }
 
 	void SetMaxFPS(Real32 fps);
 
@@ -129,7 +129,7 @@ private:
 
 	FrameDefinition m_frameDefinition;
 
-	lib::MemoryArena* m_frameMemArena = nullptr;
+	lib::ThreadSafeMemoryArena* m_frameMemArena = nullptr;
 
 	EFrameState m_frameState;
 
@@ -175,10 +175,10 @@ private:
 	static constexpr Uint32 perFrameMemArenaSize         = 4 * 1024 * 1024;
 	static constexpr Uint32 perFrameMemArenaMaxAllocSize = 16u * 1024 * 1024;
 
-	lib::StaticArray<lib::MemoryArena, tickableFramesNum> m_perFrameMemArenas
+	lib::StaticArray<lib::ThreadSafeMemoryArena, tickableFramesNum> m_perFrameMemArenas
 	{ 
-		lib::MemoryArena("Per Frame Mem Arena", perFrameMemArenaSize, perFrameMemArenaMaxAllocSize),
-		lib::MemoryArena("Per Frame Mem Arena", perFrameMemArenaSize, perFrameMemArenaMaxAllocSize)
+		lib::ThreadSafeMemoryArena("Per Frame Mem Arena", perFrameMemArenaSize, perFrameMemArenaMaxAllocSize),
+		lib::ThreadSafeMemoryArena("Per Frame Mem Arena", perFrameMemArenaSize, perFrameMemArenaMaxAllocSize)
 	};
 
 	OnFrameTick m_onFrameTick[tickableFramesNum];

@@ -485,7 +485,8 @@ Bool SculptorDLSSVulkan::PrepareForRendering(const DLSSParams& params)
 
 	if (IsDirty(params))
 	{
-		lib::SharedRef<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("DLSS Preparation Render Context"));
+		lib::MemoryArena tempArena("DLSS Temp Arena", 0u, 2u * 1024u);
+		lib::SharedRef<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("DLSS Preparation Render Context"), rhi::ContextDefinition(tempArena));
 
 		rhi::CommandBufferDefinition cmdBufferDef;
 		cmdBufferDef.complexityClass = rhi::ECommandBufferComplexityClass::Low;

@@ -118,7 +118,8 @@ void SculptorEdApplication::OnRun()
 	ImGui::SetCurrentContext(uiContext.GetHandle());
 
 	{
-		const lib::SharedRef<rdr::RenderContext> renderingContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("InitUIContext"), rhi::ContextDefinition());
+		lib::MemoryArena tempArena("Temp Arena", 1024u * 1024u, 512u * 1024u * 1024u);
+		const lib::SharedRef<rdr::RenderContext> renderingContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("InitUIContext"), rhi::ContextDefinition(tempArena));
 
 		const rhi::CommandBufferDefinition cmdBufferDef(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
 		lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::ResourcesManager::CreateCommandRecorder(RENDERER_RESOURCE_NAME("InitializeUICommandBuffer"),
@@ -238,9 +239,9 @@ js::Event SculptorEdApplication::ExecuteFrame(EditorFrameContext& frame)
 	const rhi::EFragmentFormat swapchainFormat = m_window->GetRHI().GetFragmentFormat();
 
 	js::JobWithResult recordUICommandsJob = js::Launch(SPT_GENERIC_JOB_NAME,
-													   [this, swapchainFormat]
+													   [this, swapchainFormat, &frame]
 													   {
-														   return RecordUICommands(swapchainFormat);
+														   return RecordUICommands(frame, swapchainFormat);
 													   },
 													   js::JobDef().ExecuteBefore(frame.GetStageFinishedEvent(engn::EFrameStage::UpdatingEnd)));
 
@@ -293,14 +294,14 @@ void SculptorEdApplication::UpdateUI(EditorFrameContext& frame)
 	scui::ApplicationUI::Draw(uiDrawContext);
 }
 
-std::pair<lib::SharedRef<rdr::RenderContext>, lib::SharedRef<rdr::GPUWorkload>> SculptorEdApplication::RecordUICommands(rhi::EFragmentFormat rtFormat) const
+std::pair<lib::SharedRef<rdr::RenderContext>, lib::SharedRef<rdr::GPUWorkload>> SculptorEdApplication::RecordUICommands(EditorFrameContext& frame, rhi::EFragmentFormat rtFormat) const
 {
 	SPT_PROFILER_FUNCTION();
 
-
 	ImGui::Render();
 
-	const lib::SharedRef<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("UI Render Context"), rhi::ContextDefinition());
+	lib::MemoryArena tempArena = frame.GetFrameMemoryArena().CreateSubArena("Record UI Commands Temp Arena", 8u * 1024u);
+	const lib::SharedRef<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("UI Render Context"), rhi::ContextDefinition(tempArena));
 
 	rhi::RenderingInheritanceDefinition renderingInheritanceDef;
 	renderingInheritanceDef.colorRTFormats.emplace_back(rtFormat);
@@ -360,7 +361,8 @@ void SculptorEdApplication::RenderFrame(EditorFrameContext& frame, rdr::Swapchai
 
 	const lib::SharedPtr<rdr::Texture> swapchainTexture = m_window->GetSwapchainTexture(swapchainTextureHandle);
 
-	const lib::SharedRef<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("MainThreadContext"), rhi::ContextDefinition());
+	lib::MemoryArena renderFrameArena = frame.GetFrameMemoryArena().CreateSubArena("Render Frame Arena", 32u * 1024u);
+	const lib::SharedRef<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("MainThreadContext"), rhi::ContextDefinition(renderFrameArena));
 		
 	const rhi::CommandBufferDefinition cmdBufferDef(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary);
 	lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::ResourcesManager::CreateCommandRecorder(RENDERER_RESOURCE_NAME("MainThreadCmdBuffer"),

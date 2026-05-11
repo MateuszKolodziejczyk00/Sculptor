@@ -91,6 +91,9 @@ public:
 
 private:
 
+	void SaveCameraConfig(Uint32 slot) const;
+	void LoadCameraConfig(Uint32 slot);
+
 	void InitializeRenderScene();
 
 	void PrepareRenderView(math::Vector2u outputResolution);
@@ -121,6 +124,7 @@ private:
 	math::Vector2f m_cameraDeltaRotation[2];
 
 	Bool m_shaderDebugMousePressedLastFrame = false;
+	Int32 m_cameraConfigSlotToSave = -1;
 
 	lib::MemoryArena m_memoryArena;
 };

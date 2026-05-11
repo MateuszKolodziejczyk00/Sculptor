@@ -161,7 +161,7 @@ std::optional<TerrainCompilationResult> CompileTerrain(const AssetInstance& asse
 
 			// Flush terrain material uploads
 			gfx::GPUDeferredCommandsQueue& queue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
-			queue.ForceFlushCommands();
+			queue.ForceFlushCommands(tempArena);
 			rdr::FlushPendingUploads();
 
 			rg::RenderGraphResourcesPool renderResourcesPool;

@@ -31,11 +31,11 @@ void GPUDeferredCommandsQueue::RequestBLASBuild(lib::UniquePtr<GPUDeferredBLASBu
 	m_blasBuildRequests.emplace_back(std::move(request));
 }
 
-void GPUDeferredCommandsQueue::ForceFlushCommands()
+void GPUDeferredCommandsQueue::ForceFlushCommands(lib::MemoryArena& memArena)
 {
 	SPT_PROFILER_FUNCTION();
 
-	ExecuteCommands();
+	ExecuteCommands(memArena);
 }
 
 void GPUDeferredCommandsQueue::OnBeginFrame(engn::FrameContext& frameContext)
@@ -56,16 +56,19 @@ void GPUDeferredCommandsQueue::OnBeginFrame(engn::FrameContext& frameContext)
 		m_hasRegisteredCleanup = true;
 	}
 
+
 	js::Launch(SPT_GENERIC_JOB_NAME,
-			   [this]
+			   [this, &frameContext]
 			   {
-				   ExecuteCommands();
+				   lib::MemoryArena memArena = frameContext.GetFrameMemoryArena().CreateSubArena("GPU Deferred Commands Queue Arena", 32u * 1024u);
+
+				   ExecuteCommands(memArena);
 			   },
 			   js::Prerequisites(frameContext.GetStageBeginEvent(engn::EFrameStage::TransferDataForRendering)),
 			   js::JobDef().ExecuteBefore(frameContext.GetStageBeginEvent(engn::EFrameStage::RenderingBegin)));
 }
 
-void GPUDeferredCommandsQueue::ExecuteCommands()
+void GPUDeferredCommandsQueue::ExecuteCommands(lib::MemoryArena& memArena)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -73,7 +76,7 @@ void GPUDeferredCommandsQueue::ExecuteCommands()
 
 	if (!m_uploadRequests.empty() || !m_blasBuildRequests.empty())
 	{
-		const lib::SharedPtr<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("TextureStreamer"), rhi::ContextDefinition());
+		const lib::SharedPtr<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("TextureStreamer"), rhi::ContextDefinition(memArena));
 
 		if (!m_uploadRequests.empty())
 		{

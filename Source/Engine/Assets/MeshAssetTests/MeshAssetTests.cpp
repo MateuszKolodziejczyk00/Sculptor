@@ -43,6 +43,8 @@ TEST_F(MeshAssetsTests, CreateMesh)
 	const ResourcePath assetPath = "Mesh/CreateMesh/Mesh.sptasset";
 	m_assetsSystem.DeleteAsset(assetPath); // Delete leftover asset if exists
 
+	lib::MemoryArena tempArena("MeshAssetsTestsTempArena", 8u * 1024u, 512u * 1024u * 1024u);
+
 	MeshDataInitializer meshInitializer
 	{
 		MeshSourceDefinition
@@ -62,7 +64,7 @@ TEST_F(MeshAssetsTests, CreateMesh)
 	EXPECT_TRUE(result);
 
 	gfx::GPUDeferredCommandsQueue& queue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
-	queue.ForceFlushCommands();
+	queue.ForceFlushCommands(tempArena);
 
 	result.GetValue().Reset();
 
@@ -73,7 +75,7 @@ TEST_F(MeshAssetsTests, CreateMesh)
 	EXPECT_TRUE(asset.IsValid());
 	asset.Reset();
 
-	queue.ForceFlushCommands();
+	queue.ForceFlushCommands(tempArena);
 
 	const EDeleteResult deleteResult = m_assetsSystem.DeleteAsset(assetPath);
 

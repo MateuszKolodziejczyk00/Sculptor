@@ -22,6 +22,7 @@
 #include "RenderGraphCaptureSourceContext.h"
 #include "UIElements/ApplicationUI.h"
 #include "FileSystem/File.h"
+#include "ConfigUtils.h"
 #include "Modules/Module.h"
 #include "Techniques/TemporalAA/DLSSRenderer.h"
 #include "Techniques/TemporalAA/StandardTAARenderer.h"
@@ -38,6 +39,43 @@ namespace spt::ed
 {
 
 SPT_DEFINE_LOG_CATEGORY(Sandbox, true)
+
+namespace
+{
+
+struct SandboxCameraConfig
+{
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("Location", location);
+		serializer.Serialize("Direction", direction);
+	}
+
+	math::Vector3f location  = math::Vector3f(0.f, 0.f, 1.f);
+	math::Vector3f direction = math::Vector3f::UnitX();
+};
+
+lib::String BuildCameraConfigFileName(Uint32 slot)
+{
+	return "SandboxCameraConfig_" + std::to_string(slot) + ".json";
+}
+
+Int32 GetPressedCameraConfigSlot()
+{
+	inp::InputManager& inputManager = inp::InputManager::Get();
+
+	for (Uint32 slot = 0u; slot <= 9u; ++slot)
+	{
+		if (inputManager.WasKeyJustPressed((inp::EKey)((Uint32)inp::EKey::_0 + slot)))
+		{
+			return static_cast<Int32>(slot);
+		}
+	}
+
+	return -1;
+}
+
+} // namespace
 
 
 SandboxRenderer::SandboxRenderer()
@@ -82,7 +120,25 @@ void SandboxRenderer::Update(engn::FrameContext& frame)
 	cameraDeltaLocation = math::Vector3f::Zero();
 	cameraDeltaRotation = math::Vector2f::Zero();
 
-	if (m_isViewportFocused)
+	const Bool isCtrlPressed = inp::InputManager::Get().IsKeyPressed(inp::EKey::LCtrl)
+							|| inp::InputManager::Get().IsKeyPressed(inp::EKey::RCtrl);
+	const Bool isShiftPressed = inp::InputManager::Get().IsKeyPressed(inp::EKey::LShift)
+							 || inp::InputManager::Get().IsKeyPressed(inp::EKey::RShift);
+
+	const Int32 cameraConfigSlot = GetPressedCameraConfigSlot();
+	const Bool wantsToSaveCameraConfig = isShiftPressed && cameraConfigSlot >= 0;
+	const Bool wantsToLoadCameraConfig = isCtrlPressed && cameraConfigSlot >= 0;
+
+	if (wantsToSaveCameraConfig)
+	{
+		m_cameraConfigSlotToSave = cameraConfigSlot;
+	}
+	else if (wantsToLoadCameraConfig)
+	{
+		LoadCameraConfig(static_cast<Uint32>(cameraConfigSlot));
+	}
+
+	if (m_isViewportFocused && !wantsToSaveCameraConfig && !wantsToLoadCameraConfig)
 	{
 		const Real32 deltaTime = frame.GetDeltaTime();
 
@@ -144,6 +200,12 @@ void SandboxRenderer::UpdatePreRender(engn::FrameContext& frame)
 
 	m_renderView->Rotate(math::AngleAxisf(cameraDeltaRotation.x(), math::Vector3f::UnitZ()));
 	m_renderView->Rotate(math::AngleAxisf(cameraDeltaRotation.y(), m_renderView->GetRotation() * math::Vector3f::UnitY()));
+
+	if (m_cameraConfigSlotToSave >= 0)
+	{
+		SaveCameraConfig(static_cast<Uint32>(m_cameraConfigSlotToSave));
+		m_cameraConfigSlotToSave = -1;
+	}
 
 	if (sunMovement)
 	{
@@ -325,6 +387,33 @@ const lib::SharedPtr<rsc::RenderScene>& SandboxRenderer::GetRenderScene()
 	return m_renderScene;
 }
 
+void SandboxRenderer::SaveCameraConfig(Uint32 slot) const
+{
+	SandboxCameraConfig cameraConfig;
+	cameraConfig.location = m_renderView->GetLocation();
+	cameraConfig.direction = m_renderView->GetForwardVector();
+
+	const lib::String configFileName = BuildCameraConfigFileName(slot);
+	engn::ConfigUtils::SaveConfigData(cameraConfig, configFileName);
+}
+
+void SandboxRenderer::LoadCameraConfig(Uint32 slot)
+{
+	SandboxCameraConfig cameraConfig;
+	const lib::String configFileName = BuildCameraConfigFileName(slot);
+	const Bool loaded = engn::ConfigUtils::LoadConfigData(cameraConfig, configFileName);
+
+	if (loaded)
+	{
+		m_renderView->SetLocation(cameraConfig.location);
+
+		if (cameraConfig.direction.squaredNorm() > 0.0001f)
+		{
+			m_renderView->SetRotation(cameraConfig.direction.normalized());
+		}
+	}
+}
+
 rsc::RenderView& SandboxRenderer::GetRenderView() const
 {
 	return *m_renderView;
@@ -420,6 +509,7 @@ void SandboxRenderer::InitializeRenderScene()
 	m_renderView->SetLocation(math::Vector3f(0.f, 0.f, 1.f));
 	m_renderView->SetOutputRes(math::Vector2u(1920, 1080));
 	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane, m_farPlane);
+	LoadCameraConfig(1u);
 
 	rsc::ShadingRenderViewSettings shadingSettings;
 	shadingSettings.upscalingMethod = rsc::EUpscalingMethod::DLSS;
@@ -495,7 +585,7 @@ void SandboxRenderer::InitializeRenderScene()
 						});
 
 	gfx::GPUDeferredCommandsQueue& commandsQueue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
-	commandsQueue.ForceFlushCommands();
+	commandsQueue.ForceFlushCommands(tempArena);
 
 	dlssInitJob.Wait();
 

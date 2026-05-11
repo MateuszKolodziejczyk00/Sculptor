@@ -22,7 +22,7 @@ FrameContext::~FrameContext()
 	SPT_CHECK(m_currentStage == EFrameStage::Finished);
 }
 
-void FrameContext::BeginFrame(const FrameDefinition& definition, lib::SharedPtr<FrameContext> prevFrame, lib::MemoryArena& memArena)
+void FrameContext::BeginFrame(const FrameDefinition& definition, lib::SharedPtr<FrameContext> prevFrame, lib::ThreadSafeMemoryArena& memArena)
 {
 	m_frameDefinition = definition;
 

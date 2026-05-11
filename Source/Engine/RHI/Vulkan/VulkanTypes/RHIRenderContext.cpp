@@ -45,7 +45,8 @@ void RHIRenderContext::InitializeRHI(const rhi::ContextDefinition& definition)
 {
 	SPT_CHECK(!IsValid());
 
-	m_id = priv::GenerateID();
+	m_memoryArena = &definition.memArena;
+	m_id          = priv::GenerateID();
 
 	SPT_CHECK(IsValid());
 }

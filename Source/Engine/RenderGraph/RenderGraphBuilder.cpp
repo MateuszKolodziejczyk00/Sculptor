@@ -287,6 +287,8 @@ void RenderGraphBuilder::BuildBLASes(const RenderGraphDebugName& commandName, li
 
 	auto executeLambda = [commands](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
+		recorder.BeginBLASBuildBatch(static_cast<Uint32>(commands.size()));
+
 		for (const BLASBuildCommand& command : commands)
 		{
 			const rdr::BindableBufferView& vertexBufferView = command.vertexBufferView->GetResourceRef();
@@ -301,8 +303,10 @@ void RenderGraphBuilder::BuildBLASes(const RenderGraphDebugName& commandName, li
 			buildInfo.trianglesBuildInfo.indicesAddress         = indexBufferView.GetBuffer()->GetRHI().GetDeviceAddress() + indexBufferView.GetOffset() + command.indexBufferOffset;
 			buildInfo.trianglesBuildInfo.primitivesNum          = command.primitivesNum;
 
-			recorder.BuildBLAS(lib::Ref(command.blas), buildInfo, lib::Ref(scratchBuffer), scratchBufferOffset);
+			recorder.AddBatchedBLASBuild(lib::Ref(command.blas), buildInfo, lib::Ref(scratchBuffer), scratchBufferOffset);
 		}
+
+		recorder.ExecuteBLASesBuildBatch();
 
 		for (BLASBuildCommand& command : commands)
 		{
@@ -1204,7 +1208,7 @@ void RenderGraphBuilder::ExecuteGraph()
 	RGExecutionContext graphExecutionContext;
 	graphExecutionContext.statisticsCollector = m_statisticsCollector;
 
-	rhi::ContextDefinition renderContextDefinition;
+	rhi::ContextDefinition renderContextDefinition(GetMemoryArena());
 	const lib::SharedRef<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("Render Graph Context"), renderContextDefinition);
 
 	const rhi::CommandBufferDefinition cmdBufferDef(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Default);

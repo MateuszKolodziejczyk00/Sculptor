@@ -8,9 +8,7 @@ namespace spt::rhi
 
 struct ContextDefinition
 {
-	ContextDefinition() = default;
-
-	// For future use
+	lib::MemoryArena& memArena;
 };
 
 

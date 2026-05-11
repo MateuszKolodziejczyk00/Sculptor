@@ -47,6 +47,8 @@ TEST_F(TerrainAssetTests, CreateTerrainWithoutHeightMap)
 	m_assetsSystem.DeleteAsset(terrainAssetPath);
 	m_assetsSystem.DeleteAsset(terrainMaterialAssetPath);
 
+	lib::MemoryArena tempArena("MeshAssetsTestsTempArena", 8u * 1024u, 512u * 1024u * 1024u);
+
 	TerrainAssetInitializer terrainInitializer
 	{
 		TerrainAssetDefinition
@@ -64,7 +66,7 @@ TEST_F(TerrainAssetTests, CreateTerrainWithoutHeightMap)
 	EXPECT_TRUE(terrainCreateResult);
 
 	gfx::GPUDeferredCommandsQueue& queue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
-	queue.ForceFlushCommands();
+	queue.ForceFlushCommands(tempArena);
 
 	terrainCreateResult.GetValue().Reset();
 
@@ -77,11 +79,11 @@ TEST_F(TerrainAssetTests, CreateTerrainWithoutHeightMap)
 	EXPECT_TRUE(terrainAsset->GetHeightMap() == nullptr);
 	EXPECT_TRUE(terrainAsset->GetTerrainDefinition().heightMap == nullptr);
 
-	queue.ForceFlushCommands();
+	queue.ForceFlushCommands(tempArena);
 
 	terrainAsset.Reset();
 
-	queue.ForceFlushCommands();
+	queue.ForceFlushCommands(tempArena);
 
 	EXPECT_TRUE(m_assetsSystem.DeleteAsset(terrainAssetPath) == EDeleteResult::Success);
 	EXPECT_TRUE(m_assetsSystem.DeleteAsset(terrainMaterialAssetPath) == EDeleteResult::Success);

@@ -25,6 +25,8 @@ private:
 
 	lib::Spinlock m_lock;
 	rhi::RHIDependency m_dependency;
+
+	lib::MemoryArena m_renderContextArena;
 };
 
 } // spt::rdr

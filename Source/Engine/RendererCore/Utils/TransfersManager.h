@@ -97,6 +97,8 @@ private:
 	SizeType m_lastUsedStagingBufferIdx;
 
 	std::atomic<Uint32> m_copiesInProgressNum = 0u;
+
+	lib::MemoryArena m_renderContextArena;
 };
 
 } // spt::rdr

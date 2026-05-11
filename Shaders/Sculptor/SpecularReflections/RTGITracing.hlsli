@@ -163,7 +163,7 @@ RayDirectionInfo GenerateReflectionRayDir(in float4 baseColorMetallic, in float3
 #ifdef DS_RenderSceneDS
 RayHitResult RTGITraceRay(in float3 rayOrigin, in float3 rayDirection)
 {
-	const float maxHitDistance = 200.f;
+	const float maxHitDistance = 800.f;
 
 	RayDesc rayDesc;
 	rayDesc.TMin      = 0.f;

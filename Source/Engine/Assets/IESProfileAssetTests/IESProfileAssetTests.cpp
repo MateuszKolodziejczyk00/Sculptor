@@ -43,6 +43,8 @@ TEST_F(IESProfileAssetsSystemTests, CreateIESProfile)
 	const ResourcePath assetPath = "IESProfile/CreateIESProfile/IESProfile.sptasset";
 	m_assetsSystem.DeleteAsset(assetPath); // Delete leftover asset if exists
 
+	lib::MemoryArena tempArena("TempArena", 32u * 1024u, 512u * 1024u * 1024u);
+
 	IESProfileDataInitializer textureInitializer
 	{
 		IESProfileSourceDefinition{ .path = "Source/sample0.ies" }
@@ -58,7 +60,7 @@ TEST_F(IESProfileAssetsSystemTests, CreateIESProfile)
 	EXPECT_TRUE(result);
 
 	gfx::GPUDeferredCommandsQueue& queue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
-	queue.ForceFlushCommands();
+	queue.ForceFlushCommands(tempArena);
 
 	result.GetValue().Reset();
 
@@ -69,7 +71,7 @@ TEST_F(IESProfileAssetsSystemTests, CreateIESProfile)
 	EXPECT_TRUE(asset.IsValid());
 	asset.Reset();
 
-	queue.ForceFlushCommands();
+	queue.ForceFlushCommands(tempArena);
 
 	const EDeleteResult deleteResult = m_assetsSystem.DeleteAsset(assetPath);
 
