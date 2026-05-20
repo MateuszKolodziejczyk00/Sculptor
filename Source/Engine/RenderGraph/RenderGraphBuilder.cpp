@@ -244,7 +244,7 @@ RGBufferViewHandle RenderGraphBuilder::CreateStorageBufferView(const RenderGraph
 {
 	rhi::BufferDefinition bufferDefinition;
 	bufferDefinition.size  = size;
-	bufferDefinition.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::TransferSrc);
+	bufferDefinition.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::TransferSrc, rhi::EBufferUsage::ASBuildInputReadOnly);
 	return CreateBufferView(name, bufferDefinition, allocationInfo, ERGResourceFlags::Default);
 }
 

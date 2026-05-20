@@ -11,7 +11,7 @@
 #define TERRAIN_VISIBILITY_MS_GROUP_SIZE 64u
 
 
-static const uint TERRAIN_MESHLET_QUADS_PER_EDGE    = 7u;
+static const uint TERRAIN_MESHLET_QUADS_PER_EDGE    = 8u;
 static const uint TERRAIN_MESHLET_VERTICES_PER_EDGE = TERRAIN_MESHLET_QUADS_PER_EDGE + 1u;
 static const uint TERRAIN_MESHLET_VERTICES_NUM      = TERRAIN_MESHLET_VERTICES_PER_EDGE * TERRAIN_MESHLET_VERTICES_PER_EDGE;
 static const uint TERRAIN_MESHLET_TRIANGLES_NUM     = TERRAIN_MESHLET_QUADS_PER_EDGE * TERRAIN_MESHLET_QUADS_PER_EDGE * 2u;
@@ -31,6 +31,47 @@ struct MeshShaderInput
 };
 
 
+// Assumes that TERRAIN_MESHLET_VERTICES_PER_EDGE is a power of 2
+uint ApplyLODChangeMask(in uint vertexIdx, in uint changeMask, in uint2 meshletID, in uint2 meshletsRes)
+{
+	const uint2 vertexPos = uint2(vertexIdx % TERRAIN_MESHLET_VERTICES_PER_EDGE, vertexIdx / TERRAIN_MESHLET_VERTICES_PER_EDGE);
+
+	if (meshletID.y == 0u)
+	{
+		if ((changeMask & TERRAIN_TILE_LOD_CHANGE_NORTH) && vertexPos.y == 0u)
+		{
+			return vertexIdx & ~1u;
+		}
+	}
+
+	if (meshletID.y == meshletsRes.y - 1u)
+	{
+		if ((changeMask & TERRAIN_TILE_LOD_CHANGE_SOUTH) && vertexPos.y == TERRAIN_MESHLET_VERTICES_PER_EDGE - 1u)
+		{
+			return vertexIdx & ~1u;
+		}
+	}
+
+	if (meshletID.x == 0u)
+	{
+		if ((changeMask & TERRAIN_TILE_LOD_CHANGE_WEST) && vertexPos.x == 0u)
+		{
+			return ((vertexIdx / TERRAIN_MESHLET_VERTICES_PER_EDGE) & ~1u) * TERRAIN_MESHLET_VERTICES_PER_EDGE;
+		}
+	}
+
+	if (meshletID.x == meshletsRes.x - 1u)
+	{
+		if ((changeMask & TERRAIN_TILE_LOD_CHANGE_EAST) && vertexPos.x == TERRAIN_MESHLET_VERTICES_PER_EDGE - 1u)
+		{
+			return ((vertexIdx / TERRAIN_MESHLET_VERTICES_PER_EDGE) & ~1u) * TERRAIN_MESHLET_VERTICES_PER_EDGE + TERRAIN_MESHLET_VERTICES_PER_EDGE - 1u;
+		}
+	}
+
+	return vertexIdx;
+}
+
+
 [outputtopology("triangle")]
 [numthreads(TERRAIN_VISIBILITY_MS_GROUP_SIZE, 1, 1)]
 void Terrain_MS(in MeshShaderInput input,
@@ -46,20 +87,24 @@ void Terrain_MS(in MeshShaderInput input,
 	const TerrainDrawMeshTaskCommand drawCommand = u_constants.drawCommands.Load(input.drawCommandIndex);
 
 	const TerrainClipmapTileGPU tile = terrain.GetTile(drawCommand.visibleTileIdx);
+	uint tileLODChangeMask;
+	const uint tileLOD = terrain.GetTileLODAndLODChangeMask(drawCommand.visibleTileIdx, OUT tileLODChangeMask);
 
 	const float tileSizeMeters = u_renderSceneConstants.terrain.tileSizeMeters;
 	const float2 tileOffset = float2(tile.tileCoordX, tile.tileCoordY);
 
-	const float meshletSize = 1.f / TERRAIN_MESHLETS_PER_TILE;
+	const uint meshletsRes = TERRAIN_MESHLETS_PER_TILE << (TERRAIN_TILE_MAX_LOD - tileLOD);
+	const float meshletSize = 1.f / meshletsRes;
 	const float2 meshletOffset = tileOffset + float2(input.meshletID.x, input.meshletID.y) * meshletSize;
 
-	for (uint vertexIdx = input.localID; vertexIdx < verticesNum; vertexIdx += TERRAIN_VISIBILITY_MS_GROUP_SIZE)
+	for (uint it = input.localID; it < verticesNum; it += TERRAIN_VISIBILITY_MS_GROUP_SIZE)
 	{
+		uint vertexIdx = ApplyLODChangeMask(it, tileLODChangeMask, input.meshletID.xy, meshletsRes);
 		const float2 meshletVertex = terrain.meshletVertices.Load(vertexIdx).xy;
 		const float2 locationXY    = (meshletOffset + meshletVertex * meshletSize) * tileSizeMeters;
 		const float height         = terrain.GetHeight(locationXY);
 
-		outVertices[vertexIdx].clipSpace = mul(u_sceneView.viewProjectionMatrix, float4(locationXY, height, 1.f));
+		outVertices[it].clipSpace = mul(u_sceneView.viewProjectionMatrix, float4(locationXY, height, 1.f));
 	}
 
 	for (uint triangleIdx = input.localID; triangleIdx < trianglesNum; triangleIdx += TERRAIN_VISIBILITY_MS_GROUP_SIZE)

@@ -74,6 +74,13 @@ struct SRVTexture3D
 template<typename T>
 struct SRVTexture2D
 {
+	static SRVTexture2D Invalid()
+	{
+		SRVTexture2D invalid;
+		invalid.descriptorIdx = IDX_NONE_32;
+		return invalid;
+	}
+
 	uint descriptorIdx;
 	uint metaData;
 

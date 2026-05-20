@@ -48,11 +48,11 @@ struct SandboxCameraConfig
 	void Serialize(srl::Serializer& serializer)
 	{
 		serializer.Serialize("Location", location);
-		serializer.Serialize("Direction", direction);
+		serializer.Serialize("Rotation", rotation);
 	}
 
 	math::Vector3f location  = math::Vector3f(0.f, 0.f, 1.f);
-	math::Vector3f direction = math::Vector3f::UnitX();
+	math::Vector3f rotation  = math::Vector3f::Zero();
 };
 
 lib::String BuildCameraConfigFileName(Uint32 slot)
@@ -219,8 +219,8 @@ void SandboxRenderer::UpdatePreRender(engn::FrameContext& frame)
 		sunAngleDirty = false;
 
 		rsc::DirectionalLightData dirLightData = m_renderScene->lighting.GetDirectionalLight();
-																	  const math::Quaternionf pitchQuat = math::Utils::EulerToQuaternionRadians(0.f, sunAnglePitch, 0.f);
-																	  const math::Quaternionf yawQuat = math::Utils::EulerToQuaternionRadians(0.f, 0.f, sunAngleYaw);
+		const math::Quaternionf pitchQuat = math::Utils::EulerToQuaternionRadians(0.f, sunAnglePitch, 0.f);
+		const math::Quaternionf yawQuat = math::Utils::EulerToQuaternionRadians(0.f, 0.f, sunAngleYaw);
 		dirLightData.direction = yawQuat * pitchQuat * math::Vector3f::UnitX();
 		m_renderScene->lighting.SetDirectionalLight(dirLightData);
 	}
@@ -230,18 +230,18 @@ void SandboxRenderer::UpdatePreRender(engn::FrameContext& frame)
 		dirLightTypeDirty = false;
 
 		rsc::DirectionalLightData dirLightData = m_renderScene->lighting.GetDirectionalLight();
-																	  if (dirLightType == EDirLightType::Sun)
-																	  {
+		if (dirLightType == EDirLightType::Sun)
+		{
 			dirLightData.color             = math::Vector3f(1.f, 0.956f, 0.839f);
 			dirLightData.sunDiskEC         = 13.4f;
 			dirLightData.zenithIlluminance = 120000.f;
-																	  }
-																	  else
-																	  {
+		}
+		else
+		{
 			dirLightData.color             = math::Vector3f(0.3f, 0.3f, 0.35f);
 			dirLightData.sunDiskEC         = 0.4f;
 			dirLightData.zenithIlluminance = 0.1f;
-																	  }
+		}
 
 		m_renderScene->lighting.SetDirectionalLight(dirLightData);
 	}
@@ -389,9 +389,11 @@ const lib::SharedPtr<rsc::RenderScene>& SandboxRenderer::GetRenderScene()
 
 void SandboxRenderer::SaveCameraConfig(Uint32 slot) const
 {
+	const math::Quaternionf rotation = m_renderView->GetRotation();
+
 	SandboxCameraConfig cameraConfig;
 	cameraConfig.location = m_renderView->GetLocation();
-	cameraConfig.direction = m_renderView->GetForwardVector();
+	cameraConfig.rotation = rotation.toRotationMatrix().eulerAngles(0u, 1u, 2u);
 
 	const lib::String configFileName = BuildCameraConfigFileName(slot);
 	engn::ConfigUtils::SaveConfigData(cameraConfig, configFileName);
@@ -407,10 +409,8 @@ void SandboxRenderer::LoadCameraConfig(Uint32 slot)
 	{
 		m_renderView->SetLocation(cameraConfig.location);
 
-		if (cameraConfig.direction.squaredNorm() > 0.0001f)
-		{
-			m_renderView->SetRotation(cameraConfig.direction.normalized());
-		}
+		const math::Quaternionf rotationQuat = math::Utils::EulerToQuaternionRadians(cameraConfig.rotation.x(), cameraConfig.rotation.y(), cameraConfig.rotation.z());
+		m_renderView->SetRotation(rotationQuat);
 	}
 }
 

@@ -6,36 +6,29 @@
 #include "Terrain/SceneTerrain.hlsli"
 
 
-static const uint TERRAIN_MESHLET_QUADS_PER_EDGE    = 7u;
-static const uint TERRAIN_MESHLET_VERTICES_PER_EDGE = TERRAIN_MESHLET_QUADS_PER_EDGE + 1u;
-static const uint TERRAIN_MESHLET_VERTICES_NUM      = TERRAIN_MESHLET_VERTICES_PER_EDGE * TERRAIN_MESHLET_VERTICES_PER_EDGE;
-
-
 struct CS_INPUT
 {
-	uint3 groupID : SV_GroupID;
-	uint localID  : SV_GroupIndex;
+	uint3 globalID : SV_DispatchThreadID;
 };
 
 
-[numthreads(TERRAIN_MESHLET_VERTICES_NUM, 1, 1)]
-void BuildTerrainTilesVerticesCS(CS_INPUT input)
+[numthreads(64, 1, 1)]
+void BuildTileVertexBufferCS(CS_INPUT input)
 {
 	const TerrainInterface terrain = SceneTerrain();
 
-	const uint tileIdx = input.groupID.x;
-	if (tileIdx >= terrain.tilesNum || input.localID >= terrain.meshletVerticesNum)
+	const uint vertexIdx = input.globalID.x;
+	if (vertexIdx >= u_constants.verticesPerEdge * u_constants.verticesPerEdge)
 	{
 		return;
 	}
 
-	const TerrainClipmapTileGPU tile = terrain.GetTile(tileIdx);
+	const TerrainClipmapTileGPU tile = terrain.GetTile(u_constants.tileIdx);
 
-	const float2 meshletVertex = terrain.meshletVertices.Load(input.localID).xy;
-	const float2 tileOffset    = float2(tile.tileCoordX, tile.tileCoordY);
-	const float2 locationXY    = (tileOffset + meshletVertex) * terrain.tileSizeMeters;
-	const float  height        = terrain.GetHeight(locationXY);
+	const uint2 localVertexCoord = uint2(vertexIdx % u_constants.verticesPerEdge, vertexIdx / u_constants.verticesPerEdge);
+	const float2 tileOffset      = float2(tile.tileCoordX, tile.tileCoordY) * terrain.tileSizeMeters;
+	const float2 locationXY      = tileOffset + localVertexCoord * u_constants.verticesSpacing;
+	const float  height          = terrain.GetHeight(locationXY);
 
-	const uint vertexIdx = tileIdx * terrain.meshletVerticesNum + input.localID;
-	u_constants.rwRuntimeVertices.Store(vertexIdx, float3(locationXY, height));
+	u_constants.rwVertexBuffer.Store(vertexIdx, float3(locationXY, height));
 }

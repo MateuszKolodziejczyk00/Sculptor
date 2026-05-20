@@ -5,6 +5,16 @@
 
 
 #define TERRAIN_MESHLETS_PER_TILE 1u
+#define TERRAIN_TILE_MAX_LOD 5u
+
+
+#define TERRAIN_TILE_LOD_CHANGE_NORTH (1u << 0)
+#define TERRAIN_TILE_LOD_CHANGE_EAST  (1u << 1)
+#define TERRAIN_TILE_LOD_CHANGE_SOUTH (1u << 2)
+#define TERRAIN_TILE_LOD_CHANGE_WEST  (1u << 3)
+
+#define TERRAIN_LOD_MASK        0xFF
+#define TERRAIN_LOD_CHANGE_MASK 0xF
 
 
 struct TerrainInterface : TerrainSceneData
@@ -12,6 +22,18 @@ struct TerrainInterface : TerrainSceneData
 	TerrainClipmapTileGPU GetTile(uint tileIdx)
 	{
 		return tiles.Load(tileIdx);
+	}
+
+	uint GetTileLOD(uint tileIdx)
+	{
+		return tilesLODs.Load(tileIdx) & TERRAIN_LOD_MASK;
+	}
+
+	uint GetTileLODAndLODChangeMask(uint tileIdx, out uint changeMask)
+	{
+		const uint tileLODAndChange = tilesLODs.Load(tileIdx);
+		changeMask = ((tileLODAndChange >> 8u) & TERRAIN_LOD_CHANGE_MASK);
+		return tileLODAndChange & TERRAIN_LOD_MASK;
 	}
 
 	float2 GetHeightMapUV(float2 locationXY)

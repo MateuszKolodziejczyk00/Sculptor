@@ -24,15 +24,18 @@ void BuildTerrainTileDrawCommandsCS(CS_INPUT input)
 	}
 
 	const TerrainClipmapTileGPU tile = terrain.GetTile(tileIdx);
-	const bool isTileVisible = true;
+	bool isTileVisible = true;
 
 	if (isTileVisible)
 	{
 		const uint outputIdx = u_constants.rwDrawCommandsCount.AtomicAdd(0u, 1u);
 
+		const uint tileLOD = terrain.GetTileLOD(tileIdx);
+		const uint meshletsRes = tileLOD != IDX_NONE_8 ? (TERRAIN_MESHLETS_PER_TILE << (TERRAIN_TILE_MAX_LOD - tileLOD)) : 0u;
+
 		TerrainDrawMeshTaskCommand drawCommand;
-		drawCommand.dispatchGroupsX = TERRAIN_MESHLETS_PER_TILE;
-		drawCommand.dispatchGroupsY = TERRAIN_MESHLETS_PER_TILE;
+		drawCommand.dispatchGroupsX = meshletsRes;
+		drawCommand.dispatchGroupsY = meshletsRes;
 		drawCommand.dispatchGroupsZ = 1u;
 		drawCommand.visibleTileIdx  = tileIdx;
 

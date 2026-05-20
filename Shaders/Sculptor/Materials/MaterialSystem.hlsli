@@ -5,6 +5,34 @@
 #include "SceneRendering/GPUMaterials.hlsli"
 
 
+struct DefaultMaterialSampler
+{
+	static DefaultMaterialSampler Initialize(MaterialEvaluationParameters evalParams)
+	{
+		DefaultMaterialSampler sampler;
+		return sampler;
+	}
+
+	template<typename T>
+	T Sample(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv)
+	{
+		return texture.Sample(sampler, uv);
+	}
+
+	template<typename T>
+	T SampleLevel(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv, in float level)
+	{
+		return texture.SampleLevel(BindlessSamplers::MaterialLinear(), uv, level);
+	}
+
+	template<typename T>
+	T SampleGrad(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv, in float2 ddx, in float2 ddy)
+	{
+		return texture.SampleGrad(BindlessSamplers::MaterialLinear(), uv, ddx, ddy);
+	}
+};
+
+
 /* 
  * Custom opacity function signature:
  * CustomOpacityOutput EvaluateCustomOpacity(MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData);
@@ -26,18 +54,18 @@
 
 #if defined(SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL)
 
-#define SPT_MATERIAL_SAMPLE(sampler, uv) SampleLevel(sampler, uv, SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL)
-#define SPT_MATERIAL_SAMPLE_LEVEL(sampler, uv, level) SampleLevel(sampler, uv, level)
+#define SPT_MATERIAL_SAMPLE(texture, sampler, uv) SampleLevel(texture, sampler, uv, SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL)
+#define SPT_MATERIAL_SAMPLE_LEVEL(texture, sampler, uv, level) SampleLevel(texture, sampler, uv, level)
 
 #elif defined(SPT_MATERIAL_SAMPLE_CUSTOM_DERIVATIVES)
 
-#define SPT_MATERIAL_SAMPLE(sampler, coord) SampleGrad(sampler, coord.uv, coord.duv_dx, coord.duv_dy)
-#define SPT_MATERIAL_SAMPLE_LEVEL(sampler, coord, level) SampleLevel(sampler, coord.uv, level)
+#define SPT_MATERIAL_SAMPLE(texture, sampler, coord) SampleGrad(texture, sampler, coord.uv, coord.duv_dx, coord.duv_dy)
+#define SPT_MATERIAL_SAMPLE_LEVEL(texture, sampler, coord, level) SampleLevel(texture, sampler, coord.uv, level)
 
 #else
 
-#define SPT_MATERIAL_SAMPLE(sampler, uv) Sample(sampler, uv)
-#define SPT_MATERIAL_SAMPLE_LEVEL(sampler, uv, level) SampleLevel(sampler, uv, level)
+#define SPT_MATERIAL_SAMPLE(texture, sampler, uv) Sample(texture, sampler, uv)
+#define SPT_MATERIAL_SAMPLE_LEVEL(texture, sampler, uv, level) SampleLevel(texture, sampler, uv, level)
 
 #endif
 
@@ -66,6 +94,21 @@ TMaterialData LoadMaterialData(in MaterialUnifiedData materialsData, in Material
 	const uint materialDataOffset = uint(materialDataHandle.id) * SPT_MATERIAL_DATA_ALIGNMENT;
 	return materialsData.materialsData.Load<TMaterialData>(materialDataOffset);
 }
+
+
+#ifdef SPT_MATERIAL_DATA_TYPE
+CustomOpacityOutput EvaluateCustomOpacity(MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
+{
+	DefaultMaterialSampler sampler = DefaultMaterialSampler::Initialize(evalParams);
+	return EvaluateCustomOpacity(sampler, evalParams, materialData);
+}
+
+MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
+{
+	DefaultMaterialSampler sampler = DefaultMaterialSampler::Initialize(evalParams);
+	return EvaluateMaterial(sampler, evalParams, materialData);
+}
+#endif // SPT_MATERIAL_DATA_TYPE
 
 
 #ifdef DS_RenderSceneDS

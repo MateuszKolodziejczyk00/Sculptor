@@ -6,6 +6,7 @@
 #define SPT_SINGLE_ARG(...) __VA_ARGS__
 
 #define IDX_NONE_32 0xffffffff
+#define IDX_NONE_8  0xff
 
 #define FLOAT_MAX 3.402823466e+38
 

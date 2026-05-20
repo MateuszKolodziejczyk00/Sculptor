@@ -117,6 +117,18 @@ public:
 		return *elementPtr;
 	}
 
+	Uint32 GetSize() const
+	{
+		ChunkHeader* chunk = m_firstChunk;
+		Uint32 totalSize = 0u;
+		while (chunk)
+		{
+			totalSize += chunk->size;
+			chunk = chunk->next;
+		}
+		return totalSize;
+	}
+
 	void Reset()
 	{
 		if constexpr (!std::is_trivially_destructible_v<TType>)

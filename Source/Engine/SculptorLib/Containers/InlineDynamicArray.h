@@ -91,6 +91,8 @@ public:
 	static constexpr SizeType capacity() { return maxSize; }
 	static constexpr SizeType max_size() { return maxSize; }
 
+	Bool IsMaxCapacity() const { return m_size == maxSize; }
+
 	void PushBack(const ValueType& value)
 	{
 		EmplaceBack(value);

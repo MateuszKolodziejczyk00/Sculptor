@@ -78,7 +78,10 @@ Byte* MemoryArenaBase::AllocateImpl(priv::ThreadSafeExtension& extension, Uint64
 
 Byte* MemoryArenaBase::AllocateImpl(priv::NonThreadSafeExtension& extension, Uint64 size, Uint64 alignment)
 {
-	SPT_CHECK(size > 0);
+	if (size == 0u)
+	{
+		return nullptr;
+	}
 
 	const Uint64 alignMask = alignment - 1;
 	SPT_CHECK((alignment & alignMask) == 0);

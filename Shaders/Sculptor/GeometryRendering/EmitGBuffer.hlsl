@@ -240,8 +240,7 @@ MaterialEvaluationParameters CreateMaterialEvalParams(in InterpolatedVertexData 
 }
 
 
-#if defined(MATERIAL_DEPTH_DATA_ACCESSOR)
-float ApplyParallax(inout MaterialEvaluationParameters evalParams, in MaterialDepthData materialDepthData, in float3 toView, in float2 uvScale)
+float ApplyParallax(inout float2 uv, in MaterialDepthData materialDepthData, in SamplerState sampler, in float3 toView, in float2 uvScale)
 {
 	const float texLevel = 0.f;
 	const float heightScale = materialDepthData.maxDepthCm;
@@ -253,8 +252,8 @@ float ApplyParallax(inout MaterialEvaluationParameters evalParams, in MaterialDe
 	float2 P = (toView.xy / max(toView.z, 0.05f)) * heightScale * uvScale;
 	float2 deltaUV = P / layersNum;
 
-	float2 currentUV = evalParams.uv.uv;
-	float currentDepth = materialDepthData.depthTexture.SampleLevel(BindlessSamplers::MaterialAniso(), currentUV, texLevel);
+	float2 currentUV = uv;
+	float currentDepth = materialDepthData.depthTexture.SampleLevel(sampler, currentUV, texLevel);
 	
 	float prevHeight = 0.f;
 
@@ -262,7 +261,7 @@ float ApplyParallax(inout MaterialEvaluationParameters evalParams, in MaterialDe
 	{
 		prevHeight = currentDepth;
 		currentUV -= deltaUV;
-		currentDepth = materialDepthData.depthTexture.SampleLevel(BindlessSamplers::MaterialAniso(), currentUV, texLevel);
+		currentDepth = materialDepthData.depthTexture.SampleLevel(sampler, currentUV, texLevel);
 		currentLayerDepth += layerDepth;
 	}
 
@@ -271,13 +270,21 @@ float ApplyParallax(inout MaterialEvaluationParameters evalParams, in MaterialDe
 	float prevDepth = prevHeight - (currentLayerDepth - layerDepth);
 
 	float weight = nextDepth / (nextDepth - prevDepth);
-	evalParams.uv.uv = lerp(currentUV, prevUV, weight);
+	uv = lerp(currentUV, prevUV, weight);
 
 	const float finalDepth = lerp(currentLayerDepth, currentLayerDepth - layerDepth, weight) * heightScale;
 	const float dist = finalDepth / abs(toView.z);
 	return dist;
 }
-#endif // defined(MATERIAL_DEPTH_DATA_ACCESSOR)
+
+
+[[shader_struct(MaterialDepthData)]]
+
+
+float ApplyParallax(inout MaterialEvaluationParameters evalParams, in MaterialDepthData materialDepthData, in SamplerState sampler, in float3 toView, in float2 uvScale)
+{
+	return ApplyParallax(INOUT evalParams.uv.uv, materialDepthData, sampler, toView, uvScale);
+}
 
 
 struct FS_Output
@@ -317,19 +324,21 @@ FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 
 		const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(visibleMeshlet.materialDataHandle);
 
-#if ENABLE_POM && defined(MATERIAL_DEPTH_DATA_ACCESSOR)
-		MaterialDepthData materialDepthData = materialData.MATERIAL_DEPTH_DATA_ACCESSOR;
+#if ENABLE_POM
 		float pomDepth = 0.f;
+#if defined(MATERIAL_DEPTH_DATA_ACCESSOR)
+		MaterialDepthData materialDepthData = materialData.MATERIAL_DEPTH_DATA_ACCESSOR;
 		if (materialDepthData.depthTexture.IsValid())
 		{
 			const float3x3 tbn = float3x3(vertexData.tangent, -vertexData.bitangent, vertexData.normal);
 			const float3 toViewWS = normalize(u_sceneView.viewLocation - vertexData.worldLocation);
 			const float3 toViewTS = normalize(mul(tbn, toViewWS));
-			pomDepth = ApplyParallax(materialEvalParams, materialDepthData, toViewTS, vertexData.uvScale);
+			pomDepth = ApplyParallax(materialEvalParams, materialDepthData, BindlessSamplers::MaterialAniso(), toViewTS, vertexData.uvScale);
 			pomDepth *=  100.f / POM_MAX_DEPTH_OFFSET_CM;
 			pomDepth *= abs(dot(u_sceneView.viewForward, toViewWS));
 		}
-#endif // ENABLE_POM && defined(MATERIAL_DEPTH_DATA_ACCESSOR)
+#endif //  defined(MATERIAL_DEPTH_DATA_ACCESSOR)
+#endif // ENABLE_POM
 
 		const MaterialEvaluationOutput evaluatedMaterial = EvaluateMaterial(materialEvalParams, materialData);
 
@@ -355,7 +364,7 @@ FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 		output.gBuffer4  = gBufferOutput.gBuffer4;
 		output.occlusion = evaluatedMaterial.occlusion;
 #if ENABLE_POM
-		output.pomDepth  = 0.f;
+		output.pomDepth  = pomDepth;
 #endif // ENABLE_POM
 	}
 
@@ -386,11 +395,31 @@ FS_Output EmitTerrainGBuffer_FS(in OutputVertex vertexInput)
 	materialEvalParams.worldLocation = locationWS;
 	materialEvalParams.clipSpace     = float4(ndc, 1.f);
 
-
 	MaterialDataHandle materialDataHandle;
 	const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(materialDataHandle); // TODO
 
-	const MaterialEvaluationOutput evaluatedMaterial = EvaluateMaterial(materialEvalParams, materialData);
+#if ENABLE_POM
+	float pomDepth = 0.f;
+#if defined(TERRAIN_MATERIAL)
+	TerrainPOMData terrainPOM = GetTerrainPOMDepthData(materialEvalParams);
+	if (terrainPOM.matDepth.depthTexture.IsValid())
+	{
+		const float3x3 tbn = float3x3(terrainTangent, -terrainBitangent, terrainNormal);
+		const float3 toViewWS = normalize(u_sceneView.viewLocation - locationWS);
+		const float3 toViewTS = normalize(mul(tbn, toViewWS));
+
+		pomDepth = ApplyParallax(terrainPOM.uv, terrainPOM.matDepth, BindlessSamplers::LinearRepeat(), toViewTS, terrainPOM.uvScale);
+		pomDepth *= terrainPOM.pomStrenght;
+
+		materialEvalParams.worldLocation -= toViewWS * pomDepth;
+
+		pomDepth *=  100.f / POM_MAX_DEPTH_OFFSET_CM;
+		pomDepth *= abs(dot(u_sceneView.viewForward, toViewWS));
+	}
+#endif // defined(TERRAIN_MATERIAL)
+#endif // ENABLE_POM
+
+	MaterialEvaluationOutput evaluatedMaterial = EvaluateMaterial(materialEvalParams, materialData);
 
 	GBufferData gBufferData;
 	gBufferData.baseColor = evaluatedMaterial.baseColor;
@@ -411,7 +440,7 @@ FS_Output EmitTerrainGBuffer_FS(in OutputVertex vertexInput)
 	output.gBuffer4  = gBufferOutput.gBuffer4;
 	output.occlusion = evaluatedMaterial.occlusion;
 #if ENABLE_POM
-	output.pomDepth  = 0.f;
+	output.pomDepth  = pomDepth;
 #endif // ENABLE_POM
 
 	return output;

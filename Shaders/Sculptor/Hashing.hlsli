@@ -1,3 +1,5 @@
+#ifndef HASHING_HLSLI
+#define HASHING_HLSLI
 
 /** Source: https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/ */
 uint HashPCG(uint input)
@@ -6,3 +8,5 @@ uint HashPCG(uint input)
     uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
     return (word >> 22u) ^ word;
 }
+
+#endif // HASHING_HLSLI

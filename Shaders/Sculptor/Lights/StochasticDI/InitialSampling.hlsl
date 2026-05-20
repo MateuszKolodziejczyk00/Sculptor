@@ -69,7 +69,8 @@ EmissiveSample GenerateSample(RngState rngState, EmissivesSampler sampler)
 	sample.luminance = materialData.emissiveFactor;
 	if (materialData.emissiveTexture.IsValid())
 	{
-		const float3 textureEmissive = materialData.emissiveTexture.SPT_MATERIAL_SAMPLE(SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, uv).rgb;
+		DefaultMaterialSampler sampler;
+		const float3 textureEmissive = sampler.SPT_MATERIAL_SAMPLE(materialData.emissiveTexture, SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, uv).rgb;
 		sample.luminance *= textureEmissive;
 	}
 

@@ -8,14 +8,15 @@
 #define MATERIAL_DEPTH_DATA_ACCESSOR depthData
 
 
-CustomOpacityOutput EvaluateCustomOpacity(MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
+template<typename TSampler>
+CustomOpacityOutput EvaluateCustomOpacity(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
 {
     CustomOpacityOutput output;
 
     if(materialData.alphaTexture.IsValid())
     {
         float opacity = 1.f;
-        opacity = materialData.alphaTexture.SPT_MATERIAL_SAMPLE(BindlessSamplers::MaterialLinear(), evalParams.uv);
+        opacity = sampler.SPT_MATERIAL_SAMPLE(materialData.alphaTexture, BindlessSamplers::MaterialLinear(), evalParams.uv);
         output.shouldDiscard = opacity < 0.8f;
     }
     else
@@ -27,13 +28,14 @@ CustomOpacityOutput EvaluateCustomOpacity(MaterialEvaluationParameters evalParam
 }
 
 
-MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
+template<typename TSampler>
+MaterialEvaluationOutput EvaluateMaterial(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
 {
     float3 baseColor = 1.f;
     
 	if (materialData.baseColorTexture.IsValid())
     {
-        baseColor = materialData.baseColorTexture.SPT_MATERIAL_SAMPLE(SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv).rgb;
+        baseColor = sampler.SPT_MATERIAL_SAMPLE(materialData.baseColorTexture, SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv).rgb;
     }
 
     baseColor *= materialData.baseColorFactor;
@@ -43,7 +45,7 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
 
     if(materialData.metallicRoughnessTexture.IsValid())
     {
-		const float2 metallicRoughness = materialData.metallicRoughnessTexture.SPT_MATERIAL_SAMPLE(SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
+		const float2 metallicRoughness = sampler.SPT_MATERIAL_SAMPLE(materialData.metallicRoughnessTexture, SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
 		metallic *= metallicRoughness.x;
 		roughness *= metallicRoughness.y;
     }
@@ -52,7 +54,7 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
     const float3 geometryNormal = normalize(evalParams.normal);
     if(evalParams.hasTangent && materialData.normalsTexture.IsValid())
     {
-		const float2 textureNormal = materialData.normalsTexture.SPT_MATERIAL_SAMPLE(SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
+		const float2 textureNormal = sampler.SPT_MATERIAL_SAMPLE(materialData.normalsTexture, SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
 
 		const float3 tangentNormal = UnpackTangentNormalFromXY(textureNormal);
         const float3x3 TBN = transpose(float3x3(normalize(evalParams.tangent), normalize(evalParams.bitangent), geometryNormal));
@@ -66,13 +68,13 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
     float3 emissiveColor = materialData.emissiveData.emissiveFactor;
 	if (materialData.emissiveData.emissiveTexture.IsValid())
     {
-        emissiveColor *= materialData.emissiveData.emissiveTexture.SPT_MATERIAL_SAMPLE(SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
+        emissiveColor *= sampler.SPT_MATERIAL_SAMPLE(materialData.emissiveData.emissiveTexture, SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
     }
 
 	float occlusion = 1.f;
 	if (materialData.occlusionTexture.IsValid())
 	{
-		occlusion = materialData.occlusionTexture.SPT_MATERIAL_SAMPLE(SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
+		occlusion = sampler.SPT_MATERIAL_SAMPLE(materialData.occlusionTexture, SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
 	}
 
     MaterialEvaluationOutput output;

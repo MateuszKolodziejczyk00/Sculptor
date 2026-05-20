@@ -16,14 +16,13 @@ class TextureView;
 namespace spt::rsc
 {
 
-
 class TerrainRTGeometryProvider : public RayTracingGeometryProvider
 {
 public:
 
 	virtual lib::Span<const RayTracingGeometryDefinition> GetRayTracingGeometries() const;
 
-	lib::ManagedSpan<RayTracingGeometryDefinition> terrainTiles;
+	struct TerrainRenderInstance* instance = nullptr;
 };
 
 
@@ -73,8 +72,6 @@ public:
 
 private:
 
-	void OnPreRendering(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterface& rendererInterface, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context);
-
 	lib::SharedPtr<rdr::Buffer> m_tilesBuffer;
 	lib::SharedPtr<rdr::Buffer> m_meshletVerticesBuffer;
 	lib::SharedPtr<rdr::Buffer> m_meshletIndicesBuffer;
@@ -88,6 +85,8 @@ private:
 	RTInstanceHandle          m_rtInstanceHandle;
 	TerrainRTGeometryProvider m_rtGeometryProvider;
 	Bool                      m_rtDataDirty = true;
+
+	lib::StaticArray<lib::SharedPtr<rdr::Buffer>, 2u> m_tileLODsBuffers;
 };
 
 } // spt::rsc

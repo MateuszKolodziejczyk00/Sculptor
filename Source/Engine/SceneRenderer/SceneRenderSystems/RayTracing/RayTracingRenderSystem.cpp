@@ -94,7 +94,7 @@ void RayTracingRenderSystem::OnBuildTLAS(rg::RenderGraphBuilder& graphBuilder, S
 			const ecs::EntityHandle material                 = materialsSlots->slots[currentSlotIdxInChunk++];
 			const mat::MaterialProxyComponent& materialProxy = material.get<const mat::MaterialProxyComponent>();
 
-			if(materialProxy.SupportsRayTracing())
+			if(materialProxy.SupportsRayTracing() && !!rtGeometry.blas)
 			{
 				const Uint32 instanceIdx = currentInstanceIdx++;
 				SPT_CHECK(instanceIdx < RTScene::maxInstancesNum);

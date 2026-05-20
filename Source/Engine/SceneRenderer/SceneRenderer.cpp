@@ -297,8 +297,9 @@ rg::RGTextureViewHandle ExecuteSceneRendering(SceneRendererHandle renderer, rg::
 	SceneRendererRuntime rendererRuntime(*rendererData, settings);
 
 	SceneUpdateContext updateContext{
-			.mainRenderView   = view,
-			.rendererSettings = settings
+			.rendererInterface = rendererRuntime,
+			.mainRenderView    = view,
+			.rendererSettings  = settings
 		};
 
 	const lib::MTHandle<RenderSceneDS> renderSceneDS = renderer_utils::UpdateRenderSystemsPerFrame(*rendererData, graphBuilder, scene, updateContext);

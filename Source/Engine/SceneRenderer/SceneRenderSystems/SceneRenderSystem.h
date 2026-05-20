@@ -17,10 +17,12 @@ namespace spt::rsc
 class RenderScene;
 class RenderView;
 struct RenderSceneConstants;
+struct SceneRendererInterface;
 
 
 struct SceneUpdateContext
 {
+	SceneRendererInterface&      rendererInterface;
 	const RenderView&            mainRenderView;
 	const SceneRendererSettings& rendererSettings;
 };
