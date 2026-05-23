@@ -374,7 +374,7 @@ void InitializeMaterialCache(MaterialCacheState& state)
 		textureDefinition.format = rhi::EFragmentFormat::RG8_UN_Float;
 		lodCache.roughnessOcclusion = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Terrain Roughness/Occlusion Cache"), textureDefinition, rhi::EMemoryUsage::GPUOnly);
 
-		lodCache.sizeMeters = 7.5f * std::pow(2.f, static_cast<Real32>(i));
+		lodCache.sizeMeters = 7.5f * std::pow(2.5f, static_cast<Real32>(i));
 	}
 
 	{
@@ -1214,6 +1214,7 @@ void TerrainRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
 	terrainData.meshletVerticesNum  = terrain_consts::meshletVerticesNum;
 	terrainData.meshletIndicesNum   = terrain_consts::meshletIndicesNum;
 	terrainData.meshletTranglesNum  = terrain_consts::meshletIndicesNum / 3u;
+	terrainData.materialsMap        = terrainDef.materialsMap;
 	terrainData.materialCache       = matCache;
 
 	sceneData.terrain = terrainData;

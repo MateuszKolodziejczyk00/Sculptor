@@ -135,6 +135,57 @@ public:
 		}
 	}
 
+	template<typename TDataType, SizeType N>
+	void Serialize(const char* name, lib::InlineDynamicArray<TDataType, N>& dataArray)
+	{
+		if (IsSaving())
+		{
+			JSON jsonArray = JSON::array();
+
+			for (TDataType& item : dataArray)
+			{
+				jsonArray.push_back(ToJSON(item));
+			}
+
+			m_json[name] = jsonArray;
+		}
+		else
+		{
+			const JSON jsonArray = m_json[name];
+			dataArray.Clear();
+
+			for (const auto& itemJson : jsonArray)
+			{
+				dataArray.EmplaceBack(FromJSON<TDataType>(itemJson));
+			}
+		}
+	}
+
+	template<typename TDataType, SizeType N>
+	void Serialize(const char* name, lib::StaticArray<TDataType, N>& dataArray)
+	{
+		if (IsSaving())
+		{
+			JSON jsonArray = JSON::array();
+
+			for (TDataType& item : dataArray)
+			{
+				jsonArray.push_back(ToJSON(item));
+			}
+
+			m_json[name] = jsonArray;
+		}
+		else
+		{
+			const JSON jsonArray = m_json[name];
+
+			for (SizeType i = 0; i < N && i < jsonArray.size(); ++i)
+			{
+				dataArray[i] = FromJSON<TDataType>(jsonArray[i]);
+			}
+		}
+	}
+
 	template<typename TDataType>
 	void Serialize(const char* name, lib::DynamicArray<TDataType>& dataArray)
 	{

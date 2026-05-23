@@ -10,7 +10,9 @@
 #include "AssetsSystem.h"
 #include "Pipelines/PSOsLibraryTypes.h"
 #include "Transfers/GPUDeferredCommandsQueue.h"
+#include "Utils/TransfersManager.h"
 #include "Utils/TransfersUtils.h"
+#include "ResourcesManager.h"
 #include "Types/Texture.h"
 
 
@@ -27,6 +29,7 @@ BEGIN_SHADER_STRUCT(BakeFarLODConstants)
 	SHADER_STRUCT_FIELD(math::Vector2f,                       minBounds)
 	SHADER_STRUCT_FIELD(math::Vector2f,                       maxBounds)
 	SHADER_STRUCT_FIELD(rsc::TerrainMaterialData,             terrainMaterial)
+	SHADER_STRUCT_FIELD(rsc::TerrainMaterialsMap,             materialsMap)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector3f>, rwFarLODBaseColor)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector3f>, rwFarLODProps)
 	SHADER_STRUCT_FIELD(mat::MaterialUnifiedData,             materialsData)
@@ -87,6 +90,9 @@ std::optional<TerrainCompilationResult> CompileTerrain(const AssetInstance& asse
 {
 	SPT_PROFILER_FUNCTION();
 
+	const math::Vector2f minBounds = math::Vector2f(-1024.f, -1024.f);
+	const math::Vector2f maxBounds = math::Vector2f(1024.f, 1024.f);
+
 	AssetsSystem& assetSystem = asset.GetOwningSystem();
 
 	TerrainCompilationResult result;
@@ -136,6 +142,40 @@ std::optional<TerrainCompilationResult> CompileTerrain(const AssetInstance& asse
 		}
 	}
 
+	Bool loadedMaterialIDsFromTexture = false;
+	if (!definition.materialIDsTex.empty())
+	{
+		const ResourcePath materialIDsPath = asset.ResolveAssetRelativePath(definition.terrainMaterial);
+
+		const gfx::LoadedTextureData materialIDsTex = gfx::TextureLoader::LoadTextureData(materialIDsPath.GetName(), tempArena);
+		SPT_CHECK(materialIDsTex.format == rhi::EFragmentFormat::R8_U_Int);
+
+		header.materialIDs.resolution = materialIDsTex.resolution.head<2>();
+		header.materialIDs.format     = rhi::EFragmentFormat::R8_U_Int;
+		header.materialIDs.dataOffset = static_cast<Uint32>(result.blob.size());
+		header.materialIDs.dataSize   = static_cast<Uint32>(materialIDsTex.data.size());
+
+		result.blob.insert(result.blob.end(), materialIDsTex.data.begin(), materialIDsTex.data.end());
+
+		loadedMaterialIDsFromTexture = true;
+	}
+
+	if (!loadedMaterialIDsFromTexture)
+	{
+		const math::Vector2u materialIDsResolution = math::Vector2u(2048u, 2048u);
+
+		header.materialIDs.resolution = materialIDsResolution;
+		header.materialIDs.format     = rhi::EFragmentFormat::R8_U_Int;
+		header.materialIDs.dataOffset = static_cast<Uint32>(result.blob.size());
+		header.materialIDs.dataSize   = materialIDsResolution.x() * materialIDsResolution.y() * sizeof(Byte);
+
+		result.blob.reserve(result.blob.size() + materialIDsResolution.x() * materialIDsResolution.y());
+		for (Uint32 i = 0u; i < materialIDsResolution.x() * materialIDsResolution.y(); ++i)
+		{
+			result.blob.emplace_back(Byte(0u));
+		}
+	}
+
 	if (!definition.terrainMaterial.empty())
 	{
 		const ResourcePath terrainMaterialPath = asset.ResolveAssetRelativePath(definition.terrainMaterial);
@@ -154,8 +194,13 @@ std::optional<TerrainCompilationResult> CompileTerrain(const AssetInstance& asse
 
 		if (header.terrainMaterialAssetID != InvalidResourcePathID)
 		{
-			const math::Vector2f minBounds = math::Vector2f(-1024.f, -1024.f);
-			const math::Vector2f maxBounds = math::Vector2f(1024.f, 1024.f);
+			rhi::TextureDefinition materialsMapDef;
+			materialsMapDef.resolution = header.materialIDs.resolution;
+			materialsMapDef.format     = header.materialIDs.format;
+			materialsMapDef.usage      = lib::Flags(rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::SampledTexture);
+			lib::SharedPtr<rdr::TextureView> materialsMapTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Terrain Materials Map"), materialsMapDef, rhi::EMemoryUsage::GPUOnly);
+
+			rdr::GPUApi::GetTransfersManager().EnqueueUploadToTexture(result.blob.data() + header.materialIDs.dataOffset, header.materialIDs.dataSize, materialsMapTexture->GetTexture(), rhi::ETextureAspect::Color, materialsMapTexture->GetResolution());
 
 			TerrainMaterialAssetHandle terrainMaterial = assetSystem.LoadAndInitAssetChecked<TerrainMaterialAsset>(terrainMaterialPath);
 
@@ -174,14 +219,21 @@ std::optional<TerrainCompilationResult> CompileTerrain(const AssetInstance& asse
 			const rg::RGTextureViewHandle farLODBaseColor = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Far LOD Base Color"), rg::TextureDef(farLODResolution, rhi::EFragmentFormat::RGBA8_UN_Float));
 			const rg::RGTextureViewHandle farLODProps     = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Far LOD Props"), rg::TextureDef(farLODResolution, rhi::EFragmentFormat::RGBA8_UN_Float));
 
+			rsc::TerrainMaterialsMap materialsMap;
+			materialsMap.minBounds     = minBounds;
+			materialsMap.rcpBoundsSize = (maxBounds - minBounds).cwiseInverse();
+			materialsMap.resolution    = materialsMapTexture->GetResolution2D().cast<Real32>();
+			materialsMap.materialIDs   = materialsMapTexture;
+
 			bake_far_lod::BakeFarLODConstants bakeConstants{};
-			bakeConstants.resolution        = farLODResolution;
-			bakeConstants.minBounds         = minBounds;
-			bakeConstants.maxBounds         = maxBounds;
-			bakeConstants.terrainMaterial   = terrainMaterial->GetTerrainMaterialData();
-			bakeConstants.rwFarLODBaseColor = farLODBaseColor;
-			bakeConstants.rwFarLODProps     = farLODProps;
-			bakeConstants.materialsData     = mat::MaterialsUnifiedData::Get().GetMaterialUnifiedData();
+			bakeConstants.resolution               = farLODResolution;
+			bakeConstants.minBounds                = minBounds;
+			bakeConstants.maxBounds                = maxBounds;
+			bakeConstants.terrainMaterial          = terrainMaterial->GetTerrainMaterialData();
+			bakeConstants.materialsMap             = materialsMap;
+			bakeConstants.rwFarLODBaseColor        = farLODBaseColor;
+			bakeConstants.rwFarLODProps            = farLODProps;
+			bakeConstants.materialsData            = mat::MaterialsUnifiedData::Get().GetMaterialUnifiedData();
 
 			bake_far_lod::Execute(graphBuilder, bakeConstants);
 
@@ -220,11 +272,11 @@ std::optional<TerrainCompilationResult> CompileTerrain(const AssetInstance& asse
 
 				result.blob.insert(result.blob.end(), farLODOC4.begin(), farLODOC4.end());
 			}
-
-			header.farLODMinBounds = minBounds;
-			header.farLODMaxBounds = maxBounds;
 		}
 	}
+
+	header.terrainMinBounds = minBounds;
+	header.terrainMaxBounds = maxBounds;
 
 	std::memcpy(result.blob.data(), &header, sizeof(header));
 

@@ -21,11 +21,13 @@ struct TerrainAssetDefinition
 {
 	lib::Path heightMapTex;
 	lib::Path terrainMaterial;
+	lib::Path materialIDsTex;
 
 	void Serialize(srl::Serializer& serializer)
 	{
 		serializer.Serialize("HeightMapTex",    heightMapTex);
 		serializer.Serialize("TerrainMaterial", terrainMaterial);
+		serializer.Serialize("MaterialIDsTex",  materialIDsTex);
 	}
 };
 SPT_REGISTER_ASSET_DATA_TYPE(TerrainAssetDefinition);
@@ -59,6 +61,7 @@ public:
 	const TerrainMaterialAssetHandle& GetTerrainMaterialAsset() const { return m_terrainMaterialAsset; }
 
 	rsc::TerrainDefinition GetTerrainDefinition() const;
+	rsc::TerrainMaterialsMap GetTerrainMaterialsMap() const;
 
 protected:
 
@@ -72,8 +75,9 @@ private:
 	lib::SharedPtr<rdr::TextureView> m_heightMap;
 	lib::SharedPtr<rdr::TextureView> m_farLODBaseColor;
 	lib::SharedPtr<rdr::TextureView> m_farLODProps;
-	math::Vector2f m_farLODMinBounds;
-	math::Vector2f m_farLODMaxBounds;
+	lib::SharedPtr<rdr::TextureView> m_materialIDs;
+	math::Vector2f m_terrainMinBounds;
+	math::Vector2f m_terrainMaxBounds;
 	TerrainMaterialAssetHandle       m_terrainMaterialAsset;
 };
 SPT_REGISTER_ASSET_TYPE(TerrainAsset);

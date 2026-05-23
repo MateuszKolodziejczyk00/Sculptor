@@ -36,7 +36,7 @@ MaterialEvaluationOutput EvaluateMaterial(TSampler sampler, MaterialEvaluationPa
 	bool foundCachedMaterial = false;
 
 #if !SPT_RAY_TRACING_SHADER 
-	for (int i = 0; i < 6; ++i)
+	for (int i = 0; i < 8; ++i)
 	{
 		TerrrainMaterialCacheLOD matCacheLOD = terrainInterface.materialCache.lods[i];
 		const float2 lodUV = (evalParams.worldLocation.xy - matCacheLOD.minBounds) * matCacheLOD.rcpRange;
@@ -97,7 +97,7 @@ TerrainPOMData GetTerrainPOMDepthData(MaterialEvaluationParameters evalParams)
 
 	for (int i = 0; i < 2; ++i)
 	{
-		TerrrainMaterialCacheLOD matCacheLOD = terrainInterface.materialCache.lods[0];
+		TerrrainMaterialCacheLOD matCacheLOD = terrainInterface.materialCache.lods[i];
 		const float2 lodUV = (evalParams.worldLocation.xy - matCacheLOD.minBounds) * matCacheLOD.rcpRange;
 		if (all(saturate(lodUV) == lodUV))
 		{
@@ -111,8 +111,8 @@ TerrainPOMData GetTerrainPOMDepthData(MaterialEvaluationParameters evalParams)
 			float pomStrenght = 1.f;
 			if (i == 1)
 			{
-				const float xStrength = max(uv.x, 1.f - uv.x) * 10.f - 0.1f;
-				const float yStrength = max(uv.y, 1.f - uv.y) * 10.f - 0.1f;
+				const float xStrength = max(lodUV.x, 1.f - lodUV.x) * 10.f - 0.1f;
+				const float yStrength = max(lodUV.y, 1.f - lodUV.y) * 10.f - 0.1f;
 				pomStrenght = saturate(min(xStrength, yStrength));
 			}
 

@@ -115,13 +115,10 @@ TEST_F(MaterialAssetsTests, CreateTerrainMaterial)
 
 	EXPECT_TRUE(materialCreateResult);
 
-	TerrainMaterialInitializer terrainMaterialInitializer
-	{
-		TerrainMaterialDefinition
-		{
-			.materialAsset = ResourcePath("Material.sptasset")
-		}
-	};
+	TerrainMaterialDefinition terrainMaterialDefinition;
+	terrainMaterialDefinition.materialEntries.EmplaceBack(TerrainMaterialEntry{ .materialAsset = materialAssetPath });
+
+	TerrainMaterialInitializer terrainMaterialInitializer{ std::move(terrainMaterialDefinition) };
 
 	CreateResult terrainMaterialCreateResult = m_assetsSystem.CreateAsset(AssetInitializer
 																		 {
@@ -143,7 +140,6 @@ TEST_F(MaterialAssetsTests, CreateTerrainMaterial)
 	TerrainMaterialAssetHandle terrainMaterialAsset = m_assetsSystem.LoadAndInitAssetChecked<TerrainMaterialAsset>(terrainMaterialAssetPath);
 
 	EXPECT_TRUE(terrainMaterialAsset.IsValid());
-	EXPECT_TRUE(terrainMaterialAsset->GetMaterialAsset().IsValid());
 
 	queue.ForceFlushCommands(tempArena);
 

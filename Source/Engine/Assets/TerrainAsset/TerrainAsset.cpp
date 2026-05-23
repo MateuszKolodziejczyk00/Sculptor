@@ -48,6 +48,7 @@ public:
 	lib::SharedPtr<rdr::TextureView> dstHeightMap;
 	lib::SharedPtr<rdr::TextureView> dstFarLODBaseColor;
 	lib::SharedPtr<rdr::TextureView> dstFarLODProps;
+	lib::SharedPtr<rdr::TextureView> dstMaterialIDs;
 	lib::MTHandle<DDCLoadedBin>      blob;
 };
 
@@ -73,6 +74,12 @@ void TerrainTexturesUuploadRequest::EnqueueUploads()
 		const rhi::ETextureAspect textureAspect = dstFarLODProps->GetRHI().GetAspect();
 		rdr::UploadDataToTexture(blob->bin.data() + terrainDataHeader.farLODProps.dataOffset, terrainDataHeader.farLODProps.dataSize, dstFarLODProps->GetTexture(), textureAspect, dstFarLODProps->GetResolution(), math::Vector3u::Zero(), 0u, 0u);
 	}
+
+	if (dstMaterialIDs && terrainDataHeader.materialIDs.format != rhi::EFragmentFormat::None)
+	{
+		const rhi::ETextureAspect textureAspect = dstMaterialIDs->GetRHI().GetAspect();
+		rdr::UploadDataToTexture(blob->bin.data() + terrainDataHeader.materialIDs.dataOffset, terrainDataHeader.materialIDs.dataSize, dstMaterialIDs->GetTexture(), textureAspect, dstMaterialIDs->GetResolution(), math::Vector3u::Zero(), 0u, 0u);
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -80,15 +87,30 @@ void TerrainTexturesUuploadRequest::EnqueueUploads()
 
 rsc::TerrainDefinition TerrainAsset::GetTerrainDefinition() const
 {
+	rsc::TerrainMaterialsMap materialsMap;
+	materialsMap.minBounds     = m_terrainMinBounds;
+	materialsMap.rcpBoundsSize = (m_terrainMaxBounds - m_terrainMinBounds).cwiseInverse();
+	materialsMap.resolution    = m_materialIDs->GetResolution2D().cast<Real32>();
+	materialsMap.materialIDs   = m_materialIDs;
+
 	rsc::TerrainDefinition terrainDefinition;
 	terrainDefinition.heightMap       = m_heightMap;
 	terrainDefinition.farLODBaseColor = m_farLODBaseColor;
 	terrainDefinition.farLODProps     = m_farLODProps;
-	terrainDefinition.farLODMinBounds = m_farLODMinBounds;
-	terrainDefinition.farLODMaxBounds = m_farLODMaxBounds;
+	terrainDefinition.farLODMinBounds = m_terrainMinBounds;
+	terrainDefinition.farLODMaxBounds = m_terrainMaxBounds;
 	terrainDefinition.material        = m_terrainMaterialAsset.IsValid() ? m_terrainMaterialAsset->GetTerrainMaterialData() : rsc::TerrainMaterialData{};
+	terrainDefinition.materialsMap    = materialsMap;
+
 
 	return terrainDefinition;
+}
+
+rsc::TerrainMaterialsMap TerrainAsset::GetTerrainMaterialsMap() const
+{
+	rsc::TerrainMaterialsMap materialsMap;
+	materialsMap.materialIDs = m_materialIDs;
+	return materialsMap;
 }
 
 Bool TerrainAsset::Compile()
@@ -131,6 +153,17 @@ void TerrainAsset::OnInitialize()
 		m_heightMap = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("TerrainAsset_HeightMap"), heightMapDef, rhi::EMemoryUsage::GPUOnly);
 	}
 
+	if (terrainDataHeader.materialIDs.format != rhi::EFragmentFormat::None)
+	{
+		rhi::TextureDefinition materialIDsDef;
+		materialIDsDef.resolution = terrainDataHeader.materialIDs.resolution;
+		materialIDsDef.format     = terrainDataHeader.materialIDs.format;
+		materialIDsDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest);
+		materialIDsDef.flags      = rhi::ETextureFlags::GloballyReadable;
+
+		m_materialIDs = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("TerrainAsset_MaterialIDs"), materialIDsDef, rhi::EMemoryUsage::GPUOnly);
+	}
+
 	if (terrainDataHeader.farLODBaseColor.format != rhi::EFragmentFormat::None)
 	{
 		rhi::TextureDefinition farLODBaseColorDef;
@@ -167,8 +200,8 @@ void TerrainAsset::OnInitialize()
 		}
 	}
 
-	m_farLODMinBounds = terrainDataHeader.farLODMinBounds;
-	m_farLODMaxBounds = terrainDataHeader.farLODMaxBounds;
+	m_terrainMinBounds = terrainDataHeader.terrainMinBounds;
+	m_terrainMaxBounds = terrainDataHeader.terrainMaxBounds;
 
 	gfx::GPUDeferredCommandsQueue& commandsQueue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
 
@@ -176,6 +209,7 @@ void TerrainAsset::OnInitialize()
 	uploadRequest->dstHeightMap       = m_heightMap;
 	uploadRequest->dstFarLODBaseColor = m_farLODBaseColor;
 	uploadRequest->dstFarLODProps     = m_farLODProps;
+	uploadRequest->dstMaterialIDs     = m_materialIDs;
 	uploadRequest->blob               = compiledData;
 
 	commandsQueue.RequestUpload(std::move(uploadRequest));

@@ -15,7 +15,7 @@
                 "MacroDefinitions": [
                     "SPT_MATERIAL_FORCE_TERRAIN_RT_INSTANCE_TYPE"
                 ],
-                "MaterialShaderPath": "Sculptor/Materials/TerrainMaterial.hlsli"
+                "MaterialShaderPath": "Sculptor/Materials/TerrainMaterialCache.hlsli"
             }
         ]
     ]

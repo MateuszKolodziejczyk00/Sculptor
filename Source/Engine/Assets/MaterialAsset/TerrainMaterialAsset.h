@@ -7,13 +7,24 @@
 namespace spt::as
 {
 
-struct TerrainMaterialDefinition
+struct TerrainMaterialEntry
 {
 	ResourcePath materialAsset;
 
 	void Serialize(srl::Serializer& serializer)
 	{
 		serializer.Serialize("MaterialAsset", materialAsset);
+	}
+};
+
+
+struct TerrainMaterialDefinition
+{
+	lib::InlineDynamicArray<TerrainMaterialEntry, rsc::terrain_material_props::maxMaterialEntries> materialEntries;
+
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("MaterialEntries", materialEntries);
 	}
 };
 SPT_REGISTER_ASSET_DATA_TYPE(TerrainMaterialDefinition);
@@ -43,8 +54,6 @@ public:
 
 	using AssetInstance::AssetInstance;
 
-	const MaterialAssetHandle& GetMaterialAsset() const { return m_materialAsset; }
-
 	rsc::TerrainMaterialData GetTerrainMaterialData() const;
 
 protected:
@@ -56,7 +65,7 @@ protected:
 
 private:
 
-	MaterialAssetHandle m_materialAsset;
+	lib::InlineDynamicArray<MaterialAssetHandle, rsc::terrain_material_props::maxMaterialEntries> m_materialAssets;
 };
 SPT_REGISTER_ASSET_TYPE(TerrainMaterialAsset);
 

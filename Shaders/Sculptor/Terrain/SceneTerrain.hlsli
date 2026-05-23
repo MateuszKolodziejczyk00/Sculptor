@@ -1,6 +1,8 @@
 #ifndef TERRAIN_HLSLI
 #define TERRAIN_HLSLI
 
+#include "Terrain/TerrainTypes.hlsli"
+
 [[shader_struct(TerrainSceneData)]]
 
 
@@ -50,6 +52,11 @@ struct TerrainInterface : TerrainSceneData
 	{
 		const float heightMapValue = heightMap.texture.SampleLevel(BindlessSamplers::LinearClampEdge(), GetHeightMapUV(locationXY), 0);
 		return lerp(heightMap.minHeight, 8.f * heightMap.maxHeight, heightMapValue);
+	}
+
+	TerrainMaterialsFactors GetMaterialsFactors(float2 locationXY)
+	{
+		return SampleTerrainMaterialsMap(materialsMap, locationXY);
 	}
 
 	float2 GetHeightDerivatives(float2 locationXY)

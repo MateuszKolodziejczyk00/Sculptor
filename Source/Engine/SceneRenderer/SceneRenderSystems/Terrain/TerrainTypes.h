@@ -10,7 +10,7 @@ namespace spt::rsc
 
 namespace terrain_consts
 {
-static constexpr Uint32 materialCacheLODsNum = 6u;
+static constexpr Uint32 materialCacheLODsNum = 8u;
 } // namespace terrain_consts
 
 
@@ -67,6 +67,7 @@ BEGIN_SHADER_STRUCT(TerrainSceneData)
 	SHADER_STRUCT_FIELD(Uint32,                                     meshletVerticesNum)
 	SHADER_STRUCT_FIELD(Uint32,                                     meshletIndicesNum)
 	SHADER_STRUCT_FIELD(Uint32,                                     meshletTranglesNum)
+	SHADER_STRUCT_FIELD(TerrainMaterialsMap,                        materialsMap)
 	SHADER_STRUCT_FIELD(TerrrainMaterialCache,                      materialCache)
 END_SHADER_STRUCT();
 

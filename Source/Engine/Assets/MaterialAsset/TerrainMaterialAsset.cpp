@@ -9,11 +9,16 @@ namespace spt::as
 
 struct TerrainMaterialDerivedDataHeader
 {
-	ResourcePathID materialAssetPathID = InvalidResourcePathID;
+	lib::StaticArray<ResourcePathID, rsc::terrain_material_props::maxMaterialEntries> materialAssetPathIDs;
+
+	TerrainMaterialDerivedDataHeader()
+	{
+		materialAssetPathIDs.fill(InvalidResourcePathID);
+	}
 
 	void Serialize(srl::Serializer& serializer)
 	{
-		serializer.Serialize("MaterialAssetPathID", materialAssetPathID);
+		serializer.Serialize("MaterialAssetPathIDs", materialAssetPathIDs);
 	}
 };
 
@@ -32,11 +37,14 @@ rsc::TerrainMaterialData TerrainMaterialAsset::GetTerrainMaterialData() const
 {
 	rsc::TerrainMaterialData terrainMaterialData;
 
-	if (m_materialAsset.IsValid())
+	for (SizeType i = 0; i < m_materialAssets.GetSize(); ++i)
 	{
-		const ecs::EntityHandle matEntity = m_materialAsset->GetMaterialEntity();
-		const mat::MaterialProxyComponent& materialProxy = matEntity.get<mat::MaterialProxyComponent>();
-		terrainMaterialData.terrainMaterial = materialProxy.GetMaterialDataHandle();
+		if (m_materialAssets[i].IsValid())
+		{
+			const ecs::EntityHandle matEntity = m_materialAssets[i]->GetMaterialEntity();
+			const mat::MaterialProxyComponent& materialProxy = matEntity.get<mat::MaterialProxyComponent>();
+			terrainMaterialData.terrainMaterials[i] = materialProxy.GetMaterialDataHandle();
+		}
 	}
 
 	return terrainMaterialData;
@@ -45,21 +53,26 @@ rsc::TerrainMaterialData TerrainMaterialAsset::GetTerrainMaterialData() const
 Bool TerrainMaterialAsset::Compile()
 {
 	const TerrainMaterialDefinition& definition = GetBlackboard().Get<TerrainMaterialDefinition>();
-	if (!definition.materialAsset.IsValid())
-	{
-		SPT_LOG_ERROR(TerrainMaterialAsset, "Failed to compile TerrainMaterialAsset '{}' - referenced MaterialAsset path is invalid", GetName().ToString());
-		return false;
-	}
-
-	const ResourcePath materialAssetPath = ResolveAssetRelativePath(definition.materialAsset.GetPath());
-	if (!GetOwningSystem().CompileAssetIfDeprecated(materialAssetPath))
-	{
-		SPT_LOG_ERROR(TerrainMaterialAsset, "Failed to compile TerrainMaterialAsset '{}' - referenced MaterialAsset '{}' could not be compiled", GetName().ToString(), materialAssetPath.GetPath().generic_string());
-		return false;
-	}
 
 	TerrainMaterialDerivedDataHeader header;
-	header.materialAssetPathID = materialAssetPath.GetID();
+
+	for (SizeType i = 0; i < definition.materialEntries.GetSize(); ++i)
+	{
+		const TerrainMaterialEntry& materialEntry = definition.materialEntries[i];
+		if (!materialEntry.materialAsset.IsValid())
+		{
+			continue;
+		}
+
+		const ResourcePath materialAssetPath = ResolveAssetRelativePath(materialEntry.materialAsset.GetPath());
+		if (!GetOwningSystem().CompileAssetIfDeprecated(materialAssetPath))
+		{
+			SPT_LOG_ERROR(TerrainMaterialAsset, "Failed to compile TerrainMaterialAsset '{}' - referenced MaterialAsset '{}' could not be compiled", GetName().ToString(), materialAssetPath.GetPath().generic_string());
+			return false;
+		}
+
+		header.materialAssetPathIDs[i] = materialAssetPath.GetID();
+	}
 
 	CreateDerivedData(*this, header, lib::Span<const Byte>());
 
@@ -70,17 +83,27 @@ void TerrainMaterialAsset::OnInitialize()
 {
 	const lib::MTHandle<DDCLoadedData<TerrainMaterialDerivedDataHeader>> compiledData = LoadDerivedData<TerrainMaterialDerivedDataHeader>(*this);
 	SPT_CHECK(compiledData.IsValid());
-	SPT_CHECK(compiledData->header.materialAssetPathID != InvalidResourcePathID);
 
-	const LoadResult<MaterialAsset> loadRes = GetOwningSystem().LoadAsset<MaterialAsset>(compiledData->header.materialAssetPathID);
-	if (!loadRes)
+	for (SizeType i = 0; i < compiledData->header.materialAssetPathIDs.size(); ++i)
 	{
-		SPT_LOG_ERROR(TerrainMaterialAsset, "Failed to load referenced MaterialAsset for TerrainMaterialAsset '{}'. Reason: {}", GetName().ToString(), AssetLoadErrorToString(loadRes.GetError()));
-		return;
+		const ResourcePathID materialAssetPathID = compiledData->header.materialAssetPathIDs[i];
+		if (materialAssetPathID != InvalidResourcePathID)
+		{
+			const LoadResult<MaterialAsset> loadRes = GetOwningSystem().LoadAsset<MaterialAsset>(materialAssetPathID);
+			if (!loadRes)
+			{
+				SPT_LOG_ERROR(TerrainMaterialAsset, "Failed to load referenced MaterialAsset for TerrainMaterialAsset '{}'. Reason: {}", GetName().ToString(), AssetLoadErrorToString(loadRes.GetError()));
+				continue;
+			}
+
+			m_materialAssets.PushBack(loadRes.GetValue());
+		}
 	}
 
-	m_materialAsset = loadRes.GetValue();
-	m_materialAsset->AwaitInitialization();
+	for (SizeType i = 0; i < m_materialAssets.GetSize(); ++i)
+	{
+		m_materialAssets[i]->AwaitInitialization();
+	}
 }
 
 } // spt::as

@@ -7,7 +7,7 @@
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
-#include "Materials/MaterialSystem.hlsli"
+#include "Terrain/TerrainMaterial.hlsli"
 
 
 struct CS_INPUT
@@ -19,8 +19,6 @@ struct CS_INPUT
 [numthreads(16, 16, 1)]
 void BakeFarLODCS(CS_INPUT input)
 {
-	const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData<SPT_MATERIAL_DATA_TYPE>(u_constants.materialsData, u_constants.terrainMaterial.terrainMaterial);
-
 	const float2 uv = (input.globalID.xy + 0.5f) / u_constants.resolution;
 
 	const float2 range = u_constants.maxBounds - u_constants.minBounds;
@@ -58,10 +56,12 @@ void BakeFarLODCS(CS_INPUT input)
 			evalParams.worldLocation = worldLocation;
 			evalParams.clipSpace     = 0.f;
 
-			const MaterialEvaluationOutput materialEvalOutput = EvaluateMaterial(evalParams, materialData);
+			const TerrainMaterialsFactors materialFactors = SampleTerrainMaterialsMap(u_constants.materialsMap, worldLocation.xy);
 
-			baseColorSum += materialEvalOutput.baseColor;
-			propsSum += float3(materialEvalOutput.roughness, materialEvalOutput.metallic, materialEvalOutput.occlusion);
+			const TerrainMaterialEvaluationOutput materialEvalOutput = EvaluateTerrainMaterial(u_constants.materialsData, evalParams, u_constants.terrainMaterial, materialFactors);
+
+			baseColorSum += materialEvalOutput.material.baseColor;
+			propsSum += float3(materialEvalOutput.material.roughness, materialEvalOutput.material.metallic, materialEvalOutput.material.occlusion);
 			samplesNum += 1.f;
 		}
 	}
