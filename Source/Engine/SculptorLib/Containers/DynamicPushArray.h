@@ -21,10 +21,13 @@ class DynamicPushArray
 public:
 
 	using reference = TType&;
+	using value_type = TType;
 
 	class Iterator
 	{
 	public:
+
+		using value_type = TType;
 
 		Iterator()
 			: m_currentChunk(nullptr)

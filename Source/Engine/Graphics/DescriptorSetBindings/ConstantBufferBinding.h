@@ -107,6 +107,8 @@ public:
 #if DEBUG_RENDER_GRAPH
 		access.structTypeName = TStruct::GetStructName();
 		access.elementsNum    = 1u;
+		access.dataOffset     = m_bufferAllocation.offset + GetStaticOffset();
+		access.dataSize       = GetStructSize();
 #endif // DEBUG_RENDER_GRAPH
 		//builder.AddBufferAccess(m_bindableBuffer, access);
 		builder.AddBufferAccess(m_bufferAllocation.buffer->GetFullView(), access);

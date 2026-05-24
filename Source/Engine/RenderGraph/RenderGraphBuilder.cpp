@@ -861,12 +861,6 @@ Bool RenderGraphBuilder::AssignShaderParamsToNodeInternal(RGNode& node, const li
 		return false;
 	}
 
-	RGBufferAccessInfo paramsBufferAccess;
-	paramsBufferAccess.access = ERGBufferAccess::Read;
-#if DEBUG_RENDER_GRAPH
-	paramsBufferAccess.structTypeName = paramsType;
-#endif // DEBUG_RENDER_GRAPH
-
 	const rdr::ConstantBufferAllocation cbAllocation = m_resourcesPool.GetConstantsAllocator().Allocate(static_cast<Uint32>(paramsData.size()));
 	std::memcpy(cbAllocation.buffer->GetRHI().MapPtr() + cbAllocation.offset, paramsData.data(), paramsData.size());
 
@@ -875,7 +869,15 @@ Bool RenderGraphBuilder::AssignShaderParamsToNodeInternal(RGNode& node, const li
 	const Uint64 descriptorOffset = layout->GetRHI().GetDescriptorOffset(0u);
 	cbAllocation.buffer->GetRHI().CopySRVDescriptor(cbAllocation.offset, cbAllocation.size, descriptors.data.data() + descriptorOffset);
 
-	dependenciesBuilder.AddBufferAccess(cbAllocation.buffer->CreateView(cbAllocation.offset, cbAllocation.size), paramsBufferAccess);
+	RGBufferAccessInfo paramsBufferAccess;
+	paramsBufferAccess.access = ERGBufferAccess::Read;
+#if DEBUG_RENDER_GRAPH
+	paramsBufferAccess.structTypeName = paramsType;
+	paramsBufferAccess.dataOffset     = cbAllocation.offset;
+	paramsBufferAccess.dataSize       = cbAllocation.size;
+#endif // DEBUG_RENDER_GRAPH
+
+	dependenciesBuilder.AddBufferAccess(cbAllocation.buffer->GetFullView(), paramsBufferAccess);
 
 	node.SetShaderParamsDescriptors(descriptors);
 

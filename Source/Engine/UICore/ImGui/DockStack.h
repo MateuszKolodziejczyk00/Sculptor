@@ -24,11 +24,14 @@ public:
 	{
 		ImGuiContext& g = *GImGui;
 		const ImGuiDockNode* dockNode = ImGui::DockContextFindNodeByID(&g, m_id);
-		while (dockNode->IsSplitNode())
+		while (dockNode && dockNode->IsSplitNode())
 		{
 			dockNode = dockNode->ChildNodes[0];
 		}
-		ImGui::DockBuilderDockWindow(name.GetData(), dockNode->ID);
+		if (dockNode)
+		{
+			ImGui::DockBuilderDockWindow(name.GetData(), dockNode->ID);
+		}
 	}
 
 private:

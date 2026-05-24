@@ -72,19 +72,21 @@ void RGDependenciesBuilder::AddBufferAccess(const lib::SharedPtr<rdr::Buffer>& b
 
 void RGDependenciesBuilder::AddBufferAccess(RGBufferViewHandle buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
 {
-	if (lib::ContainsPred(m_dependeciesRef.bufferAccesses, [buffer](const RGBufferAccessDef& access) { return access.resource == buffer.Get(); }))
-	{
-		return;
-	}
-
 	const rhi::EPipelineStage accessStages = dependencyStages.shouldUseDefaultStages ? m_defaultStages : dependencyStages.pipelineStages;
 
 	RGBufferAccessDef accessDef{ buffer.Get(), access.access, accessStages };
 #if DEBUG_RENDER_GRAPH
 	accessDef.structTypeName = access.structTypeName;
 	accessDef.elementsNum    = access.elementsNum;
+	accessDef.dataOffset     = access.dataOffset;
+	accessDef.dataSize       = access.dataSize;
 	accessDef.namedBuffer    = access.namedBuffer;
 #endif // DEBUG_RENDER_GRAPH
+
+	if (lib::Contains(m_dependeciesRef.bufferAccesses, accessDef))
+	{
+		return;
+	}
 
 	m_dependeciesRef.bufferAccesses.EmplaceBack(std::move(accessDef));
 }

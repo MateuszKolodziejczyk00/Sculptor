@@ -51,6 +51,10 @@ public:
 
 private:
 
+	using PendingInspectorOpen = std::variant<TextureInspectParams, BufferInspectParams>;
+
+	void FlushPendingInspectorOpen();
+
 	void DrawNodeDetails(const CapturedPass& pass);
 
 	void DrawNodeProperties(const CapturedPass& node);
@@ -61,6 +65,8 @@ private:
 	lib::HashedString m_nodePropertiesPanelName;
 
 	ui::DockStack m_inspectorsStack;
+	std::optional<PendingInspectorOpen> m_pendingInspectorOpen;
+	Bool m_canOpenInspectors = false;
 
 	const CapturedPass& m_capturedPass;
 

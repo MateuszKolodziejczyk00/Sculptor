@@ -13,6 +13,38 @@
 namespace spt::rg::capture
 {
 
+namespace priv
+{
+
+lib::String BuildTextureBindingLabel(const CapturedTextureBinding& binding)
+{
+	return binding.textureVersion ? binding.textureVersion->owningTexture->name.ToString() : lib::String("Unknown Texture");
+}
+
+lib::String BuildBufferBindingLabel(const CapturedBufferBinding& binding)
+{
+	lib::String label;
+
+	if (binding.structTypeName.IsValid())
+	{
+		label = binding.structTypeName.ToString();
+		label += " ";
+	}
+
+	if (binding.bufferVersion)
+	{
+		label += binding.bufferVersion->owningBuffer->name.ToString();
+	}
+	else
+	{
+		label += "Unknown Buffer";
+	}
+
+	return label;
+}
+
+} // priv
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RGNodeCaptureViewer ===========================================================================
 
@@ -40,6 +72,7 @@ void RGNodeCaptureViewer::BuildDefaultLayout(ImGuiID dockspaceID)
 void RGNodeCaptureViewer::DrawUI()
 {
 	Super::DrawUI();
+	FlushPendingInspectorOpen();
 
 	DrawNodeDetails(m_capturedPass);
 
@@ -55,6 +88,12 @@ ImGuiWindowFlags RGNodeCaptureViewer::GetWindowFlags() const
 
 void RGNodeCaptureViewer::OpenTextureCapture(const TextureInspectParams& inspectParams)
 {
+	if (!m_canOpenInspectors)
+	{
+		m_pendingInspectorOpen = inspectParams;
+		return;
+	}
+
 	scui::ViewDefinition nodeViewDefinition;
 	nodeViewDefinition.name = inspectParams.texture->name;
 	const lib::HashedString& viewName = AddChild(lib::MakeShared<TextureInspector>(nodeViewDefinition, m_capture, inspectParams));
@@ -83,10 +122,42 @@ void RGNodeCaptureViewer::OpenBufferCapture(const CapturedBufferBinding& bufferB
 
 void RGNodeCaptureViewer::OpenBufferCapture(const BufferInspectParams& inspectParams)
 {
+	if (!m_canOpenInspectors)
+	{
+		m_pendingInspectorOpen = inspectParams;
+		return;
+	}
+
 	scui::ViewDefinition nodeViewDefinition;
 	nodeViewDefinition.name = inspectParams.bufferVersion->owningBuffer->name;
 	const lib::HashedString& viewName = AddChild(lib::MakeShared<BufferInspector>(nodeViewDefinition, *this, inspectParams));
 	m_inspectorsStack.Push(viewName);
+}
+
+void RGNodeCaptureViewer::FlushPendingInspectorOpen()
+{
+	m_canOpenInspectors = true;
+
+	if (!m_pendingInspectorOpen.has_value())
+	{
+		return;
+	}
+
+	const PendingInspectorOpen pendingInspectorOpen = std::move(*m_pendingInspectorOpen);
+	m_pendingInspectorOpen.reset();
+
+	std::visit(lib::Overload
+			   {
+				   [this](const TextureInspectParams& inspectParams)
+				   {
+					   OpenTextureCapture(inspectParams);
+				   },
+				   [this](const BufferInspectParams& inspectParams)
+				   {
+					   OpenBufferCapture(inspectParams);
+				   }
+			   },
+			   pendingInspectorOpen);
 }
 
 void RGNodeCaptureViewer::DrawNodeDetails(const CapturedPass& pass)
@@ -142,8 +213,11 @@ void RGNodeCaptureViewer::DrawNodeDetails(const CapturedPass& pass)
 		{
 			if(!binding.writable)
 			{
-				const lib::HashedString name = binding.bufferVersion->owningBuffer->name;
-				if (ImGui::Button(name.GetData(), ImVec2(contentSize.x() * 0.5f, 26.f)))
+				lib::String name = binding.structTypeName.ToString();
+				name += " ";
+				name += binding.bufferVersion->owningBuffer->name.ToString();
+
+				if (ImGui::Button(name.c_str(), ImVec2(contentSize.x() * 0.5f, 26.f)))
 				{
 					OpenBufferCapture(binding);
 				}
@@ -157,8 +231,11 @@ void RGNodeCaptureViewer::DrawNodeDetails(const CapturedPass& pass)
 		{
 			if(binding.writable)
 			{
-				const lib::HashedString name = binding.bufferVersion->owningBuffer->name;
-				if (ImGui::Button(name.GetData(), ImVec2(contentSize.x() * 0.5f, 26.f)))
+				lib::String name = binding.structTypeName.ToString();
+				name += " ";
+				name += binding.bufferVersion->owningBuffer->name.ToString();
+
+				if (ImGui::Button(name.c_str(), ImVec2(contentSize.x() * 0.5f, 26.f)))
 				{
 					OpenBufferCapture(binding);
 				}
@@ -339,6 +416,17 @@ void RenderGraphCaptureViewer::DrawNodesList(const RGCapture& capture)
 	ImGui::BeginChild("Nodes", ImVec2{}, true);
 
 	const math::Vector2f contentSize = ui::UIUtils::GetWindowContentSize();
+	const auto openPassCapture = [this](const CapturedPass& pass)
+	{
+		scui::ViewDefinition nodeViewDefinition;
+		nodeViewDefinition.name = pass.name;
+
+		lib::SharedRef<RGNodeCaptureViewer> nodeViewer = lib::MakeShared<RGNodeCaptureViewer>(nodeViewDefinition, m_capture, pass);
+		const lib::HashedString& childName = AddChild(nodeViewer);
+		m_nodeDetailsDockStack.Push(childName);
+
+		return nodeViewer;
+	};
 
 	for (Uint32 passIdx = 0u; passIdx < capture.passes.size(); ++passIdx)
 	{
@@ -346,15 +434,71 @@ void RenderGraphCaptureViewer::DrawNodesList(const RGCapture& capture)
 
 		if (m_nodesListFilter.IsMatching(pass->name.GetView()))
 		{
+			ImGui::PushID(static_cast<Int32>(passIdx));
+
 			if (ImGui::Button(std::format("{}: {}", passIdx, pass->name.GetData()).c_str(), ImVec2(contentSize.x(), 26.f)))
 			{
-				scui::ViewDefinition nodeViewDefinition;
-				nodeViewDefinition.name = pass->name;
-				const lib::HashedString& childName = AddChild(lib::MakeShared<RGNodeCaptureViewer>(nodeViewDefinition, m_capture, *pass));
-				m_nodeDetailsDockStack.Push(childName);
+				openPassCapture(*pass);
 			}
 
+			if (m_nodesListFilter.GetElementsNum() > 1)
+			{
+				const float resourceButtonWidth = std::max(contentSize.x() - ImGui::GetStyle().IndentSpacing, 1.f);
+				Bool hasFilteredResources = false;
+
+				ImGui::Indent();
+
+				ImGui::PushID("Textures");
+				for (Uint32 textureIdx = 0u; textureIdx < pass->textures.size(); ++textureIdx)
+				{
+					const CapturedTextureBinding& binding = pass->textures[textureIdx];
+					const lib::String label = priv::BuildTextureBindingLabel(binding);
+					if (m_nodesListFilter.IsMatching(label, 1u))
+					{
+						hasFilteredResources = true;
+
+						ImGui::PushID(static_cast<Int32>(textureIdx));
+						const lib::String buttonLabel = std::format("{} Texture: {}", binding.writable ? "Output" : "Input", label);
+						if (ImGui::Button(buttonLabel.c_str(), ImVec2(resourceButtonWidth, 24.f)))
+						{
+							openPassCapture(*pass)->OpenTextureCapture(binding);
+						}
+						ImGui::PopID();
+					}
+				}
+				ImGui::PopID();
+
+				ImGui::PushID("Buffers");
+				for (Uint32 bufferIdx = 0u; bufferIdx < pass->buffers.size(); ++bufferIdx)
+				{
+					const CapturedBufferBinding& binding = pass->buffers[bufferIdx];
+					const lib::String label = priv::BuildBufferBindingLabel(binding);
+					if (m_nodesListFilter.IsMatching(label, 1u))
+					{
+						hasFilteredResources = true;
+
+						ImGui::PushID(static_cast<Int32>(bufferIdx));
+						const lib::String buttonLabel = std::format("{} Buffer: {}", binding.writable ? "Output" : "Input", label);
+						if (ImGui::Button(buttonLabel.c_str(), ImVec2(resourceButtonWidth, 24.f)))
+						{
+							openPassCapture(*pass)->OpenBufferCapture(binding);
+						}
+						ImGui::PopID();
+					}
+				}
+				ImGui::PopID();
+
+				if (hasFilteredResources)
+				{
+					ImGui::Spacing();
+				}
+
+				ImGui::Unindent();
+			}
+
+
 			ImGui::Spacing();
+			ImGui::PopID();
 		}
 	}
 

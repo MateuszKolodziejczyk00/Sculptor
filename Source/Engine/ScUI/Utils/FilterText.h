@@ -16,7 +16,9 @@ public:
 
 	void Draw();
 
-	Bool IsMatching(lib::StringView text) const;
+	Bool IsMatching(lib::StringView text, Uint32 elementIdx = 0u) const;
+
+	Uint32 GetElementsNum() const { return static_cast<Uint32>(m_filters.size()); }
 
 private:
 
@@ -34,7 +36,8 @@ private:
 		lib::String lowerText;
 	};
 
-	lib::DynamicArray<Filter> m_filters;
+	//lib::DynamicArray<Filter> m_filters;
+	lib::DynamicArray<lib::DynamicArray<Filter>> m_filters;
 
 	Bool m_matchCase = false;
 };

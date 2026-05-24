@@ -51,6 +51,8 @@ public:
 				{
 					accessInfo.structTypeName = rdr::shader_translator::GetTypeName<TStruct>();
 					accessInfo.elementsNum    = static_cast<Uint32>(m_boundBuffer.GetBoundBufferSize() / sizeof(rdr::HLSLStorage<TStruct>));
+					accessInfo.dataOffset      = 0u;
+					accessInfo.dataSize        = m_boundBuffer.GetBoundBufferSize();
 				}
 #endif // DEBUG_RENDER_GRAPH
 			}

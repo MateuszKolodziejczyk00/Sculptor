@@ -32,8 +32,12 @@ struct RGBufferAccessDef
 #if DEBUG_RENDER_GRAPH
 	lib::HashedString structTypeName;
 	Uint32            elementsNum = 1u;
+	Uint32            dataOffset = 0u;
+	Uint32            dataSize = 0u;
 	lib::HashedString namedBuffer;
 #endif // DEBUG_RENDER_GRAPH
+
+	Bool operator==(const RGBufferAccessDef& other) const = default;
 };
 
 
@@ -112,6 +116,8 @@ struct RGBufferAccessInfo
 #if DEBUG_RENDER_GRAPH
 	lib::HashedString structTypeName;
 	Uint32            elementsNum = 1u;
+	Uint32            dataOffset = 0u;
+	Uint32            dataSize = 0u;
 
 	lib::HashedString namedBuffer;
 #endif // DEBUG_RENDER_GRAPH

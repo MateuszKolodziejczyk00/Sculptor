@@ -248,13 +248,8 @@ void RGCapturerDecorator::AddBufferDependenciesToPass(RenderGraphBuilder& graphB
 			capturedBuffer->name = boundBufferView->GetBuffer()->GetName();
 		}
 
-		if (pass.CapturedBinding(*capturedBuffer))
-		{
-			continue;
-		}
-
 		const Bool isWritable = bufferAccess.access == ERGBufferAccess::Write || bufferAccess.access == ERGBufferAccess::ReadWrite;
-		const Bool shouldCreateNewVersion = capturedBuffer->versions.empty() || isWritable;
+		const Bool shouldCreateNewVersion = (capturedBuffer->versions.empty() || isWritable) && !pass.CapturedBinding(*capturedBuffer);
 		if (shouldCreateNewVersion)
 		{
 			CapturedBuffer::Version& newVersion = *capturedBuffer->versions.emplace_back(std::make_unique<CapturedBuffer::Version>());
@@ -293,20 +288,26 @@ void RGCapturerDecorator::AddBufferDependenciesToPass(RenderGraphBuilder& graphB
 		}
 		else if (boundBuffer && boundBuffer->AllowsHostAccess())
 		{
+			SPT_PROFILER_SCOPE(boundBuffer->GetName().ToString().c_str());
+
 			// If buffer is writable from host, it could have been updated since saving last version. Let's update bound part
 			CapturedBuffer::Version& bufferVersion = *capturedBuffer->versions.back();
 
 			const lib::SharedPtr<rdr::Buffer>& buffer = boundBufferView->GetBuffer()->GetResource();
 			const rhi::RHIMappedByteBuffer mappedBuffer(buffer->GetRHI());
-			std::memcpy(bufferVersion.bufferData.data() + boundBufferView->GetOffset(), mappedBuffer.GetPtr() + boundBufferView->GetOffset(), boundBufferView->GetSize());
+
+			const Uint64 offset = boundBufferView->GetOffset() + bufferAccess.dataOffset;
+			const Uint64 size   = bufferAccess.dataSize ? bufferAccess.dataSize : boundBufferView->GetSize();
+
+			std::memcpy(bufferVersion.bufferData.data() + offset, mappedBuffer.GetPtr() + offset, size);
 		}
 
 		const CapturedBuffer::Version& bufferVersion = *capturedBuffer->versions.back();
 
 		CapturedBufferBinding& bufferBinding = pass.buffers.emplace_back();
 		bufferBinding.bufferVersion  = &bufferVersion;
-		bufferBinding.offset         = boundBufferView->GetOffset();
-		bufferBinding.size           = boundBufferView->GetSize();
+		bufferBinding.offset         = boundBufferView->GetOffset() + bufferAccess.dataOffset;
+		bufferBinding.size           = bufferAccess.dataSize ? bufferAccess.dataSize : boundBufferView->GetSize();
 		bufferBinding.writable       = isWritable;
 
 #if DEBUG_RENDER_GRAPH
