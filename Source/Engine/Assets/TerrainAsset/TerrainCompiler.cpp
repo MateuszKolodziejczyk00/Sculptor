@@ -145,19 +145,22 @@ std::optional<TerrainCompilationResult> CompileTerrain(const AssetInstance& asse
 	Bool loadedMaterialIDsFromTexture = false;
 	if (!definition.materialIDsTex.empty())
 	{
-		const ResourcePath materialIDsPath = asset.ResolveAssetRelativePath(definition.terrainMaterial);
+		const lib::Path materialIDsPath = asset.GetDirectoryPath() / definition.materialIDsTex;
 
-		const gfx::LoadedTextureData materialIDsTex = gfx::TextureLoader::LoadTextureData(materialIDsPath.GetName(), tempArena);
-		SPT_CHECK(materialIDsTex.format == rhi::EFragmentFormat::R8_U_Int);
+		const gfx::LoadedTextureData materialIDsTex = gfx::TextureLoader::LoadTextureData(materialIDsPath.generic_string(), tempArena);
+		if (materialIDsTex.IsValid())
+		{
+			SPT_CHECK(materialIDsTex.format == rhi::EFragmentFormat::R8_U_Int);
 
-		header.materialIDs.resolution = materialIDsTex.resolution.head<2>();
-		header.materialIDs.format     = rhi::EFragmentFormat::R8_U_Int;
-		header.materialIDs.dataOffset = static_cast<Uint32>(result.blob.size());
-		header.materialIDs.dataSize   = static_cast<Uint32>(materialIDsTex.data.size());
+			header.materialIDs.resolution = materialIDsTex.resolution.head<2>();
+			header.materialIDs.format     = rhi::EFragmentFormat::R8_U_Int;
+			header.materialIDs.dataOffset = static_cast<Uint32>(result.blob.size());
+			header.materialIDs.dataSize   = static_cast<Uint32>(materialIDsTex.data.size());
 
-		result.blob.insert(result.blob.end(), materialIDsTex.data.begin(), materialIDsTex.data.end());
+			result.blob.insert(result.blob.end(), materialIDsTex.data.begin(), materialIDsTex.data.end());
 
-		loadedMaterialIDsFromTexture = true;
+			loadedMaterialIDsFromTexture = true;
+		}
 	}
 
 	if (!loadedMaterialIDsFromTexture)

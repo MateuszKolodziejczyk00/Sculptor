@@ -58,7 +58,7 @@ public:
 
 	// Begin SceneRenderSystem overrides
 	void Update(const SceneUpdateContext& context);
-	void UpdateGPUSceneData(RenderSceneConstants& sceneData);
+	void UpdateGPUSceneData(const SceneUpdateContext& context, RenderSceneConstants& sceneData);
 	// End SceneRenderSystem overrides
 
 	void SetShadowMappingTechnique(EShadowMappingTechnique newTechnique);

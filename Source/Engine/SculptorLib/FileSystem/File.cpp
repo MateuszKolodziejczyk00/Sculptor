@@ -97,7 +97,7 @@ void File::SaveDocument(const Path& path, const lib::String& data, EFileOpenFlag
 	stream.close();
 }
 
-Bool File::Exists(const StringView& path)
+Bool File::Exists(const Path& path)
 {
 	return std::filesystem::exists(path);
 }

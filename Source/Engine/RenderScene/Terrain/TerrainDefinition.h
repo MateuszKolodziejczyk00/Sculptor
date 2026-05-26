@@ -21,11 +21,17 @@ static constexpr Uint32 maxMaterialEntries = 64u;
 } // terrain_material_props
 
 
-using TerrainMaterialDataHandles = lib::StaticArray<mat::MaterialDataHandle, terrain_material_props::maxMaterialEntries>;
+BEGIN_SHADER_STRUCT(TerrainMaterialEntry)
+	SHADER_STRUCT_FIELD(mat::MaterialDataHandle, dataHandle)
+	SHADER_STRUCT_FIELD(Real32,                  uvScale)
+END_SHADER_STRUCT();
+
+
+using TerrainMaterialEntries = lib::StaticArray<TerrainMaterialEntry, terrain_material_props::maxMaterialEntries>;
 
 
 BEGIN_SHADER_STRUCT(TerrainMaterialData)
-	SHADER_STRUCT_FIELD(TerrainMaterialDataHandles, terrainMaterials)
+	SHADER_STRUCT_FIELD(TerrainMaterialEntries, terrainMaterials)
 END_SHADER_STRUCT();
 
 

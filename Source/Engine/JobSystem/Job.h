@@ -970,6 +970,16 @@ public:
 		return m_instance.IsValid();
 	}
 
+	Bool IsFinished() const
+	{
+		return m_instance.IsValid() && m_instance->IsFinished();
+	}
+
+	void Reset()
+	{
+		m_instance.Reset();
+	}
+
 	template<typename TCallable>
 	Job Then(const char* name, TCallable&& callable)
 	{

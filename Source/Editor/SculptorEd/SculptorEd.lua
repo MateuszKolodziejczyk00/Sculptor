@@ -6,6 +6,7 @@ function SculptorEd:SetupConfiguration(configuration, platform)
 	self:AddPrivateDependency("JobSystem")
 	self:AddPrivateDependency("ScUI")
 
+	self:AddPrivateDependency("EditorCommon")
 	self:AddPrivateDependency("EditorSandbox")
 
 	self:AddPrivateDependency("EngineCore")

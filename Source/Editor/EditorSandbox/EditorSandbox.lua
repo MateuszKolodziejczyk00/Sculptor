@@ -1,7 +1,9 @@
 EditorSandbox = Project:CreateProject("EditorSandbox", EngineLibrary)
 
 function EditorSandbox:SetupConfiguration(configuration, platform)
+	self:AddPublicDependency("EditorCommon")
 	self:AddPublicDependency("ScUI")
+	self:AddPublicDependency("TerrainEditor")
 	
 	self:AddPrivateDependency("JobSystem")
 	self:AddPrivateDependency("EngineCore")

@@ -59,7 +59,7 @@ public:
 	void Initialize(lib::MemoryArena& arena, RenderScene& renderScene);
 	void Deinitialize(RenderScene& renderScene);
 	void Update(const SceneUpdateContext& context);
-	void UpdateGPUSceneData(RenderSceneConstants& sceneData);
+	void UpdateGPUSceneData(const SceneUpdateContext& context, RenderSceneConstants& sceneData);
 	void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const lib::DynamicPushArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings);
 	// End SceneRenderSystem overrides
 

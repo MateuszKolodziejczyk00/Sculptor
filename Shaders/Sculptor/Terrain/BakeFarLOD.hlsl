@@ -45,14 +45,12 @@ void BakeFarLODCS(CS_INPUT input)
 			const float3 tangent   = float3(1.f, 0.f, 0.f);
 			const float3 bitangent = float3(0.f, 1.f, 0.f);
 
-			const float2 uvScale = 1.f / 2.1f;
-
 			MaterialEvaluationParameters evalParams;
 			evalParams.normal        = normal;
 			evalParams.tangent       = tangent;
 			evalParams.bitangent     = bitangent;
 			evalParams.hasTangent    = true;
-			evalParams.uv            = worldLocation.xy * uvScale;
+			evalParams.uv            = worldLocation.xy;
 			evalParams.worldLocation = worldLocation;
 			evalParams.clipSpace     = 0.f;
 

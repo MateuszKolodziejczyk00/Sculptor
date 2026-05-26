@@ -66,12 +66,12 @@ void SceneRenderSystemsAPI::CallUpdateFunc(ESceneRenderSystem systemType, SceneR
 	systemEntry.updateFunc(system, context);
 }
 
-void SceneRenderSystemsAPI::CallUpdateGPUSceneDataFunc(ESceneRenderSystem systemType, SceneRenderSystem& system, RenderSceneConstants& sceneData) const
+void SceneRenderSystemsAPI::CallUpdateGPUSceneDataFunc(ESceneRenderSystem systemType, SceneRenderSystem& system, const SceneUpdateContext& context, RenderSceneConstants& sceneData) const
 {
 	const SystemEntry& systemEntry = GetSystemEntry(systemType);
 
 	SPT_CHECK(systemEntry.updateGPUSceneDataFunc.IsValid());
-	systemEntry.updateGPUSceneDataFunc(system, sceneData);
+	systemEntry.updateGPUSceneDataFunc(system, context, sceneData);
 }
 
 void SceneRenderSystemsAPI::CallCollectRenderViewsFunc(ESceneRenderSystem systemType, SceneRenderSystem& system, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const RenderView& mainRenderView, INOUT RenderViewsCollector& viewsCollector) const

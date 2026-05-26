@@ -100,6 +100,11 @@ ResourcePath AssetInstance::ResolveAssetRelativePath(const lib::Path& relativePa
 	return (GetRelativePath().parent_path() / relativePath);
 }
 
+ResourcePath AssetInstance::GetResourcePath() const
+{
+	return ResourcePath::GetCachedPath(GetResourcePathID());
+}
+
 void AssetInstance::Initialize()
 {
 	OnInitialize();

@@ -102,9 +102,9 @@ void ShadowMapsRenderSystem::Update(const SceneUpdateContext& context)
 	}
 }
 
-void ShadowMapsRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
+void ShadowMapsRenderSystem::UpdateGPUSceneData(const SceneUpdateContext& context, RenderSceneConstants& sceneData)
 {
-	Super::UpdateGPUSceneData(sceneData);
+	Super::UpdateGPUSceneData(context, sceneData);
 
 	rdr::UploadDataToBuffer(lib::Ref(m_shadowMapViewsBuffer), 0, reinterpret_cast<const Byte*>(m_shadowMapViewsData.data()), m_shadowMapViewsData.size() * sizeof(ShadowMapViewData));
 

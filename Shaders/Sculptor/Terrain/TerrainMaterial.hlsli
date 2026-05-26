@@ -101,6 +101,8 @@ TerrainMaterialEvaluationOutput EvaluateTerrainMaterial(in MaterialUnifiedData m
 	TerrainMaterialEvaluationOutput output = (TerrainMaterialEvaluationOutput)0.f;
 	float totalWeight = 0.f;
 
+	const float2 uv = evalParams.uv;
+
 	for (int i = 0; i < 4; ++i)
 	{
 		const uint materialID = materialsFactors.materialIDs[i];
@@ -108,7 +110,11 @@ TerrainMaterialEvaluationOutput EvaluateTerrainMaterial(in MaterialUnifiedData m
 
 		if (weight > 0.f)
 		{
-			const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData<SPT_MATERIAL_DATA_TYPE>(materialsData, terrainMaterials.terrainMaterials[materialID]);
+			const TerrainMaterialEntry materialEntry = terrainMaterials.terrainMaterials[materialID];
+
+			const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData<SPT_MATERIAL_DATA_TYPE>(materialsData, materialEntry.dataHandle);
+
+			evalParams.uv = uv * materialEntry.uvScale;
 
 			TerrainDetilingSampler sampler = TerrainDetilingSampler::Initialize(evalParams);
 			const MaterialEvaluationOutput materialEvalOutput = EvaluateMaterial(sampler, evalParams, materialData);

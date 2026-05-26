@@ -196,9 +196,9 @@ void SculptorEdApplication::OnShutdown()
 {
 	rdr::GPUApi::WaitIdle();
 
-	engn::Engine::Get().GetAssetsSystem().UnloadPermanentAssets();
-
 	scui::ApplicationUI::CloseAllViews();
+
+	engn::Engine::Get().GetAssetsSystem().UnloadPermanentAssets();
 
 	engn::EngineFramesManager::Shutdown();
 

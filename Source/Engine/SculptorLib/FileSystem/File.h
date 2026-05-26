@@ -34,7 +34,7 @@ public:
 	static String ReadDocument(const Path& path, EFileOpenFlags openFlags = EFileOpenFlags::None);
 	static void SaveDocument(const Path& path, const lib::String& data, EFileOpenFlags openFlags = lib::Flags(lib::EFileOpenFlags::ForceCreate, lib::EFileOpenFlags::DiscardContent));
 
-	static Bool Exists(const StringView& path);
+	static Bool Exists(const Path& path);
 
 	static String     DiscardExtension(const String& file);
 	static StringView GetExtension(const StringView& file);

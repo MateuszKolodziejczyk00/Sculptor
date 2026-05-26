@@ -38,6 +38,11 @@ struct LoadedTextureData
 	lib::Span<Byte>        data;
 	rhi::EFragmentFormat   format = rhi::EFragmentFormat::None;
 	math::Vector3u         resolution = {};
+
+	Bool IsValid() const
+	{
+		return !data.empty() && format != rhi::EFragmentFormat::None && resolution != math::Vector3u::Zero();
+	}
 };
 
 

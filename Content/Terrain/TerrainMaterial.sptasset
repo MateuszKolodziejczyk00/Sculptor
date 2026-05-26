@@ -8,7 +8,14 @@
                 {
                     "MaterialAsset": {
                         "Path": "BaseMaterial.sptasset"
-                    }
+                    },
+                   "UVTileMeters": 2.1
+                },
+                {
+                    "MaterialAsset": {
+                        "Path": "BaseMaterial_1.sptasset"
+                    },
+                    "UVTileMeters": 22.0
                 }
             ]
         }

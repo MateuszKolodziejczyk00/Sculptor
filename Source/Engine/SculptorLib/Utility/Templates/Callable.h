@@ -29,6 +29,12 @@ public:
 	RawCallable& operator=(const RawCallable&) = default;
 	RawCallable& operator=(RawCallable&&) = default;
 
+	RawCallable& operator=(FunctionType* callable)
+	{
+		m_callable = callable;
+		return *this;
+	}
+
 	Bool operator==(const RawCallable& other) const
 	{
 		return m_callable == other.m_callable;

@@ -10,6 +10,7 @@
 #include "Types/Texture.h"
 #include "ImGui/DockBuilder.h"
 #include "ProfilerUIView.h"
+#include "TerrainEditor.h"
 #include "UIElements/ApplicationUI.h"
 #include "EngineFrame.h"
 
@@ -24,10 +25,17 @@ SandboxUIView::SandboxUIView(const scui::ViewDefinition& definition)
 	, m_sceneViewName(CreateUniqueName("Scene"))
 	, m_sanboxUIViewName(CreateUniqueName("SandboxUI"))
 {
-	m_renderViewSettingsName = AddChild(lib::MakeShared<rsc::RenderViewSettingsUIView>(scui::ViewDefinition("Render View Settings"),    m_renderer.GetRenderView()));
-	m_renderSceneSettingsName = AddChild(lib::MakeShared<rsc::RenderSceneSettingsUIView>(scui::ViewDefinition("Render Scene Settings"), m_renderer.GetRenderScene()));
-	m_sceneRendererStatsName = AddChild(lib::MakeShared<rsc::SceneRendererStatsUIView>(scui::ViewDefinition("Scene Renderer Stats")));
-	m_profilerPanelName = AddChild(lib::MakeShared<prf::ProfilerUIView>(scui::ViewDefinition("ProfilerView")));
+	RecreateRenderViewSettings();
+	RecreateRenderSceneSettings();
+	RecreateSceneRendererStats();
+	RecreateProfilerView();
+
+	m_requestedWindowFocus.Reset();
+}
+
+Bool SandboxUIView::IsFocused() const
+{
+	return m_renderer.IsViewportFocused();
 }
 
 void SandboxUIView::BuildDefaultLayout(ImGuiID dockspaceID)
@@ -51,6 +59,14 @@ void SandboxUIView::BuildDefaultLayout(ImGuiID dockspaceID)
 void SandboxUIView::DrawUI()
 {
 	Super::DrawUI();
+
+	if (m_requestedWindowFocus.IsValid())
+	{
+		FocusWindow(m_requestedWindowFocus);
+		m_requestedWindowFocus.Reset();
+	}
+
+	DrawMenuBar();
 	
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 	
@@ -115,6 +131,68 @@ void SandboxUIView::DrawUI()
 	}
 #endif WITH_SHADERS_HOT_RELOAD
 	ImGui::End();
+}
+
+ImGuiWindowFlags SandboxUIView::GetWindowFlags() const
+{
+	return Super::GetWindowFlags() | ImGuiWindowFlags_MenuBar;
+}
+
+void SandboxUIView::DrawMenuBar()
+{
+	if (!ImGui::BeginMenuBar())
+	{
+		return;
+	}
+
+	if (ImGui::BeginMenu("Windows"))
+	{
+		if (ImGui::MenuItem("Scene"))
+		{
+			FocusWindow(m_sceneViewName);
+		}
+
+		if (ImGui::MenuItem("Sandbox"))
+		{
+			FocusWindow(m_sanboxUIViewName);
+		}
+
+		ImGui::Separator();
+
+		if (ImGui::MenuItem("Profiler"))
+		{
+			RecreateProfilerView();
+		}
+
+		if (ImGui::MenuItem("Render View Settings"))
+		{
+			RecreateRenderViewSettings();
+		}
+
+		if (ImGui::MenuItem("Render Scene Settings"))
+		{
+			RecreateRenderSceneSettings();
+		}
+
+		if (ImGui::MenuItem("Scene Renderer Stats"))
+		{
+			RecreateSceneRendererStats();
+		}
+
+		ImGui::EndMenu();
+	}
+
+	if (ImGui::BeginMenu("Editors"))
+	{
+		if (ImGui::MenuItem("Terrain Editor"))
+		{
+			RecreateTerrainEditor();
+		}
+
+		ImGui::EndMenu();
+	}
+
+	ImGui::EndMenuBar();
 }
 
 void SandboxUIView::DrawRendererSettings()
@@ -196,6 +274,68 @@ void SandboxUIView::DrawRendererSettings()
 	{
 		m_renderer.wantsToCreateScreenshot = true;
 	}
+}
+
+void SandboxUIView::FocusWindow(const lib::HashedString& windowName)
+{
+	if (!windowName.IsValid())
+	{
+		return;
+	}
+
+	ImGui::DockBuilderDockWindow(windowName.GetData(), scui::CurrentViewBuildingContext::GetCurrentViewContentClass().ClassId);
+	ImGui::SetWindowCollapsed(windowName.GetData(), false);
+	ImGui::SetWindowFocus(windowName.GetData());
+}
+
+void SandboxUIView::RecreateRenderViewSettings()
+{
+	RemoveChild(m_renderViewSettingsView);
+
+	const lib::SharedRef<rsc::RenderViewSettingsUIView> view = lib::MakeShared<rsc::RenderViewSettingsUIView>(scui::ViewDefinition("Render View Settings"), m_renderer.GetRenderView());
+	m_renderViewSettingsView = view.ToSharedPtr();
+	m_renderViewSettingsName = AddChild(view);
+	m_requestedWindowFocus = m_renderViewSettingsName;
+}
+
+void SandboxUIView::RecreateRenderSceneSettings()
+{
+	RemoveChild(m_renderSceneSettingsView);
+
+	const lib::SharedRef<rsc::RenderSceneSettingsUIView> view = lib::MakeShared<rsc::RenderSceneSettingsUIView>(scui::ViewDefinition("Render Scene Settings"), m_renderer.GetRenderScene());
+	m_renderSceneSettingsView = view.ToSharedPtr();
+	m_renderSceneSettingsName = AddChild(view);
+	m_requestedWindowFocus = m_renderSceneSettingsName;
+}
+
+void SandboxUIView::RecreateSceneRendererStats()
+{
+	RemoveChild(m_sceneRendererStatsView);
+
+	const lib::SharedRef<rsc::SceneRendererStatsUIView> view = lib::MakeShared<rsc::SceneRendererStatsUIView>(scui::ViewDefinition("Scene Renderer Stats"));
+	m_sceneRendererStatsView = view.ToSharedPtr();
+	m_sceneRendererStatsName = AddChild(view);
+	m_requestedWindowFocus = m_sceneRendererStatsName;
+}
+
+void SandboxUIView::RecreateProfilerView()
+{
+	RemoveChild(m_profilerPanelView);
+
+	const lib::SharedRef<prf::ProfilerUIView> view = lib::MakeShared<prf::ProfilerUIView>(scui::ViewDefinition("ProfilerView"));
+	m_profilerPanelView = view.ToSharedPtr();
+	m_profilerPanelName = AddChild(view);
+	m_requestedWindowFocus = m_profilerPanelName;
+}
+
+void SandboxUIView::RecreateTerrainEditor()
+{
+	RemoveChild(m_terrainEditorView);
+
+	const lib::SharedRef<TerrainEditorUIView> view = lib::MakeShared<TerrainEditorUIView>(scui::ViewDefinition("Terrain Editor"), *this, m_renderer.GetTerrainAsset());
+	m_terrainEditorView = view.ToSharedPtr();
+	m_terrainEditorName = AddChild(view);
+	m_requestedWindowFocus = m_terrainEditorName;
 }
 
 ui::TextureID SandboxUIView::PrepareViewportTexture(math::Vector2u resolution)

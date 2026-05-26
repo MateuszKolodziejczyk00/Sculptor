@@ -6,7 +6,7 @@
 #include "EngineFrame.h"
 #include "SceneRenderer.h"
 
-
+#pragma optimize("", off)
 namespace spt::rsc::wsc
 {
 
@@ -54,9 +54,9 @@ void WorldShadowCacheRenderSystem::Update(const SceneUpdateContext& context)
 	}
 }
 
-void WorldShadowCacheRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
+void WorldShadowCacheRenderSystem::UpdateGPUSceneData(const SceneUpdateContext& context, RenderSceneConstants& sceneData)
 {
-	Super::UpdateGPUSceneData(sceneData);
+	Super::UpdateGPUSceneData(context, sceneData);
 
 	WSCData wscData;
 

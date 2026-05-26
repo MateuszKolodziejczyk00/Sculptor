@@ -42,9 +42,7 @@ PS_OUTPUT RenderTerrainMaterialCacheFS(VS_OUTPUT input)
 	const float3 normal = terrainInterface.GetNormal(worldLocation.xy);
 	const float3 tangent = terrainInterface.GetTangent(worldLocation.xy);
 	const float3 bitangent = terrainInterface.GetBitangent(worldLocation.xy);
-
-	const float2 uvScale = 1.f / 2.1f;
-	const float2 uv = worldLocation.xy * uvScale;
+	const float2 uv = worldLocation.xy;
 
 	MaterialEvaluationParameters evalParams;
 	evalParams.normal        = normal;

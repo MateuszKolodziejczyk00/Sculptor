@@ -60,6 +60,8 @@ public:
 	const lib::SharedPtr<rdr::TextureView>& GetHeightMap() const { return m_heightMap; }
 	const TerrainMaterialAssetHandle& GetTerrainMaterialAsset() const { return m_terrainMaterialAsset; }
 
+	const TerrainAssetDefinition& GetTerrainAssetDefinition() const;
+
 	rsc::TerrainDefinition GetTerrainDefinition() const;
 	rsc::TerrainMaterialsMap GetTerrainMaterialsMap() const;
 

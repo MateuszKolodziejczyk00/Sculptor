@@ -1,5 +1,7 @@
 #include "Renderer/SandboxRenderer.h"
+#include "EditorFrame.h"
 #include "TerrainAsset.h"
+#include "TerrainEditorTypes.h"
 #include "Types/Texture.h"
 #include "Types/UIBackend.h"
 #include "Types/Window.h"
@@ -296,6 +298,25 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 	rendererSettings.outputFormat      = rhi::EFragmentFormat::RGBA8_UN_Float;
 	rendererSettings.resetAccumulation = resetAccumulation || frame.GetFrameIdx() < 2u;
 
+	rendererSettings.editorRendering.mouseUV = math::Vector2f((m_mousePositionOnViewport.cast<Real32>() + math::Vector2f::Constant(0.5f)).cwiseQuotient(output->GetResolution2D().cast<Real32>()));
+
+	ed::EditorFrameContext& editorFrameContext = static_cast<ed::EditorFrameContext&>(frame);
+
+	if (editorFrameContext.terrainEditorState)
+	{
+		rendererSettings.editorRendering.terrain.influenceGizmo       = editorFrameContext.terrainEditorState->activeGizmo;
+
+		if (m_isViewportFocused)
+		{
+			rendererSettings.editorRendering.terrain.materialPaintCommand = editorFrameContext.terrainEditorState->materialPaintCommand;
+		}
+
+		if (editorFrameContext.terrainEditorState->paintedMaterialMap)
+		{
+			rendererSettings.editorRendering.terrain.paintedMaterialMap = graphBuilder.AcquireExternalTextureView(editorFrameContext.terrainEditorState->paintedMaterialMap);
+		}
+	}
+
 	resetAccumulation = false;
 
 	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
@@ -385,6 +406,11 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 const lib::SharedPtr<rsc::RenderScene>& SandboxRenderer::GetRenderScene()
 {
 	return m_renderScene;
+}
+
+const as::TerrainAssetHandle& SandboxRenderer::GetTerrainAsset() const
+{
+	return m_terrainAsset;
 }
 
 void SandboxRenderer::SaveCameraConfig(Uint32 slot) const

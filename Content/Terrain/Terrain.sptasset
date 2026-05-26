@@ -5,6 +5,7 @@
         ],
         "spt::as::TerrainAssetDefinition": {
             "HeightMapTex": "Source/Heightmap.exr",
+            "MaterialIDsTex": "Source/MaterialIDs.dds",
             "TerrainMaterial": "TerrainMaterial.sptasset"
         }
     },

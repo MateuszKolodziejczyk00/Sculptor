@@ -10,10 +10,12 @@ namespace spt::as
 struct TerrainMaterialEntry
 {
 	ResourcePath materialAsset;
+	Real32       uvTileMeters = 1.f;
 
 	void Serialize(srl::Serializer& serializer)
 	{
 		serializer.Serialize("MaterialAsset", materialAsset);
+		serializer.Serialize("UVTileMeters",  uvTileMeters);
 	}
 };
 
@@ -54,7 +56,9 @@ public:
 
 	using AssetInstance::AssetInstance;
 
-	rsc::TerrainMaterialData GetTerrainMaterialData() const;
+	const rsc::TerrainMaterialData& GetTerrainMaterialData() const;
+
+	lib::Span<const MaterialAssetHandle> GetMaterialAssets() const { return m_materialAssets; }
 
 protected:
 
@@ -66,6 +70,8 @@ protected:
 private:
 
 	lib::InlineDynamicArray<MaterialAssetHandle, rsc::terrain_material_props::maxMaterialEntries> m_materialAssets;
+
+	rsc::TerrainMaterialData m_terrainMaterialData;
 };
 SPT_REGISTER_ASSET_TYPE(TerrainMaterialAsset);
 

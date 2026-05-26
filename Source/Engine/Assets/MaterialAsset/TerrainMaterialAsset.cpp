@@ -7,18 +7,30 @@ SPT_DEFINE_LOG_CATEGORY(TerrainMaterialAsset, true);
 namespace spt::as
 {
 
+struct TerrainCompiledMaterialEntry
+{
+	ResourcePathID materialAssetPathID = InvalidResourcePathID;
+	Real32         uvScale             = 1.f;
+
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("MaterialAssetPathID", materialAssetPathID);
+		serializer.Serialize("UVScale",             uvScale);
+	}
+};
+
+
 struct TerrainMaterialDerivedDataHeader
 {
-	lib::StaticArray<ResourcePathID, rsc::terrain_material_props::maxMaterialEntries> materialAssetPathIDs;
+	lib::StaticArray<TerrainCompiledMaterialEntry, rsc::terrain_material_props::maxMaterialEntries> compiledEntries;
 
 	TerrainMaterialDerivedDataHeader()
 	{
-		materialAssetPathIDs.fill(InvalidResourcePathID);
 	}
 
 	void Serialize(srl::Serializer& serializer)
 	{
-		serializer.Serialize("MaterialAssetPathIDs", materialAssetPathIDs);
+		serializer.Serialize("CompiledEntries", compiledEntries);
 	}
 };
 
@@ -33,21 +45,9 @@ void TerrainMaterialInitializer::InitializeNewAsset(AssetInstance& asset)
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // TerrainMaterialAsset ===========================================================================
 
-rsc::TerrainMaterialData TerrainMaterialAsset::GetTerrainMaterialData() const
+const rsc::TerrainMaterialData& TerrainMaterialAsset::GetTerrainMaterialData() const
 {
-	rsc::TerrainMaterialData terrainMaterialData;
-
-	for (SizeType i = 0; i < m_materialAssets.GetSize(); ++i)
-	{
-		if (m_materialAssets[i].IsValid())
-		{
-			const ecs::EntityHandle matEntity = m_materialAssets[i]->GetMaterialEntity();
-			const mat::MaterialProxyComponent& materialProxy = matEntity.get<mat::MaterialProxyComponent>();
-			terrainMaterialData.terrainMaterials[i] = materialProxy.GetMaterialDataHandle();
-		}
-	}
-
-	return terrainMaterialData;
+	return m_terrainMaterialData;
 }
 
 Bool TerrainMaterialAsset::Compile()
@@ -71,7 +71,9 @@ Bool TerrainMaterialAsset::Compile()
 			return false;
 		}
 
-		header.materialAssetPathIDs[i] = materialAssetPath.GetID();
+		TerrainCompiledMaterialEntry& compiledEntry = header.compiledEntries[i];
+		compiledEntry.materialAssetPathID = materialAssetPath.GetID();
+		compiledEntry.uvScale             = 1.f / materialEntry.uvTileMeters;
 	}
 
 	CreateDerivedData(*this, header, lib::Span<const Byte>());
@@ -84,9 +86,10 @@ void TerrainMaterialAsset::OnInitialize()
 	const lib::MTHandle<DDCLoadedData<TerrainMaterialDerivedDataHeader>> compiledData = LoadDerivedData<TerrainMaterialDerivedDataHeader>(*this);
 	SPT_CHECK(compiledData.IsValid());
 
-	for (SizeType i = 0; i < compiledData->header.materialAssetPathIDs.size(); ++i)
+	for (SizeType i = 0; i < compiledData->header.compiledEntries.size(); ++i)
 	{
-		const ResourcePathID materialAssetPathID = compiledData->header.materialAssetPathIDs[i];
+		const TerrainCompiledMaterialEntry& compiledEntry = compiledData->header.compiledEntries[i];
+		const ResourcePathID materialAssetPathID = compiledEntry.materialAssetPathID;
 		if (materialAssetPathID != InvalidResourcePathID)
 		{
 			const LoadResult<MaterialAsset> loadRes = GetOwningSystem().LoadAsset<MaterialAsset>(materialAssetPathID);
@@ -103,6 +106,16 @@ void TerrainMaterialAsset::OnInitialize()
 	for (SizeType i = 0; i < m_materialAssets.GetSize(); ++i)
 	{
 		m_materialAssets[i]->AwaitInitialization();
+	}
+
+	for (SizeType i = 0; i < m_materialAssets.GetSize(); ++i)
+	{
+		const MaterialAssetHandle& materialAsset = m_materialAssets[i];
+		const ecs::EntityHandle matEntity = materialAsset->GetMaterialEntity();
+		const mat::MaterialProxyComponent& materialProxy = matEntity.get<mat::MaterialProxyComponent>();
+
+		m_terrainMaterialData.terrainMaterials[i].dataHandle = materialProxy.GetMaterialDataHandle();
+		m_terrainMaterialData.terrainMaterials[i].uvScale = compiledData->header.compiledEntries[i].uvScale;
 	}
 }
 

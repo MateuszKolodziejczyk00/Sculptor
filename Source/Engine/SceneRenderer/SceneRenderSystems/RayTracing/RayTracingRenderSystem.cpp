@@ -44,7 +44,7 @@ RayTracingRenderSystem::RayTracingRenderSystem(lib::MemoryArena& arena, RenderSc
 	m_instancesDefsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("TLAS Instances Definitions Buffer"), instancesDefsBufferDef, rhi::EMemoryUsage::CPUToGPU);
 }
 
-void RayTracingRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
+void RayTracingRenderSystem::UpdateGPUSceneData(const SceneUpdateContext& context, RenderSceneConstants& sceneData)
 {
 	RTSceneData rtSceneData;
 	rtSceneData.tlas        = m_tlas;

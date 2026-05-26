@@ -199,7 +199,7 @@ lib::MTHandle<RenderSceneDS> UpdateRenderSystemsPerFrame(SceneRendererData& rend
 
 	for (const ActiveRenderSystem& activeSystem : activeRenderSystems)
 	{
-		systemsAPI.CallUpdateGPUSceneDataFunc(activeSystem.systemType, *activeSystem.system, sceneConstants);
+		systemsAPI.CallUpdateGPUSceneDataFunc(activeSystem.systemType, *activeSystem.system, updateContext, sceneConstants);
 	}
 
 	lib::MTHandle<RenderSceneDS> renderSceneDS = graphBuilder.CreateDescriptorSet<RenderSceneDS>(RENDERER_RESOURCE_NAME("RenderSceneDS"));

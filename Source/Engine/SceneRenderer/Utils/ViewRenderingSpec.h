@@ -119,6 +119,7 @@ enum class ERenderViewEntry
 	RenderVolumetricClouds,
 	RenderVariableRateTexture,
 	AntiAliasing,
+	DebugRenderAndEditor,
 
 	NUM
 };
@@ -140,6 +141,12 @@ struct FillShadingDSData
 struct RenderSceneDebugLayerData
 {
 	rg::RGTextureViewHandle texture;
+};
+
+struct DebugRenderAndEditorData
+{
+	rg::RGTextureViewHandle depth;
+	rg::RGTextureViewHandle color;
 };
 
 } // RenderViewEntryDelegates

@@ -4,6 +4,8 @@
 #include "SculptorCoreTypes.h"
 #include "MathUtils.h"
 #include "Types/Texture.h"
+#include "RGResources/RGResources.h"
+#include "SceneRenderSystems/Terrain/TerrainEditorRenderingTypes.h"
 
 
 namespace spt::engn
@@ -24,6 +26,23 @@ namespace spt::rsc
 class RenderScene;
 
 
+struct TerrainEditorRendering
+{
+	std::optional<editor::TerrainInfluenceGizmo> influenceGizmo;
+
+	std::optional<editor::TerrainMaterialMapPaintCommand> materialPaintCommand;
+
+	rg::RGTextureViewHandle paintedMaterialMap;
+};
+
+
+struct EditorRendering
+{
+	math::Vector2f mouseUV = math::Vector2f::Zero();
+	TerrainEditorRendering terrain;
+};
+
+
 struct SceneRendererSettings
 {
 	engn::FrameContext& frame;
@@ -34,6 +53,8 @@ struct SceneRendererSettings
 	lib::SharedPtr<rdr::TextureView> debugUAVTexture;
 	gfx::DebugRenderer* dynamicDebugRenderer = nullptr;
 	gfx::DebugRenderer* persistentDebugRenderer = nullptr;
+
+	EditorRendering editorRendering;
 };
 
 

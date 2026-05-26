@@ -24,7 +24,7 @@ public:
 	// Begin SceneRenderSystem overrides
 	void Initialize(lib::MemoryArena& arena, RenderScene& renderScene);
 	void Update(const SceneUpdateContext& context);
-	void UpdateGPUSceneData(RenderSceneConstants& sceneData);
+	void UpdateGPUSceneData(const SceneUpdateContext& context, RenderSceneConstants& sceneData);
 	void CollectRenderViews(const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const RenderView& mainRenderView, INOUT RenderViewsCollector& viewsCollector);
 	// End SceneRenderSystem overrides
 

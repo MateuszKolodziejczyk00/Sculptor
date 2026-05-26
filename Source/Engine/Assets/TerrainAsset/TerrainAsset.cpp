@@ -85,6 +85,11 @@ void TerrainTexturesUuploadRequest::EnqueueUploads()
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // TerrainAsset ==================================================================================
 
+const TerrainAssetDefinition& TerrainAsset::GetTerrainAssetDefinition() const
+{
+	return GetBlackboard().Get<TerrainAssetDefinition>();
+}
+
 rsc::TerrainDefinition TerrainAsset::GetTerrainDefinition() const
 {
 	rsc::TerrainMaterialsMap materialsMap;

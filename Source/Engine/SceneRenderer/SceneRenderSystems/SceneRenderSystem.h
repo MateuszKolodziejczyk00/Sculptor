@@ -39,7 +39,7 @@ public:
 
 	void Update(const SceneUpdateContext& context) {};
 
-	void UpdateGPUSceneData(RenderSceneConstants& sceneData) {}
+	void UpdateGPUSceneData(const SceneUpdateContext& context, RenderSceneConstants& sceneData) {}
 
 	void CollectRenderViews(const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const RenderView& mainRenderView, INOUT RenderViewsCollector& viewsCollector) {};
 
@@ -72,7 +72,7 @@ public:
 	void               CallInitialize(ESceneRenderSystem systemType, SceneRenderSystem& system, lib::MemoryArena& arena, RenderScene& scene) const;
 	void               CallDeinitialize(ESceneRenderSystem systemType, SceneRenderSystem& system, RenderScene& scene) const;
 	void               CallUpdateFunc(ESceneRenderSystem systemType, SceneRenderSystem& system, const SceneUpdateContext& context) const;
-	void               CallUpdateGPUSceneDataFunc(ESceneRenderSystem systemType, SceneRenderSystem& system, RenderSceneConstants& sceneData) const;
+	void               CallUpdateGPUSceneDataFunc(ESceneRenderSystem systemType, SceneRenderSystem& system, const SceneUpdateContext& context, RenderSceneConstants& sceneData) const;
 	void               CallCollectRenderViewsFunc(ESceneRenderSystem systemType, SceneRenderSystem& system, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const RenderView& mainRenderView, INOUT RenderViewsCollector& viewsCollector) const;
 	void               CallRenderPerFrameFunc(ESceneRenderSystem systemType, SceneRenderSystem& system, rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const lib::DynamicPushArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings) const;
 	void               CallFinishRenderingFrameFunc(ESceneRenderSystem systemType, SceneRenderSystem& system, rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene) const;
@@ -108,9 +108,9 @@ public:
 			static_cast<TSystemType&>(system).Update(context);
 		};
 
-		const auto updateGPUSceneDataFunc = [](SceneRenderSystem& system, RenderSceneConstants& sceneData)
+		const auto updateGPUSceneDataFunc = [](SceneRenderSystem& system, const SceneUpdateContext& context, RenderSceneConstants& sceneData)
 		{
-			static_cast<TSystemType&>(system).UpdateGPUSceneData(sceneData);
+			static_cast<TSystemType&>(system).UpdateGPUSceneData(context, sceneData);
 		};
 
 		const auto collectRenderViewsFunc = [](SceneRenderSystem& system, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const RenderView& mainRenderView, INOUT RenderViewsCollector& viewsCollector)
@@ -150,7 +150,7 @@ private:
 		lib::RawCallable<void(SceneRenderSystem&, lib::MemoryArena&, RenderScene&)>                                                                                                                            initializeFunc;
 		lib::RawCallable<void(SceneRenderSystem&, RenderScene&)>                                                                                                                                               deinitializeFunc;
 		lib::RawCallable<void(SceneRenderSystem&, const SceneUpdateContext&)>                                                                                                                                  updateFunc;
-		lib::RawCallable<void(SceneRenderSystem&, RenderSceneConstants&)>                                                                                                                                      updateGPUSceneDataFunc;
+		lib::RawCallable<void(SceneRenderSystem&, const SceneUpdateContext& context, RenderSceneConstants& sceneData)>                                                                                         updateGPUSceneDataFunc;
 		lib::RawCallable<void(SceneRenderSystem&, const SceneRendererInterface&, const RenderScene&, const RenderView&, INOUT RenderViewsCollector& )>                                                         collectRenderViewsFunc;
 		lib::RawCallable<void(SceneRenderSystem&, rg::RenderGraphBuilder&, const SceneRendererInterface&, const RenderScene&, const lib::DynamicPushArray<ViewRenderingSpec*>&, const SceneRendererSettings&)> renderPerFrameFunc;
 		lib::RawCallable<void(SceneRenderSystem&, rg::RenderGraphBuilder&, const SceneRendererInterface&, const RenderScene&)>                                                                                 finishRenderingFrameFunc;

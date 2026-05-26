@@ -300,20 +300,20 @@ void AtmosphereRenderSystem::Update(const SceneUpdateContext& context)
 	}
 }
 
-void AtmosphereRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
+void AtmosphereRenderSystem::UpdateGPUSceneData(const SceneUpdateContext& context, RenderSceneConstants& sceneData)
 {
-	Super::UpdateGPUSceneData(sceneData);
+	Super::UpdateGPUSceneData(context, sceneData);
 
-	const AtmosphereContext& context = GetAtmosphereContext();
+	const AtmosphereContext& atmosphereContext = GetAtmosphereContext();
 
 	SceneAtmosphereData atmosphereData;
 	atmosphereData.atmosphereParams   = m_atmosphereParams;
-	atmosphereData.transmittanceLUT   = context.transmittanceLUT;
-	atmosphereData.multiScatteringLUT = context.multiScatteringLUT;
+	atmosphereData.transmittanceLUT   = atmosphereContext.transmittanceLUT;
+	atmosphereData.multiScatteringLUT = atmosphereContext.multiScatteringLUT;
 
-	if (context.mainDirectionalLight)
+	if (atmosphereContext.mainDirectionalLight)
 	{
-		atmosphereData.mainDirectionalLight = *context.mainDirectionalLight;
+		atmosphereData.mainDirectionalLight = *atmosphereContext.mainDirectionalLight;
 	}
 
 	sceneData.atmosphere = atmosphereData;

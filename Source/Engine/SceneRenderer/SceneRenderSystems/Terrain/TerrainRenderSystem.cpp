@@ -9,6 +9,7 @@
 #include "Types/Buffer.h"
 #include "Engine.h"
 #include "MaterialsSubsystem.h"
+#include "TerrainEditorRenderer.h"
 
 
 namespace spt::rsc
@@ -428,13 +429,11 @@ BEGIN_SHADER_STRUCT(RenderCacheDepthTextureConstants)
 END_SHADER_STRUCT();
 
 
-rg::RGTextureViewHandle RenderCacheDepthTexture(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const UpdateMaterialCacheParams& params)
+void RenderCacheDepthTexture(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const UpdateMaterialCacheParams& params, rg::RGTextureViewHandle cacheDepth)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const math::Vector2u resolution = terrain_consts::materialCacheRes;
-
-	const rg::RGTextureViewHandle cacheDepth = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Terrain Material Cache Depth"), rg::TextureDef(resolution, rhi::EFragmentFormat::D16_UN_Float));
 
 	RenderCacheDepthTextureConstants shaderConstants;
 	shaderConstants.prevMinBounds = params.prevMinBounds;
@@ -456,8 +455,6 @@ rg::RGTextureViewHandle RenderCacheDepthTexture(rg::RenderGraphBuilder& graphBui
 								RenderCacheDepthTexturePSO::pso,
 								rg::EmptyDescriptorSets(),
 								shaderConstants);
-
-	return cacheDepth;
 }
 
 
@@ -535,7 +532,7 @@ void UpdateMaterialCache(rg::RenderGraphBuilder& graphBuilder, const SceneRender
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector2u resolution = params.lod->baseColorMetallic->GetResolution2D();
+	const math::Vector2u resolution = terrain_consts::materialCacheRes;
 
 	const Bool hasPomDepth = params.lod->pomDepth != nullptr;
 
@@ -573,14 +570,22 @@ void UpdateMaterialCache(rg::RenderGraphBuilder& graphBuilder, const SceneRender
 			});
 	}
 
-	const rg::RGTextureViewHandle depthTexture = RenderCacheDepthTexture(graphBuilder, rendererInterface, renderScene, params);
+	const Bool skipCaching = rendererInterface.rendererSettings.editorRendering.terrain.paintedMaterialMap.IsValid();
+
+	const rg::RGTextureViewHandle cacheDepth = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Terrain Material Cache Depth"), rg::TextureDef(resolution, rhi::EFragmentFormat::D16_UN_Float));
+
+	if (!skipCaching)
+	{
+		RenderCacheDepthTexture(graphBuilder, rendererInterface, renderScene, params, cacheDepth);
+	}
 
 	renderPass.SetDepthRenderTarget(
 		rg::RGRenderTargetDef
 		{
-			.textureView    = depthTexture,
-			.loadOperation  = rhi::ERTLoadOperation::Load,
+			.textureView    = cacheDepth,
+			.loadOperation  = skipCaching ? rhi::ERTLoadOperation::Clear : rhi::ERTLoadOperation::Load,
 			.storeOperation = rhi::ERTStoreOperation::Store,
+			.clearColor     = rhi::ClearColor(1.f, 0.f, 0.f, 0.f),
 		});
 
 	const rsc::TerrainDefinition& terrainDef = renderScene.GetTerrainDefinition();
@@ -1164,7 +1169,7 @@ void TerrainRenderSystem::Update(const SceneUpdateContext& context)
 	m_renderInstance->lodTransactions = lodTransactions;
 }
 
-void TerrainRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
+void TerrainRenderSystem::UpdateGPUSceneData(const SceneUpdateContext& context, RenderSceneConstants& sceneData)
 {
 	SPT_CHECK(m_initialized);
 
@@ -1198,6 +1203,14 @@ void TerrainRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
 		matCache.lods[i].rcpRange           = (lodCache.maxBounds - lodCache.minBounds).cwiseInverse();
 	}
 
+	const TerrainEditorRendering& terrainEditorData = context.rendererSettings.editorRendering.terrain;
+
+	TerrainMaterialsMap materialsMapData = terrainDef.materialsMap;
+	if (terrainEditorData.paintedMaterialMap)
+	{
+		materialsMapData.materialIDs = terrainEditorData.paintedMaterialMap;
+	}
+
 	TerrainSceneData terrainData;
 	terrainData.heightMap           = heightMapData;
 	terrainData.farLODBaseColor     = terrainDef.farLODBaseColor;
@@ -1214,7 +1227,7 @@ void TerrainRenderSystem::UpdateGPUSceneData(RenderSceneConstants& sceneData)
 	terrainData.meshletVerticesNum  = terrain_consts::meshletVerticesNum;
 	terrainData.meshletIndicesNum   = terrain_consts::meshletIndicesNum;
 	terrainData.meshletTranglesNum  = terrain_consts::meshletIndicesNum / 3u;
-	terrainData.materialsMap        = terrainDef.materialsMap;
+	terrainData.materialsMap        = materialsMapData;
 	terrainData.materialCache       = matCache;
 
 	sceneData.terrain = terrainData;
@@ -1243,6 +1256,22 @@ void TerrainRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, c
 
 	lib::SharedPtr<rdr::Buffer>& currentFrameTileLODsBuffer = m_tileLODsBuffers[frameIdx % m_tileLODsBuffers.size()];
 	lod::WriteTilesLODState(currentFrameTileLODsBuffer, m_renderInstance->lodState);
+
+	if (rendererInterface.rendererSettings.editorRendering.terrain.influenceGizmo)
+	{
+		mainView->GetRenderViewEntry(ERenderViewEntry::DebugRenderAndEditor).AddLambda([](rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const ViewRenderingSpec& view, const RenderViewEntryContext& context)
+		{
+			editor::RenderInfluenceGizmo(graphBuilder, rendererInterface, renderScene, view, context.Get<RenderViewEntryDelegates::DebugRenderAndEditorData>(), rendererInterface.rendererSettings.editorRendering);
+		});
+	}
+
+	if (rendererInterface.rendererSettings.editorRendering.terrain.materialPaintCommand)
+	{
+		mainView->GetRenderViewEntry(ERenderViewEntry::DebugRenderAndEditor).AddLambda([](rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const ViewRenderingSpec& view, const RenderViewEntryContext& context)
+		{
+			editor::ExecuteMaterialPaintCommand(graphBuilder, rendererInterface, renderScene, view, rendererInterface.rendererSettings.editorRendering);
+		});
+	}
 }
 
 Bool TerrainRenderSystem::IsEnabled() const

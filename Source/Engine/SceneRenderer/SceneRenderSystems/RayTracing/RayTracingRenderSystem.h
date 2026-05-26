@@ -37,7 +37,7 @@ public:
 	explicit RayTracingRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene);
 
 	// Begin RenderSceneSubsystem overrides
-	void UpdateGPUSceneData(RenderSceneConstants& sceneData);
+	void UpdateGPUSceneData(const SceneUpdateContext& context, RenderSceneConstants& sceneData);
 	void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const lib::DynamicPushArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings);
 	// End RenderSceneSubsystem overrides
 

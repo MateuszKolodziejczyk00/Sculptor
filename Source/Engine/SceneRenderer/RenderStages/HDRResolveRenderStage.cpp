@@ -579,6 +579,15 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, Scene
 		stageContext.rendererSettings.dynamicDebugRenderer->RenderDebugGeometry(graphBuilder, debugSettings);
 	}
 
+	{
+		RenderViewEntryDelegates::DebugRenderAndEditorData arguments;
+		arguments.color = debugColorTexture;
+		arguments.depth = debugDepthTexture;
+		RenderViewEntryContext entryContext;
+		entryContext.Bind(arguments);
+		viewSpec.GetRenderViewEntry(ERenderViewEntry::DebugRenderAndEditor).Broadcast(graphBuilder, rendererInterface, renderScene, viewSpec, entryContext);
+	}
+
 	tonemapping::TonemappingPassConstants tonemappingSettings;
 	tonemappingSettings.enableColorDithering     = params::enableColorDithering;
 	tonemappingSettings.minLogLuminance          = minLogLuminance;

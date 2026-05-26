@@ -177,6 +177,8 @@ public:
 
 	AssetsSystem& GetOwningSystem() const { return m_owningSystem; }
 
+	ResourcePath GetResourcePath() const;
+
 protected:
 
 	void Initialize();
