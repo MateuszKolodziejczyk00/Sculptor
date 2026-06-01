@@ -67,6 +67,12 @@ MaterialEvaluationOutput EvaluateMaterial(TSampler sampler, MaterialEvaluationPa
 		terrainInterface.EvaluateFarLODMaterial(evalParams.worldLocation.xy, baseColor, roughness, metallic, occlusion);
 	}
 
+	if (all(evalParams.worldLocation.xy >= terrainInterface.grassFieldDef.worldSpaceMin)
+		&& all(evalParams.worldLocation.xy <= terrainInterface.grassFieldDef.worldSpaceMax))
+	{
+		occlusion *= 0.4f;
+	}
+
 	output.shadingNormal  = normal;
 	output.geometryNormal = normal;
 	output.roughness      = roughness;

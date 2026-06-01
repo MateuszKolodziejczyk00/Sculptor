@@ -16,7 +16,8 @@
 #include "Utils/GBuffer/GBuffer.hlsli"
 #include "GeometryRendering/GeometryCommon.hlsli"
 #include "Terrain/SceneTerrain.hlsli"
-
+#include "Terrain/Grass/GrassGeometry.hlsli"
+#include "Terrain/Grass/GrassMaterial.hlsli"
 #include "Materials/MaterialSystem.hlsli"
 
 
@@ -240,6 +241,9 @@ MaterialEvaluationParameters CreateMaterialEvalParams(in InterpolatedVertexData 
 }
 
 
+[[shader_struct(MaterialDepthData)]]
+
+
 float ApplyParallax(inout float2 uv, in MaterialDepthData materialDepthData, in SamplerState sampler, in float3 toView, in float2 uvScale)
 {
 	const float texLevel = 0.f;
@@ -441,6 +445,72 @@ FS_Output EmitTerrainGBuffer_FS(in OutputVertex vertexInput)
 	output.occlusion = evaluatedMaterial.occlusion;
 #if ENABLE_POM
 	output.pomDepth  = pomDepth;
+#endif // ENABLE_POM
+
+	return output;
+}
+
+
+FS_Output EmitGrassGBuffer_FS(in OutputVertex vertexInput)
+{
+	const uint2 pixelCoord = u_emitGBufferConstants.screenResolution * vertexInput.screenUV;
+	
+	const uint packedVisibilityInfo = u_visibilityTexture.Load(uint3(pixelCoord, 0u));
+
+	uint grassBladeIdx = 0;
+	uint triangleIdx = 0;
+	UnpackGrassVisibilityInfo(packedVisibilityInfo, OUT grassBladeIdx, OUT triangleIdx);
+
+	const GrassBladeDef bladeDef = u_emitGBufferConstants.grassBladeDefs.Load(grassBladeIdx);
+
+	GrassVertexProcessor grassProcessor = GrassVertexProcessor::Create(bladeDef);
+
+	GrassBladeVertex triangleVertex[3];
+	ProcessGrassBladeTriangleVertices(grassProcessor, triangleIdx, OUT triangleVertex[0], OUT triangleVertex[1], OUT triangleVertex[2]);
+
+	const float4 triangleVertexCS0 = mul(u_sceneView.viewProjectionMatrix, float4(triangleVertex[0].location, 1.f));
+	const float4 triangleVertexCS1 = mul(u_sceneView.viewProjectionMatrix, float4(triangleVertex[1].location, 1.f));
+	const float4 triangleVertexCS2 = mul(u_sceneView.viewProjectionMatrix, float4(triangleVertex[2].location, 1.f));
+	const float2 screenPositionClip = vertexInput.screenUV * 2.f - 1.f;
+	const Barycentrics barycentrics = ComputeTriangleBarycentrics(screenPositionClip, triangleVertexCS0, triangleVertexCS1, triangleVertexCS2, u_emitGBufferConstants.invScreenResolution);
+
+	const float3 locationWS = InterpolateAttribute<float3>(triangleVertex[0].location, triangleVertex[1].location, triangleVertex[2].location, barycentrics);
+	float3 triangleNormal = normalize(InterpolateAttribute<float3>(triangleVertex[0].normal, triangleVertex[1].normal, triangleVertex[2].normal, barycentrics));
+	float3 triangleTangent = grassProcessor.GetBladeTangent();
+	triangleTangent = normalize(triangleTangent - triangleNormal * dot(triangleTangent, triangleNormal));
+	float3 triangleBitangent = normalize(cross(triangleNormal, triangleTangent));
+
+	const float3 toViewWS = normalize(u_sceneView.viewLocation - locationWS);
+	if (dot(triangleNormal, toViewWS) < 0.f)
+	{
+		triangleNormal    = -triangleNormal;
+		triangleTangent   = -triangleTangent;
+		triangleBitangent = -triangleBitangent;
+	}
+
+	const float bladeHeightAlpha = saturate(InterpolateAttribute<float>(triangleVertex[0].heightAlpha, triangleVertex[1].heightAlpha, triangleVertex[2].heightAlpha, barycentrics));
+	const EvaluatedGrassMaterial grassMaterial = EvaluateGrassMaterial(bladeHeightAlpha, grassProcessor.bladeRng, grassProcessor.clumpRng);
+	
+	GBufferData gBufferData;
+	gBufferData.baseColor = grassMaterial.baseColor;
+	gBufferData.metallic  = 0.f;
+	gBufferData.normal    = triangleNormal;
+	gBufferData.tangent   = triangleTangent;
+	gBufferData.bitangent = triangleBitangent;
+	gBufferData.roughness = grassMaterial.roughness;
+	gBufferData.emissive  = 0.f;
+
+	const GBufferOutput gBufferOutput = EncodeGBuffer(gBufferData);
+
+	FS_Output output = (FS_Output)0;
+	output.gBuffer0  = gBufferOutput.gBuffer0;
+	output.gBuffer1  = gBufferOutput.gBuffer1;
+	output.gBuffer2  = gBufferOutput.gBuffer2;
+	output.gBuffer3  = gBufferOutput.gBuffer3;
+	output.gBuffer4  = gBufferOutput.gBuffer4;
+	output.occlusion = grassMaterial.visibility;
+#if ENABLE_POM
+	output.pomDepth  = 0.f;
 #endif // ENABLE_POM
 
 	return output;

@@ -21,6 +21,20 @@ SPT_DEFINE_LOG_CATEGORY(TerrainCompiler, true);
 namespace spt::as::terrain_compiler
 {
 
+namespace utils
+{
+
+math::Vector2u ComputeTerrainTilesResolution(const math::Vector2f minBounds, const math::Vector2f maxBounds)
+{
+	const math::Vector2f terrainSize = maxBounds - minBounds;
+
+	return math::Vector2u(
+		static_cast<Uint32>(std::ceil(terrainSize.x() / rsc::terrain_consts::tileSizeMeters)),
+		static_cast<Uint32>(std::ceil(terrainSize.y() / rsc::terrain_consts::tileSizeMeters)));
+}
+
+} // utils
+
 namespace bake_far_lod
 {
 
@@ -86,6 +100,48 @@ rg::RGTextureViewHandle Execute(rg::RenderGraphBuilder& graphBuilder, rg::RGText
 
 } // compile_height_map
 
+namespace compile_tile_height_min_max_map
+{
+
+BEGIN_SHADER_STRUCT(CompileTileHeightMinMaxMapConstants)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    heightMapResolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,                    minBounds)
+	SHADER_STRUCT_FIELD(math::Vector2f,                    maxBounds)
+	SHADER_STRUCT_FIELD(Real32,                            tileSizeMeters)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         heightMap)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>, rwTileHeightMinMaxMap)
+END_SHADER_STRUCT()
+
+
+SIMPLE_COMPUTE_PSO(CompileTileHeightMinMaxMapPSO, "Sculptor/Terrain/CompileTileHeightMinMaxMap.hlsl", CompileTileHeightMinMaxMapCS)
+
+
+rg::RGTextureViewHandle Execute(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle compiledHeightMap, const math::Vector2f minBounds, const math::Vector2f maxBounds)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector2u tileResolution = utils::ComputeTerrainTilesResolution(minBounds, maxBounds);
+	const rg::RGTextureViewHandle tileHeightMinMaxMap = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Terrain Tile Height Min Max Map"), rg::TextureDef(tileResolution, rhi::EFragmentFormat::RG16_UN_Float));
+
+	CompileTileHeightMinMaxMapConstants constants{};
+	constants.heightMapResolution   = compiledHeightMap->GetResolution2D();
+	constants.minBounds             = minBounds;
+	constants.maxBounds             = maxBounds;
+	constants.tileSizeMeters        = rsc::terrain_consts::tileSizeMeters;
+	constants.heightMap             = compiledHeightMap;
+	constants.rwTileHeightMinMaxMap = tileHeightMinMaxMap;
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Compile Terrain Tile Height Min Max Map"),
+						  CompileTileHeightMinMaxMapPSO::pso,
+						  math::Utils::DivideCeil(tileResolution, math::Vector2u(8u, 8u)),
+						  rg::EmptyDescriptorSets(),
+						  constants);
+
+	return tileHeightMinMaxMap;
+}
+
+} // compile_tile_height_min_max_map
+
 std::optional<TerrainCompilationResult> CompileTerrain(const AssetInstance& asset, const TerrainAssetDefinition& definition)
 {
 	SPT_PROFILER_FUNCTION();
@@ -122,12 +178,17 @@ std::optional<TerrainCompilationResult> CompileTerrain(const AssetInstance& asse
 			SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Terrain Height Map Compilation (GPU)");
 
 			const rg::RGTextureViewHandle compiledHeightMap = compile_height_map::Execute(graphBuilder, graphBuilder.AcquireExternalTextureView(sourceHeightMapView.ToSharedPtr()));
+			const rg::RGTextureViewHandle tileHeightMinMaxMap = compile_tile_height_min_max_map::Execute(graphBuilder, compiledHeightMap, minBounds, maxBounds);
+
 			const lib::SharedRef<rdr::Buffer> heightMapData = graphBuilder.DownloadTextureToBuffer(RG_DEBUG_NAME("Download Height Map"), compiledHeightMap);
+			const lib::SharedRef<rdr::Buffer> tileHeightMinMaxMapData = graphBuilder.DownloadTextureToBuffer(RG_DEBUG_NAME("Download Tile Height Min Max Map"), tileHeightMinMaxMap);
 
 			graphBuilder.Execute();
 			rdr::GPUApi::WaitIdle();
 
 			const rhi::RHIMappedByteBuffer heightMapMappedData(heightMapData->GetRHI());
+			const rhi::RHIMappedByteBuffer tileHeightMinMaxMapMappedData(tileHeightMinMaxMapData->GetRHI());
+			const math::Vector2u tileHeightMinMaxMapResolution = tileHeightMinMaxMap->GetResolution2D();
 
 			header.heightMap.resolution = heightMapResolution;
 			header.heightMap.format     = rhi::EFragmentFormat::R16_UN_Float;
@@ -135,6 +196,13 @@ std::optional<TerrainCompilationResult> CompileTerrain(const AssetInstance& asse
 			header.heightMap.dataSize   = static_cast<Uint32>(heightMapMappedData.GetSpan().size());
 
 			result.blob.insert(result.blob.end(), heightMapMappedData.GetSpan().begin(), heightMapMappedData.GetSpan().end());
+
+			header.tileHeightMinMaxMap.resolution = tileHeightMinMaxMapResolution;
+			header.tileHeightMinMaxMap.format     = rhi::EFragmentFormat::RG16_UN_Float;
+			header.tileHeightMinMaxMap.dataOffset = static_cast<Uint32>(result.blob.size());
+			header.tileHeightMinMaxMap.dataSize   = static_cast<Uint32>(tileHeightMinMaxMapMappedData.GetSpan().size());
+
+			result.blob.insert(result.blob.end(), tileHeightMinMaxMapMappedData.GetSpan().begin(), tileHeightMinMaxMapMappedData.GetSpan().end());
 		}
 		else
 		{

@@ -1,9 +1,11 @@
 #include "SculptorShader.hlsli"
 
 [[descriptor_set(RenderSceneDS)]]
+[[descriptor_set(RenderViewDS)]]
 [[shader_params(TerrainBuildTileDrawCommandsConstants, u_constants)]]
 
 #include "Terrain/SceneTerrain.hlsli"
+#include "Utils/Culling.hlsli"
 
 
 struct CS_INPUT
@@ -24,7 +26,12 @@ void BuildTerrainTileDrawCommandsCS(CS_INPUT input)
 	}
 
 	const TerrainClipmapTileGPU tile = terrain.GetTile(tileIdx);
-	bool isTileVisible = true;
+
+	const float2 tileHeightMinMax = terrain.GetTileHeightMinMax(tile);
+	const float3 AABBMin = float3(tile.tileCoordX * terrain.tileSizeMeters, tile.tileCoordY * terrain.tileSizeMeters, tileHeightMinMax.x);
+	const float3 AABBMax = float3(AABBMin.x + terrain.tileSizeMeters, AABBMin.y + terrain.tileSizeMeters, tileHeightMinMax.y);
+
+	const bool isTileVisible = IsAABBInFrustum(u_cullingData.cullingPlanes, AABBMin, AABBMax);
 
 	if (isTileVisible)
 	{

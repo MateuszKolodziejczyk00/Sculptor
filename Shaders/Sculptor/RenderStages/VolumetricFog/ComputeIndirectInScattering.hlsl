@@ -15,7 +15,7 @@ struct CS_INPUT
 };
 
 
-[numthreads(4, 4, 2)]
+[numthreads(4, 4, 4)]
 void ComputeIndirectInScatteringCS(CS_INPUT input)
 {
 	if (all(input.globalID < u_indirectInScatteringConstants.indirectGridRes))

@@ -51,7 +51,29 @@ struct TerrainInterface : TerrainSceneData
 	float GetHeight(float2 locationXY)
 	{
 		const float heightMapValue = heightMap.texture.SampleLevel(BindlessSamplers::LinearClampEdge(), GetHeightMapUV(locationXY), 0);
-		return lerp(heightMap.minHeight, 8.f * heightMap.maxHeight, heightMapValue);
+		return lerp(heightMap.minHeight, heightMap.maxHeight, heightMapValue);
+	}
+
+	float2 LoadMinMaxHeightFromMap(uint2 coords)
+	{
+		const float2 minMax = tileHeightMinMaxMap.Load(coords);
+		float2 result;
+		result.x = lerp(heightMap.minHeight, heightMap.maxHeight, minMax.x);
+		result.y = lerp(heightMap.minHeight, heightMap.maxHeight, minMax.y);
+		return result;
+	}
+
+	float2 GetTileHeightMinMaxAtLocation(float2 locationXY)
+	{
+		const float2 uv = locationXY * heightMap.invSpanMeters + 0.5f;
+		const uint2 coords = uint2(uv * tileHeightMinMaxMapResolution - 0.5f);
+		return LoadMinMaxHeightFromMap(coords);
+	}
+
+	float2 GetTileHeightMinMax(TerrainClipmapTileGPU tile)
+	{
+		const uint2 halfRes = tilesRes >> 1u;
+		return LoadMinMaxHeightFromMap(uint2(tile.tileCoordX, tile.tileCoordY) + halfRes);
 	}
 
 	TerrainMaterialsFactors GetMaterialsFactors(float2 locationXY)

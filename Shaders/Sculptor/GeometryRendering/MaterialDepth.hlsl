@@ -58,6 +58,10 @@ MATERIAL_DEPTH_OUTPUT MaterialDepthFS(VS_OUTPUT vertexInput)
 	{
 		batchIdx = u_materialDepthParams.terrainMaterialBatchIdx;
 	}
+	else if (primType == VISIBLE_PRIMITIVE_TYPE_GRASS)
+	{
+		batchIdx = u_materialDepthParams.grassMaterialBatchIdx;
+	}
 
 	const float materialDepth = batchIdx != ~0u ? MaterialBatchIdxToMaterialDepth(batchIdx) : 1.f;
 

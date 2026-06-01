@@ -46,6 +46,7 @@ public:
 	// End GPUDeferredUploadRequest overrides
 	
 	lib::SharedPtr<rdr::TextureView> dstHeightMap;
+	lib::SharedPtr<rdr::TextureView> dstTileHeightMinMaxMap;
 	lib::SharedPtr<rdr::TextureView> dstFarLODBaseColor;
 	lib::SharedPtr<rdr::TextureView> dstFarLODProps;
 	lib::SharedPtr<rdr::TextureView> dstMaterialIDs;
@@ -61,6 +62,12 @@ void TerrainTexturesUuploadRequest::EnqueueUploads()
 	{
 		const rhi::ETextureAspect textureAspect = dstHeightMap->GetRHI().GetAspect();
 		rdr::UploadDataToTexture(blob->bin.data() + terrainDataHeader.heightMap.dataOffset, terrainDataHeader.heightMap.dataSize, dstHeightMap->GetTexture(), textureAspect, dstHeightMap->GetResolution(), math::Vector3u::Zero(), 0u, 0u);
+	}
+
+	if (dstTileHeightMinMaxMap && terrainDataHeader.tileHeightMinMaxMap.format != rhi::EFragmentFormat::None)
+	{
+		const rhi::ETextureAspect textureAspect = dstTileHeightMinMaxMap->GetRHI().GetAspect();
+		rdr::UploadDataToTexture(blob->bin.data() + terrainDataHeader.tileHeightMinMaxMap.dataOffset, terrainDataHeader.tileHeightMinMaxMap.dataSize, dstTileHeightMinMaxMap->GetTexture(), textureAspect, dstTileHeightMinMaxMap->GetResolution(), math::Vector3u::Zero(), 0u, 0u);
 	}
 
 	if (dstFarLODBaseColor && terrainDataHeader.farLODBaseColor.format != rhi::EFragmentFormat::None)
@@ -100,6 +107,7 @@ rsc::TerrainDefinition TerrainAsset::GetTerrainDefinition() const
 
 	rsc::TerrainDefinition terrainDefinition;
 	terrainDefinition.heightMap       = m_heightMap;
+	terrainDefinition.tileHeightMinMaxMap = m_tileHeightMinMaxMap;
 	terrainDefinition.farLODBaseColor = m_farLODBaseColor;
 	terrainDefinition.farLODProps     = m_farLODProps;
 	terrainDefinition.farLODMinBounds = m_terrainMinBounds;
@@ -158,6 +166,17 @@ void TerrainAsset::OnInitialize()
 		m_heightMap = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("TerrainAsset_HeightMap"), heightMapDef, rhi::EMemoryUsage::GPUOnly);
 	}
 
+	if (terrainDataHeader.tileHeightMinMaxMap.format != rhi::EFragmentFormat::None)
+	{
+		rhi::TextureDefinition tileHeightMinMaxMapDef;
+		tileHeightMinMaxMapDef.resolution = terrainDataHeader.tileHeightMinMaxMap.resolution;
+		tileHeightMinMaxMapDef.format     = terrainDataHeader.tileHeightMinMaxMap.format;
+		tileHeightMinMaxMapDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest);
+		tileHeightMinMaxMapDef.flags      = rhi::ETextureFlags::GloballyReadable;
+
+		m_tileHeightMinMaxMap = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("TerrainAsset_TileHeightMinMaxMap"), tileHeightMinMaxMapDef, rhi::EMemoryUsage::GPUOnly);
+	}
+
 	if (terrainDataHeader.materialIDs.format != rhi::EFragmentFormat::None)
 	{
 		rhi::TextureDefinition materialIDsDef;
@@ -212,6 +231,7 @@ void TerrainAsset::OnInitialize()
 
 	auto uploadRequest = lib::MakeUnique<TerrainTexturesUuploadRequest>();
 	uploadRequest->dstHeightMap       = m_heightMap;
+	uploadRequest->dstTileHeightMinMaxMap = m_tileHeightMinMaxMap;
 	uploadRequest->dstFarLODBaseColor = m_farLODBaseColor;
 	uploadRequest->dstFarLODProps     = m_farLODProps;
 	uploadRequest->dstMaterialIDs     = m_materialIDs;

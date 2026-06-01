@@ -3,6 +3,7 @@
 #include "RenderSceneMacros.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "Bindless/BindlessTypes.h"
+#include "SceneRenderSystems/Terrain/Grass/GrassTypes.h"
 
 
 namespace spt::rsc
@@ -55,9 +56,12 @@ BEGIN_SHADER_STRUCT(TerrainSceneData)
 	SHADER_STRUCT_FIELD(TerrainHeightMap,                           heightMap)
 	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<math::Vector3f>,     farLODBaseColor)
 	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<math::Vector3f>,     farLODProps) // .r = roughness, .g = metallic, .b = occlusion
+	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<math::Vector2f>,     tileHeightMinMaxMap)
+	SHADER_STRUCT_FIELD(math::Vector2f,                             tileHeightMinMaxMapResolution)
 	SHADER_STRUCT_FIELD(math::Vector2f,                             farLODMinBounds)
 	SHADER_STRUCT_FIELD(math::Vector2f,                             farLODRcpBounds)
 	SHADER_STRUCT_FIELD(gfx::TypedBuffer<TerrainClipmapTileGPU>,    tiles)
+	SHADER_STRUCT_FIELD(math::Vector2u,                             tilesRes)
 	SHADER_STRUCT_FIELD(gfx::TypedBuffer<Uint16>,                   tilesLODs)
 	SHADER_STRUCT_FIELD(Uint32,                                     tilesNum)
 	SHADER_STRUCT_FIELD(Real32,                                     tileSizeMeters)
@@ -69,6 +73,7 @@ BEGIN_SHADER_STRUCT(TerrainSceneData)
 	SHADER_STRUCT_FIELD(Uint32,                                     meshletTranglesNum)
 	SHADER_STRUCT_FIELD(TerrainMaterialsMap,                        materialsMap)
 	SHADER_STRUCT_FIELD(TerrrainMaterialCache,                      materialCache)
+	SHADER_STRUCT_FIELD(GrassFieldDefinition,                       grassFieldDef)
 END_SHADER_STRUCT();
 
 } // spt::rsc

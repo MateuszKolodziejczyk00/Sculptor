@@ -16,6 +16,24 @@ bool IsSphereInFrustum(float4 frustumPlanes[5], float3 sphereCenterWS, float sph
 }
 
 
+bool IsAABBInFrustum(float4 frustumPlanes[5], float3 aabbMinWS, float3 aabbMaxWS)
+{
+	for(uint planeIdx = 0; planeIdx < 4; ++planeIdx)
+	{
+		const float3 planeNormal = frustumPlanes[planeIdx].xyz;
+		const float planeDistance = frustumPlanes[planeIdx].w;
+
+		const float3 positiveVertex = select(planeNormal > 0.f, aabbMaxWS, aabbMinWS);
+
+		if(dot(frustumPlanes[planeIdx], float4(positiveVertex, 1.f)) < 0.f)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+
 int ToInt8Value(uint bits)
 {
 	return int(bits & 127) - int(bits & 128);

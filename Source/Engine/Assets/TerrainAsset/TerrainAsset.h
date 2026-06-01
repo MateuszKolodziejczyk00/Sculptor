@@ -58,6 +58,7 @@ public:
 	using AssetInstance::AssetInstance;
 
 	const lib::SharedPtr<rdr::TextureView>& GetHeightMap() const { return m_heightMap; }
+	const lib::SharedPtr<rdr::TextureView>& GetTileHeightMinMaxMap() const { return m_tileHeightMinMaxMap; }
 	const TerrainMaterialAssetHandle& GetTerrainMaterialAsset() const { return m_terrainMaterialAsset; }
 
 	const TerrainAssetDefinition& GetTerrainAssetDefinition() const;
@@ -75,6 +76,7 @@ protected:
 private:
 
 	lib::SharedPtr<rdr::TextureView> m_heightMap;
+	lib::SharedPtr<rdr::TextureView> m_tileHeightMinMaxMap;
 	lib::SharedPtr<rdr::TextureView> m_farLODBaseColor;
 	lib::SharedPtr<rdr::TextureView> m_farLODProps;
 	lib::SharedPtr<rdr::TextureView> m_materialIDs;

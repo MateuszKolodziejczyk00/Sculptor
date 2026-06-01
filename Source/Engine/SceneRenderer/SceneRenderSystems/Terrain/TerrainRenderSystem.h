@@ -68,6 +68,8 @@ public:
 	void RenderVisibilityBuffer(rg::RenderGraphBuilder& graphBuilder, const TerrainVisibilityRenderParams& params) const;
 	void RenderShadowMap(rg::RenderGraphBuilder& graphBuilder, const TerrainShadowMapRenderParams& params) const;
 
+	const GrassFieldDefinition& GetGrassFieldDefinition() const { return m_grassFieldDef; }
+
 	mat::MaterialShader GetTerrainMaterialShader() const { return m_terrainMaterialShader; }
 
 private:
@@ -85,6 +87,8 @@ private:
 	RTInstanceHandle          m_rtInstanceHandle;
 	TerrainRTGeometryProvider m_rtGeometryProvider;
 	Bool                      m_rtDataDirty = true;
+
+	GrassFieldDefinition m_grassFieldDef;
 
 	lib::StaticArray<lib::SharedPtr<rdr::Buffer>, 2u> m_tileLODsBuffers;
 };

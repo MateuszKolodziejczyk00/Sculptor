@@ -53,6 +53,36 @@ rg::RGBufferViewHandle CreateIndirectInstancedDrawCommand(rg::RenderGraphBuilder
 	return commandBuffer;
 }
 
+
+
+SIMPLE_COMPUTE_PSO(InitIndirectDispatchMeshCommandPSO, "Sculptor/Utils/IndirectRendering/InitIndirectDispatchMeshCommand.hlsl", InitIndirectDispatchMeshCommandCS);
+
+
+BEGIN_SHADER_STRUCT(InitIndirectDispatchMeshCommand)
+	SHADER_STRUCT_FIELD(Uint32,                                         instancesPerGroup)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<Uint32>,                    instancesCountBuffer)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<IndirectDispatchCommand>, outDrawCommand)
+END_SHADER_STRUCT();
+
+
+rg::RGBufferViewHandle CreateIndirectDispatchMeshCommand(rg::RenderGraphBuilder& graphBuilder, rg::RGBufferViewHandle instancesNum, Uint32 instancesPerGroup /* = 1u */)
+{
+	const rg::RGBufferViewHandle commandBuffer = graphBuilder.CreateStorageBufferView(RG_DEBUG_NAME("Indirect Dispatch Mesh Command Buffer"), sizeof(IndirectDispatchCommand));
+
+	InitIndirectDispatchMeshCommand shaderConstants;
+	shaderConstants.instancesPerGroup = instancesPerGroup;
+	shaderConstants.instancesCountBuffer = instancesNum;
+	shaderConstants.outDrawCommand = commandBuffer;
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Initialize Indirect Dispatch Mesh Command"),
+						  InitIndirectDispatchMeshCommandPSO::pso,
+						  1u,
+						  rg::EmptyDescriptorSets(),
+						  shaderConstants);
+
+	return commandBuffer;
+}
+
 } // indirect_utils
 
 } // spt::gfx

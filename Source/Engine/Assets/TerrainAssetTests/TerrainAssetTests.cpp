@@ -77,7 +77,9 @@ TEST_F(TerrainAssetTests, CreateTerrainWithoutHeightMap)
 	EXPECT_TRUE(terrainAsset.IsValid());
 	EXPECT_TRUE(terrainAsset->GetTerrainMaterialAsset().IsValid());
 	EXPECT_TRUE(terrainAsset->GetHeightMap() == nullptr);
+	EXPECT_TRUE(terrainAsset->GetTileHeightMinMaxMap() == nullptr);
 	EXPECT_TRUE(terrainAsset->GetTerrainDefinition().heightMap == nullptr);
+	EXPECT_TRUE(terrainAsset->GetTerrainDefinition().tileHeightMinMaxMap == nullptr);
 
 	queue.ForceFlushCommands(tempArena);
 

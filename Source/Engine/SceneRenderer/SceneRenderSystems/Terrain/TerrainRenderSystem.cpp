@@ -17,7 +17,6 @@ namespace spt::rsc
 
 namespace terrain_consts
 {
-static constexpr Real32 tileSizeMeters      = 32.f;
 static constexpr Real32 clipmapExtentMeters = 1024.f;
 
 static constexpr Uint32 meshletQuadsPerEdge    = 8u;
@@ -206,7 +205,6 @@ GRAPHICS_PSO(TerrainVisibilityPSO)
 	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
 	{
 		rhi::GraphicsPipelineDefinition psoDef;
-		psoDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
 		psoDef.rasterizationDefinition.cullMode = rhi::ECullMode::None;
 		psoDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(
 			rhi::ColorRenderTargetDefinition
@@ -1167,6 +1165,13 @@ void TerrainRenderSystem::Update(const SceneUpdateContext& context)
 	lod::LODTransactions* lodTransactions = memArena.AllocateType<lod::LODTransactions>(memArena);
 	lod::UpdateLODState(m_renderInstance->lodState, cameraTileCoord, *lodTransactions);
 	m_renderInstance->lodTransactions = lodTransactions;
+
+	const math::Vector2i cameraGrassTile = grass_utils::GetTileCoord(cameraLocation);
+	const Int32 tilesExtent = static_cast<Int32>(utils::ComputeTilesResolution().x());
+	m_grassFieldDef.originTile = cameraGrassTile - math::Vector2i::Constant(tilesExtent);
+	m_grassFieldDef.tilesExtent = math::Vector2i::Constant(tilesExtent * 2);
+	m_grassFieldDef.worldSpaceMin = grass_utils::GetTileBounds(m_grassFieldDef.originTile).min();
+	m_grassFieldDef.worldSpaceMax = grass_utils::GetTileBounds(m_grassFieldDef.originTile + m_grassFieldDef.tilesExtent).max();
 }
 
 void TerrainRenderSystem::UpdateGPUSceneData(const SceneUpdateContext& context, RenderSceneConstants& sceneData)
@@ -1188,7 +1193,7 @@ void TerrainRenderSystem::UpdateGPUSceneData(const SceneUpdateContext& context, 
 	heightMapData.invSpanMeters  = math::Vector2f::Ones().cwiseQuotient(heightMapData.spanMeters);
 	heightMapData.metersPerTexel = heightMap ? heightMapData.spanMeters.cwiseQuotient(heightMapData.res.cast<Real32>()) : math::Vector2f{0.f, 0.f};
 	heightMapData.minHeight      = 0.f;
-	heightMapData.maxHeight      = 150.f;
+	heightMapData.maxHeight      = 1200.f;
 
 	TerrrainMaterialCache matCache;
 	for (Uint32 i = 0u; i < terrain_consts::materialCacheLODsNum; ++i)
@@ -1212,23 +1217,27 @@ void TerrainRenderSystem::UpdateGPUSceneData(const SceneUpdateContext& context, 
 	}
 
 	TerrainSceneData terrainData;
-	terrainData.heightMap           = heightMapData;
-	terrainData.farLODBaseColor     = terrainDef.farLODBaseColor;
-	terrainData.farLODProps         = terrainDef.farLODProps;
-	terrainData.farLODMinBounds     = terrainDef.farLODMinBounds;
-	terrainData.farLODRcpBounds     = (terrainDef.farLODMaxBounds - terrainDef.farLODMinBounds).cwiseInverse();
-	terrainData.tiles               = m_tilesBuffer->GetFullView();
-	terrainData.tilesLODs           = currentFrameTileLODsBuffer->GetFullView();
-	terrainData.tilesNum            = static_cast<Uint32>(m_tilesBuffer->GetSize() / sizeof(rdr::HLSLStorage<TerrainClipmapTileGPU>));
-	terrainData.tileSizeMeters      = terrain_consts::tileSizeMeters;
-	terrainData.clipmapExtentMeters = terrain_consts::clipmapExtentMeters;
-	terrainData.meshletVertices     = m_meshletVerticesBuffer->GetFullView();
-	terrainData.meshletIndices      = m_meshletIndicesBuffer->GetFullView();
-	terrainData.meshletVerticesNum  = terrain_consts::meshletVerticesNum;
-	terrainData.meshletIndicesNum   = terrain_consts::meshletIndicesNum;
-	terrainData.meshletTranglesNum  = terrain_consts::meshletIndicesNum / 3u;
-	terrainData.materialsMap        = materialsMapData;
-	terrainData.materialCache       = matCache;
+	terrainData.heightMap                     = heightMapData;
+	terrainData.farLODBaseColor               = terrainDef.farLODBaseColor;
+	terrainData.farLODProps                   = terrainDef.farLODProps;
+	terrainData.tileHeightMinMaxMap           = terrainDef.tileHeightMinMaxMap;
+	terrainData.tileHeightMinMaxMapResolution = terrainDef.tileHeightMinMaxMap ? terrainDef.tileHeightMinMaxMap->GetResolution2D().cast<Real32>() : math::Vector2f{0.f, 0.f};
+	terrainData.farLODMinBounds               = terrainDef.farLODMinBounds;
+	terrainData.farLODRcpBounds               = (terrainDef.farLODMaxBounds - terrainDef.farLODMinBounds).cwiseInverse();
+	terrainData.tiles                         = m_tilesBuffer->GetFullView();
+	terrainData.tilesRes                      = utils::ComputeTilesResolution();
+	terrainData.tilesLODs                     = currentFrameTileLODsBuffer->GetFullView();
+	terrainData.tilesNum                      = static_cast<Uint32>(m_tilesBuffer->GetSize() / sizeof(rdr::HLSLStorage<TerrainClipmapTileGPU>));
+	terrainData.tileSizeMeters                = terrain_consts::tileSizeMeters;
+	terrainData.clipmapExtentMeters           = terrain_consts::clipmapExtentMeters;
+	terrainData.meshletVertices               = m_meshletVerticesBuffer->GetFullView();
+	terrainData.meshletIndices                = m_meshletIndicesBuffer->GetFullView();
+	terrainData.meshletVerticesNum            = terrain_consts::meshletVerticesNum;
+	terrainData.meshletIndicesNum             = terrain_consts::meshletIndicesNum;
+	terrainData.meshletTranglesNum            = terrain_consts::meshletIndicesNum / 3u;
+	terrainData.materialsMap                  = materialsMapData;
+	terrainData.materialCache                 = matCache;
+	terrainData.grassFieldDef                 = m_grassFieldDef;
 
 	sceneData.terrain = terrainData;
 }

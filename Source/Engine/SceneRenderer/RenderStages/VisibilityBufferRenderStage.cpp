@@ -9,6 +9,7 @@
 #include "Utils/Geometry/MaterialsRenderer.h"
 #include "SceneRenderer/Utils/LinearizeDepth.h"
 #include "SceneRenderer/Utils/GBufferUtils.h"
+#include "SceneRenderSystems/Terrain/Grass/GrassRenderer.h"
 
 namespace spt::rsc
 {
@@ -186,6 +187,8 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 
 	const VisPassResult geometryPassesResult = m_VisPassRenderer.RenderVisibility(graphBuilder, rendererInterface, visPassParams);
 
+	GrassBlades grassBlades;
+
 	if (const TerrainRenderSystem* terrainRenderSystem = rendererInterface.GetRenderSystem<TerrainRenderSystem>())
 	{
 		if (terrainRenderSystem->IsEnabled())
@@ -198,6 +201,20 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 			};
 
 			terrainRenderSystem->RenderVisibilityBuffer(graphBuilder, terrainVisibilityParams);
+
+			const GrassFieldDefinition& grassFieldDef = terrainRenderSystem->GetGrassFieldDefinition();
+
+			grassBlades = grass_renderer::GenerateGrassBlades(graphBuilder, viewSpec, grassFieldDef);
+
+			const grass_renderer::GrassVisibilityRenderParams grassVisibilityParams
+			{
+				.viewSpec          = viewSpec,
+				.grassBlades       = grassBlades,
+				.depthTexture      = rasterizedDepth,
+				.visibilityTexture = visibilityTexture
+			};
+
+			grass_renderer::RenderGrassVisibility(graphBuilder, grassVisibilityParams);
 		}
 	}
 
@@ -214,6 +231,7 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 		materialPassDef.visibilityTexture = visibilityTexture;
 		materialPassDef.enablePOM         = enablePOM;
 		materialPassDef.pomDepth          = pomDepth;
+		materialPassDef.grassBladeDefs    = grassBlades.bladeDefs;
 
 		materials_renderer::MaterialRenderCommands materialRenderCommands;
 		materials_renderer::AppendGeometryMaterialsRenderCommands(graphBuilder, materialPassDef, cachedGeometryPassData, INOUT materialRenderCommands);
@@ -227,6 +245,8 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 			};
 			materials_renderer::AppendTerrainMaterialsRenderCommand(graphBuilder, materialPassDef, terrainMaterial, INOUT materialRenderCommands);
 		}
+
+		materials_renderer::AppendGrassMaterialsRenderCommand(graphBuilder, materialPassDef, INOUT materialRenderCommands);
 
 		materials_renderer::RenderMaterials(graphBuilder, materialPassDef, materialRenderCommands);
 	}

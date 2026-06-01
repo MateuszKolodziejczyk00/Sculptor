@@ -33,17 +33,45 @@ struct DefaultMaterialSampler
 };
 
 
+#ifdef SPT_MATERIAL_DATA_TYPE
+[[shader_struct(SPT_MATERIAL_DATA_TYPE)]]
+#endif // SPT_MATERIAL_DATA_TYPE
+
+
+#ifndef SPT_MATERIAL_DATA_TYPE
+#define SPT_MATERIAL_DATA_TYPE uint
+
 /* 
  * Custom opacity function signature:
- * CustomOpacityOutput EvaluateCustomOpacity(MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData);
+ * template<typename TSampler>
+ * CustomOpacityOutput EvaluateCustomOpacity(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData);
  */
 
 
 
 /* 
  * Material evaluation function signature:
- * MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData);
+ * template<typename TSampler>
+ * MaterialEvaluationOutput EvaluateMaterial(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData);
  */
+
+template<typename TSampler>
+CustomOpacityOutput EvaluateCustomOpacity(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
+{
+	CustomOpacityOutput output;
+	output.shouldDiscard = false;
+	return output;
+}
+
+
+template<typename TSampler>
+MaterialEvaluationOutput EvaluateMaterial(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
+{
+	MaterialEvaluationOutput output;
+	return output;
+}
+
+#endif // SPT_MATERIAL_DATA_TYPE
 
 #if defined(SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL)
 #define SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL BindlessSamplers::LinearRepeat()
@@ -71,11 +99,6 @@ struct DefaultMaterialSampler
 
 
 [[shader_struct(MaterialDataHandle)]]
-
-
-#ifdef SPT_MATERIAL_DATA_TYPE
-[[shader_struct(SPT_MATERIAL_DATA_TYPE)]]
-#endif // SPT_MATERIAL_DATA_TYPE
 
 #ifdef SPT_MATERIAL_SHADER_PATH
 #include SPT_MATERIAL_SHADER_PATH

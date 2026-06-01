@@ -6,11 +6,13 @@
 #define VISIBLE_PRIMITIVE_TYPE_INVALID  0
 #define VISIBLE_PRIMITIVE_TYPE_GEOMETRY 1
 #define VISIBLE_PRIMITIVE_TYPE_TERRAIN  2
+#define VISIBLE_PRIMITIVE_TYPE_GRASS    3
 
 uint PackGeometryVisibilityInfo(in uint visibleMeshletIdx, in uint triangleIdx)
 {
 	SPT_CHECK_MSG(triangleIdx < (1 << 7), L"Invalid triangle index - {}", triangleIdx);
 	SPT_CHECK_MSG(((visibleMeshletIdx << 7) >> 7) == visibleMeshletIdx, L"Invalid meshlet index - {}", visibleMeshletIdx);
+	SPT_CHECK_MSG((visibleMeshletIdx << 7) == ((visibleMeshletIdx << 8) >> 1), L"Invalid meshlet index - {} (last bit reserved for grass)", visibleMeshletIdx);
 	return (visibleMeshletIdx << 7) | triangleIdx;
 }
 
@@ -18,6 +20,14 @@ uint PackGeometryVisibilityInfo(in uint visibleMeshletIdx, in uint triangleIdx)
 uint PackTerrainVisibilityInfo()
 {
 	return (0xFFFFFFFF >> 7) << 7;
+}
+
+
+uint PackGrassVisibilityInfo(in uint grassBladeIdx, in uint triangleIdx)
+{
+	SPT_CHECK_MSG(triangleIdx < 16u, L"Invalid triangle index - {}", triangleIdx);
+	SPT_CHECK_MSG(grassBladeIdx < (1 << 27), L"Invalid grass blade index - {}", grassBladeIdx);
+	return ((grassBladeIdx << 4) | triangleIdx) | (1u << 31);
 }
 
 
@@ -37,8 +47,21 @@ uint UnpackVisibilityInfo(in uint packedInfo, out uint visibleMeshletIdx, out ui
 			return VISIBLE_PRIMITIVE_TYPE_INVALID;
 		}
 	}
+	else if ((packedInfo & (1u << 31)) != 0)
+	{
+		return VISIBLE_PRIMITIVE_TYPE_GRASS;
+	}
+	else
+	{
+		return VISIBLE_PRIMITIVE_TYPE_GEOMETRY;
+	}
+}
 
-	return VISIBLE_PRIMITIVE_TYPE_GEOMETRY;
+
+void UnpackGrassVisibilityInfo(in uint packedInfo, out uint grassBladeIdx, out uint triangleIdx)
+{
+	grassBladeIdx = (packedInfo & ~(1u << 31)) >> 4;
+	triangleIdx = packedInfo & 0xF;
 }
 
 

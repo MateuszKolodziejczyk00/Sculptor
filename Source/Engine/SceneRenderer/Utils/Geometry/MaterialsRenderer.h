@@ -34,6 +34,7 @@ struct MaterialRenderCommands
 {
 	Uint16 geometryMaterialBatchesOffset = idxNone<Uint16>;
 	Uint16 terrainMaterialBatchIdx       = idxNone<Uint16>;
+	Uint16 grassMaterialBatchIdx         = idxNone<Uint16>;
 
 	lib::DynamicArray<MaterialRenderCommand> commands;
 };
@@ -50,6 +51,8 @@ struct MaterialsPassDefinition
 
 	rg::RGBufferViewHandle visibleMeshlets;
 
+	rg::RGBufferViewHandle grassBladeDefs;
+
 	rg::RGTextureViewHandle depthTexture;
 	rg::RGTextureViewHandle visibilityTexture;
 
@@ -58,8 +61,9 @@ struct MaterialsPassDefinition
 };
 
 
-void AppendGeometryMaterialsRenderCommands(rg::RenderGraphBuilder& graphBuilder, const MaterialsPassDefinition& passParams, const GeometryPassDataCollection& geometryPassData, MaterialRenderCommands& renderCommands);
-void AppendTerrainMaterialsRenderCommand(rg::RenderGraphBuilder& graphBuilder, const MaterialsPassDefinition& passParams, const MaterialBatchPermutation& materialPermutation, MaterialRenderCommands& renderCommands);
+void AppendGeometryMaterialsRenderCommands(rg::RenderGraphBuilder& graphBuilder, const MaterialsPassDefinition& passDef, const GeometryPassDataCollection& geometryPassData, MaterialRenderCommands& renderCommands);
+void AppendTerrainMaterialsRenderCommand(rg::RenderGraphBuilder& graphBuilder, const MaterialsPassDefinition& passDef, const MaterialBatchPermutation& materialPermutation, MaterialRenderCommands& renderCommands);
+void AppendGrassMaterialsRenderCommand(rg::RenderGraphBuilder& graphBuilder, const MaterialsPassDefinition& passDef, MaterialRenderCommands& renderCommands);
 
 void RenderMaterials(rg::RenderGraphBuilder& graphBuilder, const MaterialsPassDefinition& passDef, const MaterialRenderCommands& renderCommands);
 

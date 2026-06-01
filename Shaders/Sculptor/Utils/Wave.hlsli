@@ -1,3 +1,6 @@
+#ifndef WAVE_HLSLI
+#define WAVE_HLSLI
+
 /* Based on https://frostbite-wp-prd.s3.amazonaws.com/wp-content/uploads/2016/03/29204330/GDC_2016_Compute.pdf slide 38 */
 uint GetCompactedIndex(uint2 valueBallot, uint laneIdx)
 {
@@ -28,3 +31,5 @@ TDataType QuadSwizzle(in TDataType value, in uint swizzleQuadBaseID, in uint qua
 {
 	return WaveReadLaneAt(value, swizzleQuadBaseID + swizzle[quadLocalID]);
 }
+
+#endif // WAVE_HLSLI

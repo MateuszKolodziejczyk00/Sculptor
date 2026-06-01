@@ -20,6 +20,10 @@ namespace terrain_material_props
 static constexpr Uint32 maxMaterialEntries = 64u;
 } // terrain_material_props
 
+namespace terrain_consts
+{
+static constexpr Real32 tileSizeMeters = 32.f;
+} // terrain_consts
 
 BEGIN_SHADER_STRUCT(TerrainMaterialEntry)
 	SHADER_STRUCT_FIELD(mat::MaterialDataHandle, dataHandle)
@@ -46,6 +50,7 @@ END_SHADER_STRUCT();
 struct TerrainDefinition
 {
 	lib::SharedPtr<rdr::TextureView> heightMap;
+	lib::SharedPtr<rdr::TextureView> tileHeightMinMaxMap;
 	lib::SharedPtr<rdr::TextureView> farLODBaseColor;
 	lib::SharedPtr<rdr::TextureView> farLODProps;
 	math::Vector2f farLODMinBounds;

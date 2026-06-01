@@ -28,6 +28,7 @@ struct CompiledTerrainHeader
 	};
 
 	TextureInfo heightMap{};
+	TextureInfo tileHeightMinMaxMap{};
 
 	TextureInfo farLODBaseColor;
 	TextureInfo farLODProps;
