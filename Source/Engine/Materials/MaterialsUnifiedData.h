@@ -27,6 +27,8 @@ public:
 	rhi::RHIVirtualAllocation CreateMaterialDataSuballocation(Uint64 dataSize);
 	rhi::RHIVirtualAllocation CreateMaterialDataSuballocation(const Byte* materialData, Uint64 dataSize);
 
+	void UpdateMaterialData(const rhi::RHIVirtualAllocation& suballocation, const Byte* materialData, Uint64 dataSize);
+
 	MaterialUnifiedData GetMaterialUnifiedData() const;
 
 private:

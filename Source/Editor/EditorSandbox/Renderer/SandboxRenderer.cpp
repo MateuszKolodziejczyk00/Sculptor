@@ -257,6 +257,8 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 	
 	UpdatePreRender(frame);
 
+	m_renderScene->SetTerrainDefinition(m_terrainAsset->GetTerrainDefinition());
+
 	m_renderScene->BeginFrame(frame);
 
 	PrepareRenderView(output->GetTexture()->GetResolution2D());
@@ -514,11 +516,8 @@ void SandboxRenderer::InitializeRenderScene()
 
 	as::IESProfileAssetHandle iesProfiles[] = { iesProfile0, iesProfile1 };
 
-	as::TerrainAssetHandle terrain = assetsSystem.LoadAssetChecked<as::TerrainAsset>(as::ResourcePath("Terrain/Terrain.sptasset"));
-	terrain->AwaitInitialization();
-	terrain->SetPermanent();
-
-	m_renderScene->SetTerrainDefinition(terrain->GetTerrainDefinition());
+	m_terrainAsset = assetsSystem.LoadAssetChecked<as::TerrainAsset>(as::ResourcePath("Terrain/Terrain.sptasset"));
+	m_terrainAsset->AwaitInitialization();
 
 	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
 
@@ -610,6 +609,7 @@ void SandboxRenderer::InitializeRenderScene()
 							.rotation = math::Vector3f(90.f, 0.f, 0.f)
 						});
 
+	lib::MemoryArena tempArena("Sandbox Renderer Temp Arena", 0u, 16u * 1024u * 1024u);
 	gfx::GPUDeferredCommandsQueue& commandsQueue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
 	commandsQueue.ForceFlushCommands(tempArena);
 

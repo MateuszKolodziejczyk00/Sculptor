@@ -92,6 +92,7 @@ String StringUtils::ToMultibyteString(lib::WStringView view)
 
 	SizeType converted = 0;
 	wcstombs_s(&converted, mutlibyteString.data(), mutlibyteString.size(), view.data(), view.size());
+	mutlibyteString.resize(converted - 1);
 
 	return mutlibyteString;
 }

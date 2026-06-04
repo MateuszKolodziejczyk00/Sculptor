@@ -64,6 +64,11 @@ public:
 	template<typename TMaterialData>
 	ecs::EntityHandle CreateMaterial(const MaterialDefinition& materialDef, const TMaterialData& materialData);
 
+	void UpdateMaterialDefinition(ecs::EntityHandle material, const MaterialDefinition& materialDef);
+
+	template<typename TMaterialData>
+	void UpdateMaterialData(ecs::EntityHandle material, const TMaterialData& materialData);
+
 	const lib::DynamicArray<MaterialShader>&        GetMaterialShaders() const;
 	const lib::DynamicArray<RTHitGroupPermutation>& GetRTHitGroups() const;
 	Uint32 GetRTHitGroupIdx(const RTHitGroupPermutation& hitGroupPermutation) const;
@@ -78,6 +83,8 @@ private:
 	ecs::EntityHandle CreateMaterial(const MaterialDefinition& materialDef, ecs::EntityHandle shaderEntity, const Byte* materialData, Uint64 dataSize, lib::HashedString dataStructName, const MaterialFeatures& features);
 
 	ecs::EntityHandle GetOrCreateShaderEntity(lib::HashedString materialDataStruct);
+
+	void UpdateMaterialData(ecs::EntityHandle material, const Byte* materialData, Uint64 dataSize);
 
 	mutable lib::Lock m_lock;
 
@@ -111,6 +118,13 @@ inline ecs::EntityHandle MaterialsSubsystem::CreateMaterial(const MaterialDefini
 	const ecs::EntityHandle shaderEntity = m_defaultShadersEntities.at(dataStructName);
 	const rdr::HLSLStorage<TMaterialData> shaderMaterialData = materialData;
 	return CreateMaterial(materialDef, shaderEntity, reinterpret_cast<const Byte*>(&shaderMaterialData), sizeof(rdr::HLSLStorage<TMaterialData>), dataStructName, ExtractMaterialFeaturesFromStruct<TMaterialData>());
+}
+
+template<typename TMaterialData>
+inline void MaterialsSubsystem::UpdateMaterialData(ecs::EntityHandle material, const TMaterialData& materialData)
+{
+	const rdr::HLSLStorage<TMaterialData> shaderMaterialData = materialData;
+	UpdateMaterialData(material, reinterpret_cast<const Byte*>(&shaderMaterialData), sizeof(rdr::HLSLStorage<TMaterialData>));
 }
 
 template<typename THitGroup>

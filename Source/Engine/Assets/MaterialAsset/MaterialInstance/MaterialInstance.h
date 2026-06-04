@@ -21,9 +21,14 @@ public:
 
 	ecs::EntityHandle GetMaterialEntity() const { return m_materialEntity; }
 
+	void                 SetMaterialType(const lib::RuntimeTypeInfo& type) { m_materialType = type; }
+	lib::RuntimeTypeInfo GetMaterialType() const { return m_materialType; }
+
 protected:
 
 	ecs::EntityHandle m_materialEntity;
+
+	lib::RuntimeTypeInfo m_materialType;
 };
 
 
@@ -51,9 +56,16 @@ private:
 template<typename TInstanceType>
 struct MaterialInstanceTypeRegistrator
 {
+	static lib::UniquePtr<MaterialInstance> CreateInstance()
+	{
+		auto instance =  lib::UniquePtr<MaterialInstance>(new TInstanceType());
+		instance->SetMaterialType(lib::TypeInfo<TInstanceType>());
+		return instance;
+	}
+
 	MaterialInstanceTypeRegistrator()
 	{
-		MaterialInstanceTypesRegistry::RegisterMaterialInstanceType(lib::TypeInfo<TInstanceType>(), MaterialInstanceFactory([]() { return lib::UniquePtr<MaterialInstance>(new TInstanceType()); }));
+		MaterialInstanceTypesRegistry::RegisterMaterialInstanceType(lib::TypeInfo<TInstanceType>(), MaterialInstanceFactory(&CreateInstance));
 	}
 };
 

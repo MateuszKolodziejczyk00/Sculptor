@@ -184,6 +184,8 @@ protected:
 	void Initialize();
 	void AssignInitializationJob(js::Job job);
 
+	void Reload();
+
 	// Called after the asset is created and its data is initialized by initializer
 	virtual void PostCreate() {}
 

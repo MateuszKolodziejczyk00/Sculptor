@@ -303,7 +303,7 @@ static Bool Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	indirectInScatteringDS->u_inScatteringTexture           = fogParams.indirectInScatteringTextureView;
 	indirectInScatteringDS->u_indirectInScatteringConstants = indirectInScatteringConstants;
 
-	const math::Vector3u dispatchSize = math::Utils::DivideCeil(indirectInScatteringRes, math::Vector3u(4u, 4u, 2u));
+	const math::Vector3u dispatchSize = math::Utils::DivideCeil(indirectInScatteringRes, math::Vector3u(4u, 4u, 4u));
 
 	static const rdr::PipelineStateID computeInScatteringPipeline = CompileComputeIndirectInScatteringPipeline();
 

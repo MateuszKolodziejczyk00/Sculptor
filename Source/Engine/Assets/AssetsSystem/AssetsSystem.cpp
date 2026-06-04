@@ -1,4 +1,5 @@
 #include "AssetsSystem.h"
+#include "ContentFilesWatcher.h"
 #include "ProfilerCore.h"
 #include "ResourcePath.h"
 #include "SerializationHelper.h"
@@ -9,6 +10,10 @@ SPT_DEFINE_LOG_CATEGORY(AssetsSystem, true);
 
 namespace spt::as
 {
+
+AssetsSystem::AssetsSystem() = default;
+
+AssetsSystem::~AssetsSystem() = default;
 
 Bool AssetsSystem::Initialize(const AssetsSystemInitializer& initializer)
 {
@@ -28,6 +33,11 @@ Bool AssetsSystem::Initialize(const AssetsSystemInitializer& initializer)
 	};
 
 	m_assetsDB.Initalize(dbInitInfo);
+
+	if (!IsCompiledOnlyMode())
+	{
+		m_contentFilesWatcher = std::make_unique<ContentFilesWatcher>(*this, OnAssetModifyDetected::CreateRawMember(this, &AssetsSystem::OnAssetModified));
+	}
 
 	return true;
 }
@@ -322,6 +332,33 @@ void AssetsSystem::UnloadPermanentAssets()
 	}
 }
 
+Bool AssetsSystem::HasAssetsToReload() const
+{
+	SPT_PROFILER_FUNCTION();
+
+	return m_hasAssetsToReload.load();
+}
+
+void AssetsSystem::FlushReloadQueue()
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!IsCompiledOnlyMode());
+
+	lib::DynamicArray<AssetHandle> reloadQueueCopy;
+
+	{
+		lib::LockGuard lock(m_reloadQueueLock);
+		reloadQueueCopy = std::move(m_reloadQueue);
+		m_hasAssetsToReload = false;
+	}
+
+	for (const AssetHandle& asset : reloadQueueCopy)
+	{
+		ReloadAssetImpl(asset);
+	}
+}
+
 void AssetsSystem::RemoveAssetCompiledData(ResourcePathID pathID)
 {
 	SPT_PROFILER_FUNCTION();
@@ -547,6 +584,47 @@ lib::HashedString AssetsSystem::CreateAssetName(ResourcePathID pathID) const
 		SPT_CHECK(resolvedPath.IsValid());
 		return resolvedPath.GetName();
 	}
+}
+
+void AssetsSystem::OnAssetModified(const ResourcePath& path)
+{
+	const AssetHandle asset = GetLoadedAsset(path.GetID());
+
+	Bool scheduledReload = false;
+	if (asset.IsValid())
+	{
+		lib::LockGuard lock(m_reloadQueueLock);
+		if (!lib::Contains(m_reloadQueue, asset))
+		{
+			m_reloadQueue.emplace_back(asset);
+			scheduledReload = true;
+		}
+	}
+
+	if (scheduledReload)
+	{
+		m_hasAssetsToReload = true;
+	}
+}
+
+void AssetsSystem::ReloadAssetImpl(const AssetHandle& assetInstance)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(assetInstance.IsValid());
+
+	SPT_LOG_INFO(AssetsSystem, "Reloading asset: {}", ResolvePath(assetInstance->GetResourcePathID()).GetPath().string());
+
+	if (!IsAssetUpToDate(assetInstance->GetResourcePath()))
+	{
+		SPT_LOG_INFO(AssetsSystem, "Asset is deprecated, recompiling: {}", ResolvePath(assetInstance->GetResourcePathID()).GetPath().string());
+
+		AssetInstanceData assetData = ReadAssetData(m_contentPath / assetInstance->GetResourcePath().GetPath());
+		assetInstance->AssignData(std::move(assetData));
+
+		CompileAssetImpl(assetInstance);
+	}
+	assetInstance->Reload();
 }
 
 } // spt::as

@@ -49,6 +49,15 @@ rhi::RHIVirtualAllocation MaterialsUnifiedData::CreateMaterialDataSuballocation(
 	return suballocation;
 }
 
+void MaterialsUnifiedData::UpdateMaterialData(const rhi::RHIVirtualAllocation& suballocation, const Byte* materialData, Uint64 dataSize)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(suballocation.IsValid());
+
+	rdr::UploadDataToBuffer(lib::Ref(m_materialsUnifiedBuffer), suballocation.GetOffset(), materialData, dataSize);
+}
+
 MaterialsUnifiedData::MaterialsUnifiedData()
 	: m_materialsUnifiedBuffer(CreateMaterialsUnifiedBuffer())
 {

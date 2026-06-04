@@ -58,7 +58,10 @@ void MaterialAsset::OnInitialize()
 	lib::MTHandle<DDCLoadedData<MaterialDerivedDataHeader>> compiledData = LoadDerivedData<MaterialDerivedDataHeader>(*this);
 	SPT_CHECK(compiledData.IsValid());
 
-	m_materialInstance = MaterialInstanceTypesRegistry::CreateMaterialInstance(compiledData->header.materialType);
+	if (!m_materialInstance || m_materialInstance->GetMaterialType() != compiledData->header.materialType)
+	{
+		m_materialInstance = MaterialInstanceTypesRegistry::CreateMaterialInstance(compiledData->header.materialType);
+	}
 	SPT_CHECK(!!m_materialInstance);
 
 	m_materialInstance->Load(*this, compiledData.Get());

@@ -123,7 +123,15 @@ void PBRMaterialInstance::Load(const AssetInstance& asset, lib::MTHandle<DDCLoad
 	materialDefinition.doubleSided   = materialDataHeader.doubleSided != 0u;
 	materialDefinition.emissive      = isEmissive;
 
-	m_materialEntity = mat::MaterialsSubsystem::Get().CreateMaterial(materialDefinition, m_materialData);
+	if (!m_materialEntity.valid())
+	{
+		m_materialEntity = mat::MaterialsSubsystem::Get().CreateMaterial(materialDefinition, m_materialData);
+	}
+	else
+	{
+		mat::MaterialsSubsystem::Get().UpdateMaterialDefinition(m_materialEntity, materialDefinition);
+		mat::MaterialsSubsystem::Get().UpdateMaterialData(m_materialEntity, m_materialData);
+	}
 }
 
 } // spt::as

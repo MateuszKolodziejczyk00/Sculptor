@@ -107,6 +107,8 @@ ResourcePath AssetInstance::GetResourcePath() const
 
 void AssetInstance::Initialize()
 {
+	SPT_PROFILER_FUNCTION();
+
 	OnInitialize();
 
 	AddRuntimeFlag(EAssetRuntimeFlags::Initialized);
@@ -125,6 +127,13 @@ void AssetInstance::AssignInitializationJob(js::Job job)
 	js::JobInstance* jobInstance = job.GetJobInstance().Get();
 	jobInstance->AddRef();
 	m_initializationJob.store(jobInstance);
+}
+
+void AssetInstance::Reload()
+{
+	SPT_PROFILER_FUNCTION();
+
+	OnInitialize();
 }
 
 } // spt::as

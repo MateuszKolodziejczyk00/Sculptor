@@ -223,6 +223,13 @@ js::Event SculptorEdApplication::ExecuteFrame(EditorFrameContext& frame)
 {
 	SPT_PROFILER_FUNCTION();
 
+	as::AssetsSystem& assetsSystem = engn::Engine::Get().GetAssetsSystem();
+	if (assetsSystem.HasAssetsToReload())
+	{
+		frame.FlushPreviousFrames();
+		assetsSystem.FlushReloadQueue();
+	}
+
 	ImGuiIO& imGuiIO = ImGui::GetIO();
 
 	// Wrap this function in UI stage

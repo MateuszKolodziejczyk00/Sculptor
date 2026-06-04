@@ -14,6 +14,9 @@
 namespace spt::as
 {
 
+class ContentFilesWatcher;
+
+
 enum class EAssetsSystemFlags
 {
 	None = 0u,
@@ -83,8 +86,8 @@ class ASSETS_SYSTEM_API AssetsSystem
 {
 public:
 
-	AssetsSystem() = default;
-	~AssetsSystem() = default;
+	AssetsSystem();
+	~AssetsSystem();
 
 	Bool Initialize(const AssetsSystemInitializer& initializer);
 	void Shutdown();
@@ -146,6 +149,9 @@ public:
 
 	void UnloadPermanentAssets();
 
+	Bool HasAssetsToReload() const;
+	void FlushReloadQueue();
+
 	void RemoveAssetCompiledData(ResourcePathID pathID);
 	void RemoveAssetsCompiledDataByType(AssetType type);
 	void RemoveAllAssetsCompiledData();
@@ -182,6 +188,10 @@ private:
 
 	lib::HashedString CreateAssetName(ResourcePathID pathID) const;
 
+	void OnAssetModified(const ResourcePath& path);
+
+	void ReloadAssetImpl(const AssetHandle& assetInstance);
+
 	Bool IsCompiledOnlyMode() const { return lib::HasAnyFlag(m_flags, EAssetsSystemFlags::CompiledOnly); }
 
 	lib::Path m_contentPath;
@@ -197,6 +207,12 @@ private:
 	mutable lib::ReadWriteLock m_assetsSystemLock;
 
 	CompilationInputCache m_compilationInputCache;
+
+	lib::UniquePtr<ContentFilesWatcher> m_contentFilesWatcher;
+
+	lib::Lock m_reloadQueueLock;
+	lib::DynamicArray<AssetHandle> m_reloadQueue;
+	std::atomic<Bool> m_hasAssetsToReload = false;
 };
 
 

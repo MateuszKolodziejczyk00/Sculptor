@@ -46,6 +46,19 @@ MaterialsSubsystem& MaterialsSubsystem::Get()
 	return materialsSubsystem.Get();
 }
 
+void MaterialsSubsystem::UpdateMaterialDefinition(ecs::EntityHandle material, const MaterialDefinition& materialDef)
+{
+	SPT_PROFILER_FUNCTION();
+
+	lib::LockGuard lockGuard(m_lock);
+
+	MaterialProxyComponent& materialProxy = material.get<MaterialProxyComponent>();
+	materialProxy.params.customOpacity = materialDef.customOpacity;
+	materialProxy.params.doubleSided   = materialDef.doubleSided;
+	materialProxy.params.transparent   = materialDef.transparent;
+	materialProxy.params.emissive      = materialDef.emissive;
+}
+
 const lib::DynamicArray<MaterialShader>& MaterialsSubsystem::GetMaterialShaders() const
 {
 	return m_materialShaders;
@@ -104,6 +117,16 @@ ecs::EntityHandle MaterialsSubsystem::GetOrCreateShaderEntity(lib::HashedString 
 	}
 
 	return shaderEntity;
+}
+
+void MaterialsSubsystem::UpdateMaterialData(ecs::EntityHandle material, const Byte* materialData, Uint64 dataSize)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const lib::LockGuard lockGuard(m_lock);
+
+	const MaterialProxyComponent& matProxy =  material.get<MaterialProxyComponent>();
+	MaterialsUnifiedData::Get().UpdateMaterialData(matProxy.materialDataSuballocation, materialData, static_cast<Uint32>(dataSize));
 }
 
 } // spt::mat

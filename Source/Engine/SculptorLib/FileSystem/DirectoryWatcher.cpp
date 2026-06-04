@@ -21,7 +21,7 @@ struct FileWatcherContext
 };
 
 
-void WatcherThreadProc(FileWatcherContext* context, HANDLE hDir)
+void WatcherThreadProc(FileWatcherContext* context, HANDLE hDir, Bool watchSubdirectories)
 {
 	alignas(FILE_NOTIFY_INFORMATION) Byte buffer[1024];
 
@@ -29,8 +29,6 @@ void WatcherThreadProc(FileWatcherContext* context, HANDLE hDir)
 	overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
 	HANDLE handles[] = { overlapped.hEvent, context->stopEvent };
-
-	const Bool watchSubdirectories = FALSE;
 
 	while (true)
 	{
@@ -54,8 +52,11 @@ void WatcherThreadProc(FileWatcherContext* context, HANDLE hDir)
 				FILE_NOTIFY_INFORMATION* notify = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(buffer);
 				while (notify)
 				{
+					const lib::String relativePath = lib::StringUtils::ToMultibyteString({ notify->FileName, notify->FileNameLength / sizeof(WCHAR) });
+
 					FileModifiedPayload payload;
-					payload.fileName = lib::StringUtils::ToMultibyteString({ notify->FileName, notify->FileNameLength / sizeof(WCHAR) });
+					payload.relativePath = lib::Path(relativePath);
+					payload.fileName     = lib::Path(relativePath).filename().string();
 					context->callback.ExecuteIfBound(payload);
 
 					if (notify->NextEntryOffset == 0)
@@ -73,10 +74,10 @@ void WatcherThreadProc(FileWatcherContext* context, HANDLE hDir)
 }
 
 
-FileWatcherHandle StartWatchingDirectoryImpl(const lib::Path& directory, FileModifiedCallback callback)
+FileWatcherHandle StartWatchingDirectoryImpl(WatchParams params)
 {
 	HANDLE hDir = CreateFileW(
-		directory.c_str(),
+		params.directory.c_str(),
 		FILE_LIST_DIRECTORY,
 		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
 		NULL,
@@ -90,10 +91,10 @@ FileWatcherHandle StartWatchingDirectoryImpl(const lib::Path& directory, FileMod
 	}
 
 	FileWatcherContext* context = new FileWatcherContext();
-	context->callback  = std::move(callback);
+	context->callback  = std::move(params.callback);
 	context->stopEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
-	context->thread = std::thread(WatcherThreadProc, context, hDir);
+	context->thread = std::thread(WatcherThreadProc, context, hDir, params.watchSubdirectories);
 
 	return reinterpret_cast<FileWatcherHandle>(context);
 }
@@ -118,9 +119,14 @@ void StopWatchingDirectoryImpl(FileWatcherHandle handle)
 } // priv
 
 
+FileWatcherHandle StartWatchingDirectory(WatchParams params)
+{
+	return priv::StartWatchingDirectoryImpl(std::move(params));
+}
+
 FileWatcherHandle StartWatchingDirectory(const lib::Path& directory, FileModifiedCallback callback)
 {
-	return priv::StartWatchingDirectoryImpl(directory, std::move(callback));
+	return StartWatchingDirectory({ directory, std::move(callback) });
 }
 
 void StopWatchingDirectory(FileWatcherHandle handle)
