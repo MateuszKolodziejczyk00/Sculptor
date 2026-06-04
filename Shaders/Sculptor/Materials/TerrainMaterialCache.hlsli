@@ -42,7 +42,7 @@ MaterialEvaluationOutput EvaluateMaterial(TSampler sampler, MaterialEvaluationPa
 		const float2 lodUV = (evalParams.worldLocation.xy - matCacheLOD.minBounds) * matCacheLOD.rcpRange;
 		const float2 uv = evalParams.worldLocation.xy * matCacheLOD.rcpRange;
 
-		if (all(saturate(lodUV) == lodUV))
+		if (all(lodUV > matCacheLOD.rcpResolution) && all(lodUV < 1.f - matCacheLOD.rcpResolution))
 		{
 			const float4 baseColorMetallic  = matCacheLOD.baseColorMetallic.SampleLevel(BindlessSamplers::LinearRepeat(), uv, 0);
 			const float2 octNormals         = matCacheLOD.normals.SampleLevel(BindlessSamplers::LinearRepeat(), uv, 0);

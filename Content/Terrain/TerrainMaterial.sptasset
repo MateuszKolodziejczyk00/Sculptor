@@ -16,6 +16,13 @@
                         "Path": "BaseMaterial_1.sptasset"
                     },
                     "UVTileMeters": 22.0
+                },
+                {
+                    "MaterialAsset": {
+                        "Path": "SandMuddy.sptasset"
+                    },
+                   "UVTileMeters": 2.0,
+                   "GrassType": 255
                 }
             ]
         }

@@ -95,6 +95,9 @@ struct AssetDerivedDataKey
 };
 
 
+struct DDCNoHeader{};
+
+
 struct DDCLoadedBin : public lib::MTRefCounted
 {
 	DDCResourceHandle     handle;
@@ -106,6 +109,12 @@ template<typename THeader>
 struct DDCLoadedData : public DDCLoadedBin
 {
 	THeader header;
+};
+
+
+template<>
+struct DDCLoadedData<DDCNoHeader> : public DDCLoadedBin
+{
 };
 
 
@@ -234,9 +243,13 @@ private:
 template<typename THeader, typename TBlobWriter>
 void AssetInstance::CreateDerivedData(AssetDerivedDataKey key, const THeader& header, Uint32 blobSize, TBlobWriter&& blobWriter)
 {
-	srl::Serializer serializer = srl::Serializer::CreateWriter();
-	const_cast<THeader&>(header).Serialize(serializer);
-	const lib::String headerData = serializer.ToCompactString();
+	lib::String headerData;
+	if constexpr (!std::is_same_v<THeader, DDCNoHeader>)
+	{
+		srl::Serializer serializer = srl::Serializer::CreateWriter();
+		const_cast<THeader&>(header).Serialize(serializer);
+		headerData = serializer.ToCompactString();
+	}
 
 	const Uint32 headerSize = static_cast<Uint32>(headerData.size());
 	const Uint32 totalSize = sizeof(Uint32) + headerSize + blobSize;
@@ -280,9 +293,12 @@ lib::MTHandle<DDCLoadedData<THeader>> AssetInstance::LoadDerivedData(AssetDerive
 
 	Uint32 headerSize = 0;
 	std::memcpy(&headerSize, immutableSpan.data(), sizeof(Uint32));
-	const lib::StringView headerData(reinterpret_cast<const char*>(immutableSpan.data() + sizeof(Uint32)), headerSize);
-	srl::Serializer serializer = srl::Serializer::CreateReader(headerData);
-	result->header.Serialize(serializer);
+	if constexpr (!std::is_same_v<THeader, DDCNoHeader>)
+	{
+		const lib::StringView headerData(reinterpret_cast<const char*>(immutableSpan.data() + sizeof(Uint32)), headerSize);
+		srl::Serializer serializer = srl::Serializer::CreateReader(headerData);
+		result->header.Serialize(serializer);
+	}
 
 	const Uint32 dataSize = static_cast<Uint32>(immutableSpan.size()) - sizeof(Uint32) - headerSize;
 	result->bin = lib::Span<const Byte>(immutableSpan.data() + sizeof(Uint32) + headerSize, dataSize);

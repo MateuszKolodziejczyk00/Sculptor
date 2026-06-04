@@ -28,14 +28,12 @@ static constexpr Real32 tileSizeMeters = 32.f;
 BEGIN_SHADER_STRUCT(TerrainMaterialEntry)
 	SHADER_STRUCT_FIELD(mat::MaterialDataHandle, dataHandle)
 	SHADER_STRUCT_FIELD(Real32,                  uvScale)
+	SHADER_STRUCT_FIELD(Uint32,                  grassType)
 END_SHADER_STRUCT();
 
 
-using TerrainMaterialEntries = lib::StaticArray<TerrainMaterialEntry, terrain_material_props::maxMaterialEntries>;
-
-
 BEGIN_SHADER_STRUCT(TerrainMaterialData)
-	SHADER_STRUCT_FIELD(TerrainMaterialEntries, terrainMaterials)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<TerrainMaterialEntry>, matEntries)
 END_SHADER_STRUCT();
 
 

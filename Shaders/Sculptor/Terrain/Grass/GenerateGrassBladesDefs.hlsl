@@ -8,6 +8,7 @@
 #include "Utils/Random.hlsli"
 #include "Terrain/Grass/GrassGeometry.hlsli"
 #include "Utils/Culling.hlsli"
+#include "Utils/Wave.hlsli"
 
 
 #define GRASS_TILE_SIZE 4.f
@@ -58,12 +59,41 @@ int2 FindClump(in float2 bladeLocation)
 }
 
 
+uint GetGrassTypeAtLocation(inout RngState rng, in float2 location)
+{
+	const TerrainInterface terrain = SceneTerrain();
+
+	const TerrainMaterialsFactors materialFactors = terrain.GetMaterialsFactors(location);
+
+	float random = rng.Next();
+	uint materialID = 0u;
+	for (uint i = 0u; i < 4u; ++i)
+	{
+		random -= materialFactors.materialWeights[i];
+		if (random <= 0.f)
+		{
+			materialID = materialFactors.materialIDs[i];
+			break;
+		}
+	}
+
+	return terrain.materialData.matEntries.Load(materialID).grassType;
+}
+
+
 void GenerateImpl(int2 coord, bool isLod0)
 {
 	RngState rng = RngState::Create(coord, 0u);
 
 	const float2 spacing = GRASS_TILE_SIZE / 32.f;
 	const float2 pos2d = (float2(coord) + (float2(rng.Next(), rng.Next()) - 0.5f)) * spacing;
+
+	const uint grassType = GetGrassTypeAtLocation(rng, pos2d);
+
+	if (grassType == IDX_NONE_8)
+	{
+		return;
+	}
 
 	const int2 clumpCoord = FindClump(pos2d);
 	const uint2 clumpCoord8 = uint2(clumpCoord + 256 * 256) & 255u;
@@ -73,12 +103,15 @@ void GenerateImpl(int2 coord, bool isLod0)
 	bladeDef.flags       = uint16_t(isLod0 ? GRASS_BLADE_FLAGS_NONE : GRASS_BLADE_FLAGS_LOD_1 );
 	bladeDef.clumpCoords = uint16_t(clumpCoord8.x | (clumpCoord8.y << 8u));
 
+	const uint2 activeBallot = WaveActiveBallot(true).xy;
+	const uint outputBladesNum = countbits(activeBallot.x) + countbits(activeBallot.y);
+
 	uint offset = 0u;
 	if (WaveIsFirstLane())
 	{
-		offset = u_constants.rwBladesNum.AtomicAdd(0u, WaveGetLaneCount());
+		offset = u_constants.rwBladesNum.AtomicAdd(0u, outputBladesNum);
 	}
-	offset = WaveReadLaneFirst(offset) + WaveGetLaneIndex();
+	offset = WaveReadLaneFirst(offset) + GetCompactedIndex(activeBallot, WaveGetLaneIndex());
 
 	u_constants.rwBladeDefs.Store(offset, bladeDef);
 }
@@ -107,7 +140,10 @@ void GenerateGrassBladesDefsCS(CS_INPUT input)
 	const float2 tileMax = tileMin + GRASS_TILE_SIZE + inflate;
 	const float2 tileCenter = (tileMin + tileMax) * 0.5f;
 	const float2 tileMinMaxHeight = SceneTerrain().GetTileHeightMinMaxAtLocation(tileCenter);
-	const bool isTileVisible = IsAABBInFrustum(u_cullingData.cullingPlanes, float3(tileMin, tileMinMaxHeight.x), float3(tileMax, tileMinMaxHeight.y + inflate));
+	const float averageZ = (tileMinMaxHeight.x + tileMinMaxHeight.y) * 0.5f;
+	const float radius = length(float3(GRASS_TILE_SIZE, GRASS_TILE_SIZE, (tileMinMaxHeight.y - tileMinMaxHeight.x) * 0.5f) + inflate);
+	//const bool isTileVisible = IsAABBInFrustum(u_cullingData.cullingPlanes, float3(tileMin, tileMinMaxHeight.x), float3(tileMax, tileMinMaxHeight.y + inflate));
+	const bool isTileVisible = IsSphereInFrustum(u_cullingData.cullingPlanes, float3(tileCenter, averageZ), radius);
 	if (!isTileVisible)
 	{
 		return;

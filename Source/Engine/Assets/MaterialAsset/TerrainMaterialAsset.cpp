@@ -1,5 +1,7 @@
 #include "TerrainMaterialAsset.h"
 #include "AssetsSystem.h"
+#include "ResourcesManager.h"
+#include "Utils/TransfersManager.h"
 
 
 SPT_DEFINE_LOG_CATEGORY(TerrainMaterialAsset, true);
@@ -11,27 +13,13 @@ struct TerrainCompiledMaterialEntry
 {
 	ResourcePathID materialAssetPathID = InvalidResourcePathID;
 	Real32         uvScale             = 1.f;
-
-	void Serialize(srl::Serializer& serializer)
-	{
-		serializer.Serialize("MaterialAssetPathID", materialAssetPathID);
-		serializer.Serialize("UVScale",             uvScale);
-	}
+	Uint32         grassType           = idxNone<Uint32>;
 };
 
 
-struct TerrainMaterialDerivedDataHeader
+struct TerrainMaterialDerivedData
 {
 	lib::StaticArray<TerrainCompiledMaterialEntry, rsc::terrain_material_props::maxMaterialEntries> compiledEntries;
-
-	TerrainMaterialDerivedDataHeader()
-	{
-	}
-
-	void Serialize(srl::Serializer& serializer)
-	{
-		serializer.Serialize("CompiledEntries", compiledEntries);
-	}
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -54,7 +42,7 @@ Bool TerrainMaterialAsset::Compile()
 {
 	const TerrainMaterialDefinition& definition = GetBlackboard().Get<TerrainMaterialDefinition>();
 
-	TerrainMaterialDerivedDataHeader header;
+	TerrainMaterialDerivedData dd;
 
 	for (SizeType i = 0; i < definition.materialEntries.GetSize(); ++i)
 	{
@@ -71,24 +59,27 @@ Bool TerrainMaterialAsset::Compile()
 			return false;
 		}
 
-		TerrainCompiledMaterialEntry& compiledEntry = header.compiledEntries[i];
+		TerrainCompiledMaterialEntry& compiledEntry = dd.compiledEntries[i];
 		compiledEntry.materialAssetPathID = materialAssetPath.GetID();
 		compiledEntry.uvScale             = 1.f / materialEntry.uvTileMeters;
+		compiledEntry.grassType           = materialEntry.grassType;
 	}
 
-	CreateDerivedData(*this, header, lib::Span<const Byte>());
+	CreateDerivedData(*this, DDCNoHeader{}, lib::Span<const Byte>(reinterpret_cast<const Byte*>(&dd), sizeof(TerrainMaterialDerivedData)));
 
 	return true;
 }
 
 void TerrainMaterialAsset::OnInitialize()
 {
-	const lib::MTHandle<DDCLoadedData<TerrainMaterialDerivedDataHeader>> compiledData = LoadDerivedData<TerrainMaterialDerivedDataHeader>(*this);
+	const lib::MTHandle<DDCLoadedData<DDCNoHeader>> compiledData = LoadDerivedData<DDCNoHeader>(*this);
 	SPT_CHECK(compiledData.IsValid());
 
-	for (SizeType i = 0; i < compiledData->header.compiledEntries.size(); ++i)
+	const TerrainMaterialDerivedData& dd = *reinterpret_cast<const TerrainMaterialDerivedData*>(compiledData->bin.data());
+
+	for (SizeType i = 0; i < dd.compiledEntries.size(); ++i)
 	{
-		const TerrainCompiledMaterialEntry& compiledEntry = compiledData->header.compiledEntries[i];
+		const TerrainCompiledMaterialEntry& compiledEntry = dd.compiledEntries[i];
 		const ResourcePathID materialAssetPathID = compiledEntry.materialAssetPathID;
 		if (materialAssetPathID != InvalidResourcePathID)
 		{
@@ -108,15 +99,28 @@ void TerrainMaterialAsset::OnInitialize()
 		m_materialAssets[i]->AwaitInitialization();
 	}
 
+	lib::StaticArray<rdr::HLSLStorage<rsc::TerrainMaterialEntry>, rsc::terrain_material_props::maxMaterialEntries> materialEntriesData{};
+
 	for (SizeType i = 0; i < m_materialAssets.GetSize(); ++i)
 	{
 		const MaterialAssetHandle& materialAsset = m_materialAssets[i];
 		const ecs::EntityHandle matEntity = materialAsset->GetMaterialEntity();
 		const mat::MaterialProxyComponent& materialProxy = matEntity.get<mat::MaterialProxyComponent>();
 
-		m_terrainMaterialData.terrainMaterials[i].dataHandle = materialProxy.GetMaterialDataHandle();
-		m_terrainMaterialData.terrainMaterials[i].uvScale = compiledData->header.compiledEntries[i].uvScale;
+		rsc::TerrainMaterialEntry materialEntry;
+		materialEntry.dataHandle = materialProxy.GetMaterialDataHandle();
+		materialEntry.uvScale    = dd.compiledEntries[i].uvScale;
+		materialEntry.grassType  = dd.compiledEntries[i].grassType;
+
+		materialEntriesData[i] = materialEntry;
 	}
+
+	rhi::BufferDefinition materialDataBufferDef(sizeof(materialEntriesData), rhi::EBufferUsage::Storage);
+	lib::SharedRef<rdr::Buffer> materialEntries = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Terrain Material Entires Buffer"), materialDataBufferDef, rhi::EMemoryUsage::GPUOnly);
+		
+	rdr::GPUApi::GetTransfersManager().EnqueueUpload(materialEntries, 0u, reinterpret_cast<const Byte*>(materialEntriesData.data()), sizeof(materialEntriesData));
+
+	m_terrainMaterialData.matEntries = materialEntries->GetFullView();
 }
 
 } // spt::as

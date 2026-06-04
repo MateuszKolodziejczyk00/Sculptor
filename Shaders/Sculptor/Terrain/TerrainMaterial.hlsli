@@ -110,7 +110,7 @@ TerrainMaterialEvaluationOutput EvaluateTerrainMaterial(in MaterialUnifiedData m
 
 		if (weight > 0.f)
 		{
-			const TerrainMaterialEntry materialEntry = terrainMaterials.terrainMaterials[materialID];
+			const TerrainMaterialEntry materialEntry = terrainMaterials.matEntries.Load(materialID);
 
 			const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData<SPT_MATERIAL_DATA_TYPE>(materialsData, materialEntry.dataHandle);
 

@@ -68,7 +68,7 @@ public:
 	void RenderVisibilityBuffer(rg::RenderGraphBuilder& graphBuilder, const TerrainVisibilityRenderParams& params) const;
 	void RenderShadowMap(rg::RenderGraphBuilder& graphBuilder, const TerrainShadowMapRenderParams& params) const;
 
-	const GrassFieldDefinition& GetGrassFieldDefinition() const { return m_grassFieldDef; }
+	const GrassFieldDefinition* GetGrassFieldDefinition() const;
 
 	mat::MaterialShader GetTerrainMaterialShader() const { return m_terrainMaterialShader; }
 

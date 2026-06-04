@@ -34,6 +34,7 @@ SPT_REGISTER_SCENE_RENDER_SYSTEM(TerrainRenderSystem);
 namespace renderer_params
 {
 RendererBoolParameter enableTerrain("Enable Terrain", { "Terrain" }, false);
+RendererBoolParameter enableGrass("Enable Grass", { "Terrain" }, true);
 } // renderer_params
 
 
@@ -1206,6 +1207,7 @@ void TerrainRenderSystem::UpdateGPUSceneData(const SceneUpdateContext& context, 
 		matCache.lods[i].pomDepth           = lodCache.pomDepth;
 		matCache.lods[i].minBounds          = lodCache.minBounds;
 		matCache.lods[i].rcpRange           = (lodCache.maxBounds - lodCache.minBounds).cwiseInverse();
+		matCache.lods[i].rcpResolution      = terrain_consts::materialCacheRes.cast<Real32>().cwiseInverse();
 	}
 
 	const TerrainEditorRendering& terrainEditorData = context.rendererSettings.editorRendering.terrain;
@@ -1237,6 +1239,7 @@ void TerrainRenderSystem::UpdateGPUSceneData(const SceneUpdateContext& context, 
 	terrainData.meshletTranglesNum            = terrain_consts::meshletIndicesNum / 3u;
 	terrainData.materialsMap                  = materialsMapData;
 	terrainData.materialCache                 = matCache;
+	terrainData.materialData                  = terrainDef.material;
 	terrainData.grassFieldDef                 = m_grassFieldDef;
 
 	sceneData.terrain = terrainData;
@@ -1316,6 +1319,11 @@ void TerrainRenderSystem::RenderShadowMap(rg::RenderGraphBuilder& graphBuilder, 
 	constants.drawCommands = terrainDraws.drawCommands;
 
 	terrain_renderer::RenderShadowMap(graphBuilder, params, constants, terrainDraws, std::max(tilesNum, 1u));
+}
+
+const GrassFieldDefinition* TerrainRenderSystem::GetGrassFieldDefinition() const
+{
+	return renderer_params::enableGrass ? &m_grassFieldDef : nullptr;
 }
 
 } // spt::rsc

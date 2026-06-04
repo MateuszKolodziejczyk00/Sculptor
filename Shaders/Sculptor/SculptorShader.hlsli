@@ -27,6 +27,12 @@
 #define POM_MAX_DEPTH_OFFSET_CM 10.f
 
 
+// Offset due to 16.8 fixed point rounding in texture fetches
+// In theory it might be different on some GPUs, but in practice almost every GPU seems to use 8 bits
+// See: https://www.reedbeta.com/blog/texture-gathers-and-coordinate-precision/
+#define SPT_SUB_PIXEL_PRECITION_OFFSET (1.f / 512.f)
+
+
 #define IN
 #define OUT
 #define INOUT

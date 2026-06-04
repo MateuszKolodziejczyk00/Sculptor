@@ -11,11 +11,13 @@ struct TerrainMaterialEntry
 {
 	ResourcePath materialAsset;
 	Real32       uvTileMeters = 1.f;
+	Uint32       grassType    = idxNone<Uint32>;
 
 	void Serialize(srl::Serializer& serializer)
 	{
 		serializer.Serialize("MaterialAsset", materialAsset);
 		serializer.Serialize("UVTileMeters",  uvTileMeters);
+		serializer.Serialize("GrassType",     grassType);
 	}
 };
 

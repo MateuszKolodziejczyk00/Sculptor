@@ -202,19 +202,22 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 
 			terrainRenderSystem->RenderVisibilityBuffer(graphBuilder, terrainVisibilityParams);
 
-			const GrassFieldDefinition& grassFieldDef = terrainRenderSystem->GetGrassFieldDefinition();
+			const GrassFieldDefinition* grassFieldDef = terrainRenderSystem->GetGrassFieldDefinition();
 
-			grassBlades = grass_renderer::GenerateGrassBlades(graphBuilder, viewSpec, grassFieldDef);
-
-			const grass_renderer::GrassVisibilityRenderParams grassVisibilityParams
+			if (grassFieldDef)
 			{
-				.viewSpec          = viewSpec,
-				.grassBlades       = grassBlades,
-				.depthTexture      = rasterizedDepth,
-				.visibilityTexture = visibilityTexture
-			};
+				grassBlades = grass_renderer::GenerateGrassBlades(graphBuilder, viewSpec, *grassFieldDef);
 
-			grass_renderer::RenderGrassVisibility(graphBuilder, grassVisibilityParams);
+				const grass_renderer::GrassVisibilityRenderParams grassVisibilityParams
+				{
+					.viewSpec          = viewSpec,
+					.grassBlades       = grassBlades,
+					.depthTexture      = rasterizedDepth,
+					.visibilityTexture = visibilityTexture
+				};
+
+				grass_renderer::RenderGrassVisibility(graphBuilder, grassVisibilityParams);
+			}
 		}
 	}
 

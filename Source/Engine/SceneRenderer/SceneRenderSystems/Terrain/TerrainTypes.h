@@ -41,6 +41,7 @@ BEGIN_SHADER_STRUCT(TerrrainMaterialCacheLOD)
 	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<Real32>,         depth)
 	SHADER_STRUCT_FIELD(math::Vector2f,                         minBounds)
 	SHADER_STRUCT_FIELD(math::Vector2f,                         rcpRange)
+	SHADER_STRUCT_FIELD(math::Vector2f,                         rcpResolution)
 END_SHADER_STRUCT();
 
 
@@ -73,6 +74,7 @@ BEGIN_SHADER_STRUCT(TerrainSceneData)
 	SHADER_STRUCT_FIELD(Uint32,                                     meshletTranglesNum)
 	SHADER_STRUCT_FIELD(TerrainMaterialsMap,                        materialsMap)
 	SHADER_STRUCT_FIELD(TerrrainMaterialCache,                      materialCache)
+	SHADER_STRUCT_FIELD(TerrainMaterialData,                        materialData)
 	SHADER_STRUCT_FIELD(GrassFieldDefinition,                       grassFieldDef)
 END_SHADER_STRUCT();
 
