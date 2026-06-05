@@ -71,6 +71,7 @@ enum class EFragmentFormat : Uint32
 	R32_U_Int,
 
 	RG8_UN_Float,
+	RG8_U_Int,
 	RG16_U_Int,
 	RG16_UN_Float,
 	RG16_SN_Float,
@@ -132,6 +133,7 @@ inline TextureFragmentInfo GetFragmentInfo(EFragmentFormat format)
 		return { 1u, 1u, 1u };
 
 	case EFragmentFormat::R16_U_Int:
+	case EFragmentFormat::RG8_U_Int:
 	case EFragmentFormat::R16_UN_Float:
 	case EFragmentFormat::R16_S_Float:
 	case EFragmentFormat::D16_UN_Float:
@@ -199,6 +201,7 @@ inline lib::String GetFormatName(rhi::EFragmentFormat format)
 	case rhi::EFragmentFormat::R32_S_Float:          return "R32_S_Float";
 	case rhi::EFragmentFormat::R32_U_Int:            return "R32_U_Int";
 	case rhi::EFragmentFormat::RG8_UN_Float:         return "RG8_UN_Float";
+	case rhi::EFragmentFormat::RG8_U_Int:            return "RG8_U_Int";
 	case rhi::EFragmentFormat::RG16_U_Int:           return "RG16_U_Int";
 	case rhi::EFragmentFormat::RG16_UN_Float:        return "RG16_UN_Float";
 	case rhi::EFragmentFormat::RG16_SN_Float:        return "RG16_SN_Float";
@@ -592,6 +595,7 @@ inline ETextureAspect GetFullAspectForFormat(EFragmentFormat format)
 	case EFragmentFormat::R32_S_Float:
 	case EFragmentFormat::R32_U_Int:
 	case EFragmentFormat::RG8_UN_Float:
+	case EFragmentFormat::RG8_U_Int:
 	case EFragmentFormat::RG16_UN_Float:
 	case EFragmentFormat::RG16_U_Int:
 	case EFragmentFormat::RG16_SN_Float:

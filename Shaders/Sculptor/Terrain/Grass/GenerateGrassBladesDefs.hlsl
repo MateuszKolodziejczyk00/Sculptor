@@ -81,7 +81,7 @@ uint GetGrassTypeAtLocation(inout RngState rng, in float2 location)
 }
 
 
-void GenerateImpl(int2 coord, bool isLod0)
+void GenerateImpl(int2 coord, uint lod)
 {
 	RngState rng = RngState::Create(coord, 0u);
 
@@ -100,7 +100,7 @@ void GenerateImpl(int2 coord, bool isLod0)
 
 	GrassBladeDef bladeDef;
 	bladeDef.location    = pos2d;
-	bladeDef.flags       = uint16_t(isLod0 ? GRASS_BLADE_FLAGS_NONE : GRASS_BLADE_FLAGS_LOD_1 );
+	bladeDef.flags       = uint16_t((lod == 0u) ? GRASS_BLADE_FLAGS_NONE : GRASS_BLADE_FLAGS_LOD_1);
 	bladeDef.clumpCoords = uint16_t(clumpCoord8.x | (clumpCoord8.y << 8u));
 
 	const uint2 activeBallot = WaveActiveBallot(true).xy;
@@ -109,11 +109,11 @@ void GenerateImpl(int2 coord, bool isLod0)
 	uint offset = 0u;
 	if (WaveIsFirstLane())
 	{
-		offset = u_constants.rwBladesNum.AtomicAdd(0u, outputBladesNum);
+		offset = u_constants.rwBladesNumLODs[lod].AtomicAdd(0u, outputBladesNum);
 	}
 	offset = WaveReadLaneFirst(offset) + GetCompactedIndex(activeBallot, WaveGetLaneIndex());
 
-	u_constants.rwBladeDefs.Store(offset, bladeDef);
+	u_constants.rwBladeDefsLODs[lod].Store(offset, bladeDef);
 }
 
 
@@ -142,23 +142,24 @@ void GenerateGrassBladesDefsCS(CS_INPUT input)
 	const float2 tileMinMaxHeight = SceneTerrain().GetTileHeightMinMaxAtLocation(tileCenter);
 	const float averageZ = (tileMinMaxHeight.x + tileMinMaxHeight.y) * 0.5f;
 	const float radius = length(float3(GRASS_TILE_SIZE, GRASS_TILE_SIZE, (tileMinMaxHeight.y - tileMinMaxHeight.x) * 0.5f) + inflate);
-	//const bool isTileVisible = IsAABBInFrustum(u_cullingData.cullingPlanes, float3(tileMin, tileMinMaxHeight.x), float3(tileMax, tileMinMaxHeight.y + inflate));
 	const bool isTileVisible = IsSphereInFrustum(u_cullingData.cullingPlanes, float3(tileCenter, averageZ), radius);
+
 	if (!isTileVisible)
 	{
 		return;
 	}
 
-	const bool isLod0 = IsLOD0(tileCoord);
+	const bool isLod0 = WaveReadLaneFirst(IsLOD0(tileCoord));
+	const uint lod = isLod0 ? 0u : 1u;
 
 	int2 coord = tileCoord * 32 + input.localID.xy * 2;
 
-	GenerateImpl(coord, isLod0);
+	GenerateImpl(coord, lod);
 
 	if (isLod0)
 	{
-		GenerateImpl(coord + uint2(1, 0), isLod0);
-		GenerateImpl(coord + uint2(0, 1), isLod0);
-		GenerateImpl(coord + uint2(1, 1), isLod0);
+		GenerateImpl(coord + uint2(1, 0), lod);
+		GenerateImpl(coord + uint2(0, 1), lod);
+		GenerateImpl(coord + uint2(1, 1), lod);
 	}
 }

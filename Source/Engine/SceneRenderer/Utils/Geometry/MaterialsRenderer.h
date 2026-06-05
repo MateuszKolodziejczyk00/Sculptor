@@ -51,7 +51,7 @@ struct MaterialsPassDefinition
 
 	rg::RGBufferViewHandle visibleMeshlets;
 
-	rg::RGBufferViewHandle grassBladeDefs;
+	lib::StaticArray<rg::RGBufferViewHandle, 2u> grassBladeDefsLODs;
 
 	rg::RGTextureViewHandle depthTexture;
 	rg::RGTextureViewHandle visibilityTexture;

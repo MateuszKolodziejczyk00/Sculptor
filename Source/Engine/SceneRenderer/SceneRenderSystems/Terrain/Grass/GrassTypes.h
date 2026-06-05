@@ -20,8 +20,13 @@ END_SHADER_STRUCT();
 
 struct GrassBlades
 {
-	rg::RGBufferViewHandle bladeDefs;
-	rg::RGBufferViewHandle bladesNum;
+	struct LOD
+	{
+		rg::RGBufferViewHandle bladeDefs;
+		rg::RGBufferViewHandle bladesNum;
+	};
+
+	lib::StaticArray<LOD, 2> lods;
 };
 
 
@@ -45,7 +50,7 @@ inline math::AlignedBox2f GetTileBounds(const math::Vector2i& tileCoord)
 
 BEGIN_SHADER_STRUCT(GrassFieldDefinition)
 	SHADER_STRUCT_FIELD(math::Vector2i, originTile)
-	SHADER_STRUCT_FIELD(math::Vector2i, tilesExtent)
+	SHADER_STRUCT_FIELD(math::Vector2i, tilesResolution)
 	SHADER_STRUCT_FIELD(math::Vector2f, worldSpaceMin)
 	SHADER_STRUCT_FIELD(math::Vector2f, worldSpaceMax)
 END_SHADER_STRUCT()

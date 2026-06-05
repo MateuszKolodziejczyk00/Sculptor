@@ -25,6 +25,8 @@ static constexpr Uint32 meshletVerticesNum     = meshletVerticesPerEdge * meshle
 static constexpr Uint32 meshletIndicesNum      = meshletQuadsPerEdge * meshletQuadsPerEdge * 6u;
 
 static const math::Vector2u materialCacheRes = math::Vector2u(2048u, 2048u);
+
+static const Uint32 grassTilesExtent = 64u;
 } // terrain_consts
 
 
@@ -1168,11 +1170,10 @@ void TerrainRenderSystem::Update(const SceneUpdateContext& context)
 	m_renderInstance->lodTransactions = lodTransactions;
 
 	const math::Vector2i cameraGrassTile = grass_utils::GetTileCoord(cameraLocation);
-	const Int32 tilesExtent = static_cast<Int32>(utils::ComputeTilesResolution().x());
-	m_grassFieldDef.originTile = cameraGrassTile - math::Vector2i::Constant(tilesExtent);
-	m_grassFieldDef.tilesExtent = math::Vector2i::Constant(tilesExtent * 2);
-	m_grassFieldDef.worldSpaceMin = grass_utils::GetTileBounds(m_grassFieldDef.originTile).min();
-	m_grassFieldDef.worldSpaceMax = grass_utils::GetTileBounds(m_grassFieldDef.originTile + m_grassFieldDef.tilesExtent).max();
+	m_grassFieldDef.originTile      = cameraGrassTile - math::Vector2i::Constant(static_cast<Int32>(terrain_consts::grassTilesExtent));
+	m_grassFieldDef.tilesResolution = math::Vector2i::Constant(terrain_consts::grassTilesExtent * 2);
+	m_grassFieldDef.worldSpaceMin   = grass_utils::GetTileBounds(m_grassFieldDef.originTile).min();
+	m_grassFieldDef.worldSpaceMax   = grass_utils::GetTileBounds(m_grassFieldDef.originTile + m_grassFieldDef.tilesResolution).max();
 }
 
 void TerrainRenderSystem::UpdateGPUSceneData(const SceneUpdateContext& context, RenderSceneConstants& sceneData)

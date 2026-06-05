@@ -174,12 +174,14 @@ void RenderMaterialDepthTiles(rg::RenderGraphBuilder& graphBuilder, rg::RGTextur
 
 } // material_depth_tiles_renderer
 
+using GrassBladeDefsLODs = lib::StaticArray<gfx::TypedBuffer<GrassBladeDef>, 2u>;
+
 BEGIN_SHADER_STRUCT(EmitGBufferConstants)
-	SHADER_STRUCT_FIELD(math::Vector2f,                  tileSizeNDC)
-	SHADER_STRUCT_FIELD(math::Vector2f,                  screenResolution)
-	SHADER_STRUCT_FIELD(math::Vector2f,                  invScreenResolution)
-	SHADER_STRUCT_FIELD(Uint32,                          groupsPerRow)
-	SHADER_STRUCT_FIELD(gfx::TypedBuffer<GrassBladeDef>, grassBladeDefs)
+	SHADER_STRUCT_FIELD(math::Vector2f,      tileSizeNDC)
+	SHADER_STRUCT_FIELD(math::Vector2f,      screenResolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,      invScreenResolution)
+	SHADER_STRUCT_FIELD(Uint32,              groupsPerRow)
+	SHADER_STRUCT_FIELD(GrassBladeDefsLODs , grassBladeDefsLODs)
 END_SHADER_STRUCT();
 
 
@@ -456,12 +458,18 @@ void RenderMaterials(rg::RenderGraphBuilder& graphBuilder, const MaterialsPassDe
 	const math::Vector2u groupsPerMaterial2D = math::Utils::DivideCeil(resolution, pixelsPerGroup);
 	const Uint32 groupsPerMaterial = groupsPerMaterial2D.x() * groupsPerMaterial2D.y();
 
+	GrassBladeDefsLODs grassBladeDefsLODs;
+	for (Uint32 lodIdx = 0u; lodIdx < grassBladeDefsLODs.size(); ++lodIdx)
+	{
+		grassBladeDefsLODs[lodIdx] = passDef.grassBladeDefsLODs[lodIdx];
+	}
+
 	EmitGBufferConstants emitGBufferConstants;
 	emitGBufferConstants.tileSizeNDC         = 2.f * math::Vector2f::Constant(static_cast<Real32>(matDepthTileSize)).cwiseQuotient(resolution.cast<Real32>());
 	emitGBufferConstants.screenResolution    = resolution.cast<Real32>();
 	emitGBufferConstants.invScreenResolution = math::Vector2f::Ones().cwiseQuotient(emitGBufferConstants.screenResolution);
 	emitGBufferConstants.groupsPerRow        = groupsPerMaterial2D.x();
-	emitGBufferConstants.grassBladeDefs      = passDef.grassBladeDefs;
+	emitGBufferConstants.grassBladeDefsLODs  = grassBladeDefsLODs;
 
 	lib::MTHandle<EmitGBufferDS> emitGBufferDS = graphBuilder.CreateDescriptorSet<EmitGBufferDS>(RENDERER_RESOURCE_NAME("Emit GBuffer DS"));
 	emitGBufferDS->u_emitGBufferConstants      = emitGBufferConstants;

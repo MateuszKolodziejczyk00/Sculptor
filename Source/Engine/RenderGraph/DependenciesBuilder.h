@@ -189,7 +189,7 @@ struct HLSLStructDependenciesBuider
 			using TElemType = typename TArrayTraits::Type;
 
 			constexpr Uint32 hlslTypeSize    = rdr::shader_translator::HLSLSizeOf<TElemType>();
-			constexpr Uint32 hlslElementSize = hlslTypeSize >= 16u ? hlslTypeSize : 16u; // HLSL requires at least 16 bytes for each element of array
+			constexpr Uint32 hlslElementSize = hlslTypeSize;
 
 			for (SizeType idx = 0u; idx < TArrayTraits::Size; ++idx)
 			{

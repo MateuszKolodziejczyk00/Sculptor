@@ -459,9 +459,10 @@ FS_Output EmitGrassGBuffer_FS(in OutputVertex vertexInput)
 
 	uint grassBladeIdx = 0;
 	uint triangleIdx = 0;
-	UnpackGrassVisibilityInfo(packedVisibilityInfo, OUT grassBladeIdx, OUT triangleIdx);
+	uint lodIdx = 0;
+	UnpackGrassVisibilityInfo(packedVisibilityInfo, OUT grassBladeIdx, OUT triangleIdx, OUT lodIdx);
 
-	const GrassBladeDef bladeDef = u_emitGBufferConstants.grassBladeDefs.Load(grassBladeIdx);
+	const GrassBladeDef bladeDef = u_emitGBufferConstants.grassBladeDefsLODs[lodIdx].Load(grassBladeIdx);
 
 	GrassVertexProcessor grassProcessor = GrassVertexProcessor::Create(bladeDef);
 

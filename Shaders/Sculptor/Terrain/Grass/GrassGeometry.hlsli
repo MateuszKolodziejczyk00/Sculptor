@@ -11,13 +11,16 @@
 #define GRASS_BLADE_FLAGS_LOD_1 1u
 
 
-#define GRASS_BLADE_VERTICES_NUM  13u
-#define GRASS_BLADE_TRIANGLES_NUM 11u
+#define GRASS_BLADE_VERTICES_NUM_LOD0  13u
+#define GRASS_BLADE_TRIANGLES_NUM_LOD0 11u
+
+#define GRASS_BLADE_VERTICES_NUM_LOD1  7u
+#define GRASS_BLADE_TRIANGLES_NUM_LOD1 5u
 
 #define GRASS_WIDTH 0.03
 
 
-static const float2 g_grassBladeVertices[GRASS_BLADE_VERTICES_NUM] =
+static const float2 g_grassBladeVertices_LOD0[GRASS_BLADE_VERTICES_NUM_LOD0] =
 {
 	float2(-GRASS_WIDTH * 1.0f, 0.0f),
 	float2( GRASS_WIDTH * 1.0f, 0.0f),
@@ -35,20 +38,30 @@ static const float2 g_grassBladeVertices[GRASS_BLADE_VERTICES_NUM] =
 };
 
 
-static const uint3 g_grassBladeTriangles[GRASS_BLADE_TRIANGLES_NUM] =
+static const float2 g_grassBladeVertices_LOD1[GRASS_BLADE_VERTICES_NUM_LOD1] =
 {
-	uint3(0u, 2u, 1u),
-	uint3(2u, 3u, 1u),
-	uint3(2u, 4u, 3u),
-	uint3(4u, 5u, 3u),
-	uint3(4u, 6u, 5u),
-	uint3(6u, 7u, 5u),
-	uint3(6u, 8u, 7u),
-	uint3(8u, 9u, 7u),
-	uint3(8u, 10u, 9u),
-	uint3(10u, 11u, 9u),
-	uint3(10u, 12u, 11u)
+	float2(-GRASS_WIDTH * 1.0f, 0.0f),
+	float2( GRASS_WIDTH * 1.0f, 0.0f),
+	float2(-GRASS_WIDTH * 0.8f, 0.36f),
+	float2( GRASS_WIDTH * 0.8f, 0.36f),
+	float2(-GRASS_WIDTH * 0.42f, 0.72f),
+	float2( GRASS_WIDTH * 0.42f, 0.72f),
+	float2( 0.0f, 1.0f)
 };
+
+
+#if defined(GRASS_BLADES_LOD)
+#define g_grassBladeVertices  g_grassBladeVertices_LOD##GRASS_BLADES_LOD
+#define g_grassBladeTriangles g_grassBladeTriangles_LOD##GRASS_BLADES_LOD
+
+#if GRASS_BLADES_LOD == 0
+#define GRASS_BLADE_VERTICES_NUM  GRASS_BLADE_VERTICES_NUM_LOD0
+#define GRASS_BLADE_TRIANGLES_NUM GRASS_BLADE_TRIANGLES_NUM_LOD0
+#elif GRASS_BLADES_LOD == 1
+#define GRASS_BLADE_VERTICES_NUM  GRASS_BLADE_VERTICES_NUM_LOD1
+#define GRASS_BLADE_TRIANGLES_NUM GRASS_BLADE_TRIANGLES_NUM_LOD1
+#endif
+#endif // GRASS_BLADES_LOD
 
 
 uint GenerateGrassBladeHash(in float2 location)
@@ -67,7 +80,11 @@ float GrassBladeRandom(in GrassBladeDef bladeDef)
 
 uint3 LoadGrassBladeTriangleIndices(in uint triangleIdx)
 {
-	return g_grassBladeTriangles[triangleIdx];
+	const uint a = (triangleIdx + 1u) & ~1u;
+	const uint b = triangleIdx + 2u;
+	const uint c = (triangleIdx & ~1u) + 1u;
+
+	return uint3(a, b, c);
 }
 
 
@@ -191,7 +208,7 @@ struct GrassVertexProcessor
 		const float dotVN = abs(dot(viewDir, GetBladeNormal()));
 		const float thickeningFactor = 1.f / max(dotVN, 0.8f);
 
-		const float2 bladeVertex = g_grassBladeVertices[bladeVertexIdx];
+		const float2 bladeVertex = isLOD1 ? g_grassBladeVertices_LOD1[bladeVertexIdx] : g_grassBladeVertices_LOD0[bladeVertexIdx];
 
 		const float3 leanDir = float3(cos(leanYaw), sin(leanYaw), 0.f);
 		const float3 startPoint = 0.f;
@@ -236,7 +253,8 @@ struct GrassVertexProcessor
 		float3 normal;
 		const float3 localLocation = GetVertexLocalLocation(bladeVertexIdx, OUT normal);
 
-		const float widthAlpha = g_grassBladeVertices[bladeVertexIdx].x / GRASS_WIDTH;
+		float widthAlpha = isLOD1 ? g_grassBladeVertices_LOD1[bladeVertexIdx].x : g_grassBladeVertices_LOD0[bladeVertexIdx].x;
+		widthAlpha /= GRASS_WIDTH;
 
 		const float3 shadingNormal = normalize(normal + float3(sideDirection, 0.f) * widthAlpha * 0.5f);
 

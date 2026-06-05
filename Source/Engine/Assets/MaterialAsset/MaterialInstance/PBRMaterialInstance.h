@@ -37,7 +37,7 @@ struct PBRMaterialDefinition
 		serializer.Serialize("RoughnessTexPath",         roughnessTexPath);
 		serializer.Serialize("NormalsTexPath",           normalsTexPath);
 		serializer.Serialize("EmissiveTexPath",          emissiveTexPath);
-		serializer.Serialize("DepthTexPath",            depthTexPath);
+		serializer.Serialize("DepthTexPath",             depthTexPath);
 
 		serializer.Serialize("BaseColorFactor", baseColorFactor);
 		serializer.Serialize("MetallicFactor",  metallicFactor);

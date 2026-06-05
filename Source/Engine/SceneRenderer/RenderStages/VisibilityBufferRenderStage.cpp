@@ -234,7 +234,10 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 		materialPassDef.visibilityTexture = visibilityTexture;
 		materialPassDef.enablePOM         = enablePOM;
 		materialPassDef.pomDepth          = pomDepth;
-		materialPassDef.grassBladeDefs    = grassBlades.bladeDefs;
+		for (Uint32 lodIdx = 0u; lodIdx < 2u; ++lodIdx)
+		{
+			materialPassDef.grassBladeDefsLODs[lodIdx] = grassBlades.lods[lodIdx].bladeDefs;
+		}
 
 		materials_renderer::MaterialRenderCommands materialRenderCommands;
 		materials_renderer::AppendGeometryMaterialsRenderCommands(graphBuilder, materialPassDef, cachedGeometryPassData, INOUT materialRenderCommands);

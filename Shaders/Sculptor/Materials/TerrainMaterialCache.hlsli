@@ -67,11 +67,25 @@ MaterialEvaluationOutput EvaluateMaterial(TSampler sampler, MaterialEvaluationPa
 		terrainInterface.EvaluateFarLODMaterial(evalParams.worldLocation.xy, baseColor, roughness, metallic, occlusion);
 	}
 
+#if !SPT_RAY_TRACING_SHADER 
 	if (all(evalParams.worldLocation.xy >= terrainInterface.grassFieldDef.worldSpaceMin)
 		&& all(evalParams.worldLocation.xy <= terrainInterface.grassFieldDef.worldSpaceMax))
 	{
-		occlusion *= 0.4f;
+		const TerrainMaterialsFactors materials = terrainInterface.GetMaterialsFactors(evalParams.worldLocation.xy);
+		float grassDensity = 0.f;
+		for (uint i = 0u; i < 4u; ++i)
+		{
+			const uint materialID = materials.materialIDs[i];
+			if (materialID != IDX_NONE_8)
+			{
+				const TerrainMaterialEntry materialEntry = terrainInterface.materialData.matEntries.Load(materialID);
+				grassDensity += (materialEntry.grassType != IDX_NONE_8 ? 1.f : 0.f) * materials.materialWeights[i];
+			}
+		}
+
+		occlusion *= lerp(1.f, 0.4f, grassDensity);
 	}
+#endif // !SPT_RAY_TRACING_SHADER
 
 	output.shadingNormal  = normal;
 	output.geometryNormal = normal;

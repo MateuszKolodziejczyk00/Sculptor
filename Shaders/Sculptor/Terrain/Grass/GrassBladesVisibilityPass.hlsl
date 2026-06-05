@@ -38,7 +38,7 @@ void GrassBladesVisibilityPassMS(in MeshShaderInput input,
 								 out indices uint3 outTriangles[GRASS_BLADES_PER_GROUP * GRASS_BLADE_TRIANGLES_NUM],
 								 out primitives PrimitiveData outPrimitives[GRASS_BLADES_PER_GROUP * GRASS_BLADE_TRIANGLES_NUM])
 {
-	const uint bladesNum      = u_constants.bladesNum.Load(0u);
+	const uint bladesNum      = u_constants.bladesNumLODs[GRASS_BLADES_LOD].Load(0u);
 	const uint firstBladeIdx  = input.meshGroupID.x * GRASS_BLADES_PER_GROUP;
 	const uint bladesInGroup  = firstBladeIdx < bladesNum ? min(GRASS_BLADES_PER_GROUP, bladesNum - firstBladeIdx) : 0u;
 	const uint verticesNum    = bladesInGroup * GRASS_BLADE_VERTICES_NUM;
@@ -51,7 +51,7 @@ void GrassBladesVisibilityPassMS(in MeshShaderInput input,
 		const uint bladeLocalIdx       = vertexIdx / GRASS_BLADE_VERTICES_NUM;
 		const uint bladeVertexIdx      = vertexIdx % GRASS_BLADE_VERTICES_NUM;
 		const uint bladeIdx            = firstBladeIdx + bladeLocalIdx;
-		const GrassBladeDef bladeDef   = u_constants.bladeDefs.Load(bladeIdx);
+		const GrassBladeDef bladeDef   = u_constants.bladeDefsLODs[GRASS_BLADES_LOD].Load(bladeIdx);
 		GrassVertexProcessor vertexProcessor = GrassVertexProcessor::Create(bladeDef);
 		const float3 vertexLocationWS  = vertexProcessor.GetVertexLocation(bladeVertexIdx);
 
@@ -66,7 +66,7 @@ void GrassBladesVisibilityPassMS(in MeshShaderInput input,
 		const uint vertexOffset          = bladeLocalIdx * GRASS_BLADE_VERTICES_NUM;
 
 		outTriangles[triangleIdx] = LoadGrassBladeTriangleIndices(bladeTriangleIdx) + vertexOffset;
-		outPrimitives[triangleIdx].packedVisibilityInfo = PackGrassVisibilityInfo(bladeIdx, bladeTriangleIdx);
+		outPrimitives[triangleIdx].packedVisibilityInfo = PackGrassVisibilityInfo(bladeIdx, bladeTriangleIdx, GRASS_BLADES_LOD);
 	}
 }
 

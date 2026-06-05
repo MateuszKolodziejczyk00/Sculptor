@@ -23,11 +23,12 @@ uint PackTerrainVisibilityInfo()
 }
 
 
-uint PackGrassVisibilityInfo(in uint grassBladeIdx, in uint triangleIdx)
+uint PackGrassVisibilityInfo(in uint grassBladeIdx, in uint triangleIdx, in uint lod)
 {
 	SPT_CHECK_MSG(triangleIdx < 16u, L"Invalid triangle index - {}", triangleIdx);
-	SPT_CHECK_MSG(grassBladeIdx < (1 << 27), L"Invalid grass blade index - {}", grassBladeIdx);
-	return ((grassBladeIdx << 4) | triangleIdx) | (1u << 31);
+	SPT_CHECK_MSG(grassBladeIdx < (1 << 26), L"Invalid grass blade index - {}", grassBladeIdx);
+	SPT_CHECK_MSG(lodIdx < 2u, L"Invalid LOD index - {}", lodIdx);
+	return ((grassBladeIdx << 5) | (triangleIdx << 1u) | lod) | (1u << 31);
 }
 
 
@@ -58,10 +59,11 @@ uint UnpackVisibilityInfo(in uint packedInfo, out uint visibleMeshletIdx, out ui
 }
 
 
-void UnpackGrassVisibilityInfo(in uint packedInfo, out uint grassBladeIdx, out uint triangleIdx)
+void UnpackGrassVisibilityInfo(in uint packedInfo, out uint grassBladeIdx, out uint triangleIdx, out uint lod)
 {
-	grassBladeIdx = (packedInfo & ~(1u << 31)) >> 4;
-	triangleIdx = packedInfo & 0xF;
+	grassBladeIdx = (packedInfo & ~(1u << 31)) >> 5;
+	triangleIdx   = (packedInfo >> 1u) & 0xF;
+	lod           =  packedInfo & 0x1;
 }
 
 
