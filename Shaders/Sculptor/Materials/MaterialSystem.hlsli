@@ -104,8 +104,7 @@ MaterialEvaluationOutput EvaluateMaterial(TSampler sampler, MaterialEvaluationPa
 #include SPT_MATERIAL_SHADER_PATH
 #endif // SPT_MATERIAL_SHADER_PATH
 
-#define SPT_MATERIAL_DATA_ALIGNMENT    32
-#define SPT_MATERIAL_FEATURE_ALIGNMENT 16
+#define SPT_MATERIAL_DATA_ALIGNMENT 32
 
 
 [[shader_struct(MaterialUnifiedData)]]
@@ -118,6 +117,12 @@ TMaterialData LoadMaterialData(in MaterialUnifiedData materialsData, in Material
 	return materialsData.materialsData.Load<TMaterialData>(materialDataOffset);
 }
 
+template<typename TMaterialFeature>
+TMaterialFeature LoadMaterialFeature(in MaterialUnifiedData materialsData, in MaterialDataHandle materialDataHandle, in uint16_t featureID)
+{
+	const uint materialFeatureOffset = uint(materialDataHandle.id) * SPT_MATERIAL_DATA_ALIGNMENT + uint(featureID);
+	return materialsData.materialsData.Load<TMaterialFeature>(materialFeatureOffset);
+}
 
 #ifdef SPT_MATERIAL_DATA_TYPE
 CustomOpacityOutput EvaluateCustomOpacity(MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
@@ -152,8 +157,7 @@ SPT_MATERIAL_DATA_TYPE LoadMaterialData(in MaterialDataHandle materialDataHandle
 template<typename TMaterialFeature>
 TMaterialFeature LoadMaterialFeature(in MaterialDataHandle materialDataHandle, in uint16_t featureID)
 {
-	const uint materialFeatureOffset = uint(materialDataHandle.id) * SPT_MATERIAL_DATA_ALIGNMENT + uint(featureID) * SPT_MATERIAL_FEATURE_ALIGNMENT;
-	return GPUMaterials().data.materialsData.Load<TMaterialFeature>(materialFeatureOffset);
+	return LoadMaterialFeature<TMaterialFeature>(GPUMaterials().data, materialDataHandle, featureID);
 }
 
 #endif // DS_RenderSceneDS

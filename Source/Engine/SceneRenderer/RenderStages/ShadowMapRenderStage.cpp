@@ -184,7 +184,11 @@ void ShadowMapRenderStage::RenderCSM(rg::RenderGraphBuilder& graphBuilder, Scene
 	geometryPassParams.depth      = shadowMapView;
 	geometryPassParams.hiZ        = currentHiZ;
 
-	depth_only::RenderDepthOnly(graphBuilder, geometryPassParams);
+	gp::GeometryPipelineExecutor* depthOnlyExecutor = depth_only::CreatePipelineExecutor(graphBuilder, geometryPassParams);
+
+	gp::ExecuteFirstPass(graphBuilder, *depthOnlyExecutor);
+
+	HiZ::CreateHierarchicalZ(graphBuilder, shadowMapView, currentHiZ->GetTexture());
 
 	if (TerrainRenderSystem* terrainRenderSystem = rendererInterface.GetRenderSystem<TerrainRenderSystem>())
 	{
@@ -194,6 +198,10 @@ void ShadowMapRenderStage::RenderCSM(rg::RenderGraphBuilder& graphBuilder, Scene
 			terrainRenderSystem->RenderShadowMap(graphBuilder, terrainShadowMapParams);
 		}
 	}
+
+	gp::ExecuteSecondPass(graphBuilder, *depthOnlyExecutor);
+
+	HiZ::CreateHierarchicalZ(graphBuilder, shadowMapView, currentHiZ->GetTexture());
 
 	std::swap(m_currentHiZ, m_historyHiZ);
 }

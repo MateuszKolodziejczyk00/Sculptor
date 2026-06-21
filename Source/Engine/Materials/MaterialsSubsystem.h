@@ -45,7 +45,8 @@ template<typename TMaterialData>
 MaterialFeatures ExtractMaterialFeaturesFromStruct()
 {
 	MaterialFeatures features;
-	features.emissiveDataID = GetMaterialFeatureID<TMaterialData, mat::EmissiveMaterialData>();
+	features.emissiveDataID     = GetMaterialFeatureID<TMaterialData, mat::EmissiveMaterialData>();
+	features.displacementDataID = GetMaterialFeatureID<TMaterialData, mat::MaterialDisplacementData>();
 	return features;
 }
 

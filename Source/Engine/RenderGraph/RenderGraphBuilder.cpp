@@ -12,6 +12,7 @@
 #include "GPUDiagnose/Debug/GPUDebug.h"
 
 SPT_DEFINE_LOG_CATEGORY(RenderGraph, true);
+SPT_DEFINE_LOG_CATEGORY(RenderGraph_Synchronization, false);
 
 
 #define SPT_ENABLE_RENDER_GRAPH_CHECKPOINTS_VALIDATION 0
@@ -305,6 +306,10 @@ void RenderGraphBuilder::BuildBLASes(const RenderGraphDebugName& commandName, li
 
 			recorder.AddBatchedBLASBuild(lib::Ref(command.blas), buildInfo, lib::Ref(scratchBuffer), scratchBufferOffset);
 		}
+
+		rhi::RHIDependency dependency;
+		dependency.FlushPipeline();
+		recorder.ExecuteBarrier(dependency);
 
 		recorder.ExecuteBLASesBuildBatch();
 
@@ -797,6 +802,8 @@ void RenderGraphBuilder::Execute()
 	PostBuild();
 
 	ExecuteGraph();
+
+	SPT_LOG_TRACE(RenderGraph_Synchronization, "RenderGraphBuilder::Execute: Render graph execution finished");
 }
 
 void RenderGraphBuilder::AssignDescriptorSetsToNode(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<lib::MTHandle<RGDescriptorSetStateBase> const> dsStatesRange, RGDependenciesBuilder& dependenciesBuilder)
@@ -980,6 +987,14 @@ void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHa
 		if (RequiresSynchronization(transitionSource, transitionTarget))
 		{
 			node.AddPreExecutionBarrier(transitionSource.stage, transitionSource.accessType, transitionTarget.stage, transitionTarget.accessType);
+
+			SPT_LOG_TRACE(RenderGraph_Synchronization, "TRANSITION: Node: {}, Texture: {}, Source Stage: {}, Source Access: {}, Target Stage: {}, Target Access: {}",
+						  node.GetName().ToString(),
+						  accessedTexture->GetName().ToString(),
+						  rhi::ToString(transitionSource.stage),
+						  rhi::ToString(transitionSource.accessType),
+						  rhi::ToString(transitionTarget.stage),
+						  rhi::ToString(transitionTarget.accessType));
 		}
 	}
 	else
@@ -1236,7 +1251,7 @@ void RenderGraphBuilder::ExecuteGraph()
 		node->Execute(renderContext, *commandRecorder, graphExecutionContext);
 
 #if SPT_ENABLE_RENDER_GRAPH_CHECKPOINTS_VALIDATION
-		checkpointValidator.AddCheckpoint(*commandRecorder, node->GetName().Get());
+		checkpointValidator.AddCheckpoint(*commandRecorder, node->GetName());
 #endif // SPT_ENABLE_RENDER_GRAPH_CHECKPOINTS_VALIDATION
 	}
 
@@ -1258,7 +1273,7 @@ void RenderGraphBuilder::ExecuteGraph()
 	rdr::GPUApi::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
 
 #if SPT_ENABLE_RENDER_GRAPH_CHECKPOINTS_VALIDATION
-	rdr::Renderer::WaitIdle(false);
+	rdr::GPUApi::WaitIdle(false);
 	checkpointValidator.ValidateExecution();
 #endif // SPT_ENABLE_RENDER_GRAPH_CHECKPOINTS_VALIDATION
 }

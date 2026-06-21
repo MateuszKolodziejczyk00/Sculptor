@@ -5,7 +5,8 @@
 #include "Utils/Packing.hlsli"
 
 
-#define MATERIAL_DEPTH_DATA_ACCESSOR depthData
+#define MATERIAL_DEPTH_DATA_ACCESSOR        depthData
+#define MATERIAL_DISPLACEMENT_DATA_ACCESSOR displacementData
 
 
 template<typename TSampler>

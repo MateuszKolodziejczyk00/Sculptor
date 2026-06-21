@@ -29,7 +29,7 @@ SPT_REGISTER_COMPONENT_TYPE(MaterialShaderSourceComponent, ecs::Registry);
 
 
 template<typename TMaterialData, typename TFeature>
-Uint8 GetMaterialFeatureID()
+Uint16 GetMaterialFeatureID()
 {
 	constexpr Uint32 featureOffset = rdr::OffsetOfType<TMaterialData, TFeature>();
 	if constexpr (featureOffset == idxNone<Uint32>)
@@ -38,17 +38,15 @@ Uint8 GetMaterialFeatureID()
 	}
 	else
 	{
-		static_assert(featureOffset % 16u == 0u, "Material feature offset is not 16-byte aligned");
-		constexpr Uint32 featureOffsetID = featureOffset / 16u;
-		static_assert(featureOffsetID < idxNone<Uint8>, "Material feature offset exceeds maximum allowed value");
-		return static_cast<Uint8>(featureOffsetID);
+		return static_cast<Uint16>(featureOffset);
 	}
 }
 
 
 struct MaterialFeatures
 {
-	Uint8 emissiveDataID = idxNone<Uint8>;
+	Uint16 emissiveDataID     = idxNone<Uint16>;
+	Uint16 displacementDataID = idxNone<Uint16>;
 };
 
 

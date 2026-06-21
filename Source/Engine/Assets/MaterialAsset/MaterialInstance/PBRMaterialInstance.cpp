@@ -108,6 +108,8 @@ void PBRMaterialInstance::Load(const AssetInstance& asset, lib::MTHandle<DDCLoad
 	m_materialData.alphaTexture             = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "Alpha"), materialDataHeader.alphaTexture);
 	m_materialData.occlusionTexture         = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "Occlusion"), materialDataHeader.occlusionTexture);
 
+	m_materialData.displacementData.displacementTexture = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "Displacement"), materialDataHeader.displacementTexture);
+
 	m_materialData.emissiveData.emissiveFactor  = materialDataHeader.emissionFactor;
 	m_materialData.emissiveData.emissiveTexture = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "Emissive"), materialDataHeader.emissiveTexture);
 

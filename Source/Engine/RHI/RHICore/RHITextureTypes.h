@@ -579,6 +579,26 @@ enum class EAccessType : Flags32
 };
 
 
+inline lib::String ToString(EAccessType access)
+{
+	lib::String result;
+	if (lib::HasAnyFlag(access, EAccessType::Read))
+	{
+		result += "Read";
+	}
+	if (lib::HasAnyFlag(access, EAccessType::Write))
+	{
+		if (!result.empty())
+		{
+			result += " | ";
+		}
+		result += "Write";
+	}
+
+	return result;
+}
+
+
 inline ETextureAspect GetFullAspectForFormat(EFragmentFormat format)
 {
 	switch (format)

@@ -18,4 +18,9 @@ BEGIN_SHADER_STRUCT(MaterialDepthData)
 	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<Real32>, depthTexture)
 END_SHADER_STRUCT();
 
+
+BEGIN_SHADER_STRUCT(MaterialDisplacementData)
+	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<Real32>, displacementTexture)
+END_SHADER_STRUCT();
+
 } // spt::mat

@@ -103,6 +103,7 @@ rsc::TerrainDefinition TerrainAsset::GetTerrainDefinition() const
 	materialsMap.minBounds     = m_terrainMinBounds;
 	materialsMap.rcpBoundsSize = (m_terrainMaxBounds - m_terrainMinBounds).cwiseInverse();
 	materialsMap.resolution    = m_materialIDs->GetResolution2D().cast<Real32>();
+	materialsMap.rcpResolution = materialsMap.resolution.cast<Real32>().cwiseInverse();
 	materialsMap.materialIDs   = m_materialIDs;
 
 	rsc::TerrainDefinition terrainDefinition;
@@ -117,13 +118,6 @@ rsc::TerrainDefinition TerrainAsset::GetTerrainDefinition() const
 
 
 	return terrainDefinition;
-}
-
-rsc::TerrainMaterialsMap TerrainAsset::GetTerrainMaterialsMap() const
-{
-	rsc::TerrainMaterialsMap materialsMap;
-	materialsMap.materialIDs = m_materialIDs;
-	return materialsMap;
 }
 
 Bool TerrainAsset::Compile()

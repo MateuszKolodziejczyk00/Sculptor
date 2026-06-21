@@ -185,7 +185,9 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 	visPassParams.geometryPassParams.hiZ        = hiZ;
 	visPassParams.visibilityTexture             = visibilityTexture;
 
-	const VisPassResult geometryPassesResult = m_VisPassRenderer.RenderVisibility(graphBuilder, rendererInterface, visPassParams);
+	gp::GeometryPipelineExecutor* visPassExecutor = m_VisPassRenderer.CreatePipelineExecutor(graphBuilder, rendererInterface, visPassParams);
+
+	gp::ExecuteFirstPass(graphBuilder, *visPassExecutor);
 
 	GrassBlades grassBlades;
 
@@ -221,6 +223,14 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 		}
 	}
 
+	HiZ::CreateHierarchicalZ(graphBuilder, visPassParams.geometryPassParams.depth, visPassParams.geometryPassParams.hiZ->GetTexture());
+
+	gp::ExecuteSecondPass(graphBuilder, *visPassExecutor);
+
+	HiZ::CreateHierarchicalZ(graphBuilder, visPassParams.geometryPassParams.depth, visPassParams.geometryPassParams.hiZ->GetTexture());
+
+	VisPassResult geometryPassesResult = m_VisPassRenderer.FinishPipelineExecution(graphBuilder, visPassExecutor);
+
 	rg::RGTextureViewHandle pomDepth;
 	if (enablePOM)
 	{
@@ -246,8 +256,9 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 		{
 			const MaterialBatchPermutation terrainMaterial
 			{
-				.SHADER       = terrainRenderSystem->GetTerrainMaterialShader(),
-				.DOUBLE_SIDED = true
+				.SHADER              = terrainRenderSystem->GetTerrainMaterialShader(),
+				.DOUBLE_SIDED        = true,
+				.MATERIAL_ENABLE_POM = terrainRenderSystem->IsTerrainPOMEnabled()
 			};
 			materials_renderer::AppendTerrainMaterialsRenderCommand(graphBuilder, materialPassDef, terrainMaterial, INOUT materialRenderCommands);
 		}

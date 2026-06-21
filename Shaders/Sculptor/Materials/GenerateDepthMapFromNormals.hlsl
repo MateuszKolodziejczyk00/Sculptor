@@ -27,7 +27,7 @@ void GenerateCS(CS_INPUT input)
 	const float raysNum = 64.f;
 	const float angleStep = 2.f * PI / raysNum;
 
-	const float rayLength = 64.f;
+	const float rayLength = max(resolution.x, resolution.y) / 2.f;
 
 	float heightSum = 0.f;
 	float samplesNum = 0.f;

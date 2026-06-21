@@ -52,7 +52,7 @@ private:
 	lib::SharedPtr<rdr::Buffer> m_rtInstancesDataBuffer;
 	lib::SharedPtr<rdr::Buffer> m_rtInstancesDataStagingBuffer;
 
-	lib::SharedPtr<rdr::Buffer> m_instancesDefsBuffer;
+	lib::StaticArray<lib::SharedPtr<rdr::Buffer>, 2u> m_instancesDefsBuffers;
 };
 
 } // spt::rsc

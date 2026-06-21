@@ -11,6 +11,9 @@
 [[shader_struct(MaterialDepthData)]]
 
 
+#define TERRAIN_POM_LODS_NUM 5
+
+
 template<typename TSampler>
 CustomOpacityOutput EvaluateCustomOpacity(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
 {
@@ -115,21 +118,21 @@ TerrainPOMData GetTerrainPOMDepthData(MaterialEvaluationParameters evalParams)
 
 	TerrainInterface terrainInterface = SceneTerrain();
 
-	for (int i = 0; i < 2; ++i)
+	for (int i = 0; i < TERRAIN_POM_LODS_NUM; ++i)
 	{
 		TerrrainMaterialCacheLOD matCacheLOD = terrainInterface.materialCache.lods[i];
 		const float2 lodUV = (evalParams.worldLocation.xy - matCacheLOD.minBounds) * matCacheLOD.rcpRange;
-		if (all(saturate(lodUV) == lodUV))
+		if (all(saturate(lodUV * 2.f - 0.5f) == (lodUV * 2.f - 0.5f)))
 		{
 			const float2 uv = evalParams.worldLocation.xy * matCacheLOD.rcpRange;
 
-			output.matDepth.maxDepthCm   = 0.04f;
+			output.matDepth.maxDepthCm   = 0.06f;
 			output.matDepth.depthTexture = matCacheLOD.pomDepth;
 			output.uv      = uv;
 			output.uvScale = matCacheLOD.rcpRange;
 
 			float pomStrenght = 1.f;
-			if (i == 1)
+			if (i == TERRAIN_POM_LODS_NUM - 1)
 			{
 				const float xStrength = max(lodUV.x, 1.f - lodUV.x) * 10.f - 0.1f;
 				const float yStrength = max(lodUV.y, 1.f - lodUV.y) * 10.f - 0.1f;

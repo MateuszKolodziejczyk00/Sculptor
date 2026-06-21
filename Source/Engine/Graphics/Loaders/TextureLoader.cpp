@@ -31,6 +31,10 @@
 #include "tinyexr.h"
 #pragma warning(pop)
 
+#include "tinytiffreader.h"
+
+#include <limits>
+
 
 SPT_DEFINE_LOG_CATEGORY(ImageLoader, true);
 
@@ -424,8 +428,258 @@ Bool LoadTextureImpl(TCallback&& callback, lib::StringView path)
 
 } // exr
 
+namespace tiff
+{
+
+enum class EFormatMode
+{
+	Sampleable,
+	Exact
+};
+
+
+struct TIFFTextureDataView : public TextureDataView
+{
+	// Begin TextureDataView overrides
+	virtual lib::Span<const Byte> GetSurfaceData(Uint32 mipLevel, Uint32 arrayLayer) const override
+	{
+		SPT_CHECK(mipLevel == 0u);
+		SPT_CHECK(arrayLayer == 0u);
+
+		return imageData;
+	}
+	// End TextureDataView overrides
+
+	lib::DynamicArray<Byte> imageData;
+};
+
+
+void SetDefaultSampleValue(Byte* sampleData, Uint16 sampleFormat, Uint16 bitsPerSample)
+{
+	switch (bitsPerSample)
+	{
+	case 8u:
+		{
+			const Uint8 value = 0xFFu;
+			std::memcpy(sampleData, &value, sizeof(value));
+			break;
+		}
+
+	case 16u:
+		{
+			const Uint16 value = sampleFormat == TINYTIFF_SAMPLEFORMAT_FLOAT ? 0x3C00u : 0xFFFFu;
+			std::memcpy(sampleData, &value, sizeof(value));
+			break;
+		}
+
+	case 32u:
+		{
+			if (sampleFormat == TINYTIFF_SAMPLEFORMAT_FLOAT)
+			{
+				const Real32 value = 1.f;
+				std::memcpy(sampleData, &value, sizeof(value));
+			}
+			else
+			{
+				const Uint32 value = 0xFFFFFFFFu;
+				std::memcpy(sampleData, &value, sizeof(value));
+			}
+			break;
+		}
+
+	default:
+		{
+			SPT_CHECK_NO_ENTRY();
+			break;
+		}
+	}
+}
+
+
+rhi::EFragmentFormat ResolveFormat(Uint16 sampleFormat, Uint16 bitsPerSample, Uint16 samplesPerPixel, EFormatMode formatMode)
+{
+	SPT_CHECK(formatMode == EFormatMode::Exact)
+
+	if (sampleFormat != TINYTIFF_SAMPLEFORMAT_FLOAT && sampleFormat != TINYTIFF_SAMPLEFORMAT_UINT)
+	{
+		return rhi::EFragmentFormat::None;
+	}
+
+	switch (samplesPerPixel)
+	{
+	case 1u:
+		{
+			switch (bitsPerSample)
+			{
+				case 8u:  return rhi::EFragmentFormat::R8_UN_Float;
+				case 16u: return rhi::EFragmentFormat::R16_S_Float;
+				case 32u: return rhi::EFragmentFormat::R32_S_Float;
+			}
+			break;
+		}
+
+	case 2u:
+		{
+			switch (bitsPerSample)
+			{
+				case 8u:  return rhi::EFragmentFormat::RG8_UN_Float;
+				case 16u: return rhi::EFragmentFormat::RG16_S_Float;
+			}
+			break;
+		}
+
+	case 3u:
+	case 4u:
+		{
+			switch (bitsPerSample)
+			{
+				case 8u:  return rhi::EFragmentFormat::RGBA8_UN_Float;
+				case 16u: return rhi::EFragmentFormat::RGBA16_S_Float;
+				case 32u: return rhi::EFragmentFormat::RGBA32_S_Float;
+			}
+			break;
+		}
+	}
+
+	return rhi::EFragmentFormat::None;
+}
+
+
+template<typename TCallback>
+Bool LoadTextureImpl(TCallback&& callback, lib::StringView path, EFormatMode formatMode)
+{
+	TinyTIFFReaderFile* tiff = TinyTIFFReader_open(path.data());
+	if (!tiff)
+	{
+		SPT_LOG_ERROR(ImageLoader, "Failed to open TIFF texture: {}", path);
+		return false;
+	}
+
+	const Uint32 width            = TinyTIFFReader_getWidth(tiff);
+	const Uint32 height           = TinyTIFFReader_getHeight(tiff);
+	const Uint16 samplesPerPixel  = TinyTIFFReader_getSamplesPerPixel(tiff);
+	const Uint16 sampleFormat     = TinyTIFFReader_getSampleFormat(tiff);
+	const Uint16 bitsPerSample    = TinyTIFFReader_getBitsPerSample(tiff, 0);
+	const Uint32 bytesPerSample   = bitsPerSample / 8u;
+	const Uint64 pixelCount       = static_cast<Uint64>(width) * static_cast<Uint64>(height);
+
+	Bool bitsPerSampleValid = bitsPerSample % 8u == 0u && bitsPerSample > 0u;
+
+	for (Uint16 sampleIdx = 1u; sampleIdx < samplesPerPixel && bitsPerSampleValid; ++sampleIdx)
+	{
+		bitsPerSampleValid = TinyTIFFReader_getBitsPerSample(tiff, sampleIdx) == bitsPerSample;
+	}
+
+	if (!bitsPerSampleValid)
+	{
+		SPT_LOG_ERROR(ImageLoader, "Unsupported TIFF layout (non-uniform or non-byte-aligned samples), path: {}", path);
+		TinyTIFFReader_close(tiff);
+		return false;
+	}
+
+	const rhi::EFragmentFormat format = ResolveFormat(sampleFormat, bitsPerSample, samplesPerPixel, formatMode);
+	if (format == rhi::EFragmentFormat::None)
+	{
+		SPT_LOG_ERROR(ImageLoader, "Unsupported TIFF format (sampleFormat: {}, bitsPerSample: {}, samplesPerPixel: {}), path: {}", sampleFormat, bitsPerSample, samplesPerPixel, path);
+		TinyTIFFReader_close(tiff);
+		return false;
+	}
+
+	TIFFTextureDataView dataView;
+	dataView.format         = format;
+	dataView.resolution     = math::Vector3u(width, height, 1u);
+	dataView.mipLevelsNum   = 1u;
+	dataView.arrayLayersNum = 1u;
+	const rhi::TextureFragmentInfo fragmentInfo = rhi::GetFragmentInfo(format);
+	dataView.imageData.resize(pixelCount * fragmentInfo.bytesPerBlock);
+
+	const Uint16 dstSamplesPerPixel = static_cast<Uint16>(fragmentInfo.bytesPerBlock / bytesPerSample);
+	SPT_CHECK(dstSamplesPerPixel >= samplesPerPixel);
+
+	const Uint64 sampleDataSize = pixelCount * bytesPerSample;
+	if (sampleDataSize > static_cast<Uint64>(std::numeric_limits<unsigned long>::max()))
+	{
+		SPT_LOG_ERROR(ImageLoader, "TIFF sample plane is too large to read (bytes: {}), path: {}", sampleDataSize, path);
+		TinyTIFFReader_close(tiff);
+		return false;
+	}
+
+	lib::DynamicArray<Byte> sampleData(sampleDataSize);
+
+	for (Uint16 sampleIdx = 0u; sampleIdx < samplesPerPixel; ++sampleIdx)
+	{
+		const Bool readResult = TinyTIFFReader_getSampleData_s(tiff, sampleData.data(), static_cast<unsigned long>(sampleDataSize), sampleIdx);
+		if (!readResult)
+		{
+			SPT_LOG_ERROR(ImageLoader, "Failed to read TIFF sample data (sample: {}, error: {}), path: {}", sampleIdx, TinyTIFFReader_getLastError(tiff), path);
+			TinyTIFFReader_close(tiff);
+			return false;
+		}
+
+		for (Uint64 pixelIdx = 0u; pixelIdx < pixelCount; ++pixelIdx)
+		{
+			const Uint64 srcOffset = pixelIdx * bytesPerSample;
+			const Uint64 dstOffset = pixelIdx * fragmentInfo.bytesPerBlock + sampleIdx * bytesPerSample;
+			std::memcpy(dataView.imageData.data() + dstOffset, sampleData.data() + srcOffset, bytesPerSample);
+		}
+	}
+
+	if (dstSamplesPerPixel > samplesPerPixel)
+	{
+		for (Uint64 pixelIdx = 0u; pixelIdx < pixelCount; ++pixelIdx)
+		{
+			Byte* pixelData = dataView.imageData.data() + pixelIdx * fragmentInfo.bytesPerBlock;
+
+			for (Uint16 sampleIdx = samplesPerPixel; sampleIdx < dstSamplesPerPixel; ++sampleIdx)
+			{
+				Byte* dstSampleData = pixelData + sampleIdx * bytesPerSample;
+				std::memset(dstSampleData, 0, bytesPerSample);
+			}
+
+			if (samplesPerPixel == 3u && dstSamplesPerPixel == 4u)
+			{
+				SetDefaultSampleValue(pixelData + 3u * bytesPerSample, sampleFormat, bitsPerSample);
+			}
+		}
+	}
+
+	callback(dataView);
+
+	TinyTIFFReader_close(tiff);
+
+	return true;
+}
+
+} // tiff
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // TextureLoader =================================================================================
+
+template<typename TCallback>
+Bool LoadTextureWithKnownExtension(TCallback&& callback, lib::StringView path)
+{
+	const lib::StringView extension = lib::File::GetExtension(path);
+
+	if (extension == "png" || extension == "jpg" || extension == "jpeg")
+	{
+		return png_jpg::LoadTextureImpl(callback, path);
+	}
+	if (extension == "exr")
+	{
+		return exr::LoadTextureImpl(callback, path);
+	}
+	if (extension == "dds")
+	{
+		return dds::LoadTextureImpl(callback, path);
+	}
+	if (extension == "tif" || extension == "tiff")
+	{
+		return tiff::LoadTextureImpl(callback, path, tiff::EFormatMode::Exact);
+	}
+
+	SPT_LOG_ERROR(ImageLoader, "Unsupported texture format: {} (path: {})", extension, path);
+	return false;
+}
 
 lib::SharedPtr<rdr::Texture> TextureLoader::LoadTexture(lib::StringView path, rhi::ETextureUsage usage /*= TextureLoadParams::defaultUsage*/, rhi::EMemoryUsage memoryUsage /*= rhi::EMemoryUsage::GPUOnly*/)
 {
@@ -476,24 +730,7 @@ lib::SharedPtr<rdr::Texture> TextureLoader::LoadTexture(lib::StringView path, co
 		}
 	};
 
-	const lib::StringView extension = lib::File::GetExtension(path);
-
-	if (extension == "png" || extension == "jpg" || extension == "jpeg")
-	{
-		png_jpg::LoadTextureImpl(callback, path);
-	}
-	else if (extension == "exr")
-	{
-		exr::LoadTextureImpl(callback, path);
-	}
-	else if (extension == "dds")
-	{
-		dds::LoadTextureImpl(callback, path);
-	}
-	else
-	{
-		SPT_LOG_ERROR(ImageLoader, "Unsupported texture format: {} (path: {})", extension, path);
-	}
+	LoadTextureWithKnownExtension(callback, path);
 
 	return loadedTexture;
 }
@@ -518,24 +755,7 @@ LoadedTextureData TextureLoader::LoadTextureData(lib::StringView path, lib::Memo
 		loadedData.data = { copiedData, data.size() };
 	};
 
-	const lib::StringView extension = lib::File::GetExtension(path);
-
-	if (extension == "png" || extension == "jpg" || extension == "jpeg")
-	{
-		png_jpg::LoadTextureImpl(callback, path);
-	}
-	else if (extension == "exr")
-	{
-		exr::LoadTextureImpl(callback, path);
-	}
-	else if (extension == "dds")
-	{
-		dds::LoadTextureImpl(callback, path);
-	}
-	else
-	{
-		SPT_LOG_ERROR(ImageLoader, "Unsupported texture format: {} (path: {})", extension, path);
-	}
+	LoadTextureWithKnownExtension(callback, path);
 
 	return loadedData;
 }

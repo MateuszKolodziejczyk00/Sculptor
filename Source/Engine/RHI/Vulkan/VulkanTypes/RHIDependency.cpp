@@ -131,6 +131,12 @@ static VkAccessFlags2 GetVulkanBufferAccessFlags(rhi::EAccessType access, rhi::E
 			lib::AddFlag(result, VK_ACCESS_2_SHADER_READ_BIT);
 			lib::AddFlag(result, VK_ACCESS_2_MEMORY_READ_BIT);
 		}
+
+		if (lib::HasAnyFlag(stage, rhi::EPipelineStage::ASBuild))
+		{
+			lib::AddFlag(result, VK_ACCESS_2_MEMORY_READ_BIT);
+			lib::AddFlag(result, VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR);
+		}
 	}
 	if (lib::HasAnyFlag(access, rhi::EAccessType::Write))
 	{

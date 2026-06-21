@@ -15,7 +15,7 @@ SPT_REGISTER_VIEW_RENDER_SYSTEM(TemporalAAViewRenderSystem);
 
 
 RendererFloatParameter renderingResolutionScale("Rendering Resolution Scale", { "Temporal AA" }, 0.7f, 0.1f, 1.f);
-RendererBoolParameter  enableUnifiedDenoising("Enable Unified Denoising", { "Temporal AA" }, false);
+RendererBoolParameter  enableUnifiedDenoising("Enable Unified Denoising", { "Temporal AA" }, true);
 RendererBoolParameter  enableTransformerModel("Enable Transformer Model", { "Temporal AA" }, false);
 RendererBoolParameter  debugDisableJitter("Debug Disable Jitter", { "Temporal AA" }, false);
 

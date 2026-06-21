@@ -174,4 +174,34 @@ VisPassResult VisPassRenderer::RenderVisibility(rg::RenderGraphBuilder& graphBui
 	return result;
 }
 
+gp::GeometryPipelineExecutor* VisPassRenderer::CreatePipelineExecutor(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const VisPassParams& visPassParams) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Visibliity Buffer");
+
+	SPT_CHECK(visPassParams.geometryPassParams.depth.IsValid());
+	SPT_CHECK(visPassParams.geometryPassParams.hiZ.IsValid());
+	SPT_CHECK(visPassParams.visibilityTexture.IsValid());
+
+	const rg::RGBufferViewHandle visibleMeshlets      = graphBuilder.AcquireExternalBufferView(m_visibleMeshlets->GetFullView());
+	const rg::RGBufferViewHandle visibleMeshletsCount = graphBuilder.AcquireExternalBufferView(m_visibleMeshletsCount->GetFullView());
+
+	vis_pass::VisibilityBufferRenderingPipeline* pipeline = graphBuilder.GetMemoryArena().AllocateType<vis_pass::VisibilityBufferRenderingPipeline>(visPassParams.visibilityTexture, visibleMeshlets, visibleMeshletsCount);
+
+	return gp::CreateExecutor(graphBuilder, visPassParams.geometryPassParams, *pipeline);
+}
+
+VisPassResult VisPassRenderer::FinishPipelineExecution(rg::RenderGraphBuilder& graphBuilder, gp::GeometryPipelineExecutor* executor) const
+{
+	const rg::RGBufferViewHandle visibleMeshlets = graphBuilder.AcquireExternalBufferView(m_visibleMeshlets->GetFullView());
+
+	gp::DestroyExecutor(executor);
+
+	VisPassResult result;
+	result.visibleMeshlets = visibleMeshlets;
+
+	return result;
+}
+
 } // spt::rsc

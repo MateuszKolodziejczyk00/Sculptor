@@ -11,7 +11,7 @@ namespace spt::rsc
 
 namespace terrain_consts
 {
-static constexpr Uint32 materialCacheLODsNum = 8u;
+static constexpr Uint32 materialCacheLODsNum = 9u;
 } // namespace terrain_consts
 
 
@@ -38,7 +38,7 @@ BEGIN_SHADER_STRUCT(TerrrainMaterialCacheLOD)
 	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<math::Vector2f>, normals)
 	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<math::Vector2f>, roughnessOcclusion)
 	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<Real32>,         pomDepth)
-	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<Real32>,         depth)
+	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<Real32>,         displacement)
 	SHADER_STRUCT_FIELD(math::Vector2f,                         minBounds)
 	SHADER_STRUCT_FIELD(math::Vector2f,                         rcpRange)
 	SHADER_STRUCT_FIELD(math::Vector2f,                         rcpResolution)

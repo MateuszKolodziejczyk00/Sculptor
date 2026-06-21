@@ -51,3 +51,6 @@
 [submodule "Source/ThirdParty/TinyEXR/TinyEXR"]
 	path = Source/ThirdParty/TinyEXR/TinyEXR
 	url = https://github.com/syoyo/tinyexr
+[submodule "Source/ThirdParty/TinyTIFF/TinyTIFF"]
+	path = Source/ThirdParty/TinyTIFF/TinyTIFF
+	url = https://github.com/jkriege2/TinyTIFF

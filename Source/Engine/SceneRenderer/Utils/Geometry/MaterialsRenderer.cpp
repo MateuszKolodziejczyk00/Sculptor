@@ -207,7 +207,7 @@ DS_END();
 
 BEGIN_SHADER_STRUCT(EmitGBufferPermutation)
 	SHADER_STRUCT_FIELD(MaterialBatchPermutation, MATERIAL_BATCH)
-	SHADER_STRUCT_FIELD(Bool,                     ENABLE_POM)
+	SHADER_STRUCT_FIELD(Bool,                     PASS_ENABLE_POM) // True if POMs are generally enabled for the pass
 END_SHADER_STRUCT();
 
 
@@ -230,7 +230,7 @@ GRAPHICS_PSO(EmitTerrainGBufferPSO)
 
 
 BEGIN_SHADER_STRUCT(EmitGrassGBufferPermutation)
-	SHADER_STRUCT_FIELD(Bool, ENABLE_POM)
+	SHADER_STRUCT_FIELD(Bool, PASS_ENABLE_POM)
 END_SHADER_STRUCT();
 
 
@@ -297,7 +297,7 @@ rdr::PipelineStateID CreateMaterialPipeline(const MaterialsPassDefinition& passD
 	}
 
 	typename TPSO::PermutationDomainType permutation;
-	permutation.ENABLE_POM = passDef.enablePOM;
+	permutation.PASS_ENABLE_POM = passDef.enablePOM;
 
 	if constexpr (!std::is_same_v<TPermutationDomain, MaterialBatchNonePermutation>)
 	{

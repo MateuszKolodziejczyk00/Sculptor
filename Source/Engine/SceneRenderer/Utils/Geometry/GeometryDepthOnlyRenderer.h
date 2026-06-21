@@ -7,6 +7,7 @@
 namespace spt::rsc::depth_only
 {
 
-void RenderDepthOnly(rg::RenderGraphBuilder& graphBuilder, const gp::GeometryPassParams& geometryPassParams);
+gp::GeometryPipelineExecutor* CreatePipelineExecutor(rg::RenderGraphBuilder& graphBuilder, const gp::GeometryPassParams& geometryPassParams);
+void                          FinishPipelineExecution(rg::RenderGraphBuilder& graphBuilder, gp::GeometryPipelineExecutor* executor);
 
 } // spt::rsc::depth_only

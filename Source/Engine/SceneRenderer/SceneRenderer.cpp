@@ -10,6 +10,8 @@
 #include "Utils/TransfersUtils.h"
 #include "Utils/ViewRenderingSpec.h"
 #include "RenderGraphBuilder.h"
+#include "PlacementSystem/PlacementSystemBackend.h"
+#include "SceneRenderSystems/Terrain/TerrainRenderSystem.h"
 
 
 namespace spt::rsc
@@ -357,6 +359,16 @@ rg::RGTextureViewHandle ExecuteSceneRendering(SceneRendererHandle renderer, rg::
 	return mainViewContext.output;
 }
 
+void ProcessPlacements(SceneRendererHandle renderer, PlacementProcessor processor, void* customData)
+{
+	SceneRendererData* rendererData = reinterpret_cast<SceneRendererData*>(renderer.Get());
+	TerrainRenderSystem* terrainSystem = reinterpret_cast<TerrainRenderSystem*>(rendererData->renderSystems[GetSceneRenderSystemIdx(ESceneRenderSystem::TerrainSystem)]);
+	if (terrainSystem)
+	{
+		terrainSystem->GetPlacementSystem().ProcessPlacements(processor, customData);
+	}
+}
+
 void TempDrawParamtersUI(void* ctx)
 {
 	RendererParamsRegistry::DrawParametersUI(ctx);
@@ -387,6 +399,7 @@ void InitializeModule(const spt::engn::EngineGlobals& engineGlobals, spt::lib::M
 	api.CreateSceneRenderer    = &spt::rsc::CreateSceneRenderer;
 	api.DestroySceneRenderer   = &spt::rsc::DestroySceneRenderer;
 	api.ExecuteSceneRendering  = &spt::rsc::ExecuteSceneRendering;
+	api.ProcessPlacements      = &spt::rsc::ProcessPlacements;
 	api.DrawParametersUI       = &spt::rsc::TempDrawParamtersUI;
 	api.DrawRendererStatsUI    = &spt::rsc::TempDrawRendererStatsUI;
 

@@ -18,6 +18,11 @@ struct GPUPtr
 	{
 		return descriptorIdx != IDX_NONE_32;
 	}
+
+	uint GetIndex()
+	{
+		return dataIdx;
+	}
 };
 
 
@@ -25,6 +30,11 @@ template<typename T>
 struct NamedBufferDescriptor
 {
 	uint idx;
+
+	uint GetIndex()
+	{
+		return idx;
+	}
 
 	GPUPtr<T> GetElemPtr(in uint dataIdx)
 	{
@@ -321,6 +331,16 @@ struct GPUNamedElemPtr
 	TDataType operator[](in uint idx)
 	{
 		return Load(idx);
+	}
+
+	bool IsValid()
+	{
+		return dataIdx != IDX_NONE_32;
+	}
+
+	uint GetIndex()
+	{
+		return dataIdx;
 	}
 
 	GPUPtr<TDataType> AsGenericPtr()

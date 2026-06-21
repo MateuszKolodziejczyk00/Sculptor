@@ -183,4 +183,9 @@ void GeneratePBRTexturesMipsCS(CS_INPUT input)
 	{
 		DownsampleLinear(u_params.inOcclusion, u_params.rwOcclusion, coords);
 	}
+
+	if (u_params.rwDisplacement.IsValid())
+	{
+		DownsampleLinear(u_params.inDisplacement, u_params.rwDisplacement, coords);
+	}
 }

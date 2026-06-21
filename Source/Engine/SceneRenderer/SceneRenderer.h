@@ -43,6 +43,8 @@ const ShadingRenderViewSettings& GetShadingViewSettings(RenderView& view);
 
 rg::RGTextureViewHandle ExecuteSceneRendering(SceneRendererHandle renderer, rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view, const SceneRendererSettings& settings);
 
+void ProcessPlacements(SceneRendererHandle renderer, PlacementProcessor processor, void* customData);
+
 void TempDrawParamtersUI(void* ctx);
 
 } // spt::rsc
@@ -62,6 +64,7 @@ struct SceneRendererDLLModuleAPI
 	spt::lib::RawCallable<spt::rsc::SceneRendererHandle(const spt::rsc::SceneRendererDefinition& /* definition */)> CreateSceneRenderer;
 	spt::lib::RawCallable<void(spt::rsc::SceneRendererHandle& /* handle */)> DestroySceneRenderer;
 	spt::lib::RawCallable<spt::rg::RGTextureViewHandle(spt::rsc::SceneRendererHandle /* renderer */, spt::rg::RenderGraphBuilder& /* graphBuilder */, spt::rsc::RenderScene& /* scene */, spt::rsc::RenderView& /* view */, const spt::rsc::SceneRendererSettings& /* settings */)> ExecuteSceneRendering;
+	spt::lib::RawCallable<void(spt::rsc::SceneRendererHandle /* renderer */, spt::rsc::PlacementProcessor /* processor */, void* /* customData */)> ProcessPlacements;
 	spt::lib::RawCallable<void(void* /* ctx */)> DrawParametersUI;
 	spt::lib::RawCallable<void(void* /* ctx */)> DrawRendererStatsUI;
 };

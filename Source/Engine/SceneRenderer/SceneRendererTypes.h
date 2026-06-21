@@ -6,6 +6,7 @@
 #include "Types/Texture.h"
 #include "RGResources/RGResources.h"
 #include "SceneRenderSystems/Terrain/TerrainEditorRenderingTypes.h"
+#include "PlacementSystem/PlacementSystemTypes.h"
 
 
 namespace spt::engn
@@ -55,6 +56,8 @@ struct SceneRendererSettings
 	gfx::DebugRenderer* persistentDebugRenderer = nullptr;
 
 	EditorRendering editorRendering;
+
+	PlacementCommand placementCommand;
 };
 
 
@@ -145,6 +148,8 @@ enum class ESceneRenderSystem : Flags32
 	AtmosphereSystem   = BIT(6),
 	TerrainSystem      = BIT(7),
 	NUM                = 8,
+
+	PlacementSystem    = TerrainSystem, // Placement system is tightly coupled with terrain rendering, so it shares the same bit
 
 	ALL = (1u << NUM) - 1
 };

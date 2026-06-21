@@ -981,7 +981,7 @@ public:
 	}
 
 	template<typename TCallable>
-	Job Then(const char* name, TCallable&& callable)
+	Job Then(const char* name, TCallable&& callable) const
 	{
 		js::JobDefinitionInternal def;
 		def.priority = m_instance->GetPriority();

@@ -60,4 +60,10 @@ void CompilePBRMaterialTexturesCS(CS_INPUT input)
 		const float depth = u_constants.loadedDepth.Load(coords);
 		u_constants.rwDepth.Store(coords, depth);
 	}
+
+	if (u_constants.rwDisplacement.IsValid())
+	{
+		const float displacement = u_constants.loadedDisplacement.Load(coords) * u_constants.displacementScale;
+		u_constants.rwDisplacement.Store(coords, displacement);
+	}
 }

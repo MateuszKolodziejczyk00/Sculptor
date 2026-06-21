@@ -28,12 +28,15 @@ BEGIN_SHADER_STRUCT(CompilePBRMaterialConstants)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, loadedNormals)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, loadedEmissive)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         loadedDepth)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         loadedDisplacement)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         rwAlpha)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwBaseColor)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwMetallicRoughness)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>, rwNormals)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwEmissive)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         rwDepth)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         rwDisplacement)
+	SHADER_STRUCT_FIELD(Real32,                            displacementScale)
 END_SHADER_STRUCT();
 
 
@@ -138,6 +141,7 @@ BEGIN_SHADER_STRUCT(GeneratePBRTexturesMipsConstants)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, inEmissive)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         inDepth)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         inOcclusion)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         inDisplacement)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         rwAlpha)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwBaseColor)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwMetallicRoughness)
@@ -145,6 +149,7 @@ BEGIN_SHADER_STRUCT(GeneratePBRTexturesMipsConstants)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwEmissive)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         rwDepth)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         rwOcclusion)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         rwDisplacement)
 END_SHADER_STRUCT();
 
 
@@ -300,13 +305,17 @@ struct PBRMaterialCompilationInput
 	lib::SharedPtr<rdr::TextureView> roughnessTex;
 	lib::SharedPtr<rdr::TextureView> normalsTex;
 	lib::SharedPtr<rdr::TextureView> emissiveTex;
-	lib::SharedPtr<rdr::TextureView> depthTex;
 
 	math::Vector3f baseColorFactor = math::Vector3f::Ones();
 	Real32 metallicFactor          = 0.f;
 	Real32 roughnessFactor         = 1.f;
 	math::Vector3f emissionFactor  = math::Vector3f::Zero();
+
+	lib::SharedPtr<rdr::TextureView> depthTex;
 	Real32 maxDepthCm = 0.f;
+
+	lib::SharedPtr<rdr::TextureView> displacementTex;
+	Real32 displacementScale = 1.f;
 
 	Bool doubleSided   = true;
 	Bool customOpacity = false;
@@ -333,7 +342,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 	lib::DynamicArray<Byte> compiledData;
 	compiledData.resize(sizeof(PBRMaterialDataHeader));
 
-	const Bool usesAnyTexture = compilationInput.baseColorTex || compilationInput.metallicRoughnessTex || compilationInput.roughnessTex || compilationInput.normalsTex || compilationInput.emissiveTex || compilationInput.depthTex;
+	const Bool usesAnyTexture = compilationInput.baseColorTex || compilationInput.metallicRoughnessTex || compilationInput.roughnessTex || compilationInput.normalsTex || compilationInput.emissiveTex || compilationInput.depthTex || compilationInput.displacementTex;
 
 	if (usesAnyTexture)
 	{
@@ -366,6 +375,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		auto [loadedMetallicRoughness, metallicRoughness]       = acquireRGTextures(compilationInput.metallicRoughnessTex, rhi::EFragmentFormat::RGBA8_UN_Float);
 		auto [loadedDepth, depth]                               = acquireRGTextures(compilationInput.depthTex,             rhi::EFragmentFormat::R8_UN_Float);
 		const auto [loadedRoughness, roughness]                 = acquireRGTextures(compilationInput.roughnessTex,         rhi::EFragmentFormat::RGBA8_UN_Float);
+		const auto [loadedDisplacement, displacement]           = acquireRGTextures(compilationInput.displacementTex,      rhi::EFragmentFormat::R8_UN_Float);
 
 		if (metallicRoughness.IsValid() && roughness.IsValid())
 		{
@@ -388,12 +398,15 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		compilationConstants.loadedNormals           = loadedNormals;
 		compilationConstants.loadedEmissive          = loadedEmissive;
 		compilationConstants.loadedDepth             = loadedDepth;
+		compilationConstants.loadedDisplacement      = loadedDisplacement;
 		compilationConstants.rwAlpha                 = alpha;
 		compilationConstants.rwBaseColor             = baseColor;
 		compilationConstants.rwMetallicRoughness     = metallicRoughness;
 		compilationConstants.rwNormals               = normals;
 		compilationConstants.rwEmissive              = emissive;
 		compilationConstants.rwDepth                 = depth;
+		compilationConstants.rwDisplacement          = displacement;
+		compilationConstants.displacementScale       = compilationInput.displacementScale;
 
 		if (loadedRoughness.IsValid())
 		{
@@ -444,6 +457,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		const lib::ManagedSpan<rg::RGTextureViewHandle> alphaMipViews             = createTextureMipViews(alpha);
 		const lib::ManagedSpan<rg::RGTextureViewHandle> depthMipViews             = createTextureMipViews(depth);
 		const lib::ManagedSpan<rg::RGTextureViewHandle> occlusionMipViews         = createTextureMipViews(occlusion);
+		const lib::ManagedSpan<rg::RGTextureViewHandle> displacementMipViews      = createTextureMipViews(displacement);
 
 		for (Uint32 dstMipViewIdx = 1u; dstMipViewIdx < maxMipLevelsNum; ++dstMipViewIdx)
 		{
@@ -502,6 +516,13 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 				dispatchSize = dispatchSize.cwiseMax(occlusionMipViews[dstMipViewIdx]->GetResolution2D());
 			}
 
+			if (displacementMipViews[srcMipViewIdx])
+			{
+				mipGenConstants.inDisplacement = displacementMipViews[srcMipViewIdx];
+				mipGenConstants.rwDisplacement = displacementMipViews[dstMipViewIdx];
+				dispatchSize = dispatchSize.cwiseMax(displacementMipViews[dstMipViewIdx]->GetResolution2D());
+			}
+
 			GeneratePBRTexturesMips(graphBuilder, dispatchSize, mipGenConstants);
 		}
 
@@ -545,6 +566,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		const lib::ManagedSpan<lib::SharedPtr<rdr::Buffer>> alphaMipsStagedData             = stageMipsData(alphaMipViews);
 		const lib::ManagedSpan<lib::SharedPtr<rdr::Buffer>> depthMipsStagedData             = stageMipsData(depthMipViews);
 		const lib::ManagedSpan<lib::SharedPtr<rdr::Buffer>> occlusionMipsStagedData         = stageMipsData(occlusionMipViews);
+		const lib::ManagedSpan<lib::SharedPtr<rdr::Buffer>> displacementMipsStagedData      = stageMipsData(displacementMipViews);
 
 		graphBuilder.Execute();
 
@@ -560,6 +582,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		const lib::Span<lib::Span<Byte>> alphaMipsData             = DownloadMipsAsBC4(tempArena, alphaMipsStagedData, alpha);
 		const lib::Span<lib::Span<Byte>> depthMipsData             = DownloadMipsAsBC4(tempArena, depthMipsStagedData, depth);
 		const lib::Span<lib::Span<Byte>> occlusionMipsData         = DownloadMipsAsBC4(tempArena, occlusionMipsStagedData, occlusion);
+		const lib::Span<lib::Span<Byte>> displacementMipsData      = DownloadMipsAsBC4(tempArena, displacementMipsStagedData, displacement);
 
 		const auto cacheTextureDefinition = [](MaterialTextureDefinition& textureDefinition, const rg::RGTextureViewHandle& textureView, rhi::EFragmentFormat format, lib::Span<const lib::Span<Byte>> mipsData)
 		{
@@ -578,6 +601,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		cacheTextureDefinition(headerData.alphaTexture, alpha,                         rhi::EFragmentFormat::BC4_UN,   alphaMipsData);
 		cacheTextureDefinition(headerData.depthTexture, depth,                         rhi::EFragmentFormat::BC4_UN,   depthMipsData);
 		cacheTextureDefinition(headerData.occlusionTexture, occlusion,                 rhi::EFragmentFormat::BC4_UN,   occlusionMipsData);
+		cacheTextureDefinition(headerData.displacementTexture, displacement,           rhi::EFragmentFormat::BC4_UN,   displacementMipsData);
 
 		const auto accmulateTextureOffset = [&accumulatedDataOffset](MaterialTextureDefinition& textureDef, lib::Span<const lib::Span<Byte>> mipsData)
 		{
@@ -603,6 +627,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		accmulateTextureOffset(headerData.alphaTexture, alphaMipsData);
 		accmulateTextureOffset(headerData.depthTexture, depthMipsData);
 		accmulateTextureOffset(headerData.occlusionTexture, occlusionMipsData);
+		accmulateTextureOffset(headerData.displacementTexture, displacementMipsData);
 
 		compiledData.resize(accumulatedDataOffset);
 
@@ -627,6 +652,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 		downloadMipsData(headerData.alphaTexture, alphaMipsData);
 		downloadMipsData(headerData.depthTexture, depthMipsData);
 		downloadMipsData(headerData.occlusionTexture, occlusionMipsData);
+		downloadMipsData(headerData.displacementTexture, displacementMipsData);
 	}
 
 	std::memcpy(compiledData.data(), &headerData, sizeof(PBRMaterialDataHeader));
@@ -645,6 +671,7 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 	const lib::Path normalsPath           = !definition.normalsTexPath.empty() ? (referencePath / definition.normalsTexPath) : lib::Path{};
 	const lib::Path emissivePath          = !definition.emissiveTexPath.empty() ? (referencePath / definition.emissiveTexPath) : lib::Path{};
 	const lib::Path depthPath             = !definition.depthTexPath.empty() ? (referencePath / definition.depthTexPath) : lib::Path{};
+	const lib::Path displacementPath      = !definition.displacementTexPath.empty() ? (referencePath / definition.displacementTexPath) : lib::Path{};
 
 	PBRMaterialCompilationInput compilationInput;
 	compilationInput.baseColorTex         = TryLoadTexture(baseColorPath);
@@ -653,6 +680,8 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 	compilationInput.normalsTex           = TryLoadTexture(normalsPath);
 	compilationInput.emissiveTex          = TryLoadTexture(emissivePath);
 	compilationInput.depthTex             = TryLoadTexture(depthPath);
+	compilationInput.displacementTex      = TryLoadTexture(displacementPath);
+	compilationInput.displacementScale    = definition.displacementScale;
 	compilationInput.baseColorFactor      = definition.baseColorFactor;
 	compilationInput.metallicFactor       = definition.metallicFactor;
 	compilationInput.roughnessFactor      = definition.roughnessFactor;
@@ -801,8 +830,9 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 		emissiveStrength = static_cast<Real32>(emissiveStrengthIter->second.Get("emissiveStrength").GetNumberAsDouble());
 	}
 
-	const Bool isMasked      = srcMat->alphaMode == "MASK";
-	const Bool isTransparent = srcMat->alphaMode == "BLEND" || srcMat->name.find("Glass") != lib::String::npos || srcMat->name.find("glass") != lib::String::npos;
+	//const Bool isTransparent = srcMat->alphaMode == "BLEND" || srcMat->name.find("Glass") != lib::String::npos || srcMat->name.find("glass") != lib::String::npos ;
+	const Bool isMasked      = srcMat->alphaMode == "MASK" || srcMat->alphaMode == "BLEND";
+	const Bool isTransparent = false;
 
 	PBRMaterialCompilationInput compilationInput;
 	compilationInput.baseColorTex         = LoadTexture(*gltfModel, srcMatPBR.baseColorTexture.index, false);

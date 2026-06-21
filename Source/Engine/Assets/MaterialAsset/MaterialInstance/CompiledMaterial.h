@@ -55,6 +55,7 @@ struct PBRMaterialDataHeader
 	MaterialTextureDefinition alphaTexture;
 	MaterialTextureDefinition depthTexture;
 	MaterialTextureDefinition occlusionTexture;
+	MaterialTextureDefinition displacementTexture;
 };
 
 class MaterialTextureUploadRequest : public gfx::GPUDeferredUploadRequest

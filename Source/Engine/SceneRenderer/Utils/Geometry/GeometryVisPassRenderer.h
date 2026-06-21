@@ -32,6 +32,9 @@ public:
 
 	VisPassResult RenderVisibility(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const VisPassParams& visPassParams);
 
+	gp::GeometryPipelineExecutor* CreatePipelineExecutor(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const VisPassParams& visPassParams) const;
+	VisPassResult                 FinishPipelineExecution(rg::RenderGraphBuilder& graphBuilder, gp::GeometryPipelineExecutor* executor) const;
+
 private:
 
 	lib::SharedPtr<rdr::Buffer> m_visibleMeshlets;

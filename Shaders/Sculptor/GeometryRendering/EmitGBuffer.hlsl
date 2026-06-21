@@ -244,12 +244,12 @@ MaterialEvaluationParameters CreateMaterialEvalParams(in InterpolatedVertexData 
 [[shader_struct(MaterialDepthData)]]
 
 
-float ApplyParallax(inout float2 uv, in MaterialDepthData materialDepthData, in SamplerState sampler, in float3 toView, in float2 uvScale)
+float ApplyParallax(inout float2 uv, in MaterialDepthData materialDepthData, in SamplerState sampler, in float3 toView, in float2 uvScale, in float minSteps = 10.f, in float maxSteps = 32.f)
 {
 	const float texLevel = 0.f;
 	const float heightScale = materialDepthData.maxDepthCm;
 
-	float layersNum = lerp(32.f, 10.f, abs(toView.z)); 
+	float layersNum = lerp(maxSteps, minSteps, abs(toView.z)); 
 	float layerDepth = 1.f / layersNum;
 	float currentLayerDepth = 0.f;
 
@@ -285,9 +285,9 @@ float ApplyParallax(inout float2 uv, in MaterialDepthData materialDepthData, in 
 [[shader_struct(MaterialDepthData)]]
 
 
-float ApplyParallax(inout MaterialEvaluationParameters evalParams, in MaterialDepthData materialDepthData, in SamplerState sampler, in float3 toView, in float2 uvScale)
+float ApplyParallax(inout MaterialEvaluationParameters evalParams, in MaterialDepthData materialDepthData, in SamplerState sampler, in float3 toView, in float2 uvScale, in float minSteps = 10.f, in float maxSteps = 32.f)
 {
-	return ApplyParallax(INOUT evalParams.uv.uv, materialDepthData, sampler, toView, uvScale);
+	return ApplyParallax(INOUT evalParams.uv.uv, materialDepthData, sampler, toView, uvScale, minSteps, maxSteps);
 }
 
 
@@ -299,9 +299,9 @@ struct FS_Output
 	float3 gBuffer3  : SV_TARGET3;
 	uint   gBuffer4  : SV_TARGET4;
 	float  occlusion : SV_TARGET5;
-#if ENABLE_POM
+#if PASS_ENABLE_POM
 	float  pomDepth  : SV_TARGET6;
-#endif // ENABLE_POM
+#endif // PASS_ENABLE_POM
 };
 
 
@@ -328,9 +328,9 @@ FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 
 		const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(visibleMeshlet.materialDataHandle);
 
-#if ENABLE_POM
+#if PASS_ENABLE_POM
 		float pomDepth = 0.f;
-#if defined(MATERIAL_DEPTH_DATA_ACCESSOR)
+#if defined(MATERIAL_DEPTH_DATA_ACCESSOR) && MATERIAL_ENABLE_POM
 		MaterialDepthData materialDepthData = materialData.MATERIAL_DEPTH_DATA_ACCESSOR;
 		if (materialDepthData.depthTexture.IsValid())
 		{
@@ -341,8 +341,8 @@ FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 			pomDepth *=  100.f / POM_MAX_DEPTH_OFFSET_CM;
 			pomDepth *= abs(dot(u_sceneView.viewForward, toViewWS));
 		}
-#endif //  defined(MATERIAL_DEPTH_DATA_ACCESSOR)
-#endif // ENABLE_POM
+#endif //  defined(MATERIAL_DEPTH_DATA_ACCESSOR) && MATERIAL_ENABLE_POM
+#endif // PASS_ENABLE_POM
 
 		const MaterialEvaluationOutput evaluatedMaterial = EvaluateMaterial(materialEvalParams, materialData);
 
@@ -367,9 +367,9 @@ FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 		output.gBuffer3  = gBufferOutput.gBuffer3;
 		output.gBuffer4  = gBufferOutput.gBuffer4;
 		output.occlusion = evaluatedMaterial.occlusion;
-#if ENABLE_POM
+#if PASS_ENABLE_POM
 		output.pomDepth  = pomDepth;
-#endif // ENABLE_POM
+#endif // PASS_ENABLE_POM
 	}
 
 	return output;
@@ -399,12 +399,11 @@ FS_Output EmitTerrainGBuffer_FS(in OutputVertex vertexInput)
 	materialEvalParams.worldLocation = locationWS;
 	materialEvalParams.clipSpace     = float4(ndc, 1.f);
 
-	MaterialDataHandle materialDataHandle;
-	const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(materialDataHandle); // TODO
+	const SPT_MATERIAL_DATA_TYPE materialData = (SPT_MATERIAL_DATA_TYPE)0; // Terrain material data is not used, we sample terrain materials directly in EvaluateTerrainMaterial
 
-#if ENABLE_POM
+#if PASS_ENABLE_POM
 	float pomDepth = 0.f;
-#if defined(TERRAIN_MATERIAL)
+#if defined(TERRAIN_MATERIAL) && MATERIAL_ENABLE_POM
 	TerrainPOMData terrainPOM = GetTerrainPOMDepthData(materialEvalParams);
 	if (terrainPOM.matDepth.depthTexture.IsValid())
 	{
@@ -420,8 +419,8 @@ FS_Output EmitTerrainGBuffer_FS(in OutputVertex vertexInput)
 		pomDepth *=  100.f / POM_MAX_DEPTH_OFFSET_CM;
 		pomDepth *= abs(dot(u_sceneView.viewForward, toViewWS));
 	}
-#endif // defined(TERRAIN_MATERIAL)
-#endif // ENABLE_POM
+#endif // defined(TERRAIN_MATERIAL) && MATERIAL_ENABLE_POM
+#endif // PASS_ENABLE_POM
 
 	MaterialEvaluationOutput evaluatedMaterial = EvaluateMaterial(materialEvalParams, materialData);
 
@@ -443,9 +442,9 @@ FS_Output EmitTerrainGBuffer_FS(in OutputVertex vertexInput)
 	output.gBuffer3  = gBufferOutput.gBuffer3;
 	output.gBuffer4  = gBufferOutput.gBuffer4;
 	output.occlusion = evaluatedMaterial.occlusion;
-#if ENABLE_POM
+#if PASS_ENABLE_POM
 	output.pomDepth  = pomDepth;
-#endif // ENABLE_POM
+#endif // PASS_ENABLE_POM
 
 	return output;
 }
@@ -510,9 +509,9 @@ FS_Output EmitGrassGBuffer_FS(in OutputVertex vertexInput)
 	output.gBuffer3  = gBufferOutput.gBuffer3;
 	output.gBuffer4  = gBufferOutput.gBuffer4;
 	output.occlusion = grassMaterial.visibility;
-#if ENABLE_POM
+#if PASS_ENABLE_POM
 	output.pomDepth  = 0.f;
-#endif // ENABLE_POM
+#endif // PASS_ENABLE_POM
 
 	return output;
 }

@@ -49,6 +49,8 @@ void TransfersManager::EnqueueUpload(const lib::SharedRef<rdr::Buffer>& destBuff
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_CHECK_MSG(lib::HasAnyFlag(destBuffer->GetRHI().GetUsage(), rhi::EBufferUsage::TransferDst), "{} missing TransferDst usage flag", destBuffer->GetRHI().GetName().GetData());
+
 	// If data is too large for single data buffer, divide it into smaller chunks
 	if (dataSize > stagingBufferSize)
 	{

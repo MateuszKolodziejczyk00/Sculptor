@@ -39,6 +39,35 @@ enum class EPipelineStage : Flags64
 	ALL_COMMANDS					= BIT64(52)
 };
 
+
+inline lib::String ToString(EPipelineStage stage)
+{
+	lib::String result = "|";
+
+	if (lib::HasAnyFlag(stage, EPipelineStage::TopOfPipe))         { result += "TopOfPipe|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::DrawIndirect))      { result += "DrawIndirect|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::VertexShader))      { result += "VertexShader|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::TaskShader))        { result += "TaskShader|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::MeshShader))        { result += "MeshShader|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::FragmentShader))    { result += "FragmentShader|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::EarlyFragmentTest)) { result += "EarlyFragmentTest|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::LateFragmentTest))  { result += "LateFragmentTest|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::ColorRTOutput))     { result += "ColorRTOutput|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::ComputeShader))     { result += "ComputeShader|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::Transfer))          { result += "Transfer|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::BottomOfPipe))      { result += "BottomOfPipe|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::Copy))              { result += "Copy|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::Blit))              { result += "Blit|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::Clear))             { result += "Clear|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::IndexInput))        { result += "IndexInput|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::ASBuild))           { result += "ASBuild|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::RayTracingShader))  { result += "RayTracingShader|"; }
+	if (lib::HasAnyFlag(stage, EPipelineStage::Host))              { result += "Host|"; }
+
+	return result;
+}
+
+
 using PipelineStatisticValue = std::variant<Bool, Uint64, Int64, Real64>;
 
 

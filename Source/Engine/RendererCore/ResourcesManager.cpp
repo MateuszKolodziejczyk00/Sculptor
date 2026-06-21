@@ -253,6 +253,15 @@ lib::SharedPtr<BindableBufferView> ResourcesManager::CreateBufferViewObject(cons
 	return g_GPUApiFactory->createBufferViewObjectFunc(buffer, offset, size, std::move(externalDescriptorsAllocation));
 }
 
+lib::SharedRef<Buffer> ResourcesManager::CreateStorageBuffer(const RendererResourceName& name, Uint64 size, const AllocationDefinition& allocationDefinition)
+{
+	rhi::BufferDefinition bufferDef;
+	bufferDef.size  = size;
+	bufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferSrc, rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::ASBuildInputReadOnly);
+
+	return CreateBuffer(name, bufferDef, allocationDefinition);
+}
+
 lib::SharedRef<Texture> ResourcesManager::CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationDefinition)
 {
 	rhi::TextureDefinition newDefinition = textureDefinition;

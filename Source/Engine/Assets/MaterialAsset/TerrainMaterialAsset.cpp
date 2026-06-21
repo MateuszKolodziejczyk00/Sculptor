@@ -108,15 +108,15 @@ void TerrainMaterialAsset::OnInitialize()
 		const mat::MaterialProxyComponent& materialProxy = matEntity.get<mat::MaterialProxyComponent>();
 
 		rsc::TerrainMaterialEntry materialEntry;
-		materialEntry.dataHandle = materialProxy.GetMaterialDataHandle();
-		materialEntry.uvScale    = dd.compiledEntries[i].uvScale;
-		materialEntry.grassType  = dd.compiledEntries[i].grassType;
+		materialEntry.dataHandle               = materialProxy.GetMaterialDataHandle();
+		materialEntry.uvScale                  = dd.compiledEntries[i].uvScale;
+		materialEntry.grassType                = static_cast<Uint16>(dd.compiledEntries[i].grassType);
+		materialEntry.displacementMatFeatureID = materialProxy.params.features.displacementDataID;
 
 		materialEntriesData[i] = materialEntry;
 	}
 
-	rhi::BufferDefinition materialDataBufferDef(sizeof(materialEntriesData), rhi::EBufferUsage::Storage);
-	lib::SharedRef<rdr::Buffer> materialEntries = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Terrain Material Entires Buffer"), materialDataBufferDef, rhi::EMemoryUsage::GPUOnly);
+	lib::SharedRef<rdr::Buffer> materialEntries = rdr::ResourcesManager::CreateStorageBuffer(RENDERER_RESOURCE_NAME("Terrain Material Entires Buffer"), sizeof(materialEntriesData), rhi::EMemoryUsage::GPUOnly);
 		
 	rdr::GPUApi::GetTransfersManager().EnqueueUpload(materialEntries, 0u, reinterpret_cast<const Byte*>(materialEntriesData.data()), sizeof(materialEntriesData));
 

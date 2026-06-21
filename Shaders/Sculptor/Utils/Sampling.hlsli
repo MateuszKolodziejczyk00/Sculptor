@@ -99,4 +99,47 @@ TDataType SampleTricubic(in Texture3D<TDataType> texture, in SamplerState textur
 	return lerp(tex001, tex000, g0.z);  //weigh along the z-direction
 }
 
+
+// https://developer.nvidia.com/gpugems/gpugems2/part-iii-high-quality-rendering/chapter-20-fast-third-order-texture-filtering
+template<typename TDataType>
+TDataType SampleTricubicBSpline(in Texture2D<TDataType> texture, in SamplerState sampler, in float2 uv, in float2 resolution, in float2 rcpResolution)
+{
+		const float2 coordGrid  = uv * resolution - 0.5f;
+		const float2 index      = floor(coordGrid);
+		const float2 fraction   = coordGrid - index;
+		const float2 oneFrac    = 1.f - fraction;
+
+		const float2 w0 = (oneFrac * oneFrac * oneFrac) / 6.f;
+		const float2 w1 = (2.f / 3.f) - 0.5f * fraction * fraction * (2.f - fraction);
+		const float2 w2 = (2.f / 3.f) - 0.5f * oneFrac * oneFrac * (2.f - oneFrac);
+		const float2 w3 = (fraction * fraction * fraction) / 6.f;
+
+		const float2 g0 = w0 + w1;
+		const float2 g1 = w2 + w3;
+
+		const float2 h0 = ((w1 / g0) - 0.5f + index) * rcpResolution;
+		const float2 h1 = ((w3 / g1) + 1.5f + index) * rcpResolution;
+
+		const float value  = texture.SampleLevel(sampler, h0, 0.f);
+		const float valueX = texture.SampleLevel(sampler, float2(h1.x, h0.y), 0.f);
+		const float value0 = lerp(valueX, value, g0.x);
+
+		const float valueY  = texture.SampleLevel(sampler, float2(h0.x, h1.y), 0.f);
+		const float valueXY = texture.SampleLevel(sampler, h1, 0.f);
+		const float value1 = lerp(valueXY, valueY, g0.x);
+
+		return lerp(value1, value0, g0.y);
+}
+
+template<typename TDataType>
+TDataType SampleSmoothIQ(in Texture2D<TDataType> texture, in SamplerState sampler, in float2 uv, in float2 resolution, in float2 rcpResolution)
+{
+	uv = uv * resolution + 0.5f;
+	const float2 iuv = floor(uv);
+	const float2 fuv = frac(uv);
+	uv = iuv + fuv * fuv * (3.0 - 2.0 * fuv);
+	uv = (uv - 0.5) * rcpResolution;
+	return texture.SampleLevel(sampler, uv, 0.f);
+}
+
 #endif // SAMPLING_HLSLI

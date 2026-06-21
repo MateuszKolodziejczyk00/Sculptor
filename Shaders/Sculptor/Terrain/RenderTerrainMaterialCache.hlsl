@@ -15,6 +15,7 @@
 #include "Hashing.hlsli"
 #include "Terrain/TerrainMaterial.hlsli"
 #include "Terrain/SceneTerrain.hlsli"
+#include "Terrain/TerrainHeightBasedBlending.hlsli"
 
 
 struct PS_OUTPUT
@@ -22,8 +23,14 @@ struct PS_OUTPUT
 	float4 baseColorMetallic  : SV_Target0;
 	float2 normals            : SV_Target1;
 	float2 roughnessOcclusion : SV_Target2;
+
 #if RENDER_POM_DEPTH
 	float pomDepth            : SV_Target3;
+#if RENDER_DISPLACEMENT
+	float displacement        : SV_Target4;
+#endif // RENDER_DISPLACEMENT
+#elif RENDER_DISPLACEMENT
+	float displacement        : SV_Target3;
 #endif // RENDER_POM_DEPTH
 };
 
@@ -53,13 +60,10 @@ PS_OUTPUT RenderTerrainMaterialCacheFS(VS_OUTPUT input)
 	evalParams.worldLocation = worldLocation;
 	evalParams.clipSpace     = 0.f;
 
-	const TerrainMaterialsFactors materialFactors = terrainInterface.GetMaterialsFactors(worldLocation.xy);
+	TerrainMaterialsFactors materialFactors = terrainInterface.GetMaterialsFactors(worldLocation.xy);
+	ApplyHeightBasedWeighting(materialFactors, worldLocation.xy);
 
 	const TerrainMaterialEvaluationOutput materialEvalOutput = EvaluateTerrainMaterial(evalParams, u_constants.terrainMaterial, materialFactors);
-
-#if RENDER_POM_DEPTH
-	const float pomDepth = materialEvalOutput.pomDepth;
-#endif // RENDER_POM_DEPTH
 
 	const float2 encodedNormal = OctahedronEncodeNormal(materialEvalOutput.material.shadingNormal);
 
@@ -68,8 +72,12 @@ PS_OUTPUT RenderTerrainMaterialCacheFS(VS_OUTPUT input)
 	output.normals            = encodedNormal;
 	output.roughnessOcclusion = float2(materialEvalOutput.material.roughness, materialEvalOutput.material.occlusion);
 #if RENDER_POM_DEPTH
-	output.pomDepth = pomDepth;
+	output.pomDepth     = materialEvalOutput.pomDepth;
 #endif // RENDER_POM_DEPTH
+
+#if RENDER_DISPLACEMENT
+	output.displacement = materialEvalOutput.displacement;
+#endif // RENDER_DISPLACEMENT
 
 	return output;
 }

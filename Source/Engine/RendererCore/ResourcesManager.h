@@ -96,6 +96,7 @@ public:
 	SPT_NODISCARD static lib::SharedRef<Buffer>             CreateBuffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const AllocationDefinition& allocationDefinition, BufferViewDescriptorsAllocation descriptorsAllocation = BufferViewDescriptorsAllocation{});
 	SPT_NODISCARD static lib::SharedRef<Buffer>             CreateBuffer(const RendererResourceName& name, const rhi::RHIBuffer& bufferInstance);
 	SPT_NODISCARD static lib::SharedPtr<BindableBufferView> CreateBufferViewObject(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint64 size, BufferViewDescriptorsAllocation externalDescriptorsAllocation = BufferViewDescriptorsAllocation());
+	SPT_NODISCARD static lib::SharedRef<Buffer>             CreateStorageBuffer(const RendererResourceName& name, Uint64 size, const AllocationDefinition& allocationDefinition);
 
 	SPT_NODISCARD static lib::SharedRef<Texture>     CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationInfo);
 	SPT_NODISCARD static lib::SharedRef<TextureView> CreateTextureView(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationInfo);

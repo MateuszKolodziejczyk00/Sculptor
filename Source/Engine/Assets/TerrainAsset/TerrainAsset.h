@@ -64,7 +64,6 @@ public:
 	const TerrainAssetDefinition& GetTerrainAssetDefinition() const;
 
 	rsc::TerrainDefinition GetTerrainDefinition() const;
-	rsc::TerrainMaterialsMap GetTerrainMaterialsMap() const;
 
 protected:
 

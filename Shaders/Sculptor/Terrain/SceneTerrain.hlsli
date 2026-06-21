@@ -2,12 +2,13 @@
 #define TERRAIN_HLSLI
 
 #include "Terrain/TerrainTypes.hlsli"
+#include "Utils/Sampling.hlsli"
 
 [[shader_struct(TerrainSceneData)]]
 
 
 #define TERRAIN_MESHLETS_PER_TILE 1u
-#define TERRAIN_TILE_MAX_LOD 5u
+#define TERRAIN_TILE_MAX_LOD 7u
 
 
 #define TERRAIN_TILE_LOD_CHANGE_NORTH (1u << 0)
@@ -15,8 +16,26 @@
 #define TERRAIN_TILE_LOD_CHANGE_SOUTH (1u << 2)
 #define TERRAIN_TILE_LOD_CHANGE_WEST  (1u << 3)
 
+#define TERRAIN_TILE_LOD_CHANGE_NORTH_4 (1u << 4)
+#define TERRAIN_TILE_LOD_CHANGE_EAST_4  (1u << 5)
+#define TERRAIN_TILE_LOD_CHANGE_SOUTH_4 (1u << 6)
+#define TERRAIN_TILE_LOD_CHANGE_WEST_4  (1u << 7)
+
 #define TERRAIN_LOD_MASK        0xFF
 #define TERRAIN_LOD_CHANGE_MASK 0xF
+
+
+uint PackTileDrawCommand(uint tileIdx, uint tileLOD)
+{
+	return (tileIdx << 8u) | (tileLOD & TERRAIN_LOD_MASK);
+}
+
+
+void UnpackTileDrawCommand(uint tileLODAndChangeMask, out uint tileIdx, out uint tileLOD)
+{
+	tileIdx = tileLODAndChangeMask >> 8u;
+	tileLOD = tileLODAndChangeMask & TERRAIN_LOD_MASK;
+}
 
 
 struct TerrainInterface : TerrainSceneData
@@ -51,6 +70,13 @@ struct TerrainInterface : TerrainSceneData
 	float GetHeight(float2 locationXY)
 	{
 		const float heightMapValue = heightMap.texture.SampleLevel(BindlessSamplers::LinearClampEdge(), GetHeightMapUV(locationXY), 0);
+		return lerp(heightMap.minHeight, heightMap.maxHeight, heightMapValue);
+	}
+
+	float GetHeightSmooth(float2 locationXY)
+	{
+		const float2 uv = GetHeightMapUV(locationXY);
+		const float heightMapValue = SampleTricubicBSpline(heightMap.texture.GetResource(), BindlessSamplers::LinearClampEdge(), uv, heightMap.res, heightMap.invRes);
 		return lerp(heightMap.minHeight, heightMap.maxHeight, heightMapValue);
 	}
 
@@ -138,6 +164,22 @@ struct TerrainInterface : TerrainSceneData
 		roughness = props.x;
 		metallic  = props.y;
 		occlusion = props.z;
+	}
+
+	float GetDisplacement(float2 locationXY)
+	{
+		for (int i = 4u; i < 8u; ++i)
+		{
+			const TerrrainMaterialCacheLOD matCacheLOD = materialCache.lods[i];
+			const float2 lodUV = (locationXY - matCacheLOD.minBounds) * matCacheLOD.rcpRange;
+			if (all(lodUV > matCacheLOD.rcpResolution) && all(lodUV < 1.f - matCacheLOD.rcpResolution))
+			{
+				const float2 uv = locationXY * matCacheLOD.rcpRange;
+				return matCacheLOD.displacement.SampleLevel(BindlessSamplers::LinearRepeat(), uv, 0);
+			}
+		}
+
+		return 0.f;
 	}
 };
 

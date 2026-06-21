@@ -134,6 +134,7 @@ struct SamplerDefinition
 struct SamplerState
 {
 	static constexpr SamplerDefinition LinearRepeat = SamplerDefinition(ESamplerFilterType::Linear, EMipMapAddressingMode::Linear, EAxisAddressingMode::Repeat);
+	static constexpr SamplerDefinition NearestRepeat = SamplerDefinition(ESamplerFilterType::Nearest, EMipMapAddressingMode::Nearest, EAxisAddressingMode::Repeat);
 	static constexpr SamplerDefinition LinearClampToEdge = SamplerDefinition(ESamplerFilterType::Linear, EMipMapAddressingMode::Linear, EAxisAddressingMode::ClampToEdge);
 	
 	static constexpr SamplerDefinition LinearMinClampToEdge = SamplerDefinition(ESamplerFilterType::Linear, EMipMapAddressingMode::Linear, EAxisAddressingMode::ClampToEdge, ESamplerReductionMode::Min);

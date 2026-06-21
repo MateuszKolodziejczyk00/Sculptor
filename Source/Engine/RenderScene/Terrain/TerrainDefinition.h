@@ -28,7 +28,8 @@ static constexpr Real32 tileSizeMeters = 32.f;
 BEGIN_SHADER_STRUCT(TerrainMaterialEntry)
 	SHADER_STRUCT_FIELD(mat::MaterialDataHandle, dataHandle)
 	SHADER_STRUCT_FIELD(Real32,                  uvScale)
-	SHADER_STRUCT_FIELD(Uint32,                  grassType)
+	SHADER_STRUCT_FIELD(Uint16,                  grassType)
+	SHADER_STRUCT_FIELD(Uint16,                  displacementMatFeatureID)
 END_SHADER_STRUCT();
 
 
@@ -41,6 +42,7 @@ BEGIN_SHADER_STRUCT(TerrainMaterialsMap)
 	SHADER_STRUCT_FIELD(math::Vector2f,            minBounds)
 	SHADER_STRUCT_FIELD(math::Vector2f,            rcpBoundsSize)
 	SHADER_STRUCT_FIELD(math::Vector2f,            resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,            rcpResolution)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Uint32>, materialIDs)
 END_SHADER_STRUCT();
 

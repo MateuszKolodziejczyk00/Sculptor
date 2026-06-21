@@ -9,6 +9,8 @@
 #include "Terrain/Grass/GrassGeometry.hlsli"
 #include "Utils/Culling.hlsli"
 #include "Utils/Wave.hlsli"
+#include "Terrain/TerrainMaterial.hlsli"
+#include "Terrain/TerrainHeightBasedBlending.hlsli"
 
 
 #define GRASS_TILE_SIZE 4.f
@@ -63,7 +65,8 @@ uint GetGrassTypeAtLocation(inout RngState rng, in float2 location)
 {
 	const TerrainInterface terrain = SceneTerrain();
 
-	const TerrainMaterialsFactors materialFactors = terrain.GetMaterialsFactors(location);
+	TerrainMaterialsFactors materialFactors = terrain.GetMaterialsFactors(location);
+	ApplyHeightBasedWeighting(materialFactors, location);
 
 	float random = rng.Next();
 	uint materialID = 0u;

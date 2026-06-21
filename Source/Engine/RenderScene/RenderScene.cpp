@@ -85,7 +85,7 @@ lib::SharedRef<rdr::Buffer> RenderScene::CreateInstancesBuffer() const
 	rhi::RHIAllocationInfo renderEntitiesAllocationInfo;
 	renderEntitiesAllocationInfo.memoryUsage = rhi::EMemoryUsage::GPUOnly;
 
-	const Uint64 maxInstancesNum = 8192u;
+	const Uint64 maxInstancesNum = 32384u;
 
 	rhi::BufferDefinition renderEntitiesBufferDef;
 	renderEntitiesBufferDef.size = maxInstancesNum * sizeof(RenderEntityGPUData);

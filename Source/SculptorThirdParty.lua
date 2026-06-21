@@ -13,6 +13,7 @@ IncludeProject("TileableVolumeNoise")
 
 IncludeProject("TinyGLTF")
 IncludeProject("TinyEXR")
+IncludeProject("TinyTIFF")
 
 IncludeProject("DDS")
 IncludeProject("STB")

@@ -20,8 +20,9 @@ void GeometryBatchesBuilder::AppendGeometry(const GeometryDefinition& geometry, 
 	SPT_CHECK(geometry.meshletsNum > 0u);
 
 	MaterialBatchPermutation materialBatchPermutation;
-	materialBatchPermutation.SHADER       = materialProxy.params.shader;
-	materialBatchPermutation.DOUBLE_SIDED = materialProxy.params.doubleSided;
+	materialBatchPermutation.SHADER              = materialProxy.params.shader;
+	materialBatchPermutation.DOUBLE_SIDED        = materialProxy.params.doubleSided;
+	materialBatchPermutation.MATERIAL_ENABLE_POM = true; // Don't add permutations for normal geometry, POMs are based on pass settings and runtime-checks
 
 	const Uint16 materialBatchIdx = GetMaterialBatchIdx(materialBatchPermutation);
 

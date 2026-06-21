@@ -74,15 +74,23 @@ rdr::PipelineStateID DepthOnlyRenderingPipeline::CreatePipelineForBatch(const gp
 }
 
 
-void RenderDepthOnly(rg::RenderGraphBuilder& graphBuilder, const gp::GeometryPassParams& geometryPassParams)
+gp::GeometryPipelineExecutor* CreatePipelineExecutor(rg::RenderGraphBuilder& graphBuilder, const gp::GeometryPassParams& geometryPassParams)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Geometry Rendering (Depth Only)");
 
-	DepthOnlyRenderingPipeline pipeline;
+	lib::MemoryArena& arena = graphBuilder.GetMemoryArena();
 
-	gp::ExecutePipeline(graphBuilder, geometryPassParams, pipeline);
+	DepthOnlyRenderingPipeline* pipeline = arena.AllocateType<DepthOnlyRenderingPipeline>();
+
+	return gp::CreateExecutor(graphBuilder, geometryPassParams, *pipeline);
+}
+
+
+void FinishPipelineExecution(rg::RenderGraphBuilder& graphBuilder, gp::GeometryPipelineExecutor* executor)
+{
+	gp::DestroyExecutor(executor);
 }
 
 } // spt::rsc::depth_only

@@ -4,6 +4,7 @@
 #include "TerrainTypes.h"
 #include "RGResources/RGResourceHandles.h"
 #include "MaterialShader.h"
+#include "PlacementSystem/PlacementSystemBackend.h"
 
 
 namespace spt::rdr
@@ -63,12 +64,16 @@ public:
 	void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const lib::DynamicPushArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings);
 	// End SceneRenderSystem overrides
 
+	PlacementSystemBacked& GetPlacementSystem() { return m_placementSystem; }
+
 	Bool IsEnabled() const;
 
 	void RenderVisibilityBuffer(rg::RenderGraphBuilder& graphBuilder, const TerrainVisibilityRenderParams& params) const;
 	void RenderShadowMap(rg::RenderGraphBuilder& graphBuilder, const TerrainShadowMapRenderParams& params) const;
 
 	const GrassFieldDefinition* GetGrassFieldDefinition() const;
+
+	Bool IsTerrainPOMEnabled() const;
 
 	mat::MaterialShader GetTerrainMaterialShader() const { return m_terrainMaterialShader; }
 
@@ -91,6 +96,8 @@ private:
 	GrassFieldDefinition m_grassFieldDef;
 
 	lib::StaticArray<lib::SharedPtr<rdr::Buffer>, 2u> m_tileLODsBuffers;
+
+	PlacementSystemBacked m_placementSystem;
 };
 
 } // spt::rsc

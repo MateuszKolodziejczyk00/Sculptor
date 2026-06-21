@@ -18,14 +18,17 @@ struct PBRMaterialDefinition
 	lib::Path roughnessTexPath;
 	lib::Path normalsTexPath;
 	lib::Path emissiveTexPath;
-	lib::Path depthTexPath;
 
 	math::Vector3f baseColorFactor = math::Vector3f::Ones();
 	Real32 metallicFactor          = 0.f;
 	Real32 roughnessFactor         = 1.f;
 	math::Vector3f emissionFactor  = math::Vector3f::Zero();
 
+	lib::Path depthTexPath;
 	Real32 maxDepthCm = s_defultMaxDepthCm;
+
+	lib::Path displacementTexPath; // Displacement is used externally by some systems, e.g. terrain
+	Real32 displacementScale = 1.f;
 
 	Bool doubleSided   = true;
 	Bool customOpacity = false;
@@ -38,6 +41,9 @@ struct PBRMaterialDefinition
 		serializer.Serialize("NormalsTexPath",           normalsTexPath);
 		serializer.Serialize("EmissiveTexPath",          emissiveTexPath);
 		serializer.Serialize("DepthTexPath",             depthTexPath);
+
+		serializer.Serialize("DisplacementTexPath",      displacementTexPath);
+		serializer.Serialize("DisplacementScale",        displacementScale);
 
 		serializer.Serialize("BaseColorFactor", baseColorFactor);
 		serializer.Serialize("MetallicFactor",  metallicFactor);

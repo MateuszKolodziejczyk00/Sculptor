@@ -9,6 +9,7 @@ function Graphics:SetupConfiguration(configuration, platform)
     self:AddPrivateDependency("STB")
     self:AddPrivateDependency("DDS")
     self:AddPrivateDependency("TinyEXR")
+    self:AddPrivateDependency("TinyTIFF")
 end
 
 Graphics:SetupProject()

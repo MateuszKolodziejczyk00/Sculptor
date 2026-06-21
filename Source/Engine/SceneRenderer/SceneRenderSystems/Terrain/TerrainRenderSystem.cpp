@@ -15,6 +15,8 @@
 namespace spt::rsc
 {
 
+SPT_DEFINE_LOG_CATEGORY(LogTerrainRenderSystem, "TerrainRenderSystem");
+
 namespace terrain_consts
 {
 static constexpr Real32 clipmapExtentMeters = 1024.f;
@@ -37,6 +39,7 @@ namespace renderer_params
 {
 RendererBoolParameter enableTerrain("Enable Terrain", { "Terrain" }, false);
 RendererBoolParameter enableGrass("Enable Grass", { "Terrain" }, true);
+RendererBoolParameter enableTerrainPOM("Enable Terrain POM", { "Terrain" }, false);
 } // renderer_params
 
 
@@ -145,13 +148,14 @@ BEGIN_SHADER_STRUCT(TerrainDrawMeshTaskCommand)
 	SHADER_STRUCT_FIELD(Uint32, dispatchGroupsX)
 	SHADER_STRUCT_FIELD(Uint32, dispatchGroupsY)
 	SHADER_STRUCT_FIELD(Uint32, dispatchGroupsZ)
-	SHADER_STRUCT_FIELD(Uint32, visibleTileIdx)
+	SHADER_STRUCT_FIELD(Uint32, drawCommand)
 END_SHADER_STRUCT();
 
 
 BEGIN_SHADER_STRUCT(TerrainBuildTileDrawCommandsConstants)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<TerrainDrawMeshTaskCommand>, rwDrawCommands)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<Uint32>,                     rwDrawCommandsCount)
+	SHADER_STRUCT_FIELD(Int32,                                             lodBias)
 END_SHADER_STRUCT();
 
 
@@ -164,7 +168,7 @@ BEGIN_RG_NODE_PARAMETERS_STRUCT(TerrainIndirectDrawParams)
 END_RG_NODE_PARAMETERS_STRUCT();
 
 
-TerrainIndirectDrawParams BuildTerrainDrawTilesCommandsBuffers(rg::RenderGraphBuilder& graphBuilder, Uint32 tilesNum)
+TerrainIndirectDrawParams BuildTerrainDrawTilesCommandsBuffers(rg::RenderGraphBuilder& graphBuilder, Uint32 tilesNum, Int32 lodBias = 0)
 {
 	const Uint32 maxTilesNum = std::max(tilesNum, 1u);
 
@@ -177,6 +181,7 @@ TerrainIndirectDrawParams BuildTerrainDrawTilesCommandsBuffers(rg::RenderGraphBu
 	TerrainBuildTileDrawCommandsConstants shaderConstants;
 	shaderConstants.rwDrawCommands      = buffers.drawCommands;
 	shaderConstants.rwDrawCommandsCount = buffers.drawCommandsCount;
+	shaderConstants.lodBias             = lodBias;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Build Terrain Tile Draw Commands"),
 						  TerrainBuildTileDrawCommandsPSO::pso,
@@ -344,6 +349,7 @@ struct MaterialCacheState
 		lib::SharedPtr<rdr::TextureView> normals;
 		lib::SharedPtr<rdr::TextureView> roughnessOcclusion;
 		lib::SharedPtr<rdr::TextureView> pomDepth;
+		lib::SharedPtr<rdr::TextureView> displacement;
 
 		Real32 sizeMeters = 0.f;
 
@@ -376,20 +382,25 @@ void InitializeMaterialCache(MaterialCacheState& state)
 		textureDefinition.format = rhi::EFragmentFormat::RG8_UN_Float;
 		lodCache.roughnessOcclusion = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Terrain Roughness/Occlusion Cache"), textureDefinition, rhi::EMemoryUsage::GPUOnly);
 
-		lodCache.sizeMeters = 7.5f * std::pow(2.5f, static_cast<Real32>(i));
+		lodCache.sizeMeters = 2.f * std::pow(2.f, static_cast<Real32>(i));
 	}
 
 	{
 		rhi::TextureDefinition textureDefinition;
 		textureDefinition.resolution = terrain_consts::materialCacheRes;
-		textureDefinition.format     = rhi::EFragmentFormat::RGBA8_UN_Float;
+		textureDefinition.format     = rhi::EFragmentFormat::R8_UN_Float;
 		textureDefinition.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi:: ETextureUsage::ColorRT, rhi::ETextureUsage::TransferDest);
 		textureDefinition.flags      = rhi::ETextureFlags::GloballyReadable;
 
-		constexpr Uint32 lodsWithPOMs = 2u;
+		constexpr Uint32 lodsWithPOMs = 5u;
 		for (Uint32 i = 0u; i < lodsWithPOMs; ++i)
 		{
 			state.lods[i].pomDepth = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Terrain POM Depth Cache"), textureDefinition, rhi::EMemoryUsage::GPUOnly);
+		}
+
+		for (Uint32 i = 4u; i < 8u; ++i)
+		{
+			state.lods[i].displacement = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Terrain Displacement Cache"), textureDefinition, rhi::EMemoryUsage::GPUOnly);
 		}
 	}
 }
@@ -415,7 +426,7 @@ GRAPHICS_PSO(RenderCacheDepthTexturePSO)
 	{
 		rhi::GraphicsPipelineDefinition psoDef;
 		psoDef.rasterizationDefinition.cullMode = rhi::ECullMode::None;
-		psoDef.renderTargetsDefinition.depthRTDefinition = rhi::DepthRenderTargetDefinition(rhi::EFragmentFormat::D32_S_Float, rhi::ECompareOp::Always);
+		psoDef.renderTargetsDefinition.depthRTDefinition = rhi::DepthRenderTargetDefinition(rhi::EFragmentFormat::D16_UN_Float, rhi::ECompareOp::Always);
 		pso = CompilePSO(compiler, psoDef, {});
 	}
 };
@@ -461,6 +472,7 @@ void RenderCacheDepthTexture(rg::RenderGraphBuilder& graphBuilder, const SceneRe
 
 BEGIN_SHADER_STRUCT(RenderTerrainMaterialCachePermutationDomain)
 	SHADER_STRUCT_FIELD(Bool, RENDER_POM_DEPTH)
+	SHADER_STRUCT_FIELD(Bool, RENDER_DISPLACEMENT)
 END_SHADER_STRUCT();
 
 
@@ -471,8 +483,7 @@ GRAPHICS_PSO(RenderTerrainMaterialCachePSO)
 
 	PERMUTATION_DOMAIN(RenderTerrainMaterialCachePermutationDomain)
 
-	PRESET(lodsPomDepth);
-	PRESET(lodsNoPomDepth);
+	PRESET(pso)[2][2];
 
 	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
 	{
@@ -507,17 +518,46 @@ GRAPHICS_PSO(RenderTerrainMaterialCachePSO)
 				.alphaBlendType = rhi::ERenderTargetBlendType::Disabled,
 			});
 
-		lodsNoPomDepth = CompilePermutation(compiler, psoDef, RenderTerrainMaterialCachePermutationDomain{ .RENDER_POM_DEPTH = false });
+		const auto CompilePermutationImpl = [&](const RenderTerrainMaterialCachePermutationDomain& permutation)
+		{
+			rhi::GraphicsPipelineDefinition permutationPSODef = psoDef;
 
-		psoDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(
-			rhi::ColorRenderTargetDefinition
+			if (permutation.RENDER_POM_DEPTH)
 			{
-				.format         = rhi::EFragmentFormat::RG8_UN_Float,
-				.colorBlendType = rhi::ERenderTargetBlendType::Disabled,
-				.alphaBlendType = rhi::ERenderTargetBlendType::Disabled,
-			});
+				permutationPSODef.renderTargetsDefinition.colorRTsDefinition.emplace_back(
+					rhi::ColorRenderTargetDefinition
+					{
+						.format         = rhi::EFragmentFormat::R8_UN_Float,
+						.colorBlendType = rhi::ERenderTargetBlendType::Disabled,
+						.alphaBlendType = rhi::ERenderTargetBlendType::Disabled,
+					});
+			}
 
-		lodsPomDepth = CompilePermutation(compiler, psoDef, RenderTerrainMaterialCachePermutationDomain{ .RENDER_POM_DEPTH = true });
+			if (permutation.RENDER_DISPLACEMENT)
+			{
+				permutationPSODef.renderTargetsDefinition.colorRTsDefinition.emplace_back(
+					rhi::ColorRenderTargetDefinition
+					{
+						.format         = rhi::EFragmentFormat::R8_UN_Float,
+						.colorBlendType = rhi::ERenderTargetBlendType::Disabled,
+						.alphaBlendType = rhi::ERenderTargetBlendType::Disabled,
+					});
+			}
+
+			return CompilePermutation(compiler, permutationPSODef, permutation);
+		};
+
+		for (Bool renderPOMDepth : { false, true })
+		{
+			for (Bool renderDisplacement : { false, true })
+			{
+				RenderTerrainMaterialCachePermutationDomain permutation;
+				permutation.RENDER_POM_DEPTH    = renderPOMDepth;
+				permutation.RENDER_DISPLACEMENT = renderDisplacement;
+
+				pso[renderPOMDepth ? 1 : 0][renderDisplacement ? 1 : 0] = CompilePermutationImpl(permutation);
+			}
+		}
 	}
 };
 
@@ -535,7 +575,12 @@ void UpdateMaterialCache(rg::RenderGraphBuilder& graphBuilder, const SceneRender
 
 	const math::Vector2u resolution = terrain_consts::materialCacheRes;
 
-	const Bool hasPomDepth = params.lod->pomDepth != nullptr;
+	const Bool hasPomDepth     = params.lod->pomDepth != nullptr;
+	const Bool hasDisplacement = params.lod->displacement != nullptr;
+
+	RenderTerrainMaterialCachePermutationDomain permutation;
+	permutation.RENDER_POM_DEPTH    = hasPomDepth;
+	permutation.RENDER_DISPLACEMENT = hasDisplacement;
 
 	rg::RGRenderPassDefinition renderPass(math::Vector2i::Zero(), resolution);
 	renderPass.AddColorRenderTarget(
@@ -571,6 +616,17 @@ void UpdateMaterialCache(rg::RenderGraphBuilder& graphBuilder, const SceneRender
 			});
 	}
 
+	if (hasDisplacement)
+	{
+		renderPass.AddColorRenderTarget(
+			rg::RGRenderTargetDef
+			{
+				.textureView    = graphBuilder.AcquireExternalTextureView(params.lod->displacement),
+				.loadOperation  = rhi::ERTLoadOperation::Load,
+				.storeOperation = rhi::ERTStoreOperation::Store,
+			});
+	}
+
 	const Bool skipCaching = rendererInterface.rendererSettings.editorRendering.terrain.paintedMaterialMap.IsValid();
 
 	const rg::RGTextureViewHandle cacheDepth = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Terrain Material Cache Depth"), rg::TextureDef(resolution, rhi::EFragmentFormat::D16_UN_Float));
@@ -598,7 +654,7 @@ void UpdateMaterialCache(rg::RenderGraphBuilder& graphBuilder, const SceneRender
 
 	graphBuilder.FullScreenPass(RG_DEBUG_NAME("Update Terrain Material Cache"),
 								renderPass,
-								hasPomDepth ? RenderTerrainMaterialCachePSO::lodsPomDepth : RenderTerrainMaterialCachePSO::lodsNoPomDepth,
+								RenderTerrainMaterialCachePSO::pso[hasPomDepth ? 1 : 0][hasDisplacement ? 1 : 0],
 								rg::EmptyDescriptorSets(),
 								shaderConstants);
 }
@@ -611,9 +667,14 @@ void UpdateMaterialCache(rg::RenderGraphBuilder& graphBuilder, const SceneRender
 namespace lod
 {
 
-static constexpr Uint32 s_lodsNum = 6u;
-static constexpr Uint32 s_maxLOD = s_lodsNum - 1u;
-static constexpr Uint32 s_maxCachedBLASesPerLOD = 16u;
+static constexpr Uint32 s_lodsNum                         = 8u;
+static constexpr Uint32 s_maxLOD                          = s_lodsNum - 1u;
+
+static constexpr Int32  s_rtLODBias                       = 4;
+static constexpr Uint32 s_rtLODsNum                       = s_lodsNum - s_rtLODBias;
+static constexpr Uint32 s_maxRTLOD                        = s_rtLODsNum - 1u;
+
+static constexpr Uint32 s_maxCachedBLASesPerLOD           = 16u;
 static constexpr Uint32 s_transactionsToLODBudgetPerFrame = 16u;
 
 
@@ -642,13 +703,29 @@ struct TileState
 };
 
 
+Uint8 LODToRTLOD(Uint8 lod)
+{
+	if (lod == idxNone<Uint8>)
+	{
+		return idxNone<Uint8>;
+	}
+
+	const Int32 rtLOD = static_cast<Int32>(lod) - s_rtLODBias;
+	return static_cast<Uint8>(std::clamp(rtLOD, 0, static_cast<Int32>(s_maxRTLOD)));
+}
+
+
 enum class ELODChangeMask
 {
-	None  = 0u,
-	North = BIT(0u),
-	East  = BIT(1u),
-	South = BIT(2u),
-	West  = BIT(3u)
+	None    = 0u,
+	North   = BIT(0u),
+	East    = BIT(1u),
+	South   = BIT(2u),
+	West    = BIT(3u),
+	North_4 = BIT(4u),
+	East_4  = BIT(5u),
+	South_4 = BIT(6u),
+	West_4  = BIT(7u)
 };
 
 
@@ -678,7 +755,7 @@ void InitializeLODState(LODState& state, lib::MemoryArena& arena, RenderScene& r
 
 	for (TileState& tile : state.tiles)
 	{
-		tile.lod = idxNone<Uint8>;
+		tile.lod   = idxNone<Uint8>;
 	}
 
 	for (RayTracingGeometryDefinition& rtTile : state.rtTiles)
@@ -686,16 +763,16 @@ void InitializeLODState(LODState& state, lib::MemoryArena& arena, RenderScene& r
 		new (&rtTile) RayTracingGeometryDefinition();
 	}
 
-	for (Uint8 lod = 0u; lod < s_lodsNum; ++lod)
+	for (Uint8 lod = 0u; lod < s_rtLODsNum; ++lod)
 	{
 		LODRTInfo& lodRT = state.geometryCache.lodsRTInfo[lod];
 
-		const Uint32 verticesPerEdge = utils::MeshletsNumToVerticesPerEdge(1u << (s_maxLOD - lod));
+		const Uint32 verticesPerEdge = utils::MeshletsNumToVerticesPerEdge(1u << (s_maxRTLOD - lod));
 
 		lib::DynamicArray<rdr::HLSLStorage<Uint32>> indices = utils::BuildTileIndices(verticesPerEdge);
 		rhi::BufferDefinition indexBufferDef;
 		indexBufferDef.size   = std::max<Uint64>(1u, static_cast<Uint64>(indices.size())) * sizeof(rdr::HLSLStorage<Uint32>);
-		indexBufferDef.usage  = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::ASBuildInputReadOnly);
+		indexBufferDef.usage  = lib::Flags(rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::Storage, rhi::EBufferUsage::ASBuildInputReadOnly);
 		lodRT.indexBuffer     = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Terrain LOD Index Buffer"), indexBufferDef, rhi::EMemoryUsage::GPUOnly);
 		lodRT.primitivesNum   = static_cast<Uint32>(indices.size()) / 3u;
 		lodRT.verticesNum     = verticesPerEdge * verticesPerEdge;
@@ -757,6 +834,9 @@ struct LODTransaction
 	math::Vector2i tile = math::Vector2i::Zero();
 	Uint8 fromLOD       = 0u;
 	Uint8 toLOD         = 0u;
+
+	Uint8 fromRTLOD     = 0u;
+	Uint8 toRTLOD       = 0u;
 };
 
 
@@ -767,9 +847,9 @@ public:
 	explicit LODTransactions(lib::MemoryArena& arena)
 		: m_transactions(arena)
 	{
-		for (Int32 i = 0; i < s_lodsNum; ++i)
+		for (Int32& budget : m_targetLODTransactionsBudget)
 		{
-			m_targetLODTransactionsBudget[i] = s_transactionsToLODBudgetPerFrame;
+			budget = s_transactionsToLODBudgetPerFrame;
 		}
 	}
 
@@ -777,22 +857,30 @@ public:
 
 	void AddTransaction(const LODTransaction& transaction)
 	{
-		SPT_CHECK(transaction.toLOD < s_lodsNum);
-		SPT_CHECK(m_targetLODTransactionsBudget[transaction.toLOD] > 0);
+		if (transaction.fromRTLOD != transaction.toRTLOD)
+		{
+			SPT_CHECK(transaction.toRTLOD < s_rtLODsNum);
+			SPT_CHECK(m_targetLODTransactionsBudget[transaction.toRTLOD] > 0);
 
-		m_transactions.EmplaceBack(transaction);
-		--m_targetLODTransactionsBudget[transaction.toLOD];
+			m_transactions.EmplaceBack(transaction);
+			--m_targetLODTransactionsBudget[transaction.toRTLOD];
+		}
 	}
 
-	Int32 GetRemainingBudgetForLOD(Uint8 lod) const
+	Int32 GetRemainingBudgetForTransation(const LODTransaction& transaction) const
 	{
-		SPT_CHECK(lod < s_lodsNum);
-		return m_targetLODTransactionsBudget[lod];
+		if (transaction.fromRTLOD == transaction.toRTLOD)
+		{
+			return maxValue<Int32>;
+		}
+
+		SPT_CHECK(transaction.toRTLOD < s_rtLODsNum);
+		return m_targetLODTransactionsBudget[transaction.toRTLOD];
 	}
 
 private:
 
-	lib::StaticArray<Int32, s_lodsNum> m_targetLODTransactionsBudget;
+	lib::StaticArray<Int32, s_rtLODsNum> m_targetLODTransactionsBudget;
 
 	lib::DynamicPushArray<LODTransaction> m_transactions;
 };
@@ -815,7 +903,7 @@ static Bool CanSetLOD(const LODState& state, math::Vector2i tileCoord, Uint8 des
 			}
 
 			const Uint8 neighbourLOD = state.tiles[state.CoordToIdx(neighbourCoord)].lod;
-			if (std::abs(static_cast<Int32>(desiredLOD) - static_cast<Int32>(neighbourLOD)) > 1)
+			if (std::abs(static_cast<Int32>(desiredLOD) - static_cast<Int32>(neighbourLOD)) > 2)
 			{
 				return false;
 			}
@@ -823,6 +911,14 @@ static Bool CanSetLOD(const LODState& state, math::Vector2i tileCoord, Uint8 des
 	}
 
 	return true;
+}
+
+
+Uint8 GetDesiredLOD(const LODState& state, math::Vector2i tileCoord, math::Vector2i cameraTileCoord)
+{
+	const Uint32 distance = TileDistance(tileCoord, cameraTileCoord);
+	const Uint32 desiredLOD = std::min(distance * 2u, s_maxLOD);
+	return static_cast<Uint8>(desiredLOD);
 }
 
 
@@ -855,13 +951,17 @@ static void UpdateLODState(LODState& state, math::Vector2i cameraTileCoord, LODT
 			{
 				if (currentLOD == idxNone<Uint8> || CanSetLOD(state, tileCoord, targetLOD))
 				{
-					if (outTransactions.GetRemainingBudgetForLOD(targetLOD) > 0)
+					const LODTransaction transaction{
+							.tile      = tileCoord,
+							.fromLOD   = currentLOD,
+							.toLOD     = targetLOD,
+							.fromRTLOD = LODToRTLOD(currentLOD),
+							.toRTLOD   = LODToRTLOD(targetLOD)
+						};
+
+					if (outTransactions.GetRemainingBudgetForTransation(transaction) > 0)
 					{
-						outTransactions.AddTransaction(LODTransaction{
-							.tile    = tileCoord,
-							.fromLOD = currentLOD,
-							.toLOD   = targetLOD
-						});
+						outTransactions.AddTransaction(transaction);
 
 						state.tiles[state.CoordToIdx(tileCoord)].lod = targetLOD;
 					}
@@ -916,15 +1016,15 @@ static void ProcessLODTransactions(rg::RenderGraphBuilder& graphBuilder, const S
 
 		if (blas)
 		{
-			ReturnBLASToCache(state.geometryCache, transaction.fromLOD, std::move(blas));
+			ReturnBLASToCache(state.geometryCache, transaction.fromRTLOD, std::move(blas));
 		}
 	}
 
-	const Uint32 tilesNum = transactions.GetTransactions().GetSize();
+	const Uint32 rtLODChangesNum = transactions.GetTransactions().GetSize();
 
 	lib::MemoryArena& memArena = rendererInterface.GetSceneRendererFrameArena();
 
-	lib::ManagedSpan<rg::BLASBuildCommand> buildCommands = memArena.AllocateArray<rg::BLASBuildCommand>(tilesNum);
+	lib::ManagedSpan<rg::BLASBuildCommand> buildCommands = memArena.AllocateArray<rg::BLASBuildCommand>(rtLODChangesNum);
 
 	Uint32 scratchSize = 0u;
 	Uint32 buildCommandIdx = 0u;
@@ -934,9 +1034,9 @@ static void ProcessLODTransactions(rg::RenderGraphBuilder& graphBuilder, const S
 		const Uint32 tileIdx = state.CoordToIdx(transaction.tile);
 		RayTracingGeometryDefinition& rtTile = state.rtTiles[tileIdx];
 
-		rtTile.blas = GetOrCreateBLASForLOD(state.geometryCache, transaction.toLOD);
+		rtTile.blas = GetOrCreateBLASForLOD(state.geometryCache, transaction.toRTLOD);
 
-		const LODRTInfo& rtInfo = state.geometryCache.lodsRTInfo[transaction.toLOD];
+		const LODRTInfo& rtInfo = state.geometryCache.lodsRTInfo[transaction.toRTLOD];
 
 		const rg::RGBufferViewHandle indexBuffer = graphBuilder.AcquireExternalBufferView(rtInfo.indexBuffer->GetFullView());
 
@@ -945,7 +1045,7 @@ static void ProcessLODTransactions(rg::RenderGraphBuilder& graphBuilder, const S
 		const Uint32 scratchOffset = scratchSize;
 		scratchSize += static_cast<Uint32>(rtTile.blas->GetRHI().GetBuildScratchSize());
 
-		BuildTileVertexBuffer(graphBuilder, tileIdx, rtInfo, vertexBuffer );
+		BuildTileVertexBuffer(graphBuilder, tileIdx, rtInfo, vertexBuffer);
 
 		rg::BLASBuildCommand& buildCommand = buildCommands[buildCommandIdx++];
 		buildCommand.blas                = rtTile.blas;
@@ -989,6 +1089,11 @@ void WriteTilesLODState(const lib::SharedPtr<rdr::Buffer>& buffer, const LODStat
 				if (state.tiles[state.CoordToIdx(tileCoord - math::Vector2i(0, 1))].lod > lod)
 				{
 					changeMask = lib::Flags(changeMask, ELODChangeMask::North);
+
+					if (state.tiles[state.CoordToIdx(tileCoord - math::Vector2i(0, 1))].lod > lod + 1)
+					{
+						changeMask = lib::Flags(changeMask, ELODChangeMask::North_4);
+					}
 				}
 			}
 
@@ -997,6 +1102,11 @@ void WriteTilesLODState(const lib::SharedPtr<rdr::Buffer>& buffer, const LODStat
 				if (state.tiles[state.CoordToIdx(tileCoord + math::Vector2i(1, 0))].lod > lod)
 				{
 					changeMask = lib::Flags(changeMask, ELODChangeMask::East);
+
+					if (state.tiles[state.CoordToIdx(tileCoord + math::Vector2i(1, 0))].lod > lod + 1)
+					{
+						changeMask = lib::Flags(changeMask, ELODChangeMask::East_4);
+					}
 				}
 			}
 
@@ -1005,6 +1115,11 @@ void WriteTilesLODState(const lib::SharedPtr<rdr::Buffer>& buffer, const LODStat
 				if (state.tiles[state.CoordToIdx(tileCoord + math::Vector2i(0, 1))].lod > lod)
 				{
 					changeMask = lib::Flags(changeMask, ELODChangeMask::South);
+
+					if (state.tiles[state.CoordToIdx(tileCoord + math::Vector2i(0, 1))].lod > lod + 1)
+					{
+						changeMask = lib::Flags(changeMask, ELODChangeMask::South_4);
+					}
 				}
 			}
 
@@ -1013,6 +1128,11 @@ void WriteTilesLODState(const lib::SharedPtr<rdr::Buffer>& buffer, const LODStat
 				if (state.tiles[state.CoordToIdx(tileCoord - math::Vector2i(1, 0))].lod > lod)
 				{
 					changeMask = lib::Flags(changeMask, ELODChangeMask::West);
+
+					if (state.tiles[state.CoordToIdx(tileCoord - math::Vector2i(1, 0))].lod > lod + 1)
+					{
+						changeMask = lib::Flags(changeMask, ELODChangeMask::West_4);
+					}
 				}
 			}
 
@@ -1057,6 +1177,8 @@ void TerrainRenderSystem::Initialize(lib::MemoryArena& arena, RenderScene& rende
 	Super::Initialize(arena, renderScene);
 
 	SPT_CHECK(!m_initialized)
+
+	m_placementSystem.Initialize(arena, renderScene);
 
 	const math::Vector2u tilesRes = utils::ComputeTilesResolution();
 
@@ -1136,6 +1258,8 @@ void TerrainRenderSystem::Deinitialize(RenderScene& renderScene)
 
 	m_tileLODsBuffers.fill(nullptr);
 
+	m_placementSystem.Deinitialize(renderScene);
+
 	m_initialized = false;
 }
 
@@ -1206,6 +1330,7 @@ void TerrainRenderSystem::UpdateGPUSceneData(const SceneUpdateContext& context, 
 		matCache.lods[i].normals            = lodCache.normals;
 		matCache.lods[i].roughnessOcclusion = lodCache.roughnessOcclusion;
 		matCache.lods[i].pomDepth           = lodCache.pomDepth;
+		matCache.lods[i].displacement       = lodCache.displacement;
 		matCache.lods[i].minBounds          = lodCache.minBounds;
 		matCache.lods[i].rcpRange           = (lodCache.maxBounds - lodCache.minBounds).cwiseInverse();
 		matCache.lods[i].rcpResolution      = terrain_consts::materialCacheRes.cast<Real32>().cwiseInverse();
@@ -1257,11 +1382,13 @@ void TerrainRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, c
 
 	SPT_CHECK(!viewSpecs.IsEmpty());
 
+	m_placementSystem.RenderPerFrame(graphBuilder, rendererInterface, renderScene, viewSpecs, settings);
+
 	terrain_renderer::material_cache::UpdateMaterialCache(graphBuilder, rendererInterface, renderScene, m_renderInstance->materialCacheUpdateParams);
 
 	ViewRenderingSpec* mainView = *viewSpecs.begin();
 	SPT_CHECK(mainView != nullptr);
-
+ 
 	lod::ProcessLODTransactions(graphBuilder, rendererInterface, m_renderInstance->lodState, *m_renderInstance->lodTransactions);
 	m_renderInstance->lodTransactions = nullptr;
 
@@ -1314,7 +1441,7 @@ void TerrainRenderSystem::RenderShadowMap(rg::RenderGraphBuilder& graphBuilder, 
 	SPT_CHECK(m_initialized);
 
 	const Uint32 tilesNum = static_cast<Uint32>(m_tilesBuffer->GetSize() / sizeof(rdr::HLSLStorage<TerrainClipmapTileGPU>));
-	const terrain_renderer::TerrainIndirectDrawParams terrainDraws = terrain_renderer::BuildTerrainDrawTilesCommandsBuffers(graphBuilder, tilesNum);
+	const terrain_renderer::TerrainIndirectDrawParams terrainDraws = terrain_renderer::BuildTerrainDrawTilesCommandsBuffers(graphBuilder, tilesNum, 4);
 
 	terrain_renderer::TerrainRenderConstants constants;
 	constants.drawCommands = terrainDraws.drawCommands;
@@ -1325,6 +1452,11 @@ void TerrainRenderSystem::RenderShadowMap(rg::RenderGraphBuilder& graphBuilder, 
 const GrassFieldDefinition* TerrainRenderSystem::GetGrassFieldDefinition() const
 {
 	return renderer_params::enableGrass ? &m_grassFieldDef : nullptr;
+}
+
+Bool TerrainRenderSystem::IsTerrainPOMEnabled() const
+{
+	return renderer_params::enableTerrainPOM;
 }
 
 } // spt::rsc

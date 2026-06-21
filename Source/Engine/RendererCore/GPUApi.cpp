@@ -77,7 +77,7 @@ static void InitializeSamplerDescriptors()
 		rhi::SamplerState::LinearClampToEdge,
 		rhi::SamplerState::NearestClampToEdge,
 		rhi::SamplerState::LinearRepeat,
-		rhi::SamplerState::NearestClampToEdge,
+		rhi::SamplerState::NearestRepeat,
 		rhi::SamplerState::LinearMinClampToEdge,
 		rhi::SamplerState::LinearMaxClampToEdge,
 		materialAnisoSampler,
