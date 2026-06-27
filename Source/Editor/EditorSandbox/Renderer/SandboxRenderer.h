@@ -6,6 +6,7 @@
 #include "View/RenderView.h"
 #include "SceneRenderer/SceneRenderer.h"
 #include "RenderGraphResourcesPool.h"
+#include "World.h"
 
 namespace spt::rdr
 {
@@ -101,7 +102,8 @@ private:
 
 	void PrepareRenderView(math::Vector2u outputResolution);
 
-	lib::SharedPtr<rsc::RenderScene>	m_renderScene;
+	lib::SharedPtr<gf::World>			m_world;
+
 	rsc::RenderView*					m_renderView;
 
 	rsc::SceneRendererHandle			m_sceneRenderer;

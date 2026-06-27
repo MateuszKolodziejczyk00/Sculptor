@@ -6,7 +6,7 @@
 #include "EngineFrame.h"
 #include "SceneRenderer.h"
 
-#pragma optimize("", off)
+
 namespace spt::rsc::wsc
 {
 

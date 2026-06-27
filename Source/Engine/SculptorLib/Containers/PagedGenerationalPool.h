@@ -33,6 +33,7 @@ class PagedGenerationalPool
 	{
 		std::atomic<Uint64>          isOccpuedied    = 0u;
 		std::atomic<Uint64>          isPendingDelete = 0u;
+		std::atomic<Uint64>          isDirty         = 0u;
 		lib::StaticArray<Uint16, 64> generation      = { 0u };
 
 		using InstancesArray = lib::StaticArray<lib::TypeStorage<TType>, 64>;
@@ -70,7 +71,8 @@ public:
 		return m_numOccupied.load();
 	}
 
-	Handle Add(const TType& instance)
+	template<typename... TArgs>
+	Handle Add(TArgs&&... args)
 	{
 		while (true)
 		{
@@ -126,7 +128,9 @@ public:
 				const Uint64 firstFreeInstanceIdx = math::Utils::LowestSetBitIdx(~pagePrevIsOccupied);
 				const Uint64 pageNewIsOccupied = pagePrevIsOccupied | (1ull << firstFreeInstanceIdx);
 
-				page.instances[firstFreeInstanceIdx].Construct(instance);
+				page.instances[firstFreeInstanceIdx].Construct(std::forward<TArgs>(args)...);
+
+				page.isDirty.fetch_or(1ull << firstFreeInstanceIdx);
 
 				SPT_MAYBE_UNUSED
 				const Uint64 preOrIsOccupied = page.isOccpuedied.fetch_or(1ull << firstFreeInstanceIdx);
@@ -148,8 +152,10 @@ public:
 				m_numOccupied.fetch_add(1u);
 
 				node.isAnyOccupied |= (1ull << firstFreePageIdxInNode);
+				node.isAnyDirty |= (1ull << firstFreePageIdxInNode);
 
 				m_rootIsAnyOccupied.fetch_or(1ull << firstFreeNodeIdx);
+				m_rootIsAnyDirty.fetch_or(1ull << firstFreeNodeIdx);
 
 				return Handle{ .idx = static_cast<Uint32>((pageIdx * 64u) + firstFreeInstanceIdx), .generation = generation };
 			}
@@ -186,7 +192,7 @@ public:
 
 		if (instanceDeleted)
 		{
-			m_rootIsPendingDelete.fetch_or(1ull << nodeIdx);
+			m_rootIsAnyPendingDelete.fetch_or(1ull << nodeIdx);
 
 			SPT_MAYBE_UNUSED
 			const Uint32 prevOccupied = m_numOccupied.fetch_sub(1u);
@@ -197,9 +203,33 @@ public:
 		return instanceDeleted;
 	}
 
+	void MarkAsDirty(Handle handle)
+	{
+		const Uint32 pageIdx = handle.idx / 64u;
+		if (pageIdx >= m_numPages)
+		{
+			return;
+		}
+
+		const Uint32 instanceIdxInPage = handle.idx % 64u;
+
+		Page& page = m_pages[pageIdx];
+		if (handle.generation != page.generation[instanceIdxInPage] || (page.isOccpuedied.load() & (1ull << instanceIdxInPage)) == 0ull)
+		{
+			return;
+		}
+
+		page.isDirty.fetch_or(1ull << instanceIdxInPage);
+		const Uint32 nodeIdx = pageIdx / 64u;
+		m_rootIsAnyDirty.fetch_or(1ull << nodeIdx);
+
+		const Uint32 pageIdxInNode = pageIdx % 64u;
+		m_hierarchyNodes[nodeIdx].isAnyDirty |= (1ull << pageIdxInNode);
+	}
+
 	void Flush()
 	{
-		Uint64 rootMask = m_rootIsPendingDelete.exchange(0ull);
+		Uint64 rootMask = m_rootIsAnyPendingDelete.exchange(0ull);
 		while (rootMask != 0ull)
 		{
 			const Uint64 nodeIdx = math::Utils::LowestSetBitIdx(rootMask);
@@ -256,6 +286,44 @@ public:
 				}
 
 				node.isAnyPendingDelete = 0ull;
+			}
+		}
+	}
+
+	template<typename TFunc>
+	void ForEachDirty(TFunc func)
+	{
+		Uint64 rootMask = m_rootIsAnyDirty.exchange(0ull);
+		while (rootMask != 0ull)
+		{
+			const Uint64 nodeIdx = math::Utils::LowestSetBitIdx(rootMask);
+			rootMask &= ~(1ull << nodeIdx);
+
+			HierarchyNode& node = m_hierarchyNodes[nodeIdx];
+
+			{
+				lib::LockGuard lock(node.lock);
+
+				Uint64 nodeMask = node.isAnyDirty;
+				while (nodeMask != 0ull)
+				{
+					const Uint64 pageIdxInNode = math::Utils::LowestSetBitIdx(nodeMask);
+					nodeMask &= ~(1ull << pageIdxInNode);
+
+					const Uint64 pageIdx = (nodeIdx * 64u) + pageIdxInNode;
+					Page& page = m_pages[pageIdx];
+
+					Uint64 pageMask = page.isDirty.exchange(0ull);
+					while (pageMask != 0ull)
+					{
+						const Uint64 instanceIdxInPage = math::Utils::LowestSetBitIdx(pageMask);
+						pageMask &= ~(1ull << instanceIdxInPage);
+
+						const Handle handle{ .idx = static_cast<Uint32>((pageIdx * 64u) + instanceIdxInPage), .generation = page.generation[instanceIdxInPage] };
+
+						func(handle, page.instances[instanceIdxInPage].Get());
+					}
+				}
 			}
 		}
 	}
@@ -399,14 +467,16 @@ public:
 
 private:
 
-	std::atomic<Uint64> m_rootIsAnyOccupied   = 0ull;
-	std::atomic<Uint64> m_rootIsAnyFree       = ~0ull;
-	std::atomic<Uint64> m_rootIsPendingDelete = 0ull;
+	std::atomic<Uint64> m_rootIsAnyOccupied      = 0ull;
+	std::atomic<Uint64> m_rootIsAnyFree          = ~0ull;
+	std::atomic<Uint64> m_rootIsAnyDirty         = 0ull;
+	std::atomic<Uint64> m_rootIsAnyPendingDelete = 0ull;
 
 	struct HierarchyNode
 	{
 		Uint64 isAnyOccupied      = 0ull;
 		Uint64 isAnyFree          = ~0ull;
+		Uint64 isAnyDirty         = 0ull;
 		Uint64 isAnyPendingDelete = 0ull;
 		lib::Spinlock lock;
 	};

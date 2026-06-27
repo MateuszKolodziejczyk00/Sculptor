@@ -11,6 +11,7 @@
 #include "RenderGraphBuilder.h"
 #include "Engine.h"
 #include "Paths.h"
+#include "Utils/TransfersManager.h"
 #include "Utils/TransfersUtils.h"
 #include "SceneRenderer/SceneRenderer.h"
 #include "InputManager.h"
@@ -29,7 +30,7 @@
 #include "Techniques/TemporalAA/DLSSRenderer.h"
 #include "Techniques/TemporalAA/StandardTAARenderer.h"
 #include "IESProfileAsset.h"
-#include "Importers/GLTFImporter.h"
+#include "Importers/GLTFPrefabImporter.h"
 #include "PrefabAsset.h"
 #include "Transfers/GPUDeferredCommandsQueue.h"
 
@@ -85,7 +86,7 @@ SandboxRenderer::SandboxRenderer()
 	, m_nearPlane(0.1f)
 	, m_farPlane(1000.f)
 	, m_cameraSpeed(5.f)
-	, m_renderScene(lib::MakeShared<rsc::RenderScene>())
+	, m_world(lib::MakeShared<gf::World>())
 	, m_captureSourceContext(lib::MakeShared<rg::capture::RGCaptureSourceContext>())
 	, m_memoryArena("Sandbox Renderer Arena", 4 * 1024 * 1024, 32 * 1024 * 1024)
 {
@@ -97,7 +98,7 @@ SandboxRenderer::SandboxRenderer()
 
 	const rsc::SceneRendererDefinition sceneRendererDef
 	{
-		.scene         = *m_renderScene,
+		.scene         = m_world->GetRenderSceneRef(),
 		.renderSystems = rsc::ESceneRenderSystem::ALL
 	};
 	m_sceneRenderer = sceneRendererAPI->CreateSceneRenderer(sceneRendererDef);
@@ -115,6 +116,8 @@ SandboxRenderer::~SandboxRenderer()
 void SandboxRenderer::Update(engn::FrameContext& frame)
 {
 	SPT_PROFILER_FUNCTION();
+
+	m_world->BeginFrame(frame);
 
 	math::Vector3f& cameraDeltaLocation = m_cameraDeltaLocation[frame.GetFrameIdx() & 1u];
 	math::Vector2f& cameraDeltaRotation = m_cameraDeltaRotation[frame.GetFrameIdx() & 1u];
@@ -220,18 +223,18 @@ void SandboxRenderer::UpdatePreRender(engn::FrameContext& frame)
 	{
 		sunAngleDirty = false;
 
-		rsc::DirectionalLightData dirLightData = m_renderScene->lighting.GetDirectionalLight();
+		rsc::DirectionalLightData dirLightData = m_world->GetRenderScene()->lighting.GetDirectionalLight();
 		const math::Quaternionf pitchQuat = math::Utils::EulerToQuaternionRadians(0.f, sunAnglePitch, 0.f);
 		const math::Quaternionf yawQuat = math::Utils::EulerToQuaternionRadians(0.f, 0.f, sunAngleYaw);
 		dirLightData.direction = yawQuat * pitchQuat * math::Vector3f::UnitX();
-		m_renderScene->lighting.SetDirectionalLight(dirLightData);
+		m_world->GetRenderScene()->lighting.SetDirectionalLight(dirLightData);
 	}
 
 	if (dirLightTypeDirty)
 	{
 		dirLightTypeDirty = false;
 
-		rsc::DirectionalLightData dirLightData = m_renderScene->lighting.GetDirectionalLight();
+		rsc::DirectionalLightData dirLightData = m_world->GetRenderScene()->lighting.GetDirectionalLight();
 		if (dirLightType == EDirLightType::Sun)
 		{
 			dirLightData.color             = math::Vector3f(1.f, 0.956f, 0.839f);
@@ -245,7 +248,7 @@ void SandboxRenderer::UpdatePreRender(engn::FrameContext& frame)
 			dirLightData.zenithIlluminance = 0.1f;
 		}
 
-		m_renderScene->lighting.SetDirectionalLight(dirLightData);
+		m_world->GetRenderScene()->lighting.SetDirectionalLight(dirLightData);
 	}
 }
 
@@ -257,9 +260,9 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 	
 	UpdatePreRender(frame);
 
-	m_renderScene->SetTerrainDefinition(m_terrainAsset->GetTerrainDefinition());
+	m_world->GetRenderScene()->SetTerrainDefinition(m_terrainAsset->GetTerrainDefinition());
 
-	m_renderScene->BeginFrame(frame);
+	m_world->GetRenderScene()->BeginFrame(frame);
 
 	PrepareRenderView(output->GetTexture()->GetResolution2D());
 
@@ -346,7 +349,7 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 		rendererSettings.persistentDebugRenderer = &shaderDebugCommandsCollectingScope.GetPersistentDebugRenderer();
 #endif // SPT_SHADERS_DEBUG_FEATURES
 
-		sceneRenderingResultTextureView = sceneRendererAPI->ExecuteSceneRendering(m_sceneRenderer, graphBuilder, *m_renderScene, *m_renderView, rendererSettings);
+		sceneRenderingResultTextureView = sceneRendererAPI->ExecuteSceneRendering(m_sceneRenderer, graphBuilder, m_world->GetRenderSceneRef(), *m_renderView, rendererSettings);
 	}
 
 	SPT_CHECK(sceneRenderingResultTextureView.IsValid());
@@ -402,12 +405,12 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 				   js::Prerequisites(graphBuilder.GetGPUFinishedEvent()));
 	}
 
-	m_renderScene->EndFrame();
+	m_world->GetRenderScene()->EndFrame();
 }
 
 const lib::SharedPtr<rsc::RenderScene>& SandboxRenderer::GetRenderScene()
 {
-	return m_renderScene;
+	return m_world->GetRenderScene();
 }
 
 const as::TerrainAssetHandle& SandboxRenderer::GetTerrainAsset() const
@@ -569,7 +572,7 @@ void SandboxRenderer::InitializeRenderScene()
 		pointLightData.location = math::Vector3f(8.30f, -3.8f, 1.55f);
 		pointLightData.radius = 5.f;
 		pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
-		m_renderScene->lighting.pointLights.Add(pointLightData);
+		m_world->GetRenderScene()->lighting.pointLights.Add(pointLightData);
 	}
 	
 	{
@@ -579,7 +582,7 @@ void SandboxRenderer::InitializeRenderScene()
 		pointLightData.location = math::Vector3f(-4.24f, -14.85f, 2.05f);
 		pointLightData.radius = 8.f;
 		pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
-		m_renderScene->lighting.pointLights.Add(pointLightData);
+		m_world->GetRenderScene()->lighting.pointLights.Add(pointLightData);
 	}
 
 	{
@@ -590,7 +593,7 @@ void SandboxRenderer::InitializeRenderScene()
 		directionalLightData.lightConeAngle         = 0.0046f;
 		directionalLightData.sunDiskAngleMultiplier = 3.8f;
 		directionalLightData.sunDiskEC              = 9.4f;
-		m_renderScene->lighting.SetDirectionalLight(directionalLightData);
+		m_world->GetRenderScene()->lighting.SetDirectionalLight(directionalLightData);
 	}
 
 	dirLightTypeDirty = true;
@@ -602,12 +605,7 @@ void SandboxRenderer::InitializeRenderScene()
 
 	sponzaPrefab->AwaitInitialization();
 	sponzaPrefab->SetPermanent();
-
-	sponzaPrefab->Spawn(as::PrefabSpawnParams
-						{
-							.scene = *m_renderScene,
-							.rotation = math::Vector3f(90.f, 0.f, 0.f)
-						});
+	m_world->SpawnPrefab(sponzaPrefab, gf::PrefabSpawnParams{ .rotation = math::Vector3f(90.f, 0.f, 0.f) });
 
 	lib::MemoryArena tempArena("Sandbox Renderer Temp Arena", 0u, 16u * 1024u * 1024u);
 	gfx::GPUDeferredCommandsQueue& commandsQueue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();

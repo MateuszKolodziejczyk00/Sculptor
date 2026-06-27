@@ -1,18 +1,16 @@
-#include "GLTFImporter.h"
-#include "AssetsSystem.h"
-#include "Eigen/src/Geometry/Transform.h"
-#include "Eigen/src/Geometry/Translation.h"
+#include "GLTFPrefabImporter.h"
 #include "Loaders/GLTF.h"
+#include "AssetsSystem.h"
 #include "MaterialInstance/PBRMaterialInstance.h"
-#include "MeshAsset.h"
-#include "PrefabAsset.h"
-#include "ProfilerCore.h"
+#include "MeshPrefab.h"
 
 SPT_DEFINE_LOG_CATEGORY(GLTFImporter, true);
 
 
-namespace spt::as::importer
+namespace spt::gf
 {
+
+SPT_REGISTER_PREFAB_IMPORTER(GLTFPrefabImporter, ".gltf");
 
 static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 {
@@ -78,7 +76,7 @@ static lib::Path GetMeshAssetRelativePath(const tinygltf::Mesh& mesh, int meshId
 }
 
 
-void InitPrefabDefinition(PrefabDefinition& prefabDef, const rsc::GLTFModel& model)
+void ImportPrefabDefinitionImpl(const rsc::GLTFModel& model, as::PrefabDefinition& prefabDef)
 {
 	struct NodeSpawnInfo
 	{
@@ -120,7 +118,7 @@ void InitPrefabDefinition(PrefabDefinition& prefabDef, const rsc::GLTFModel& mod
 
 			const math::Vector3f eulerAngles = rotationMat.eulerAngles(0, 1, 2);
 
-			lib::UniquePtr<PrefabMeshEntity> meshEntity = lib::MakeUnique<PrefabMeshEntity>();
+			lib::UniquePtr<gf::PrefabMeshEntityDefinition> meshEntity = lib::MakeUnique<gf::PrefabMeshEntityDefinition>();
 			meshEntity->location = transform.translation();
 			meshEntity->rotation = math::Vector3f(math::Utils::RadiansToDegrees(eulerAngles.x()), math::Utils::RadiansToDegrees(eulerAngles.y()), math::Utils::RadiansToDegrees(eulerAngles.z()));
 			meshEntity->scale    = math::Vector3f(sx, sy, sz);
@@ -132,7 +130,7 @@ void InitPrefabDefinition(PrefabDefinition& prefabDef, const rsc::GLTFModel& mod
 				meshEntity->materials.emplace_back(GetMaterialAssetRelativePath(model.materials[prim.material], prim.material));
 			}
 
-			PrefabEntityDefinition entityDef;
+			as::PrefabEntityDefinitionEntry entityDef;
 			entityDef.entity = std::move(meshEntity);
 			prefabDef.entities.emplace_back(std::move(entityDef));
 		}
@@ -143,13 +141,13 @@ void InitPrefabDefinition(PrefabDefinition& prefabDef, const rsc::GLTFModel& mod
 		}
 	}
 }
-void InitPrefabDefinition(PrefabDefinition& prefabDef, const AssetInstance& asset, const GLTFPrefabDefinition& gltfDef)
-{
-	const lib::Path referencePath  = asset.GetDirectoryPath();
-	const lib::Path gltfSourcePath = !gltfDef.gltfSourcePath.empty() ? (referencePath / gltfDef.gltfSourcePath) : lib::Path{};
-	const lib::String gltfSourcePathAsString = gltfSourcePath.lexically_normal().generic_string();
 
-	const std::optional<rsc::GLTFModel>& model = asset.GetOwningSystem().GetCompilationInputData<std::optional<rsc::GLTFModel>>(gltfSourcePathAsString,
+
+void GLTFPrefabImporter::ImportPrefabDefinition(as::AssetsSystem& assetsSystem, const lib::Path& sourcePath, as::PrefabDefinition& prefabDef)
+{
+	const lib::String gltfSourcePathAsString = sourcePath.lexically_normal().generic_string();
+
+	const std::optional<rsc::GLTFModel>& model = assetsSystem.GetCompilationInputData<std::optional<rsc::GLTFModel>>(gltfSourcePathAsString,
 			[&gltfSourcePathAsString]()
 			{
 				return rsc::LoadGLTFModel(gltfSourcePathAsString);
@@ -160,10 +158,11 @@ void InitPrefabDefinition(PrefabDefinition& prefabDef, const AssetInstance& asse
 		return;
 	}
 
-	InitPrefabDefinition(prefabDef, *model);
+	ImportPrefabDefinitionImpl(*model, prefabDef);
 }
 
-void ImportGLTF(const GLTFImportParams& params)
+
+void ImportGLTF(as::AssetsSystem& assetsSystem, const PrefabImportParams& params)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -182,17 +181,17 @@ void ImportGLTF(const GLTFImportParams& params)
 
 		const lib::Path meshPath = params.dstContentPath / GetMeshAssetRelativePath(mesh, static_cast<int>(meshIdx));
 
-		const MeshSourceDefinition meshSource
+		const as::MeshSourceDefinition meshSource
 		{
 			.path     = relativeGLTFPath,
 			.meshIdx  = static_cast<Uint32>(meshIdx),
 			.meshName = mesh.name
 		};
-		MeshDataInitializer meshInitializer(meshSource);
+		as::MeshDataInitializer meshInitializer(meshSource);
 
-		params.assetsSystem.CreateAsset(AssetInitializer
+		params.assetsSystem.CreateAsset(as::AssetInitializer
 			{
-				.type            = CreateAssetType<MeshAsset>(),
+				.type            = as::CreateAssetType<as::MeshAsset>(),
 				.path            = meshPath,
 				.dataInitializer = &meshInitializer
 			});
@@ -206,17 +205,17 @@ void ImportGLTF(const GLTFImportParams& params)
 
 		const lib::Path materialPath = params.dstContentPath / GetMaterialAssetRelativePath(material, static_cast<int>(materialIdx));
 
-		const PBRGLTFMaterialDefinition materialDefinition
+		const as::PBRGLTFMaterialDefinition materialDefinition
 		{
 			.gltfSourcePath = relativeGLTFPath,
 			.materialName   = material.name,
 			.materialIdx    = static_cast<Uint32>(materialIdx)
 		};
-		PBRGLTFMaterialInitializer materialInitializer(materialDefinition);
+		as::PBRGLTFMaterialInitializer materialInitializer(materialDefinition);
 
-		params.assetsSystem.CreateAsset(AssetInitializer
+		params.assetsSystem.CreateAsset(as::AssetInitializer
 			{
-				.type            = CreateAssetType<MaterialAsset>(),
+				.type            = as::CreateAssetType<as::MaterialAsset>(),
 				.path            = materialPath,
 				.dataInitializer = &materialInitializer
 			});
@@ -226,30 +225,30 @@ void ImportGLTF(const GLTFImportParams& params)
 
 	const lib::Path prefabName = "Prefab.sptasset";
 
-	if (params.importPrefabAsGLTF)
+	if (params.importPrefabAsReference)
 	{
-		GLTFPrefabDataInitializer prefabInitializer(GLTFPrefabDefinition
+		as::GLTFPrefabDataInitializer prefabInitializer(as::GLTFPrefabDefinition
 			{
 				.gltfSourcePath = relativeGLTFPath
 			});
 
-		params.assetsSystem.CreateAsset(AssetInitializer
+		params.assetsSystem.CreateAsset(as::AssetInitializer
 			{
-				.type = CreateAssetType<PrefabAsset>(),
+				.type = as::CreateAssetType<as::PrefabAsset>(),
 				.path = params.dstContentPath / prefabName,
 				.dataInitializer = &prefabInitializer
 			});
 	}
 	else
 	{
-		PrefabDefinition prefabDef;
-		InitPrefabDefinition(prefabDef, *model);
+		as::PrefabDefinition prefabDef;
+		ImportPrefabDefinitionImpl(*model, prefabDef);
 
-		PrefabDataInitializer standardPrefabInitializer(std::move(prefabDef));
+		as::PrefabDataInitializer standardPrefabInitializer(std::move(prefabDef));
 
-		params.assetsSystem.CreateAsset(AssetInitializer
+		params.assetsSystem.CreateAsset(as::AssetInitializer
 			{
-				.type            = CreateAssetType<PrefabAsset>(),
+				.type            = as::CreateAssetType<as::PrefabAsset>(),
 				.path            = params.dstContentPath / prefabName,
 				.dataInitializer = &standardPrefabInitializer
 			});
@@ -258,4 +257,4 @@ void ImportGLTF(const GLTFImportParams& params)
 	SPT_LOG_INFO(GLTFImporter, "Imported prefab asset: {} from GLTF: {}", (params.dstContentPath / prefabName).generic_string(), params.srcGLTFPath.generic_string());
 }
 
-} // spt::as::importer
+} // spt::gf

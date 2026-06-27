@@ -139,13 +139,16 @@ void FrameContext::DoStagesTransition(EFrameStage::Type prevStage, EFrameStage::
 		// no-op
 	}
 
-	if (nextStage == EFrameStage::RenderingBegin)
+	if (nextStage == EFrameStage::TransferDataForRendering)
 	{
 		if (m_prevFrame)
 		{
 			m_prevFrame->WaitRenderingEnded();
 		}
+	}
 
+	if (nextStage == EFrameStage::RenderingBegin)
+	{
 		if (m_maxFPS > 0.f)
 		{
 			const Real32 currentTime          = GetEngineTimer().GetCurrentTimeSeconds();

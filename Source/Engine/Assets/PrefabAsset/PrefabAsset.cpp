@@ -1,6 +1,6 @@
 #include "PrefabAsset.h"
 #include "AssetsSystem.h"
-#include "Importers/GLTFImporter.h"
+#include "Importers/PrefabImporter.h"
 
 
 SPT_DEFINE_LOG_CATEGORY(PrefabAsset, true);
@@ -73,7 +73,7 @@ ResourcePathID CreateAssetDependency(PrefabCompiler& compiler, const lib::Path& 
 	}
 }
 
-void CompilePrefabEntity(PrefabCompiler& compiler, const PrefabEntityDefinition& definition)
+void CompilePrefabEntity(PrefabCompiler& compiler, const PrefabEntityDefinitionEntry& definition)
 {
 	if (definition.entity)
 	{
@@ -111,29 +111,17 @@ void GLTFPrefabDataInitializer::InitializeNewAsset(AssetInstance& asset)
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // PrefabAsset ===================================================================================
 
-void PrefabAsset::Spawn(const PrefabSpawnParams& params)
+void PrefabAsset::Spawn(const void* context)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsInitialized());
 
-	math::Affine3f transform = math::Affine3f::Identity();
-	transform.prescale(params.scale);
-	transform.prerotate(math::Utils::EulerToQuaternionDegrees(params.rotation.x(), params.rotation.y(), params.rotation.z()));
-	transform.pretranslate(params.location);
-
-	const PrefabSpawningContext spawningContext
-	{
-		.assetsSystem = GetOwningSystem(),
-		.scene        = params.scene,
-		.transform    = transform
-	};
-
 	for (const CompiledPrefabEntityHeader& entity : m_entities)
 	{
 		if (const PrefabEntityTypeMetaData* typeMetaData = GetPrefabType(entity.type))
 		{
-			typeMetaData->spawner(spawningContext, m_entitiesData.subspan(entity.dataOfffset, entity.dataSize));
+			typeMetaData->spawner(context, m_entitiesData.subspan(entity.dataOfffset, entity.dataSize));
 		}
 	}
 }
@@ -146,10 +134,12 @@ Bool PrefabAsset::Compile()
 	{
 		return CompileDefinition(*prefabDef);
 	}
-	else if (const GLTFPrefabDefinition* gltfPrefabDef = GetBlackboard().Find<GLTFPrefabDefinition>())
+	else if (const GLTFPrefabDefinition* prefabSourceDef = GetBlackboard().Find<GLTFPrefabDefinition>())
 	{
 		PrefabDefinition importedDef;
-		importer::InitPrefabDefinition(importedDef, *this, *gltfPrefabDef);
+
+		const lib::Path sourcePath = GetDirectoryPath() / prefabSourceDef->gltfSourcePath;
+		importer::ImportPrefabDefinition(GetOwningSystem(), sourcePath, OUT importedDef);
 		return CompileDefinition(importedDef);
 	}
 	else
@@ -202,7 +192,7 @@ Bool PrefabAsset::CompileDefinition(const PrefabDefinition& def)
 		.output       = compilationOutput
 	};
 
-	for (const PrefabEntityDefinition& entityDef : def.entities)
+	for (const PrefabEntityDefinitionEntry& entityDef : def.entities)
 	{
 		prefab_compiler_api::CompilePrefabEntity(compiler, entityDef);
 	}

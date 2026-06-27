@@ -27,9 +27,12 @@ struct PrefabSpawningContext
 };
 
 
-struct PrefabEntity
+using PrefabEntitySpawner = lib::RawCallable<void(const void* context, lib::Span<const Byte> /* compiledData */)>;
+
+
+struct PrefabEntityDefinition
 {
-	virtual ~PrefabEntity() = default;
+	virtual ~PrefabEntityDefinition() = default;
 
 	math::Vector3f location = math::Vector3f::Zero();
 	math::Vector3f rotation = math::Vector3f::Zero();
@@ -38,7 +41,8 @@ struct PrefabEntity
 	virtual lib::RuntimeTypeInfo    GetType() const = 0;
 	virtual lib::DynamicArray<Byte> Compile(PrefabCompiler& compiler) const = 0;
 
-	static void Spawn(const PrefabSpawningContext& context, lib::Span<const Byte> compiledData) {}
+	template<typename TEntityType>
+	static PrefabEntitySpawner RegisterSpawner() { return PrefabEntitySpawner{}; }
 
 	virtual void Serialize(srl::Serializer& serializer)
 	{
@@ -49,8 +53,7 @@ struct PrefabEntity
 };
 
 
-using PrefabEntityFactory = lib::RawCallable<lib::UniquePtr<PrefabEntity>()>;
-using PrefabEntitySpawner = lib::RawCallable<void(const PrefabSpawningContext& /* context */, lib::Span<const Byte> /* compiledData */)>;
+using PrefabEntityFactory = lib::RawCallable<lib::UniquePtr<PrefabEntityDefinition>()>;
 
 
 struct PrefabEntityTypeMetaData
@@ -71,8 +74,8 @@ struct PrefabEntityTypeRegistrator
 	{
 		const PrefabEntityTypeMetaData typeMetaData
 		{
-			.factory = []{ return lib::UniquePtr<PrefabEntity>{ new TInstanceType() }; },
-			.spawner = [](const PrefabSpawningContext& context, lib::Span<const Byte> compiledData) { TInstanceType::Spawn(context, compiledData); }
+			.factory = []{ return lib::UniquePtr<PrefabEntityDefinition>{ new TInstanceType() }; },
+			.spawner = TInstanceType::template RegisterSpawner<TInstanceType>()
 		};
 		RegisterPrefabType(lib::TypeInfo<TInstanceType>(), typeMetaData);
 	}

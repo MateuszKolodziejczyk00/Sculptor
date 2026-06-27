@@ -20,9 +20,9 @@ ResourcePathID PREFAB_ASSET_API CreateAssetDependency(PrefabCompiler& compiler, 
 } // prefab_compiler_api
 
 
-struct PrefabEntityDefinition
+struct PrefabEntityDefinitionEntry
 {
-	lib::UniquePtr<PrefabEntity> entity;
+	lib::UniquePtr<PrefabEntityDefinition> entity;
 
 	void Serialize(srl::Serializer& serializer)
 	{
@@ -52,7 +52,7 @@ struct PrefabEntityDefinition
 
 struct PrefabDefinition
 {
-	lib::DynamicArray<PrefabEntityDefinition> entities;
+	lib::DynamicArray<PrefabEntityDefinitionEntry> entities;
 
 	void Serialize(srl::Serializer& serializer)
 	{
@@ -116,15 +116,6 @@ struct CompiledPrefabEntityHeader
 };
 
 
-struct PrefabSpawnParams
-{
-	rsc::RenderScene& scene;
-	math::Vector3f location = math::Vector3f::Zero();
-	math::Vector3f rotation = math::Vector3f::Zero();
-	math::Vector3f scale    = math::Vector3f::Ones();
-};
-
-
 class PREFAB_ASSET_API PrefabAsset : public AssetInstance
 {
 	ASSET_TYPE_GENERATED_BODY(PrefabAsset, AssetInstance)
@@ -133,7 +124,7 @@ public:
 
 	using AssetInstance::AssetInstance;
 
-	void Spawn(const PrefabSpawnParams& params);
+	void Spawn(const void* context);
 
 protected:
 
@@ -146,7 +137,7 @@ private:
 
 	Bool CompileDefinition(const PrefabDefinition& def);
 
-	lib::DynamicArray<Byte> m_compiledBlob;
+	lib::DynamicArray<Byte>                     m_compiledBlob;
 	lib::Span<const CompiledPrefabEntityHeader> m_entities;
 	lib::Span<const Byte>                       m_entitiesData;
 
