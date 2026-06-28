@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EditorSandboxMacros.h"
+#include "PrefabAsset.h"
 #include "TerrainAsset.h"
 #include "RenderScene.h"
 #include "View/RenderView.h"
@@ -47,7 +48,8 @@ public:
 	rsc::RenderView& GetRenderView() const;
 
 	const lib::SharedPtr<rsc::RenderScene>& GetRenderScene();
-	const as::TerrainAssetHandle&            GetTerrainAsset() const;
+
+	as::TerrainAssetHandle GetTerrainAsset() const;
 
 	void	SetFov(Real32 fovDegrees);
 	Real32	GetFov();
@@ -124,8 +126,6 @@ private:
 	lib::SharedPtr<rg::capture::RGCaptureSourceContext> m_captureSourceContext;
 
 	Bool resetAccumulationRenderFrame = false;
-
-	as::TerrainAssetHandle m_terrainAsset;
 
 	math::Vector3f m_cameraDeltaLocation[2];
 	math::Vector2f m_cameraDeltaRotation[2];

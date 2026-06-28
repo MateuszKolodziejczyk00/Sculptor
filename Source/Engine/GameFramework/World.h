@@ -5,6 +5,7 @@
 #include "SculptorCoreTypes.h"
 #include "EngineFrame.h"
 #include "PlacementSystem/WorldPlacementSystem.h"
+#include "TerrainAsset.h"
 
 
 namespace spt::rsc
@@ -45,6 +46,9 @@ public:
 	void                  ProcessPlacements(rsc::SceneRendererHandle sceneRenderer);
 	rsc::PlacementCommand CreatePlacementCommand(engn::FrameContext& frame, math::Vector3f location);
 
+	void                   SetTerrain(as::TerrainAssetHandle terrainAsset);
+	as::TerrainAssetHandle GetTerrainAsset() const { return m_terrainAsset; }
+
 	struct WorldPrefabs&       prefabs;
 	struct WorldMeshes&        meshes;
 	struct WorldMaterialSlots& materials;
@@ -56,6 +60,8 @@ private:
 	lib::SharedPtr<rsc::RenderScene> m_renderScene;
 
 	WorldPlacementSystem m_placementSystem;
+
+	as::TerrainAssetHandle m_terrainAsset;
 };
 
 } // spt::gf

@@ -92,6 +92,11 @@ rsc::PlacementCommand World::CreatePlacementCommand(engn::FrameContext& frame, m
 	return m_placementSystem.CreatePlacementCommand(frame, location);
 }
 
+void World::SetTerrain(as::TerrainAssetHandle terrainAsset)
+{
+	m_terrainAsset = std::move(terrainAsset);
+}
+
 void World::UpdateRenderScene(engn::FrameContext& frame)
 {
 	SPT_PROFILER_FUNCTION();
@@ -212,6 +217,8 @@ void World::UpdateRenderScene(engn::FrameContext& frame)
 	materials.slots.Flush();
 
 	renderScene.PostFrameDataUpdate(frame);
+
+	renderScene.SetTerrainDefinition(m_terrainAsset.IsValid() ? m_terrainAsset->GetTerrainDefinition() : rsc::TerrainDefinition{});
 }
 
 } // spt::gf

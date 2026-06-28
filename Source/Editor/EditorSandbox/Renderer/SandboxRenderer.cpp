@@ -262,8 +262,6 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 	
 	UpdatePreRender(frame);
 
-	m_world->GetRenderScene()->SetTerrainDefinition(m_terrainAsset->GetTerrainDefinition());
-
 	m_world->GetRenderScene()->BeginFrame(frame);
 
 	PrepareRenderView(output->GetTexture()->GetResolution2D());
@@ -417,9 +415,9 @@ const lib::SharedPtr<rsc::RenderScene>& SandboxRenderer::GetRenderScene()
 	return m_world->GetRenderScene();
 }
 
-const as::TerrainAssetHandle& SandboxRenderer::GetTerrainAsset() const
+as::TerrainAssetHandle SandboxRenderer::GetTerrainAsset() const
 {
-	return m_terrainAsset;
+	return m_world->GetTerrainAsset();
 }
 
 void SandboxRenderer::SaveCameraConfig(Uint32 slot) const
@@ -523,8 +521,10 @@ void SandboxRenderer::InitializeRenderScene()
 
 	as::IESProfileAssetHandle iesProfiles[] = { iesProfile0, iesProfile1 };
 
-	m_terrainAsset = assetsSystem.LoadAssetChecked<as::TerrainAsset>(as::ResourcePath("Terrain/Terrain.sptasset"));
-	m_terrainAsset->AwaitInitialization();
+	as::TerrainAssetHandle terrain = assetsSystem.LoadAssetChecked<as::TerrainAsset>(as::ResourcePath("Terrain/Terrain.sptasset"));
+	terrain->AwaitInitialization();
+	m_world->SetTerrain(terrain);
+
 
 	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
 
