@@ -227,7 +227,8 @@ public:
 		m_hierarchyNodes[nodeIdx].isAnyDirty |= (1ull << pageIdxInNode);
 	}
 
-	void Flush()
+	template<typename TFunc>
+	void Flush(TFunc&& callback)
 	{
 		Uint64 rootMask = m_rootIsAnyPendingDelete.exchange(0ull);
 		while (rootMask != 0ull)
@@ -258,6 +259,8 @@ public:
 							const Uint64 instanceIdxInPage = math::Utils::LowestSetBitIdx(pageMask);
 							pageMask &= ~(1ull << instanceIdxInPage);
 
+							Handle handle{ .idx = static_cast<Uint32>((pageIdx * 64u) + instanceIdxInPage), .generation = page.generation[instanceIdxInPage] };
+							callback(handle, page.instances[instanceIdxInPage].Get());
 							page.instances[instanceIdxInPage].Destroy();
 						}
 					}
@@ -288,6 +291,11 @@ public:
 				node.isAnyPendingDelete = 0ull;
 			}
 		}
+	}
+
+	void Flush()
+	{
+		Flush([](Handle, TType&) {});
 	}
 
 	template<typename TFunc>

@@ -16,6 +16,19 @@ RenderScene::RenderScene()
 {
 }
 
+void RenderScene::PostFrameDataUpdate(const engn::FrameContext& frame)
+{
+	SPT_PROFILER_FUNCTION();
+
+	rt.instances.Flush();
+	materials.slots.Flush();
+	draws.draws.Flush();
+	lighting.pointLights.Flush();
+	lighting.spotLights.Flush();
+
+	m_instances.Flush();
+}
+
 void RenderScene::BeginFrame(const engn::FrameContext& frame)
 {
 	SPT_CHECK(!m_currentFrame);
@@ -63,6 +76,11 @@ RenderInstanceHandle RenderScene::CreateInstance(const RenderInstanceDef& def)
 	rdr::UploadDataToBuffer(m_renderEntitiesBuffer, idx * sizeof(RenderEntityGPUData), entityDataPtr, sizeof(RenderEntityGPUData));
 
 	return instanceHandle;
+}
+
+void RenderScene::DeleteInstance(RenderInstanceHandle instanceHandle)
+{
+	m_instances.Delete(instanceHandle);
 }
 
 const lib::SharedRef<rdr::Buffer>& RenderScene::GetRenderEntitiesBuffer() const

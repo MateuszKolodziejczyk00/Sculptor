@@ -4,6 +4,7 @@
 #include "PrefabInstance.h"
 #include "SculptorCoreTypes.h"
 #include "EngineFrame.h"
+#include "PlacementSystem/WorldPlacementSystem.h"
 
 
 namespace spt::rsc
@@ -35,19 +36,26 @@ public:
 	rsc::RenderScene&       GetRenderSceneRef()       { return *m_renderScene; }
 	const rsc::RenderScene& GetRenderSceneRef() const { return *m_renderScene; }
 
+	void BeginFrame(engn::FrameContext& frame);
+
+	PrefabInstanceHandle SpawnPrefab(const as::PrefabAssetHandle& prefab, const PrefabSpawnParams& params);
+	void                 DestroyPrefabInstance(PrefabInstanceHandle instanceHandle);
+
+	void                  SetBiome(const rsc::BiomeDefinition& biome, lib::DynamicArray<as::PrefabAssetHandle> placementAssets);
+	void                  ProcessPlacements(rsc::SceneRendererHandle sceneRenderer);
+	rsc::PlacementCommand CreatePlacementCommand(engn::FrameContext& frame, math::Vector3f location);
+
 	struct WorldPrefabs&       prefabs;
 	struct WorldMeshes&        meshes;
 	struct WorldMaterialSlots& materials;
-
-	PrefabInstanceHandle SpawnPrefab(const as::PrefabAssetHandle& prefab, const PrefabSpawnParams& params);
-
-	void BeginFrame(engn::FrameContext& frame);
 
 private:
 
 	void UpdateRenderScene(engn::FrameContext& frame);
 
 	lib::SharedPtr<rsc::RenderScene> m_renderScene;
+
+	WorldPlacementSystem m_placementSystem;
 };
 
 } // spt::gf

@@ -38,11 +38,14 @@ public:
 	void BeginFrame(const engn::FrameContext& frame);
 	void EndFrame();
 
+	void PostFrameDataUpdate(const engn::FrameContext& frame);
+
 	const engn::FrameContext& GetCurrentFrameRef() const;
 
 	// Instances ============================================================
 
 	RenderInstanceHandle CreateInstance(const RenderInstanceDef& def);
+	void                 DeleteInstance(RenderInstanceHandle instanceHandle);
 
 	// Terrain ==============================================================
 

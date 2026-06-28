@@ -39,6 +39,13 @@ bool SelectPrefab(in PlacementPrefabsCollection collection, inout RngState rngSt
 }
 
 
+uint GlobalCoordsToEntryIdx(in int2 globalCoords)
+{
+	const int2 modCoords = globalCoords % u_constants.resolution;
+	return modCoords.x + modCoords.y * u_constants.resolution;
+}
+
+
 [numthreads(8, 8, 1)]
 void ComputePlacementsCS(CS_INPUT input)
 {
@@ -49,6 +56,14 @@ void ComputePlacementsCS(CS_INPUT input)
 		return;
 	}
 
+	if (u_constants.lastCoordsValid)
+	{
+		if (all(globalCoords >= u_constants.lastBeginCoords) && all(globalCoords < u_constants.lastEndCoords))
+		{
+			return;
+		}
+	}
+
 	RngState rngState = RngState::Create(uint2(globalCoords), 0u);
 	const float2 location2d = (float2(globalCoords) + float2(rngState.Next(), rngState.Next())) * u_constants.placementSpacing;
 
@@ -57,15 +72,14 @@ void ComputePlacementsCS(CS_INPUT input)
 	const float height = terrain.GetHeight(location2d);
 
 	PlacedPrefabDef prefabDef;
-	if (SelectPrefab(u_constants.prefabsCollection, rngState, prefabDef))
-	{
-		GPUPlacementEntry entry;
-		entry.location  = float3(location2d, height);
-		entry.scale     = 3.f + rngState.Next() * 4.f;
-		entry.seed      = 0u;
-		entry.prefabIdx = prefabDef.prefabIdx;
+	bool isPrefabSelected = SelectPrefab(u_constants.prefabsCollection, rngState, prefabDef);
+	GPUPlacementEntry entry;
+	entry.location  = float3(location2d, height);
+	entry.scale     = 3.f + rngState.Next() * 4.f;
+	entry.seed      = 0u;
+	entry.prefabIdx = isPrefabSelected ? prefabDef.prefabIdx : IDX_NONE_32;
+	entry.entryIdx  = GlobalCoordsToEntryIdx(globalCoords);
 
-		const uint entryIdx = u_constants.rwEntriesNum.AtomicAdd(0u, 1u);
-		u_constants.rwEntries.Store(entryIdx, entry);
-	}
+	const uint entryIdx = u_constants.rwEntriesNum.AtomicAdd(0u, 1u);
+	u_constants.rwEntries.Store(entryIdx, entry);
 }

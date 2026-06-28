@@ -203,6 +203,8 @@ void ShadowMapRenderStage::RenderCSM(rg::RenderGraphBuilder& graphBuilder, Scene
 
 	HiZ::CreateHierarchicalZ(graphBuilder, shadowMapView, currentHiZ->GetTexture());
 
+	depth_only::FinishPipelineExecution(graphBuilder, depthOnlyExecutor);
+
 	std::swap(m_currentHiZ, m_historyHiZ);
 }
 

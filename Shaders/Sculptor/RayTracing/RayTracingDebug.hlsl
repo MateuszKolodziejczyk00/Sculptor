@@ -64,7 +64,7 @@ void RayTracingDebugRTG()
 
 	RayDesc rayDesc;
 	rayDesc.TMin      = 0.f;
-	rayDesc.TMax      = 1000.f;
+	rayDesc.TMax      = 10000.f;
 	rayDesc.Origin    = u_sceneView.viewLocation;
 	rayDesc.Direction = ComputeViewRayDirectionWS(u_sceneView, uv);
 

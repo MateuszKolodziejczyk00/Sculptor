@@ -14,6 +14,8 @@ function EditorSandbox:SetupConfiguration(configuration, platform)
 	self:AddPublicDependency("RenderSceneTools")
 
 	self:AddPublicDependency("Assets")
+
+	self:AddPublicDependency("GameFramework")
 end
 
 EditorSandbox:SetupProject()

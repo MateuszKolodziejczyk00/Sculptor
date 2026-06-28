@@ -11,6 +11,7 @@ BEGIN_SHADER_STRUCT(GPUPlacementEntry)
 	SHADER_STRUCT_FIELD(Real32,         scale)
 	SHADER_STRUCT_FIELD(Uint32,         seed)
 	SHADER_STRUCT_FIELD(Uint32,         prefabIdx)
+	SHADER_STRUCT_FIELD(Uint32,         entryIdx)
 END_SHADER_STRUCT();
 
 
@@ -21,6 +22,8 @@ struct PlacementExe
 
 	std::atomic<Bool> isFinished;
 	std::atomic<Bool> isProcessed;
+
+	Uint32 placementDefIdx = 0u;
 };
 
 
@@ -46,7 +49,11 @@ static void ProcessPlacementResults(PlacementProcessor processor, void* customDa
 		const lib::Span<const GPUPlacementEntry> entries(mappedEntries.Get(), entriesNum);
 		const lib::Span<const PlacementEntry> convertedEntries(reinterpret_cast<const PlacementEntry*>(entries.data()), entriesNum);
 
-		processor(customData, convertedEntries);
+		PlacementProcessData processData;
+		processData.placements      = convertedEntries;
+		processData.placementDefIdx = exe.placementDefIdx;
+
+		processor(customData, processData);
 	}
 
 	exe.isProcessed.store(true);
@@ -73,9 +80,13 @@ BEGIN_SHADER_STRUCT(PlacementConstants)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<GPUPlacementEntry>, rwEntries)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,            rwEntriesNum)
 	SHADER_STRUCT_FIELD(Real32,                                placementSpacing)
+	SHADER_STRUCT_FIELD(Uint32,                                resolution)
 	SHADER_STRUCT_FIELD(PlacementPrefabsCollection,            prefabsCollection)
 	SHADER_STRUCT_FIELD(math::Vector2i,                        beginCoords)
 	SHADER_STRUCT_FIELD(math::Vector2i,                        endCoords)
+	SHADER_STRUCT_FIELD(math::Vector2i,                        lastBeginCoords)
+	SHADER_STRUCT_FIELD(math::Vector2i,                        lastEndCoords)
+	SHADER_STRUCT_FIELD(Bool,                                  lastCoordsValid)
 END_SHADER_STRUCT();
 
 
@@ -100,9 +111,10 @@ void ComputePlacemenets(rg::RenderGraphBuilder& graphBuilder, const SceneRendere
 	SPT_CHECK(exe.isFinished.load());
 	SPT_CHECK(!!exe.entries);
 	SPT_CHECK(!!exe.entriesNum);
-	SPT_CHECK(!!placementCommand.definition);
+	SPT_CHECK(!!placementCommand.biome);
+	SPT_CHECK(placementCommand.placementDefIdx < placementCommand.biome->placementDefinitions.size());
 
-	const PlacementDefinition& placementDef = *placementCommand.definition;
+	const PlacementDefinition& placementDef = placementCommand.biome->placementDefinitions[placementCommand.placementDefIdx];
 
 	const rg::RGBufferViewHandle entries    = graphBuilder.AcquireExternalBufferView(exe.entries->GetFullView());
 	const rg::RGBufferViewHandle entriesNum = graphBuilder.AcquireExternalBufferView(exe.entriesNum->GetFullView());
@@ -116,9 +128,19 @@ void ComputePlacemenets(rg::RenderGraphBuilder& graphBuilder, const SceneRendere
 	shaderConstants.rwEntries         = entries;
 	shaderConstants.rwEntriesNum      = entriesNum;
 	shaderConstants.placementSpacing  = placementDef.placementSpacing;
+	shaderConstants.resolution        = placementDef.resolution;
 	shaderConstants.prefabsCollection = placementDef.prefabsCollection;
 	shaderConstants.beginCoords       = beginCoords;
 	shaderConstants.endCoords         = beginCoords + math::Vector2i::Constant(placementDef.resolution);
+
+	if (placementCommand.lastCenter)
+	{
+		const math::Vector2i lastBeginCoords = (placementCommand.lastCenter.value() / placementDef.placementSpacing).cast<Int32>() - halfResolution;
+
+		shaderConstants.lastBeginCoords  = lastBeginCoords;
+		shaderConstants.lastEndCoords    = lastBeginCoords + math::Vector2i::Constant(placementDef.resolution);
+		shaderConstants.lastCoordsValid  = true;
+	}
 
 	const Uint32 dispatchSize = math::Utils::DivideCeil(placementDef.resolution, 8u);
 
@@ -127,6 +149,8 @@ void ComputePlacemenets(rg::RenderGraphBuilder& graphBuilder, const SceneRendere
 						  math::Vector2u(dispatchSize, dispatchSize),
 						  rg::EmptyDescriptorSets(),
 						  shaderConstants);
+
+	exe.placementDefIdx = placementCommand.placementDefIdx;
 
 	exe.isFinished.store(false);
 	exe.isProcessed.store(false);
@@ -186,7 +210,7 @@ void PlacementSystemBacked::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder,
 	SPT_CHECK(exe.isProcessed.load());
 
 	const PlacementCommand& command = rendererInterface.rendererSettings.placementCommand;
-	if (command.definition)
+	if (command.biome)
 	{
 		render_impl::ComputePlacemenets(graphBuilder, rendererInterface, renderScene, command, exe);
 	}

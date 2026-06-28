@@ -17,10 +17,25 @@ World::World()
 	, materials(*(new WorldMaterialSlots()))
 	, m_renderScene(lib::MakeShared<rsc::RenderScene>())
 {
-
 }
 
-World::~World() = default;
+World::~World()
+{
+	delete &prefabs;
+	delete &meshes;
+	delete &materials;
+}
+
+void World::BeginFrame(engn::FrameContext& frame)
+{
+	js::Launch(SPT_GENERIC_JOB_NAME,
+			   [this, &frame]()
+			   {
+				   UpdateRenderScene(frame);
+			   },
+			   js::Prerequisites(frame.GetStageBeginEvent(engn::EFrameStage::TransferDataForRendering)),
+			   js::JobDef().ExecuteBefore(frame.GetStageBeginEvent(engn::EFrameStage::RenderingBegin)));
+}
 
 PrefabInstanceHandle World::SpawnPrefab(const as::PrefabAssetHandle& prefab, const PrefabSpawnParams& params)
 {
@@ -57,15 +72,24 @@ PrefabInstanceHandle World::SpawnPrefab(const as::PrefabAssetHandle& prefab, con
 	return instanceHandle;
 }
 
-void World::BeginFrame(engn::FrameContext& frame)
+void World::DestroyPrefabInstance(PrefabInstanceHandle instanceHandle)
 {
-	js::Launch(SPT_GENERIC_JOB_NAME,
-			   [this, &frame]()
-			   {
-				   UpdateRenderScene(frame);
-			   },
-			   js::Prerequisites(frame.GetStageBeginEvent(engn::EFrameStage::TransferDataForRendering)),
-			   js::JobDef().ExecuteBefore(frame.GetStageBeginEvent(engn::EFrameStage::RenderingBegin)));
+	prefabs.instances.Delete(instanceHandle);
+}
+
+void World::SetBiome(const rsc::BiomeDefinition& biome, lib::DynamicArray<as::PrefabAssetHandle> placementAssets)
+{
+	m_placementSystem.SetBiome(biome, std::move(placementAssets));
+}
+
+void World::ProcessPlacements(rsc::SceneRendererHandle sceneRenderer)
+{
+	m_placementSystem.ProcessPlacements(*this, sceneRenderer);
+}
+
+rsc::PlacementCommand World::CreatePlacementCommand(engn::FrameContext& frame, math::Vector3f location)
+{
+	return m_placementSystem.CreatePlacementCommand(frame, location);
 }
 
 void World::UpdateRenderScene(engn::FrameContext& frame)
@@ -136,7 +160,58 @@ void World::UpdateRenderScene(engn::FrameContext& frame)
 		}
 	};
 
+	const auto preDeleteInstance = [this, &renderScene](PrefabInstanceHandle instanceHandle, PrefabInstance& instance)
+	{
+		MeshesChunkHandle currentChunk = instance.meshesChunk;
+
+		while (currentChunk.IsValid())
+		{
+			MeshesChunk& chunk = meshes.chunks.GetRef(currentChunk);
+			for (MeshEntity& mesh : chunk.meshes)
+			{
+				SPT_PROFILER_SCOPE("Delete Render Mesh");
+
+				if (mesh.def.materialSlots.IsValid())
+				{
+					materials.DestroyMaterialSlotsChain(mesh.def.materialSlots);
+				}
+
+				if (mesh.render.draw.IsValid())
+				{
+					renderScene.draws.draws.Delete(mesh.render.draw);
+				}
+
+				if (mesh.render.rtInstance.IsValid())
+				{
+					renderScene.rt.instances.Delete(mesh.render.rtInstance);
+				}
+
+				if (mesh.render.instance.IsValid())
+				{
+					renderScene.DeleteInstance(mesh.render.instance);
+				}
+
+				if (mesh.render.renderMaterialSlots.IsValid())
+				{
+					renderScene.materials.DestroyMaterialSlotsChain(mesh.render.renderMaterialSlots);
+				}
+			}
+
+			MeshesChunkHandle prevChunk = currentChunk;
+			currentChunk = chunk.next;
+
+			meshes.chunks.Delete(prevChunk);
+		}
+	};
+
+	prefabs.instances.Flush(preDeleteInstance);
+
 	meshes.chunks.ForEachDirty(updateRenderMesh);
+
+	meshes.chunks.Flush();
+	materials.slots.Flush();
+
+	renderScene.PostFrameDataUpdate(frame);
 }
 
 } // spt::gf

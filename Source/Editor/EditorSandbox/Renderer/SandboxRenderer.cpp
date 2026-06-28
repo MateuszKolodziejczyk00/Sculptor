@@ -190,6 +190,8 @@ void SandboxRenderer::Update(engn::FrameContext& frame)
 			}
 		}
 	}
+
+	m_world->ProcessPlacements(m_sceneRenderer);
 }
 
 void SandboxRenderer::UpdatePreRender(engn::FrameContext& frame)
@@ -321,6 +323,8 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 			rendererSettings.editorRendering.terrain.paintedMaterialMap = graphBuilder.AcquireExternalTextureView(editorFrameContext.terrainEditorState->paintedMaterialMap);
 		}
 	}
+	
+	rendererSettings.placementCommand = m_world->CreatePlacementCommand(frame, m_renderView->GetLocation());
 
 	resetAccumulation = false;
 

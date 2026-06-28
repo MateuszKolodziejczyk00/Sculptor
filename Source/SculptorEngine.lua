@@ -79,6 +79,9 @@ IncludeProjectFromDirectory("Assets/MeshAssetTests",       "MeshAssetTests")
 IncludeProjectFromDirectory("Assets/PrefabAsset",          "PrefabAsset")
 IncludeProjectFromDirectory("Assets/Assets",               "Assets")
 
+SetProjectsSubgroupName("Engine")
+IncludeProject("GameFramework")
+
 SetProjectsSubgroupName("Tools")
 IncludeProject("Profiler")
 IncludeProject("RenderGraphCapturer")

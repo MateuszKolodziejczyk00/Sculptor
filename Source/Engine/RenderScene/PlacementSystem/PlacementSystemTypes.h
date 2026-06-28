@@ -12,10 +12,18 @@ struct PlacementEntry
 	Real32         scale;
 	Uint32         seed;
 	Uint32         prefabIdx;
+	Uint32         entryIdx;
 };
 
 
-using PlacementProcessor = lib::RawCallable<void(void* customData, lib::Span<const PlacementEntry>)>;
+struct PlacementProcessData
+{
+	lib::Span<const PlacementEntry> placements;
+	Uint32 placementDefIdx = 0u;
+};
+
+
+using PlacementProcessor = lib::RawCallable<void(void* customData, const PlacementProcessData& data)>;
 
 
 BEGIN_SHADER_STRUCT(PlacedPrefabDef)
@@ -39,16 +47,19 @@ struct PlacementDefinition
 };
 
 
-struct PlacementCommand
-{
-	PlacementDefinition* definition = nullptr;
-	math::Vector2f       center = math::Vector2f(0.f, 0.f);
-};
-
-
 struct BiomeDefinition
 {
 	lib::DynamicArray<PlacementDefinition> placementDefinitions;
+};
+
+
+struct PlacementCommand
+{
+	BiomeDefinition*     biome = nullptr;
+	Uint32               placementDefIdx = 0u;
+
+	math::Vector2f                center = math::Vector2f(0.f, 0.f);
+	std::optional<math::Vector2f> lastCenter;
 };
 
 } // spt::rsc
