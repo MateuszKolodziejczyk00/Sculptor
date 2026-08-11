@@ -59,11 +59,6 @@ struct IntersectionResult
 		return t;
 	}
 
-	operator bool()
-	{
-		return IsValid();
-	}
-
 	bool IsCloserThan(in IntersectionResult other)
 	{
 		if(other.IsValid())

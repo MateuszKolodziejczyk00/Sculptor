@@ -8,6 +8,7 @@ namespace spt::ed
 {
 
 struct TerrainEditorFrameState;
+struct CloudscapeEditorFrameState;
 
 
 class EDITOR_COMMON_API EditorFrameContext : public engn::FrameContext
@@ -23,6 +24,9 @@ public:
 
 	TerrainEditorFrameState*                         terrainEditorState = nullptr;
 	lib::RawCallable<void(TerrainEditorFrameState*)> terrainEditorStateDeleter;
+
+	CloudscapeEditorFrameState*                         cloudscapeEditorState = nullptr;
+	lib::RawCallable<void(CloudscapeEditorFrameState*)> cloudscapeEditorStateDeleter;
 
 protected:
 

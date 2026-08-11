@@ -6,6 +6,7 @@
 #include "EngineFrame.h"
 #include "PlacementSystem/WorldPlacementSystem.h"
 #include "TerrainAsset.h"
+#include "CloudscapeAsset.h"
 
 
 namespace spt::rsc
@@ -46,8 +47,11 @@ public:
 	void                  ProcessPlacements(rsc::SceneRendererHandle sceneRenderer);
 	rsc::PlacementCommand CreatePlacementCommand(engn::FrameContext& frame, math::Vector3f location);
 
-	void                   SetTerrain(as::TerrainAssetHandle terrainAsset);
-	as::TerrainAssetHandle GetTerrainAsset() const { return m_terrainAsset; }
+	void                          SetTerrain(as::TerrainAssetHandle terrainAsset);
+	const as::TerrainAssetHandle& GetTerrainAsset() const { return m_terrainAsset; }
+
+	void                             SetCloudscape(as::CloudscapeAssetHandle cloudscapeAsset);
+	const as::CloudscapeAssetHandle& GetCloudscapeAsset() const { return m_cloudscapeAsset; }
 
 	struct WorldPrefabs&       prefabs;
 	struct WorldMeshes&        meshes;
@@ -61,7 +65,8 @@ private:
 
 	WorldPlacementSystem m_placementSystem;
 
-	as::TerrainAssetHandle m_terrainAsset;
+	as::TerrainAssetHandle    m_terrainAsset;
+	as::CloudscapeAssetHandle m_cloudscapeAsset;
 };
 
 } // spt::gf

@@ -218,6 +218,8 @@ struct ShadingViewContext
 
 	rg::RGTextureViewHandle aerialPerspective;
 
+	rg::RGTextureViewHandle cirrusClouds;
+
 	rg::RGTextureViewHandle volumetricClouds;
 	rg::RGTextureViewHandle volumetricCloudsDepth;
 

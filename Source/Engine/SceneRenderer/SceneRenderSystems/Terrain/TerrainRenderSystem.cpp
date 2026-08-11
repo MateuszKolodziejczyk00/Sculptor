@@ -37,7 +37,7 @@ SPT_REGISTER_SCENE_RENDER_SYSTEM(TerrainRenderSystem);
 
 namespace renderer_params
 {
-RendererBoolParameter enableTerrain("Enable Terrain", { "Terrain" }, false);
+RendererBoolParameter enableTerrain("Enable Terrain", { "Terrain" }, true);
 RendererBoolParameter enableGrass("Enable Grass", { "Terrain" }, true);
 RendererBoolParameter enableTerrainPOM("Enable Terrain POM", { "Terrain" }, false);
 } // renderer_params
@@ -1401,7 +1401,7 @@ void TerrainRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, c
 	{
 		mainView->GetRenderViewEntry(ERenderViewEntry::DebugRenderAndEditor).AddLambda([](rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const ViewRenderingSpec& view, const RenderViewEntryContext& context)
 		{
-			editor::RenderInfluenceGizmo(graphBuilder, rendererInterface, renderScene, view, context.Get<RenderViewEntryDelegates::DebugRenderAndEditorData>(), rendererInterface.rendererSettings.editorRendering);
+			editor::RenderTerrainInfluenceGizmo(graphBuilder, rendererInterface, renderScene, view, context.Get<RenderViewEntryDelegates::DebugRenderAndEditorData>(), rendererInterface.rendererSettings.editorRendering);
 		});
 	}
 
@@ -1409,7 +1409,7 @@ void TerrainRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, c
 	{
 		mainView->GetRenderViewEntry(ERenderViewEntry::DebugRenderAndEditor).AddLambda([](rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const ViewRenderingSpec& view, const RenderViewEntryContext& context)
 		{
-			editor::ExecuteMaterialPaintCommand(graphBuilder, rendererInterface, renderScene, view, rendererInterface.rendererSettings.editorRendering);
+			editor::ExecuteTerrainMaterialPaintCommand(graphBuilder, rendererInterface, renderScene, view, rendererInterface.rendererSettings.editorRendering);
 		});
 	}
 }

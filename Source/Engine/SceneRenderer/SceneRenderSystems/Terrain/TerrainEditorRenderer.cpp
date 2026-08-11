@@ -18,7 +18,7 @@ END_SHADER_STRUCT()
 SIMPLE_COMPUTE_PSO(TerrainInfluenceGizmoPSO, "Sculptor/Terrain/TerrainInfluenceGizmo.hlsl", TerrainInfluenceGizmoCS)
 
 
-void RenderInfluenceGizmo(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const ViewRenderingSpec& view, const RenderViewEntryDelegates::DebugRenderAndEditorData& params, const EditorRendering& edParams)
+void RenderTerrainInfluenceGizmo(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const ViewRenderingSpec& view, const RenderViewEntryDelegates::DebugRenderAndEditorData& params, const EditorRendering& edParams)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -52,7 +52,7 @@ END_SHADER_STRUCT()
 SIMPLE_COMPUTE_PSO(TerrainMaterialPaintCommandPSO, "Sculptor/Terrain/TerrainMaterialPaintCommand.hlsl", TerrainMaterialPaintCommandCS)
 
 
-void ExecuteMaterialPaintCommand(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const ViewRenderingSpec& view, const EditorRendering& edParams)
+void ExecuteTerrainMaterialPaintCommand(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const ViewRenderingSpec& view, const EditorRendering& edParams)
 {
 	SPT_PROFILER_FUNCTION();
 

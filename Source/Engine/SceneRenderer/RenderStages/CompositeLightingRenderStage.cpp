@@ -56,6 +56,7 @@ DS_BEGIN(CompositeAtmosphereDS, rg::RGDescriptorSetState<CompositeAtmosphereDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),              u_skyViewLUT)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),              u_aerialPerspective)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),      u_volumetricClouds)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),      u_cirrusClouds)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),              u_volumetricCloudsDepth)
 DS_END();
 
@@ -176,6 +177,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 			permutation.VOLUMETRIC_CLOUDS_ENABLED = true;
 
 			compositeAtmosphereDS->u_volumetricClouds      = viewContext.volumetricClouds;
+			compositeAtmosphereDS->u_cirrusClouds          = viewContext.cirrusClouds;
 			compositeAtmosphereDS->u_volumetricCloudsDepth = viewContext.volumetricCloudsDepth;
 		}
 	}

@@ -336,4 +336,10 @@ float3x3 Diag(float3 v)
 	);
 }
 
+
+float4 BlendOver(float4 src, float4 dst)
+{
+	return float4(src.rgb * src.a + dst.rgb * (1.f - src.a), (1.f - (1.f - src.a) * (1.f - dst.a)));
+}
+
 #endif // SCULPTOR_SHADER_HLSLI

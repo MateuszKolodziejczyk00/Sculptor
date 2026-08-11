@@ -106,7 +106,6 @@ CloudsNoiseData ComputeBaseShapeNoiseTextureWorley()
 
 CloudsNoiseData ComputeDetailShapeNoiseTextureWorley()
 {
-
 	SPT_PROFILER_FUNCTION();
 
 	const math::Vector3u resolution(32u, 32u, 32u);
@@ -156,6 +155,127 @@ CloudsNoiseData ComputeDetailShapeNoiseTextureWorley()
 													   const Byte noiseValueUint8 = static_cast<Byte>(noiseValue * 255.0f);
 
 													   data[z * depthStride + rowStride * y + x] = noiseValueUint8;
+												   }
+											   });
+							 }
+						 }
+					 });
+
+	return CloudsNoiseData
+	{
+		.resolution = resolution,
+		.format     = format,
+		.linearData = std::move(data)
+	};
+}
+
+CloudsNoiseData Compute2DPerlinWorley()
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector3u resolution(256u, 256u, 1u);
+	const rhi::EFragmentFormat format = rhi::EFragmentFormat::R8_UN_Float;
+
+	rhi::TextureDefinition textureDef;
+	textureDef.resolution = resolution;
+	textureDef.format     = format;
+
+	lib::DynamicArray<Byte> data(resolution.x() * resolution.y() * resolution.z());
+
+	js::LaunchInline(SPT_GENERIC_JOB_NAME,
+					 [&data, resolution]()
+					 {
+						const Uint32 rowStride   = resolution.x() * sizeof(Uint8);
+
+						 for (Uint32 z = 0u; z < resolution.z(); ++z)
+						 {
+							 for (Uint32 y = 0u; y < resolution.y(); ++y)
+							 {
+								 js::AddNested(SPT_GENERIC_JOB_NAME,
+											   [&data, z, y, resolution, rowStride]()
+											   {
+												   for (Uint32 x = 0u; x < resolution.x(); ++x)
+												   {
+													   const math::Vector3f coords = (math::Vector3u(x, y, z).cast<Real32>() + math::Vector3f::Constant(0.5f)).cwiseQuotient(resolution.cast<Real32>());
+
+													   const Int32 octaveNum = 3;
+													   const Real32 frequency = 8.f;
+													   const Real32 perlinNoise = lib::noise::GenerateTileablePerlineNoise3D(coords, frequency, octaveNum);
+
+													   Real32 perlinWorleyNoise = 0.f;
+													   {
+														   const Real32 worleyCellCount     = 4.f;
+														   constexpr Uint32 worleyOctaveNum = 3u;
+
+														   const Real32 worleyFrequencies[worleyOctaveNum] = { 2.f, 8.f, 14.f };
+
+														   Real32 worleyOctaves[worleyOctaveNum] = {};
+														   for (Uint32 i = 0u; i < worleyOctaveNum; ++i)
+														   {
+															   const Real32 worleyFrequency = worleyFrequencies[i];
+
+															   worleyOctaves[i] = (1.f - lib::noise::GenerateTileableWorleyNoise3D(coords, worleyCellCount * worleyFrequency));
+														   }
+
+														   const Real32 worleyFBM = worleyOctaves[0] * 0.625f + worleyOctaves[1] * 0.25f + worleyOctaves[2] * 0.125f;
+
+														   perlinWorleyNoise = math::Utils::Remap(perlinNoise, 1.f - worleyFBM, 1.f, 0.f, 1.f);
+														   perlinWorleyNoise = std::clamp(perlinWorleyNoise, 0.f, 1.f);
+													   }
+
+													   const Byte noiseValueUint8 = static_cast<Byte>(perlinWorleyNoise * 255.0f);
+
+													   data[rowStride * y + x] = noiseValueUint8;
+												   }
+											   });
+							 }
+						 }
+					 });
+
+	return CloudsNoiseData
+	{
+		.resolution = resolution,
+		.format     = format,
+		.linearData = std::move(data)
+	};
+}
+
+CloudsNoiseData Compute2DPerlin()
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector3u resolution(256u, 256u, 1u);
+	const rhi::EFragmentFormat format = rhi::EFragmentFormat::R8_UN_Float;
+
+	rhi::TextureDefinition textureDef;
+	textureDef.resolution = resolution;
+	textureDef.format     = format;
+
+	lib::DynamicArray<Byte> data(resolution.x() * resolution.y() * resolution.z());
+
+	js::LaunchInline(SPT_GENERIC_JOB_NAME,
+					 [&data, resolution]()
+					 {
+						const Uint32 rowStride   = resolution.x() * sizeof(Uint8);
+
+						 for (Uint32 z = 0u; z < resolution.z(); ++z)
+						 {
+							 for (Uint32 y = 0u; y < resolution.y(); ++y)
+							 {
+								 js::AddNested(SPT_GENERIC_JOB_NAME,
+											   [&data, z, y, resolution, rowStride]()
+											   {
+												   for (Uint32 x = 0u; x < resolution.x(); ++x)
+												   {
+													   const math::Vector3f coords = (math::Vector3u(x, y, z).cast<Real32>() + math::Vector3f::Constant(0.5f)).cwiseQuotient(resolution.cast<Real32>());
+
+													   const Int32 octaveNum = 3;
+													   const Real32 frequency = 8.f;
+													   const Real32 perlinNoise = lib::noise::GenerateTileablePerlineNoise3D(coords, frequency, octaveNum);
+
+													   const Byte noiseValueUint8 = static_cast<Byte>(perlinNoise * 255.0f);
+
+													   data[rowStride * y + x] = noiseValueUint8;
 												   }
 											   });
 							 }

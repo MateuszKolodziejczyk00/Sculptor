@@ -26,6 +26,14 @@ struct PagedGenerationalPoolHandle
 };
 
 
+struct PoolStatistcs
+{
+	Uint32 numInstances      = 0u;
+	Uint32 numPendingDeletes = 0u;
+	Uint32 numFreeInstances  = 0u;
+};
+
+
 template<typename TType>
 class PagedGenerationalPool
 {
@@ -69,6 +77,11 @@ public:
 	Uint32 GetNum() const
 	{
 		return m_numOccupied.load();
+	}
+
+	Uint64 GetNumPages() const
+	{
+		return m_numPages.load();
 	}
 
 	template<typename... TArgs>
@@ -162,11 +175,64 @@ public:
 		}
 	}
 
+	void VerifyPoolState()
+	{
+#if DO_CHECKS
+		Uint32 instancesCounter = 0u;
+
+		for (Uint64 pageIdx = 0; pageIdx < m_numPages; ++pageIdx)
+		{
+			const Page& page = m_pages[pageIdx];
+
+			const Uint64 nodeIdx = pageIdx / 64u;
+
+			const HierarchyNode& node = m_hierarchyNodes[nodeIdx];
+			const Uint64 pageIdxInNode = pageIdx % 64u;
+
+			const Bool rootIsAnyOccupied      = (m_rootIsAnyOccupied.load() & (1ull << nodeIdx)) != 0ull;
+			const Bool rootIsAnyFree          = (m_rootIsAnyFree.load() & (1ull << nodeIdx)) != 0ull;
+			const Bool rootIsAnyDirty         = (m_rootIsAnyDirty.load() & (1ull << nodeIdx)) != 0ull;
+			const Bool rootIsAnyPendingDelete = (m_rootIsAnyPendingDelete.load() & (1ull << nodeIdx)) != 0ull;
+
+			const Bool nodeIsAnyOccupied      = (node.isAnyOccupied != 0ull);
+			const Bool nodeIsAnyFree          = (node.isAnyFree != 0ull);
+			const Bool nodeIsAnyDirty         = (node.isAnyDirty != 0ull);
+			const Bool nodeIsAnyPendingDelete = (node.isAnyPendingDelete != 0ull);
+
+			// If node has any occupied/free/dirty/pending delete pages, then root must have it too.
+			SPT_CHECK(!nodeIsAnyOccupied || rootIsAnyOccupied);
+			SPT_CHECK(!nodeIsAnyFree || rootIsAnyFree);
+			SPT_CHECK(!nodeIsAnyDirty || rootIsAnyDirty);
+			SPT_CHECK(!nodeIsAnyPendingDelete || rootIsAnyPendingDelete);
+
+			const Bool pageIsAnyOccupied      = (node.isAnyOccupied & (1ull << pageIdxInNode)) != 0ull;
+			const Bool pageIsAnyFree          = (node.isAnyFree & (1ull << pageIdxInNode)) != 0ull;
+			const Bool pageIsAnyDirty         = (node.isAnyDirty & (1ull << pageIdxInNode)) != 0ull;
+			const Bool pageIsAnyPendingDelete = (node.isAnyPendingDelete & (1ull << pageIdxInNode)) != 0ull;
+
+			const Uint64 pageIsOccupied      = page.isOccpuedied.load();
+			const Uint64 pageIsPendingDelete = page.isPendingDelete.load();
+			const Uint64 pageIsDirty         = page.isDirty.load();
+			const Uint64 pageIsFree          = ~pageIsOccupied;
+
+			SPT_CHECK(pageIsAnyOccupied == (pageIsOccupied != 0ull));
+			SPT_CHECK(pageIsAnyFree == (pageIsFree != 0ull));
+			SPT_CHECK(pageIsAnyDirty == (pageIsDirty != 0ull));
+			SPT_CHECK(pageIsAnyPendingDelete == (pageIsPendingDelete != 0ull));
+
+			instancesCounter += static_cast<Uint32>(math::Utils::CountSetBits(pageIsOccupied));
+		}
+
+		SPT_CHECK(instancesCounter == GetNum());
+#endif
+	}
+
 	Bool Delete(Handle handle)
 	{
 		const Uint32 pageIdx = handle.idx / 64u;
 		if (pageIdx >= m_numPages)
 		{
+			SPT_CHECK_NO_ENTRY();
 			return false;
 		}
 
@@ -252,40 +318,44 @@ public:
 
 					const Uint64 pagePendingDeletes = page.isPendingDelete.fetch_and(0ull);
 
+					if (pagePendingDeletes != 0ull)
 					{
-						Uint64 pageMask = pagePendingDeletes;
-						while (pageMask != 0ull)
 						{
-							const Uint64 instanceIdxInPage = math::Utils::LowestSetBitIdx(pageMask);
-							pageMask &= ~(1ull << instanceIdxInPage);
+							Uint64 pageMask = pagePendingDeletes;
+							while (pageMask != 0ull)
+							{
+								const Uint64 instanceIdxInPage = math::Utils::LowestSetBitIdx(pageMask);
+								pageMask &= ~(1ull << instanceIdxInPage);
 
-							Handle handle{ .idx = static_cast<Uint32>((pageIdx * 64u) + instanceIdxInPage), .generation = page.generation[instanceIdxInPage] };
-							callback(handle, page.instances[instanceIdxInPage].Get());
-							page.instances[instanceIdxInPage].Destroy();
+								Handle handle{ .idx = static_cast<Uint32>((pageIdx * 64u) + instanceIdxInPage), .generation = page.generation[instanceIdxInPage] };
+								callback(handle, page.instances[instanceIdxInPage].Get());
+								page.instances[instanceIdxInPage].Destroy();
+							}
 						}
-					}
 
-					const Uint64 prevPageIsOccupied = page.isOccpuedied.fetch_and(~pagePendingDeletes);
-					const Uint64 newPageIsOccupied = prevPageIsOccupied & ~pagePendingDeletes;
+						const Uint64 prevPageIsOccupied = page.isOccpuedied.fetch_and(~pagePendingDeletes);
+						const Uint64 newPageIsOccupied = prevPageIsOccupied & ~pagePendingDeletes;
 
-					const Bool pageHasAnyOccupied = (newPageIsOccupied != 0ull);
+						const Bool pageHasAnyOccupied = (newPageIsOccupied != 0ull);
 
-					if (!pageHasAnyOccupied)
-					{
-						node.isAnyOccupied &= ~(1ull << pageIdxInNode);
-
-						if (node.isAnyOccupied == 0ull)
+						if (!pageHasAnyOccupied)
 						{
-							m_rootIsAnyOccupied.fetch_and(~(1ull << nodeIdx));
-						}
-					}
-					else if (prevPageIsOccupied == ~0ull)
-					{
-						node.isAnyFree |= (1ull << pageIdxInNode);
-						m_rootIsAnyFree.fetch_or(1ull << nodeIdx);
-					}
+							node.isAnyOccupied &= ~(1ull << pageIdxInNode);
 
-					page.isPendingDelete.fetch_and(0ull);
+							if (node.isAnyOccupied == 0ull)
+							{
+								m_rootIsAnyOccupied.fetch_and(~(1ull << nodeIdx));
+							}
+						}
+
+						if (prevPageIsOccupied == ~0ull)
+						{
+							node.isAnyFree |= (1ull << pageIdxInNode);
+							m_rootIsAnyFree.fetch_or(1ull << nodeIdx);
+						}
+
+						page.isPendingDelete.fetch_and(0ull);
+					}
 				}
 
 				node.isAnyPendingDelete = 0ull;

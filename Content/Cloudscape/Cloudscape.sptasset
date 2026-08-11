@@ -1,0 +1,11 @@
+{
+    "Blackboard": {
+        "BlackboardContent": [
+            "spt::as::CloudscapeAssetDefinition"
+        ],
+        "spt::as::CloudscapeAssetDefinition": {
+            "WeatherMapTex": "Source/WeatherMap.dds"
+        }
+    },
+    "Type": "pt::as::CloudscapeAsset"
+}

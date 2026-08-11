@@ -49,7 +49,8 @@ public:
 
 	const lib::SharedPtr<rsc::RenderScene>& GetRenderScene();
 
-	as::TerrainAssetHandle GetTerrainAsset() const;
+	as::TerrainAssetHandle    GetTerrainAsset() const;
+	as::CloudscapeAssetHandle GetCloudscapeAsset() const;
 
 	void	SetFov(Real32 fovDegrees);
 	Real32	GetFov();

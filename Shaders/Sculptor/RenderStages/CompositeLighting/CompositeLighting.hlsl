@@ -144,6 +144,19 @@ IntegratedVolumetricFog SampleInegratedVolumetricFog(in float2 uv, in float line
 #endif // VOLUMETRIC_FOG_ENABLED
 
 #if VOLUMETRIC_CLOUDS_ENABLED
+float3 CompositeCirrusClouds(in uint2 coords, in float3 background)
+{
+	float4 cirrusClouds = u_cirrusClouds.Load(uint3(coords, 0u));
+	cirrusClouds.rgb = ExposedLuminanceToLuminance(cirrusClouds.rgb);
+
+	if(cirrusClouds.a == 1.f || any(isnan(cirrusClouds))) // NaNs here can be caused by upsampling using samples that were rejected due to occlusion. In practice this shoould be fixed in upsampling code
+	{
+		return background;
+	}
+
+	return cirrusClouds.rgb + background * cirrusClouds.a;
+}
+
 float3 CompositeVolumetricClouds(in uint2 coords, in float2 uv, in float2 pixelSize, in float3 background, in float backgroundLinearDepth, in float3 backgroundInScattering)
 {
 	const float cloudsLinearDepth = u_volumetricCloudsDepth.Load(uint3(coords, 0u));
@@ -326,6 +339,13 @@ void CompositeLightingCS(CS_INPUT input)
 	luminance += reflections.diffuse;
 	luminance += reflections.specular;
 #endif // RT_REFLECTIONS_ENABLED
+	   //
+#if VOLUMETRIC_CLOUDS_ENABLED
+	if (depth == 0.f)
+	{
+	luminance = CompositeCirrusClouds(pixel, luminance);
+	}
+#endif // VOLUMETRIC_CLOUDS_ENABLED
 
 	IntegratedAerialPerspective ap;
 	ap.inScattering  = float3(0.f, 0.f, 0.f);

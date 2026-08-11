@@ -1,4 +1,5 @@
 #include "Renderer/SandboxRenderer.h"
+#include "CloudscapeEditorTypes.h"
 #include "EditorFrame.h"
 #include "TerrainAsset.h"
 #include "TerrainEditorTypes.h"
@@ -309,16 +310,31 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 
 	if (editorFrameContext.terrainEditorState)
 	{
-		rendererSettings.editorRendering.terrain.influenceGizmo       = editorFrameContext.terrainEditorState->activeGizmo;
+		rendererSettings.editorRendering.terrain.influenceGizmo = editorFrameContext.terrainEditorState->activeTerrainGizmo;
 
 		if (m_isViewportFocused)
 		{
-			rendererSettings.editorRendering.terrain.materialPaintCommand = editorFrameContext.terrainEditorState->materialPaintCommand;
+			rendererSettings.editorRendering.terrain.materialPaintCommand = editorFrameContext.terrainEditorState->materialTerrainPaintCommand;
 		}
 
 		if (editorFrameContext.terrainEditorState->paintedMaterialMap)
 		{
 			rendererSettings.editorRendering.terrain.paintedMaterialMap = graphBuilder.AcquireExternalTextureView(editorFrameContext.terrainEditorState->paintedMaterialMap);
+		}
+	}
+
+	if (editorFrameContext.cloudscapeEditorState)
+	{
+		rendererSettings.editorRendering.cloudscape.influenceGizmo = editorFrameContext.cloudscapeEditorState->activeCloudscapeGizmo;
+
+		if (m_isViewportFocused)
+		{
+			rendererSettings.editorRendering.cloudscape.weatherMapPaintCommand = editorFrameContext.cloudscapeEditorState->weatherMapPaintCommand;
+		}
+
+		if (editorFrameContext.cloudscapeEditorState->paintedWeatherMap)
+		{
+			rendererSettings.editorRendering.cloudscape.paintedWeatherMap = graphBuilder.AcquireExternalTextureView(editorFrameContext.cloudscapeEditorState->paintedWeatherMap);
 		}
 	}
 	
@@ -420,6 +436,11 @@ as::TerrainAssetHandle SandboxRenderer::GetTerrainAsset() const
 	return m_world->GetTerrainAsset();
 }
 
+as::CloudscapeAssetHandle SandboxRenderer::GetCloudscapeAsset() const
+{
+	return m_world->GetCloudscapeAsset();
+}
+
 void SandboxRenderer::SaveCameraConfig(Uint32 slot) const
 {
 	const math::Quaternionf rotation = m_renderView->GetRotation();
@@ -519,12 +540,18 @@ void SandboxRenderer::InitializeRenderScene()
 
 	as::PrefabAssetHandle sponzaPrefab = assetsSystem.LoadAssetChecked<as::PrefabAsset>(as::ResourcePath("Sponza/Sponza.sptasset"));
 
+	SPT_CHECK(sponzaPrefab.IsValid());
+
 	as::IESProfileAssetHandle iesProfiles[] = { iesProfile0, iesProfile1 };
 
 	as::TerrainAssetHandle terrain = assetsSystem.LoadAssetChecked<as::TerrainAsset>(as::ResourcePath("Terrain/Terrain.sptasset"));
-	terrain->AwaitInitialization();
-	m_world->SetTerrain(terrain);
+	as::CloudscapeAssetHandle cloudscape = assetsSystem.LoadAssetChecked<as::CloudscapeAsset>(as::ResourcePath("Cloudscape/Cloudscape.sptasset"));
 
+	terrain->AwaitInitialization();
+	cloudscape->AwaitInitialization();
+
+	m_world->SetTerrain(terrain);
+	m_world->SetCloudscape(cloudscape);
 
 	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
 
@@ -574,7 +601,8 @@ void SandboxRenderer::InitializeRenderScene()
 		pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
 		pointLightData.luminousPower = 3200.f;
 		pointLightData.location = math::Vector3f(8.30f, -3.8f, 1.55f);
-		pointLightData.radius = 5.f;
+		//pointLightData.radius = 5.f;
+		pointLightData.radius = 0.0001f;
 		pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
 		m_world->GetRenderScene()->lighting.pointLights.Add(pointLightData);
 	}
@@ -583,9 +611,11 @@ void SandboxRenderer::InitializeRenderScene()
 		rsc::PointLightData pointLightData;
 		pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
 		pointLightData.luminousPower = 3200.f;
-		pointLightData.location = math::Vector3f(-4.24f, -14.85f, 2.05f);
-		pointLightData.radius = 8.f;
-		pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
+		//pointLightData.location = math::Vector3f(-4.24f, -14.85f, 2.05f);
+		pointLightData.location = math::Vector3f(850.f, -286.f, 189.f);
+		pointLightData.radius = 22.f;
+		//pointLightData.radius = 0.0001f;
+		pointLightData.iesProfileTexture = iesProfile1->GetTextureView();
 		m_world->GetRenderScene()->lighting.pointLights.Add(pointLightData);
 	}
 
@@ -608,8 +638,7 @@ void SandboxRenderer::InitializeRenderScene()
 	}
 
 	sponzaPrefab->AwaitInitialization();
-	sponzaPrefab->SetPermanent();
-	m_world->SpawnPrefab(sponzaPrefab, gf::PrefabSpawnParams{ .rotation = math::Vector3f(90.f, 0.f, 0.f) });
+	m_world->SpawnPrefab(sponzaPrefab, gf::PrefabSpawnParams{ .location = math::Vector3f(math::Vector3f(950.f, -286.f, 189.f)), .rotation = math::Vector3f(90.f, 0.f, 0.f) });
 
 	lib::MemoryArena tempArena("Sandbox Renderer Temp Arena", 0u, 16u * 1024u * 1024u);
 	gfx::GPUDeferredCommandsQueue& commandsQueue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();

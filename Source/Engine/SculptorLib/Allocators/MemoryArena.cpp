@@ -36,6 +36,7 @@ MemoryArenaBase::~MemoryArenaBase()
 	}
 }
 
+
 Byte* MemoryArenaBase::AllocateImpl(priv::ThreadSafeExtension& extension, Uint64 size, Uint64 alignment)
 {
 	SPT_CHECK(size > 0);
@@ -43,37 +44,37 @@ Byte* MemoryArenaBase::AllocateImpl(priv::ThreadSafeExtension& extension, Uint64
 	const Uint64 alignMask = alignment - 1;
 	SPT_CHECK((alignment & alignMask) == 0);
 
-	std::atomic_ref<Uint64> atomicCurrentAddress{ m_currentAddress };
+	std::atomic_ref<Uint64> currentAddressRef{ m_currentAddress };
+	std::atomic_ref<Uint64> commitedEndRef{ m_commitedEnd };
 
-	Uint64 expectedAddress = atomicCurrentAddress.load(std::memory_order_relaxed);
+	Uint64 expected = currentAddressRef.load();
 	Uint64 allocPtr = 0u;
+	Uint64 allocEnd = 0u;
 
-	while (true)
+	do
 	{
-		allocPtr = math::Utils::AlignUpPow2(expectedAddress, alignment);
-		const Uint64 allocEnd = allocPtr + size;
-
-		if (atomicCurrentAddress.compare_exchange_weak(expectedAddress, allocEnd))
-		{
-			break;
-		}
+		allocPtr = math::Utils::AlignUpPow2(expected, alignment);
+		allocEnd = allocPtr + size;
 	}
+	while (!currentAddressRef.compare_exchange_weak(expected, allocEnd));
 
-	if (m_currentAddress > m_commitedEnd)
+	if (allocEnd > commitedEndRef.load(std::memory_order_acquire))
 	{
 		lib::LockGuard lock{ extension.m_lock };
 
-		if (m_currentAddress > m_commitedEnd) // another thread might have already committed required memory
+		const Uint64 committedEnd = commitedEndRef.load();
+		if (allocEnd > committedEnd)
 		{
-			const Uint64 newCommitedEnd = math::Utils::AlignUpPow2(m_currentAddress, mem::GetPageSize());
+			const Uint64 targetEnd = std::max(allocEnd, currentAddressRef.load());
+			const Uint64 newCommitedEnd = math::Utils::AlignUpPow2(targetEnd, mem::GetPageSize());
 			SPT_CHECK(newCommitedEnd <= m_reservedEnd);
 
-			mem::CommitVirtualMemory((Byte*)m_commitedEnd, newCommitedEnd - m_commitedEnd);
-			m_commitedEnd = newCommitedEnd;
+			mem::CommitVirtualMemory(reinterpret_cast<Byte*>(committedEnd), newCommitedEnd - committedEnd);
+			commitedEndRef.store(newCommitedEnd);
 		}
 	}
 
-	return (Byte*)allocPtr;
+	return reinterpret_cast<Byte*>(allocPtr);
 }
 
 Byte* MemoryArenaBase::AllocateImpl(priv::NonThreadSafeExtension& extension, Uint64 size, Uint64 alignment)

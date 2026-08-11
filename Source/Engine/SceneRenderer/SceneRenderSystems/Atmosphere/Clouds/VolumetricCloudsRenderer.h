@@ -40,10 +40,11 @@ private:
 	void InitTextures();
 
 	void LoadOrCreateBaseShapeNoiseTexture();
+	void LoadOrCreateWeatherMapNoiseTexture();
 	void LoadOrCreateDetailShapeNoiseTexture();
-	void LoadWeatherMapTexture();
 	void LoadCurlNoiseTexture();
 	void LoadDensityLUTTexture();
+	void LoadCirrusCloudsMaskTexture();
 
 	Bool m_volumetricCloudsEnabled = false;
 
@@ -52,7 +53,7 @@ private:
 	lib::SharedPtr<rdr::TextureView> m_baseShapeNoiseTexture;
 	lib::SharedPtr<rdr::TextureView> m_detailShapeNoiseTexture;
 
-	lib::SharedPtr<rdr::TextureView> m_weatherMap;
+	lib::SharedPtr<rdr::TextureView> m_weatherMapNoiseTexture;
 
 	lib::SharedPtr<rdr::TextureView> m_densityLUT;
 
@@ -63,9 +64,12 @@ private:
 
 	lib::SharedPtr<rdr::TextureView> m_cloudscapeTransmittance;
 
+	lib::SharedPtr<rdr::TextureView> m_cirrusCloudsMask;
+
 	TextureWithHistory m_mainViewClouds;
 	TextureWithHistory m_mainViewCloudsDepth;
 	TextureWithHistory m_mainViewCloudsAge;
+	TextureWithHistory m_cloudscapeShadowCache;
 
 	CloudscapeConstants m_cloudscapeConstants;
 

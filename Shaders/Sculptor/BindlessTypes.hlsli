@@ -195,6 +195,36 @@ struct UAVTexture2D
 
 
 template<typename T>
+struct UAVTexture3D
+{
+	uint descriptorIdx;
+	uint metaData;
+
+	RWTexture3D<T> GetResource()
+	{
+		return ResourceDescriptorHeap[descriptorIdx];
+	}
+
+	T Load(in int3 coords)
+	{
+		RWTexture3D<T> texture = GetResource();
+		return texture[coords];
+	}
+
+	void Store(in int3 coords, in T value)
+	{
+		RWTexture3D<T> texture = GetResource();
+		texture[coords] = value;
+	}
+
+	bool IsValid()
+	{
+		return descriptorIdx != IDX_NONE_32;
+	}
+};
+
+
+template<typename T>
 struct RWTypedBuffer
 {
 	uint descriptorIdx;

@@ -6,6 +6,7 @@
 #include "Types/Texture.h"
 #include "RGResources/RGResources.h"
 #include "SceneRenderSystems/Terrain/TerrainEditorRenderingTypes.h"
+#include "SceneRenderSystems/Atmosphere/Clouds/CloudscapeEditorRenderingTypes.h"
 #include "PlacementSystem/PlacementSystemTypes.h"
 
 
@@ -37,10 +38,21 @@ struct TerrainEditorRendering
 };
 
 
+struct CloudscapeEditorRendering
+{
+	std::optional<editor::CloudscapeInfluenceGizmo> influenceGizmo;
+
+	std::optional<editor::WeatherMapPaintCommand> weatherMapPaintCommand;
+
+	rg::RGTextureViewHandle paintedWeatherMap;
+};
+
+
 struct EditorRendering
 {
-	math::Vector2f mouseUV = math::Vector2f::Zero();
-	TerrainEditorRendering terrain;
+	math::Vector2f            mouseUV = math::Vector2f::Zero();
+	TerrainEditorRendering    terrain;
+	CloudscapeEditorRendering cloudscape;
 };
 
 

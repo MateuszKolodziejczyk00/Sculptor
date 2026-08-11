@@ -12,7 +12,7 @@ float4 ComputeScatteringAndExtinction(in float3 fogAlbedo, in float fogExtinctio
 }
 
 
-static const float HEIGHT_FOG_MAX_HEIGHT = 330.f; // Maximum height for height-based fog, in meters
+static const float HEIGHT_FOG_MAX_HEIGHT = 1330.f; // Maximum height for height-based fog, in meters
 
 
 // based on https://advances.realtimerendering.com/s2006/Chapter6-Real-time%20Atmospheric%20Effects%20in%20Games.pdf

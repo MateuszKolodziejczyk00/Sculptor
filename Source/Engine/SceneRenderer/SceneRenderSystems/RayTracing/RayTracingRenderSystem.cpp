@@ -87,7 +87,7 @@ static void ExecuteRayTracingDebug(rg::RenderGraphBuilder& graphBuilder, SceneRe
 	constants.rwDebugColor        = entryData.color;
 	constants.rwDebugInstanceInfo = rtDebugInstanceInfo;
 
-	graphBuilder.TraceRays(RG_DEBUG_NAME("Ray TracingDebug"),
+	graphBuilder.TraceRays(RG_DEBUG_NAME("Ray Tracing Debug"),
 						  RayTracingDebugPSO::rtInstances,
 						  traceCount,
 						  rg::EmptyDescriptorSets(),

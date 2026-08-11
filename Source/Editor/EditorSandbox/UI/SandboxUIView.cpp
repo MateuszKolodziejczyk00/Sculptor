@@ -11,6 +11,7 @@
 #include "ImGui/DockBuilder.h"
 #include "ProfilerUIView.h"
 #include "TerrainEditor.h"
+#include "CloudscapeEditor.h"
 #include "UIElements/ApplicationUI.h"
 #include "EngineFrame.h"
 
@@ -189,6 +190,11 @@ void SandboxUIView::DrawMenuBar()
 			RecreateTerrainEditor();
 		}
 
+		if (ImGui::MenuItem("Cloudscape Editor"))
+		{
+			RecreateCloudscapeEditor();
+		}
+
 		ImGui::EndMenu();
 	}
 
@@ -336,6 +342,16 @@ void SandboxUIView::RecreateTerrainEditor()
 	m_terrainEditorView = view.ToSharedPtr();
 	m_terrainEditorName = AddChild(view);
 	m_requestedWindowFocus = m_terrainEditorName;
+}
+
+void SandboxUIView::RecreateCloudscapeEditor()
+{
+	RemoveChild(m_cloudscapeEditorView);
+
+	const lib::SharedRef<CloudscapeEditorUIView> view = lib::MakeShared<CloudscapeEditorUIView>(scui::ViewDefinition("Cloudscape Editor"), *this, m_renderer.GetCloudscapeAsset());
+	m_cloudscapeEditorView = view.ToSharedPtr();
+	m_cloudscapeEditorName = AddChild(view);
+	m_requestedWindowFocus = m_cloudscapeEditorName;
 }
 
 ui::TextureID SandboxUIView::PrepareViewportTexture(math::Vector2u resolution)

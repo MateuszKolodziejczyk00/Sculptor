@@ -97,6 +97,11 @@ void World::SetTerrain(as::TerrainAssetHandle terrainAsset)
 	m_terrainAsset = std::move(terrainAsset);
 }
 
+void World::SetCloudscape(as::CloudscapeAssetHandle cloudscapeAsset)
+{
+	m_cloudscapeAsset = std::move(cloudscapeAsset);
+}
+
 void World::UpdateRenderScene(engn::FrameContext& frame)
 {
 	SPT_PROFILER_FUNCTION();
@@ -219,6 +224,8 @@ void World::UpdateRenderScene(engn::FrameContext& frame)
 	renderScene.PostFrameDataUpdate(frame);
 
 	renderScene.SetTerrainDefinition(m_terrainAsset.IsValid() ? m_terrainAsset->GetTerrainDefinition() : rsc::TerrainDefinition{});
+
+	renderScene.SetCloudscapeDefinition(m_cloudscapeAsset.IsValid() ? m_cloudscapeAsset->GetCloudscapeDefinition() : rsc::CloudscapeDefinition{});
 }
 
 } // spt::gf

@@ -30,7 +30,7 @@ struct MaterialAssetSlotsChunk
 struct WorldMaterialSlots
 {
 	WorldMaterialSlots()
-		: slots("World_MaterialSlotsPool")
+		: slots("World_MaterialSlotsPool", 128u, 64u * 1024u)
 	{
 	}
 

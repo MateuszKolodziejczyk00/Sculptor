@@ -8,7 +8,7 @@ namespace spt::rsc::editor
 
 struct TerrainInfluenceGizmo
 {
-	Real32          radius = 0.f;
+	Real32          radius  = 0.f;
 	math::Vector3f  color   = math::Vector3f::Ones();
 	Real32          opacity = 1.f;
 };

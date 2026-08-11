@@ -15,6 +15,11 @@ EditorFrameContext::~EditorFrameContext()
 	{
 		terrainEditorStateDeleter(terrainEditorState);
 	}
+
+	if (cloudscapeEditorStateDeleter.IsValid())
+	{
+		cloudscapeEditorStateDeleter(cloudscapeEditorState);
+	}
 }
 
 void EditorFrameContext::DoStagesTransition(engn::EFrameStage::Type prevStage, engn::EFrameStage::Type nextStage)

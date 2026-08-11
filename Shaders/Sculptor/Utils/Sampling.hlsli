@@ -120,13 +120,13 @@ TDataType SampleTricubicBSpline(in Texture2D<TDataType> texture, in SamplerState
 		const float2 h0 = ((w1 / g0) - 0.5f + index) * rcpResolution;
 		const float2 h1 = ((w3 / g1) + 1.5f + index) * rcpResolution;
 
-		const float value  = texture.SampleLevel(sampler, h0, 0.f);
-		const float valueX = texture.SampleLevel(sampler, float2(h1.x, h0.y), 0.f);
-		const float value0 = lerp(valueX, value, g0.x);
+		const TDataType value  = texture.SampleLevel(sampler, h0, 0.f);
+		const TDataType valueX = texture.SampleLevel(sampler, float2(h1.x, h0.y), 0.f);
+		const TDataType value0 = lerp(valueX, value, g0.x);
 
-		const float valueY  = texture.SampleLevel(sampler, float2(h0.x, h1.y), 0.f);
-		const float valueXY = texture.SampleLevel(sampler, h1, 0.f);
-		const float value1 = lerp(valueXY, valueY, g0.x);
+		const TDataType valueY  = texture.SampleLevel(sampler, float2(h0.x, h1.y), 0.f);
+		const TDataType valueXY = texture.SampleLevel(sampler, h1, 0.f);
+		const TDataType value1 = lerp(valueXY, valueY, g0.x);
 
 		return lerp(value1, value0, g0.y);
 }

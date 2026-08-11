@@ -28,7 +28,7 @@ CloudscapeSample SampleCloudscapeProbe(uint2 probeCoords, in float2 octUV)
     probeCoords = min(probeCoords, u_cloudscapeConstants.probesNum - 1u);
     const float2 uv = probeCoords * u_cloudscapeConstants.uvPerProbe + u_cloudscapeConstants.uvBorder + u_cloudscapeConstants.uvPerProbeNoBorders * octUV;
 
-    const float4 probeData = u_cloudscapeProbes.SampleLevel(u_cloudscapeProbesSampler, uv, 0.f);
+    const float4 probeData = u_cloudscapeProbes.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0.f);
 
     CloudscapeSample res;
     res.inScattering  = probeData.xyz;
@@ -89,7 +89,7 @@ CloudscapeSample SampleHighResCloudscape(in float3 direction)
 
     const float2 octUV = OctahedronEncodeHemisphereNormal(direction);
 
-    const float4 probesData = u_cloudscapeHighResProbe.SampleLevel(u_cloudscapeProbesSampler, octUV, 0.f);
+    const float4 probesData = u_cloudscapeHighResProbe.SampleLevel(BindlessSamplers::LinearClampEdge(), octUV, 0.f);
 
     result.inScattering  = probesData.xyz;
     result.transmittance = probesData.w;

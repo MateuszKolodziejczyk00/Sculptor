@@ -13,7 +13,7 @@ struct CS_INPUT
 #define GROUP_SIZE 256
 #define WAVES_NUM (GROUP_SIZE / 32)
 
-groupshared float3 gs_luminanceSum[WAVES_NUM];
+groupshared float4 gs_luminanceSum[WAVES_NUM];
 
 [numthreads(GROUP_SIZE, 1, 1)]
 void RenderSkyProbeCS(CS_INPUT input)
@@ -26,8 +26,9 @@ void RenderSkyProbeCS(CS_INPUT input)
 	const float3 viewLocation = GetLocationInAtmosphere(u_atmosphereParams, 0.f);
 
 	const float3 skyLuminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, viewLocation, direction);
+	const float weight = direction.z;
 
-    const float3 waveSumLuminance = WaveActiveSum(skyLuminance / GROUP_SIZE);
+    const float4 waveSumLuminance = WaveActiveSum(float4(skyLuminance * weight / GROUP_SIZE, weight / GROUP_SIZE));
 
     if(WaveIsFirstLane())
     {
@@ -36,16 +37,16 @@ void RenderSkyProbeCS(CS_INPUT input)
 
     GroupMemoryBarrierWithGroupSync();
 
-    float3 fetchedLuminance = 0.f;
+    float4 fetchedLuminance = 0.f;
     if(threadIdx < WAVES_NUM)
     {
         fetchedLuminance = gs_luminanceSum[threadIdx];
     }
 
-    const float3 finalLuminance = WaveActiveSum(fetchedLuminance);
+    const float4 finalLuminance = WaveActiveSum(float4(fetchedLuminance));
 
     if(threadIdx == 0u)
     {
-        u_rwProbe[uint2(0, 0)] = finalLuminance;
+        u_rwProbe[uint2(0, 0)] = finalLuminance.xyz / finalLuminance.w;
     }
 }

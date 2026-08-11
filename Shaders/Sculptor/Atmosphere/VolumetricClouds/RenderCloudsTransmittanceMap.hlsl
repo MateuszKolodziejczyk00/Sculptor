@@ -29,7 +29,7 @@ void RenderCloudsTransmittanceMapCS(CS_INPUT input)
 
     float transmittance = 1.f;
 
-    const float3 rayDir = u_constants.direction;
+    const float3 rayDir = -u_constants.direction;
     float3 rayOrigin = worldLocation;
     
     if(!IsNearlyZero(rayDir.z))
@@ -39,13 +39,21 @@ void RenderCloudsTransmittanceMapCS(CS_INPUT input)
         rayOrigin.z = 0.f;
     }
 
-    const Ray ray = Ray::Create(rayOrigin, rayDir);
+    const Ray ray = Ray::Create(rayOrigin - rayDir * 80000.f, rayDir);
+
+	float td;
 
     CloudscapeRaymarchParams raymarchParams = CloudscapeRaymarchParams::Create();
     raymarchParams.ray                     = ray;
     raymarchParams.samplesNum              = 64.f;
     raymarchParams.detailLevel             = CLOUDS_DETAIL_PRESET_TRANSMITTANCE;
-    transmittance = RaymarchCloudscapeTransmittance(raymarchParams);
+    raymarchParams.noise                   = 0.5f;
+    transmittance = RaymarchCloudscapeTransmittance(raymarchParams, td);
+
+	float2 segment;
+	bool test = ComputeRaymarchSegment(ray, raymarchParams.maxVisibleDepth, segment);
+		debug::WriteDebugPixel(coords, td);
     
     u_rwTransmittanceMap[coords] = transmittance;
 }
+[[meta(debug_features)]]

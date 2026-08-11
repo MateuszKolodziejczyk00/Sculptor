@@ -136,7 +136,6 @@ void RHICommandBuffer::BindDescriptorHeap(const RHIDescriptorHeap& descriptorHea
 	SPT_CHECK(descriptorHeap.IsValid());
 	SPT_CHECK(!m_boundDescriptorHeapSize);
 	
-
 	const RHIBuffer& buffer = descriptorHeap.GetBuffer();
 
 	SPT_CHECK(buffer.IsValid());

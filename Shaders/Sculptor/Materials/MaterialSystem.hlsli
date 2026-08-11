@@ -22,13 +22,13 @@ struct DefaultMaterialSampler
 	template<typename T>
 	T SampleLevel(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv, in float level)
 	{
-		return texture.SampleLevel(BindlessSamplers::MaterialLinear(), uv, level);
+		return texture.SampleLevel(sampler, uv, level);
 	}
 
 	template<typename T>
 	T SampleGrad(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv, in float2 ddx, in float2 ddy)
 	{
-		return texture.SampleGrad(BindlessSamplers::MaterialLinear(), uv, ddx, ddy);
+		return texture.SampleGrad(sampler, uv, ddx, ddy);
 	}
 };
 

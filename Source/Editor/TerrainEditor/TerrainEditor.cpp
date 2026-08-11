@@ -173,7 +173,7 @@ void TerrainEditorUIView::DrawUI()
 			gizmo.radius  = m_brushSize;
 			gizmo.color   = math::Vector3f(0.f, 1.f, 0.f);
 			gizmo.opacity = 0.7f;
-			edFrameState.activeGizmo = gizmo;
+			edFrameState.activeTerrainGizmo = gizmo;
 
 			const as::TerrainMaterialAssetHandle terrainMaterial = m_terrainAsset->GetTerrainMaterialAsset();
 			const lib::Span<const as::MaterialAssetHandle> materialAssets = terrainMaterial->GetMaterialAssets();
@@ -208,7 +208,7 @@ void TerrainEditorUIView::DrawUI()
 
 			if (m_isPainting)
 			{
-				edFrameState.materialPaintCommand = rsc::editor::TerrainMaterialMapPaintCommand{ .materialIDToPaint = static_cast<Uint32>(m_materialIDToPaint) };
+				edFrameState.materialTerrainPaintCommand = rsc::editor::TerrainMaterialMapPaintCommand{ .materialIDToPaint = static_cast<Uint32>(m_materialIDToPaint) };
 			}
 		}
 	}

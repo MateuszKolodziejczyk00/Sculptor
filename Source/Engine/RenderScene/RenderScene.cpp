@@ -98,6 +98,16 @@ const TerrainDefinition& RenderScene::GetTerrainDefinition() const
 	return m_terrainDefinition;
 }
 
+void RenderScene::SetCloudscapeDefinition(const CloudscapeDefinition& definition)
+{
+	m_cloudscapeDefinition = definition;
+}
+
+const CloudscapeDefinition& RenderScene::GetCloudscapeDefinition() const
+{
+	return m_cloudscapeDefinition;
+}
+
 lib::SharedRef<rdr::Buffer> RenderScene::CreateInstancesBuffer() const
 {
 	rhi::RHIAllocationInfo renderEntitiesAllocationInfo;

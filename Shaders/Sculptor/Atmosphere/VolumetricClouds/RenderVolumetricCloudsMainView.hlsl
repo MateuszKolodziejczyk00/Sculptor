@@ -1,8 +1,8 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderVolumetricCloudsMainViewDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
-[[descriptor_set(CloudscapeDS, 2)]]
+[[descriptor_set(RenderVolumetricCloudsMainViewDS)]]
+[[descriptor_set(RenderViewDS)]]
+[[descriptor_set(CloudscapeDS)]]
 
 #include "Atmosphere/VolumetricClouds/CloudscapeRaymarcher.hlsli"
 
@@ -24,7 +24,7 @@ void RenderVolumetricCloudsMainViewCS(CS_INPUT input)
     if(u_passConstants.fullResTrace)
     {
         uv = (coords.xy + 0.5f) * u_passConstants.rcpResolution;
-        blueNoise = frac(u_blueNoise256.Load(coords & 255u) + ((u_passConstants.frameIdx) & 31u) * SPT_GOLDEN_RATIO);
+        blueNoise = frac(u_blueNoise256.Load(coords & 255u) + ((u_passConstants.frameIdx) & 255u) * SPT_GOLDEN_RATIO);
     }
     else
     {
@@ -32,7 +32,7 @@ void RenderVolumetricCloudsMainViewCS(CS_INPUT input)
         blueNoise = frac(u_blueNoise256.Load((coords * 2u + uint3(u_passConstants.tracedPixel2x2, 0u)) & 255u) + ((u_passConstants.frameIdx >> 2u) & 31u) * SPT_GOLDEN_RATIO);
     }
 
-    const float depth = u_furthestDepth.SampleLevel(u_depthSampler, uv, 0.f);
+    const float depth = u_furthestDepth.SampleLevel(BindlessSamplers::LinearMinClampEdge(), uv, 0.f);
 
     const Ray viewRay = CreateViewRayWSNoJitter(u_sceneView, uv);
 

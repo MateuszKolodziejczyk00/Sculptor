@@ -85,4 +85,4 @@ public:
 
 
 #define SPT_REGISTER_TYPE_FOR_BLACKBOARD_SERIALIZATION(TDataType) \
-	inline spt::lib::BlackboardTypeSerializationAutoRegistrator<TDataType> SPT_SCOPE_NAME_EVAL(autoRegistrator, __LINE__);
+	inline spt::lib::BlackboardTypeSerializationAutoRegistrator<TDataType> SPT_SCOPE_NAME_EVAL(autoRegistrator##TDataType, __LINE__);

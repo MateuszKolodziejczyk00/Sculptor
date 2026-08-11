@@ -9,9 +9,9 @@ namespace spt::ed
 
 struct TerrainEditorFrameState
 {
-	std::optional<rsc::editor::TerrainInfluenceGizmo> activeGizmo;
+	std::optional<rsc::editor::TerrainInfluenceGizmo> activeTerrainGizmo;
 
-	std::optional<rsc::editor::TerrainMaterialMapPaintCommand> materialPaintCommand;
+	std::optional<rsc::editor::TerrainMaterialMapPaintCommand> materialTerrainPaintCommand;
 
 	lib::SharedPtr<rdr::TextureView> paintedMaterialMap;
 };

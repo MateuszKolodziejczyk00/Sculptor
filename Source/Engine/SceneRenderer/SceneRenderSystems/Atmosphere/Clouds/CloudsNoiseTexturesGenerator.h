@@ -18,4 +18,8 @@ CloudsNoiseData ComputeBaseShapeNoiseTextureWorley();
 
 CloudsNoiseData ComputeDetailShapeNoiseTextureWorley();
 
+CloudsNoiseData Compute2DPerlinWorley();
+
+CloudsNoiseData Compute2DPerlin();
+
 } // spt::rsc::clouds

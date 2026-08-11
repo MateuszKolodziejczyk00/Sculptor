@@ -9,6 +9,7 @@
 #include "RenderSceneTypes.h"
 #include "StaticMeshes/RetainedDraws.h"
 #include "Terrain/TerrainDefinition.h"
+#include "Cloudscape/CloudscapeDefinition.h"
 
 
 namespace spt::engn
@@ -52,6 +53,11 @@ public:
 	void SetTerrainDefinition(const TerrainDefinition& definition);
 	const TerrainDefinition& GetTerrainDefinition() const;
 
+	// Cloudscape ===========================================================
+
+	void SetCloudscapeDefinition(const CloudscapeDefinition& definition);
+	const CloudscapeDefinition& GetCloudscapeDefinition() const;
+
 	// Rendering ============================================================
 
 	const lib::SharedRef<rdr::Buffer>& GetRenderEntitiesBuffer() const;
@@ -72,7 +78,8 @@ private:
 
 	lib::SharedRef<rdr::Buffer> CreateInstancesBuffer() const;
 
-	TerrainDefinition m_terrainDefinition;
+	TerrainDefinition    m_terrainDefinition;
+	CloudscapeDefinition m_cloudscapeDefinition;
 
 	RenderInstances m_instances;
 

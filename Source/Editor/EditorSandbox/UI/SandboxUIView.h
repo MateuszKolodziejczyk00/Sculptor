@@ -39,6 +39,7 @@ private:
 	void RecreateSceneRendererStats();
 	void RecreateProfilerView();
 	void RecreateTerrainEditor();
+	void RecreateCloudscapeEditor();
 
 	ui::TextureID PrepareViewportTexture(math::Vector2u resolution);
 
@@ -52,6 +53,7 @@ private:
 	lib::HashedString m_sceneRendererStatsName;
 	lib::HashedString m_profilerPanelName;
 	lib::HashedString m_terrainEditorName;
+	lib::HashedString m_cloudscapeEditorName;
 
 	lib::HashedString m_requestedWindowFocus;
 
@@ -60,6 +62,7 @@ private:
 	lib::SharedPtr<scui::UIView> m_sceneRendererStatsView;
 	lib::SharedPtr<scui::UIView> m_profilerPanelView;
 	lib::SharedPtr<scui::UIView> m_terrainEditorView;
+	lib::SharedPtr<scui::UIView> m_cloudscapeEditorView;
 
 	lib::SharedPtr<rdr::TextureView> m_viewportTexture;
 };

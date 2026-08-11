@@ -13,9 +13,12 @@
 #include "GlobalResources/GlobalResourcesRegistry.h"
 #include "EngineFrame.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
+#include <SceneRenderSystems/Atmosphere/Clouds/CloudscapeEditorRenderer.h>
+#include "Pipelines/PSOsLibraryTypes.h"
 
 
 SPT_DEFINE_LOG_CATEGORY(VolumetricCloudsRenderer, true);
+#pragma optimize("", off)
 
 namespace spt::rsc::clouds
 {
@@ -23,18 +26,18 @@ namespace spt::rsc::clouds
 namespace renderer_params
 {
 
-RendererFloatParameter baseShapeNoiseMeters("Base Shape Noise Meters", { "Clouds" }, 800.f, 0.f, 60000.f);
+RendererFloatParameter baseShapeNoiseMeters("Base Shape Noise Meters", { "Clouds" }, 2400.f, 0.f, 60000.f);
 RendererFloatParameter cirrusCloudsMeters("Cirrus Clouds Meters", { "Clouds" }, 40000.f, 0.f, 60000.f);
 
 RendererFloatParameter detailShapeNoiseStrength0("Detail Shape Noise Strength (Octave 0)", { "Clouds" }, 0.45f, 0.f, 2.f);
-RendererFloatParameter detailShapeNoiseMeters0("Detail Shape Noise Meters (Octave 0)", { "Clouds" }, 255.f, 0.f, 20000.f);
+RendererFloatParameter detailShapeNoiseMeters0("Detail Shape Noise Meters (Octave 0)", { "Clouds" }, 380.f, 0.f, 20000.f);
 RendererFloatParameter detailShapeNoiseStrength1("Detail Shape Noise Strength (Octave 1)", { "Clouds" }, 0.0f, 0.f, 2.f);
 RendererFloatParameter detailShapeNoiseMeters1("Detail Shape Noise Meters (Octave 1)", { "Clouds" }, 255.f, 0.f, 20000.f);
 
-RendererFloatParameter weatherMapMeters("Weather Map meters", { "Clouds" }, 16000.f, 0.f, 50000.f);
+RendererFloatParameter weatherMapMeters("Weather Map meters", { "Clouds" }, 68000.f, 0.f, 100000.f);
 
-RendererFloatParameter curlNoiseOffset("Curl Noise Offset", { "Clouds" }, 5.f, 0.f, 500.f);
-RendererFloatParameter curlNoiseMeters("Curl Noise Meters", { "Clouds" }, 2222.f, 0.f, 40000.f);
+RendererFloatParameter curlNoiseOffset("Curl Noise Offset", { "Clouds" }, 300.f, 0.f, 500.f);
+RendererFloatParameter curlNoiseMeters("Curl Noise Meters", { "Clouds" }, 1700.f, 0.f, 40000.f);
 
 RendererFloatParameter globalDensity("Global Density", { "Clouds" }, 1.f, 0.f, 5.f);
 RendererFloatParameter globalCoverageOffset("Global Coverage Offset", { "Clouds" }, 0.4f, -1.f, 1.f);
@@ -49,6 +52,9 @@ RendererBoolParameter forceTransmittanceMapFullUpdates("Force Transmittance Map 
 RendererBoolParameter forceHRCloudsProbeFullUpdates("Force High Res Clouds Probe Full Updates", { "Clouds" }, false);
 RendererBoolParameter forceLRCloudsProbeFullUpdates("Force Low Res Clouds Probe Full Updates", { "Clouds" }, false);
 RendererBoolParameter fullResClouds("Full Res Clouds", { "Clouds" }, false);
+
+RendererIntParameter  cloudsShadowsCacheRes2D("Clouds Shadows Cache Res 2D", { "Clouds" }, 384, 1, 2048);
+RendererIntParameter  cloudsShadowsCacheResZ("Clouds Shadows Cache Res Z", { "Clouds" }, 16, 1, 64);
 
 } // renderer_params
 
@@ -65,8 +71,6 @@ static void BuildCloudsTransmittanceMapMatrices(const math::Vector3f& center, co
 	view.topLeftCorner<3, 3>() = invRotationMatrix;
 	view.topRightCorner<3, 1>() = invRotationMatrix * -center;
 	view(3, 3) = 1.f;
-
-	math::ParametrizedLine<Real32, 3> line(center, lightDirection);
 
 	const math::Vector3f edges[5] =
 	{
@@ -103,6 +107,63 @@ static void BuildCloudsTransmittanceMapMatrices(const math::Vector3f& center, co
 
 	outViewProj = proj * view;
 }
+
+
+namespace shadows_cache
+{
+
+BEGIN_SHADER_STRUCT(CloudsShadowsCacheConstants)
+	SHADER_STRUCT_FIELD(math::Vector2u,            updateOffset)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture3D<Real32>, rwShadowsCache)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<Real32>, prevShadowsCache)
+	SHADER_STRUCT_FIELD(Bool,                      resetCache)
+END_SHADER_STRUCT();
+
+
+SIMPLE_COMPUTE_PSO(UpdateCloudsShadowsCachePSO, "Sculptor/Atmosphere/VolumetricClouds/UpdateCloudsShadowsCache.hlsl", UpdateCloudsShadowsCacheCS);
+
+
+struct UpdateParams
+{
+	const CloudscapeContext& cloudscape;
+
+	rg::RGTextureViewHandle prevShadowsCache;
+	rg::RGTextureViewHandle newShadowsCache;
+
+	math::Vector2u updateOffset = {};
+	math::Vector2u updateSize   = {};
+
+	Bool resetCache = false;
+};
+
+
+static void UpdateCloudsShadowsCache(rg::RenderGraphBuilder& graphBuilder, const rsc::RenderScene& scene, const UpdateParams& params)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(params.newShadowsCache.IsValid());
+
+	if (params.prevShadowsCache.IsValid())
+	{
+		graphBuilder.CopyFullTexture(RG_DEBUG_NAME("Copy Clouds Shadows Cache"),
+									 params.prevShadowsCache,
+									 params.newShadowsCache);
+	}
+
+	CloudsShadowsCacheConstants shaderConstants;
+	shaderConstants.updateOffset     = params.updateOffset;
+	shaderConstants.rwShadowsCache   = params.newShadowsCache;
+	shaderConstants.prevShadowsCache = params.prevShadowsCache;
+	shaderConstants.resetCache       = params.resetCache;
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Update Clouds Shadow Cache"),
+						  UpdateCloudsShadowsCachePSO::pso,
+						  math::Vector3u(math::Utils::DivideCeil(params.updateSize.x(), 8u), math::Utils::DivideCeil(params.updateSize.y(), 8u), 16u),
+						  rg::BindDescriptorSets(params.cloudscape.cloudscapeDS),
+						  shaderConstants);
+}
+
+} // shadows_cache
 
 
 namespace render_main_view
@@ -281,13 +342,12 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(RenderVolumetricCloudsMainViewDS, rg::RGDescriptorSetState<RenderVolumetricCloudsMainViewDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VolumetricCloudsMainViewConstants>),         u_passConstants)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                      u_blueNoise256)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                      u_furthestDepth)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>), u_depthSampler)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                              u_skyProbe)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                       u_rwCloudsDepth)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                               u_rwClouds)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VolumetricCloudsMainViewConstants>), u_passConstants)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                              u_blueNoise256)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                              u_furthestDepth)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                      u_skyProbe)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                               u_rwCloudsDepth)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                       u_rwClouds)
 DS_END();
 
 
@@ -401,6 +461,55 @@ static void RenderVolumetricCloudsMainView(rg::RenderGraphBuilder& graphBuilder,
 }
 
 } // render_main_view
+
+namespace cirrus_clouds
+{
+
+BEGIN_SHADER_STRUCT(RenderCirrusCloudsConstants)
+	SHADER_STRUCT_FIELD(math::Vector2u,                       resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,                       rcpResolution)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,         furthestDepth)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector4f>, rwCirrusClouds)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector3f>, skyProbe)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,         blueNoise)
+	SHADER_STRUCT_FIELD(Uint32,                               frameIdx)
+END_SHADER_STRUCT();
+
+
+SIMPLE_COMPUTE_PSO(RenderCirrusCloudsPSO, "Sculptor/Atmosphere/VolumetricClouds/RenderCirrusClouds.hlsl", RenderCirrusCloudsCS);
+
+
+static rg::RGTextureViewHandle RenderCirrusClouds(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const CloudscapeContext& context)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
+
+	const math::Vector2u resolution = viewSpec.GetRenderingRes();
+
+	const rg::RGTextureViewHandle cirrusCloudsTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Cirrus Clouds"), rg::TextureDef(resolution, rhi::EFragmentFormat::RGBA16_S_Float));
+
+	const rg::RGTextureViewHandle furthestDepth = graphBuilder.CreateTextureMipView(shadingViewContext.hiZ, 4u);
+
+	RenderCirrusCloudsConstants shaderConstants;
+	shaderConstants.resolution     = resolution;
+	shaderConstants.rcpResolution  = resolution.cast<Real32>().cwiseInverse();
+	shaderConstants.furthestDepth  = furthestDepth;
+	shaderConstants.rwCirrusClouds = cirrusCloudsTexture;
+	shaderConstants.skyProbe       = shadingViewContext.skyProbe;
+	shaderConstants.blueNoise      = gfx::global::Resources::Get().blueNoise256.GetView();
+	shaderConstants.frameIdx       = viewSpec.GetFrameIdx();
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Cirrus Clouds"),
+						  RenderCirrusCloudsPSO::pso,
+						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
+						  rg::BindDescriptorSets(context.cloudscapeDS),
+						  shaderConstants);
+
+	return cirrusCloudsTexture;
+}
+
+} // cirrus_clouds
 
 namespace sun_clouds_transmittance
 {
@@ -700,10 +809,11 @@ VolumetricCloudsRenderer::VolumetricCloudsRenderer()
 	: m_mainViewClouds(RENDERER_RESOURCE_NAME("Main View Clouds"))
 	, m_mainViewCloudsDepth(RENDERER_RESOURCE_NAME("Main View Clouds Depth"))
 	, m_mainViewCloudsAge(RENDERER_RESOURCE_NAME("Main View Clouds Age"))
+	, m_cloudscapeShadowCache(RENDERER_RESOURCE_NAME("Cloudscape Shadow Cache"))
 {
-	const Real32 volumetricCloudsMinHeight = 256.f;
-	const Real32 volumetricCloudsMaxHeight = 2048.f;
-	const Real32 volumetricCloudsRange     = 8000.f;
+	const Real32 volumetricCloudsMinHeight = 1200.f;
+	const Real32 volumetricCloudsMaxHeight = 3700.f;
+	const Real32 volumetricCloudsRange     = 24000.f;
 
 	const Real32 radius = (volumetricCloudsRange * volumetricCloudsRange + volumetricCloudsMinHeight * volumetricCloudsMinHeight) / (2.f * volumetricCloudsMinHeight);
 
@@ -729,6 +839,11 @@ VolumetricCloudsRenderer::VolumetricCloudsRenderer()
 	m_cloudscapeConstants.highResProbeRes      = math::Vector2u(512u, 512u);
 	m_cloudscapeConstants.highResProbeRcpRes   = m_cloudscapeConstants.highResProbeRes.cast<Real32>().cwiseInverse();
 
+	m_cloudscapeConstants.shadowsCacheOrigin    = -math::Vector2f::Constant(volumetricCloudsRange);
+	m_cloudscapeConstants.shadowsCacheSize      = math::Vector2f::Constant(volumetricCloudsRange * 2.f);
+	m_cloudscapeConstants.shadowsCacheRcpSize   = math::Vector2f::Constant(volumetricCloudsRange * 2.f).cwiseInverse();
+	m_cloudscapeConstants.shadowsCacheVoxelSize = math::Vector3f(1.f / renderer_params::cloudsShadowsCacheRes2D, 1.f / renderer_params::cloudsShadowsCacheRes2D, 1.f / renderer_params::cloudsShadowsCacheResZ);
+
 	InitTextures();
 }
 
@@ -738,7 +853,29 @@ void VolumetricCloudsRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBuild
 
 	if (m_volumetricCloudsEnabled)
 	{
+		m_cloudscapeShadowCache.Update(math::Vector3u(renderer_params::cloudsShadowsCacheRes2D, renderer_params::cloudsShadowsCacheRes2D, 16u));
+
 		const CloudscapeContext cloudscapeContext = CreateFrameCloudscapeContext(graphBuilder, rendererInterface, renderScene, viewSpecs, settings);
+
+		math::Vector2u shadowCacheUpdateOffset = math::Vector2u::Zero();
+		math::Vector2u shadowCacheUpdateSize   = m_cloudscapeShadowCache.GetCurrent()->GetResolution2D();
+		if (!cloudscapeContext.resetAccumulation)
+		{
+			const math::Vector2u updateTiles = math::Utils::DivideCeil(m_cloudscapeShadowCache.GetCurrent()->GetResolution2D(), math::Vector2u(32u, 32u));
+
+			const Uint32 tileX = cloudscapeContext.frameIdx % updateTiles.x();
+			const Uint32 tileY = (cloudscapeContext.frameIdx / updateTiles.x()) % updateTiles.y();
+
+			shadowCacheUpdateOffset = math::Vector2u(tileX, tileY).cwiseProduct(math::Vector2u(32u, 32u));
+			shadowCacheUpdateSize   = math::Vector2u::Constant(32u);
+		}
+		shadows_cache::UpdateParams shadowsCacheUpdateParams{ cloudscapeContext };
+		shadowsCacheUpdateParams.newShadowsCache  = graphBuilder.AcquireExternalTextureView(m_cloudscapeShadowCache.GetCurrent());
+		shadowsCacheUpdateParams.prevShadowsCache = graphBuilder.TryAcquireExternalTextureView(m_cloudscapeShadowCache.GetHistory());
+		shadowsCacheUpdateParams.updateOffset     = shadowCacheUpdateOffset;
+		shadowsCacheUpdateParams.updateSize       = shadowCacheUpdateSize;
+		shadowsCacheUpdateParams.resetCache       = cloudscapeContext.resetAccumulation;
+		shadows_cache::UpdateCloudsShadowsCache(graphBuilder, renderScene, shadowsCacheUpdateParams);
 
 		const math::Vector2u updateTileSize = math::Vector2u(256u, 256u);
 
@@ -770,6 +907,30 @@ void VolumetricCloudsRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBuild
 			SPT_CHECK(!!viewSpec);
 			const rg::BindDescriptorSetsScope viewDSScope(graphBuilder, rg::BindDescriptorSets(viewSpec->GetRenderViewDS()));
 			RenderPerView(graphBuilder, renderScene, *viewSpec, cloudscapeContext);
+		}
+
+		ViewRenderingSpec* mainView = *viewSpecs.begin();
+		SPT_CHECK(mainView != nullptr);
+
+		editor::CloudscapePaintingData paintingData;
+		paintingData.weatherMapNoise = graphBuilder.AcquireExternalTextureView(m_weatherMapNoiseTexture);
+
+		if (rendererInterface.rendererSettings.editorRendering.cloudscape.influenceGizmo)
+		{
+			mainView->GetRenderViewEntry(ERenderViewEntry::DebugRenderAndEditor).AddLambda([cloudscapeDS = cloudscapeContext.cloudscapeDS, paintingData](rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const ViewRenderingSpec& view, const RenderViewEntryContext& context)
+			{
+				rg::BindDescriptorSetsScope cloudscapeDSScope(graphBuilder, rg::BindDescriptorSets(cloudscapeDS));
+				editor::RenderCloudscapeInfluenceGizmo(graphBuilder, rendererInterface, renderScene, view, paintingData, context.Get<RenderViewEntryDelegates::DebugRenderAndEditorData>(), rendererInterface.rendererSettings.editorRendering);
+			});
+		}
+
+		if (rendererInterface.rendererSettings.editorRendering.cloudscape.weatherMapPaintCommand)
+		{
+			mainView->GetRenderViewEntry(ERenderViewEntry::DebugRenderAndEditor).AddLambda([cloudscapeDS = cloudscapeContext.cloudscapeDS, paintingData](rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const ViewRenderingSpec& view, const RenderViewEntryContext& context)
+			{
+				rg::BindDescriptorSetsScope cloudscapeDSScope(graphBuilder, rg::BindDescriptorSets(cloudscapeDS));
+				editor::ExecuteWeatherMapPaintCommand(graphBuilder, rendererInterface, renderScene, view, paintingData, rendererInterface.rendererSettings.editorRendering);
+			});
 		}
 	}
 }
@@ -836,6 +997,8 @@ void VolumetricCloudsRenderer::RenderVolumetricClouds(rg::RenderGraphBuilder& gr
 {
 	SPT_PROFILER_FUNCTION();
 
+	ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
+
 	m_mainViewClouds.Update(viewSpec.GetRenderingHalfRes());
 	m_mainViewCloudsDepth.Update(viewSpec.GetRenderingHalfRes());
 	m_mainViewCloudsAge.Update(viewSpec.GetRenderingHalfRes());
@@ -855,6 +1018,8 @@ void VolumetricCloudsRenderer::RenderVolumetricClouds(rg::RenderGraphBuilder& gr
 	}
 
 	render_main_view::RenderVolumetricCloudsMainView(graphBuilder, scene, viewSpec, cloudsMainViewParams);
+
+	shadingViewContext.cirrusClouds = cirrus_clouds::RenderCirrusClouds(graphBuilder, scene, viewSpec, cloudscapeContext);
 }
 
 CloudscapeContext VolumetricCloudsRenderer::CreateFrameCloudscapeContext(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const lib::DynamicPushArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings)
@@ -870,6 +1035,14 @@ CloudscapeContext VolumetricCloudsRenderer::CreateFrameCloudscapeContext(rg::Ren
 	const math::Vector3f viewLocation = renderView.GetLocation();
 
 	const math::Vector3f cloudsAtmosphereCenter = math::Vector3f(0.f, 0.f, m_cloudscapeConstants.cloudsAtmosphereCenterZ);
+
+	const CloudscapeDefinition& cloudscapeDef = renderScene.GetCloudscapeDefinition();
+
+	rg::RGTextureViewHandle weatherMap = settings.editorRendering.cloudscape.paintedWeatherMap;
+	if (!weatherMap.IsValid())
+	{
+		weatherMap = graphBuilder.AcquireExternalTextureView(cloudscapeDef.weatherMap);
+	}
 
 	m_cloudscapeConstants.baseShapeNoiseScale          = 1.f / renderer_params::baseShapeNoiseMeters;
 	m_cloudscapeConstants.detailShapeNoiseStrength0    = renderer_params::detailShapeNoiseStrength0;
@@ -895,8 +1068,10 @@ CloudscapeContext VolumetricCloudsRenderer::CreateFrameCloudscapeContext(rg::Ren
 	ds->u_baseShapeNoise      = graphBuilder.AcquireExternalTextureView(m_baseShapeNoiseTexture);
 	ds->u_detailShapeNoise    = graphBuilder.AcquireExternalTextureView(m_detailShapeNoiseTexture);
 	ds->u_curlNoise           = graphBuilder.AcquireExternalTextureView(m_curlNoise);
-	ds->u_weatherMap          = graphBuilder.AcquireExternalTextureView(m_weatherMap);
+	ds->u_weatherMap          = weatherMap;
 	ds->u_densityLUT          = graphBuilder.AcquireExternalTextureView(m_densityLUT);
+	ds->u_cirrusCloudsMask    = graphBuilder.AcquireExternalTextureView(m_cirrusCloudsMask);
+	ds->u_shadowsCache        = graphBuilder.AcquireExternalTextureView(m_cloudscapeShadowCache.GetCurrent());
 
 	const Bool resetAccumulation = settings.resetAccumulation;
 
@@ -966,10 +1141,11 @@ void VolumetricCloudsRenderer::UpdateCloudscapeProbes(rg::RenderGraphBuilder& gr
 void VolumetricCloudsRenderer::InitTextures()
 {
 	LoadOrCreateBaseShapeNoiseTexture();
+	LoadOrCreateWeatherMapNoiseTexture();
 	LoadOrCreateDetailShapeNoiseTexture();
-	LoadWeatherMapTexture();
 	LoadCurlNoiseTexture();
 	LoadDensityLUTTexture();
+	LoadCirrusCloudsMaskTexture();
 
 	const math::Vector2u probeRes  = math::Vector2u(32u, 32u);
 	const math::Vector2u probesRes = math::Vector2u(32u, 32u);
@@ -1009,6 +1185,13 @@ void VolumetricCloudsRenderer::InitTextures()
 	mainViewCloudsAgeDef.format = rhi::EFragmentFormat::R8_U_Int;
 	mainViewCloudsAgeDef.usage  = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
 	m_mainViewCloudsAge.SetDefinition(mainViewCloudsAgeDef);
+
+	rhi::TextureDefinition cloudscapeShadowCacheDef;
+	cloudscapeShadowCacheDef.type   = rhi::ETextureType::Texture3D;
+	cloudscapeShadowCacheDef.format = rhi::EFragmentFormat::R16_UN_Float;
+	cloudscapeShadowCacheDef.usage  = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
+	cloudscapeShadowCacheDef.flags  = rhi::ETextureFlags::GloballyReadable;
+	m_cloudscapeShadowCache.SetDefinition(cloudscapeShadowCacheDef);
 }
 
 void VolumetricCloudsRenderer::LoadOrCreateBaseShapeNoiseTexture()
@@ -1029,6 +1212,27 @@ void VolumetricCloudsRenderer::LoadOrCreateBaseShapeNoiseTexture()
 	}
 
 	m_baseShapeNoiseTexture = texture->CreateView(RENDERER_RESOURCE_NAME("Volumetric Clouds Base Shape Noise"));
+}
+
+void VolumetricCloudsRenderer::LoadOrCreateWeatherMapNoiseTexture()
+{
+	const lib::String texturePath = (engn::GetEngine().GetPaths().contentPath / "RenderingPipeline/Textures/Clouds/WeatherMapNoise.dds").generic_string();
+	lib::SharedPtr<rdr::Texture> texture = gfx::TextureLoader::LoadTexture(texturePath);
+	if (!texture)
+	{
+		SPT_LOG_TRACE(VolumetricCloudsRenderer, "Failed to load weather map noise texture from path: {}\nGenerating new texture", texturePath);
+
+		const CloudsNoiseData weatherMapNoiseData = Compute2DPerlinWorley();
+
+		SPT_MAYBE_UNUSED
+		const Bool saveResult = gfx::TextureWriter::SaveTexture(weatherMapNoiseData.resolution, weatherMapNoiseData.format, weatherMapNoiseData.linearData, texturePath);
+		SPT_CHECK(saveResult);
+
+		texture = gfx::TextureLoader::LoadTexture(texturePath);
+		SPT_CHECK(!!texture);
+	}
+
+	m_weatherMapNoiseTexture = texture->CreateView(RENDERER_RESOURCE_NAME("Volumetric Clouds Weather Map Noise"));
 }
 
 void VolumetricCloudsRenderer::LoadOrCreateDetailShapeNoiseTexture()
@@ -1053,16 +1257,6 @@ void VolumetricCloudsRenderer::LoadOrCreateDetailShapeNoiseTexture()
 	m_detailShapeNoiseTexture = texture->CreateView(RENDERER_RESOURCE_NAME("Volumetric Clouds Detail Shape Noise"));
 }
 
-void VolumetricCloudsRenderer::LoadWeatherMapTexture()
-{
-	const lib::String texturePath = (engn::GetEngine().GetPaths().contentPath / "RenderingPipeline/Textures/Clouds/WeatherMap.dds").generic_string();
-
-	lib::SharedPtr<rdr::Texture> texture = gfx::TextureLoader::LoadTexture(texturePath);
-	SPT_CHECK(!!texture);
-
-	m_weatherMap = texture->CreateView(RENDERER_RESOURCE_NAME("Weather Map"));
-}
- 
 void VolumetricCloudsRenderer::LoadCurlNoiseTexture()
 {
 	const lib::String texturePath = (engn::GetEngine().GetPaths().contentPath / "RenderingPipeline/Textures/Clouds/CurlNoise.dds").generic_string();
@@ -1079,6 +1273,14 @@ void VolumetricCloudsRenderer::LoadDensityLUTTexture()
 	lib::SharedPtr<rdr::Texture> texture = gfx::TextureLoader::LoadTexture(texturePath);
 	SPT_CHECK(!!texture);
 	m_densityLUT = texture->CreateView(RENDERER_RESOURCE_NAME("Density LUT"));
+}
+
+void VolumetricCloudsRenderer::LoadCirrusCloudsMaskTexture()
+{
+	const lib::String texturePath = (engn::GetEngine().GetPaths().contentPath / "RenderingPipeline/Textures/Clouds/CirrusCloudsMask.png").generic_string();
+	lib::SharedPtr<rdr::Texture> texture = gfx::TextureLoader::LoadTexture(texturePath);
+	SPT_CHECK(!!texture);
+	m_cirrusCloudsMask = texture->CreateView(RENDERER_RESOURCE_NAME("Cirrus Clouds Mask"));
 }
 
 } // spt::rsc::clouds

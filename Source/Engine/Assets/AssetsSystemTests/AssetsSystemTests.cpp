@@ -14,7 +14,7 @@ struct AssetData1
 		serializer.Serialize("Value", value);
 	}
 };
-SPT_REGISTER_ASSET_DATA_TYPE(spt::as::tests::AssetData1);
+SPT_REGISTER_ASSET_DATA_TYPE(AssetData1);
 
 
 struct AssetData2
@@ -28,7 +28,7 @@ struct AssetData2
 		serializer.Serialize("Value2", value2);
 	}
 };
-SPT_REGISTER_ASSET_DATA_TYPE(spt::as::tests::AssetData2);
+SPT_REGISTER_ASSET_DATA_TYPE(AssetData2);
 
 
 struct TestAssetCompiledHeader

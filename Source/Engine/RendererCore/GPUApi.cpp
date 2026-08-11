@@ -72,7 +72,7 @@ static void InitializeSamplerDescriptors()
 	rhi::SamplerDefinition materialLinearSampler = rhi::SamplerState::LinearRepeat;
 	materialLinearSampler.mipLodBias       = -0.5f;
 
-	const rhi::SamplerDefinition samplerStates[] =
+	rhi::SamplerDefinition samplerStates[] =
 	{
 		rhi::SamplerState::LinearClampToEdge,
 		rhi::SamplerState::NearestClampToEdge,
@@ -83,6 +83,7 @@ static void InitializeSamplerDescriptors()
 		materialAnisoSampler,
 		materialLinearSampler
 	};
+
 
 	for (Uint32 i = 0; i < SPT_ARRAY_SIZE(samplerStates); ++i)
 	{
