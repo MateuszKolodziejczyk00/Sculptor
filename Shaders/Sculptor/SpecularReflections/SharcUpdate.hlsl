@@ -179,6 +179,7 @@ void SharcUpdateRTG()
 
 		RayHitResult hitRes;
 		bool isScreenSpaceHit = false;
+		[branch]
 		if (it == 0u)
 		{
 			const float traceDist = u_constants.ssrTraceLength;
@@ -282,4 +283,3 @@ void SharcUpdateRTG()
 		}
 	}
 }
-[[meta(debug_features)]]

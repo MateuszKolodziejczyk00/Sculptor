@@ -20,7 +20,7 @@ struct SSTraceResult
 };
 
 
-void ComputeClampedEndUV(in float2 startUV, in float startDepth, inout float2 endUV, inout float endDepth)
+void ComputeClampedEndUV(in float2 startUV, in float startDepth, inout float2 endUV, inout float endDepth, out float clampedMaxT)
 {
 	const float2 dUV = endUV - startUV;
 	const float dZ = endDepth - startDepth;
@@ -49,8 +49,9 @@ void ComputeClampedEndUV(in float2 startUV, in float startDepth, inout float2 en
 		}
 	}
 
-	endUV    = startUV + dUV * t;
-	endDepth = startDepth + dZ * t;
+	endUV       = startUV + dUV * t;
+	endDepth    = startDepth + dZ * t;
+	clampedMaxT = t;
 }
 
 
@@ -64,7 +65,8 @@ SSTraceResult TraceScreenSpaceRay(in SSTracerData tracer, in SceneViewData scene
 	const bool debugRay = debug::IsPixelHovered(startUV * tracer.resolution, tracer.resolution);
 #endif // DEBUG_SCREEN_SPACE_TRACER
 
-	ComputeClampedEndUV(startUV, startDepth, endUV, endDepth);
+	float clampedMaxT;
+	ComputeClampedEndUV(startUV, startDepth, INOUT endUV, INOUT endDepth, OUT clampedMaxT);
 
 	const float startZ = startDepth;
 	const float endZ   = endDepth;
@@ -101,33 +103,35 @@ SSTraceResult TraceScreenSpaceRay(in SSTracerData tracer, in SceneViewData scene
 		const bool isHit = z >= maxZ * 1.00002f && penetration < rayThickness;
 
 #if DEBUG_SCREEN_SPACE_TRACER
-	if(debugRay)
-	{
-		const float3 wsRay  = NDCToWorldSpace(float3(uv * 2.f - 1.f, ComputeProjectionDepth(z, sceneView)), sceneView);
-		const float3 wsSurf = NDCToWorldSpace(float3(uv * 2.f - 1.f, ComputeProjectionDepth(maxZ, sceneView)), sceneView);
+		if(debugRay)
+		{
+			const float3 wsRay  = NDCToWorldSpace(float3(uv * 2.f - 1.f, ComputeProjectionDepth(z, sceneView)), sceneView);
+			const float3 wsSurf = NDCToWorldSpace(float3(uv * 2.f - 1.f, ComputeProjectionDepth(maxZ, sceneView)), sceneView);
 
-		DebugMarkerDefinition m;
-		m.location = wsRay;
-		m.size = 0.01f;
-		m.color = isHit ? float3(1.f, 0.f, 0.f) : float3(0.f, 1.f, 0.f);
-		GPUDebugRenderer::DrawPersistentMarker(m);
-		m.location = wsSurf;
-		m.color = float3(0.f, 0.f, 1.f);
-		GPUDebugRenderer::DrawPersistentMarker(m);
+			DebugMarkerDefinition m;
+			m.location = wsRay;
+			m.size = 0.01f;
+			m.color = isHit ? float3(1.f, 0.f, 0.f) : float3(0.f, 1.f, 0.f);
+			GPUDebugRenderer::DrawPersistentMarker(m);
+			m.location = wsSurf;
+			m.color = float3(0.f, 0.f, 1.f);
+			GPUDebugRenderer::DrawPersistentMarker(m);
 
-		DebugLineDefinition lineDef;
-		lineDef.begin = wsRay;
-		lineDef.end   = wsSurf;
-		lineDef.color = float3(0.f, 1.f, 1.f);
-		GPUDebugRenderer::DrawPersistentLine(lineDef);
-	}
+			DebugLineDefinition lineDef;
+			lineDef.begin = wsRay;
+			lineDef.end   = wsSurf;
+			lineDef.color = float3(0.f, 1.f, 1.f);
+			GPUDebugRenderer::DrawPersistentLine(lineDef);
+		}
 #endif // DEBUG_SCREEN_SPACE_TRACER
+
+		float unclampedT = t * clampedMaxT;
 
 		if (isHit)
 		{
 			result.isHit = true;
 			result.hitUV = uv;
-			result.hitT  = t;
+			result.hitT  = unclampedT;
 
 			break;
 		}
@@ -135,7 +139,7 @@ SSTraceResult TraceScreenSpaceRay(in SSTracerData tracer, in SceneViewData scene
 		{
 			if (!wasOccluded)
 			{
-				result.unoccludedT = t;
+				result.unoccludedT = unclampedT;
 			}
 		}
 		else

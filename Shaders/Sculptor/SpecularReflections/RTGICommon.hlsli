@@ -22,7 +22,6 @@ RTBRDF RT_EvaluateBRDF(in float3 n, in float3 v, in float3 l, in float roughness
 		float fresnel;
 		brdf.specular = GGX_Specular(n, v, l, roughness, f0, OUT fresnel);
 		brdf.diffuse = Diffuse_Lambert(albedo) * (1.f - fresnel);
-
 	}
 	else
 	{

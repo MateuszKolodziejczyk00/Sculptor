@@ -243,7 +243,7 @@ void RayTracingRenderSystem::OnBuildTLAS(rg::RenderGraphBuilder& graphBuilder, S
 			if (currentSlotIdxInChunk >= materialsSlots->slots.size())
 			{
 				currentSlotIdxInChunk = 0u;
-				materialsSlots = scene.materials.slots.Get(instance.materialSlots);
+				materialsSlots = scene.materials.slots.Get(materialsSlots->next);
 				SPT_CHECK(materialsSlots != nullptr);
 			}
 		}
