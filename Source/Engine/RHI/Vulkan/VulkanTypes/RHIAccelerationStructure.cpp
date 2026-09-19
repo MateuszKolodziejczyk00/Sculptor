@@ -86,17 +86,23 @@ DeviceAddress RHIAccelerationStructure::GetDeviceAddress() const
 	return vkGetAccelerationStructureDeviceAddressKHR(VulkanRHI::GetDeviceHandle(), &asDeviceAddressInfo);
 }
 
-void RHIAccelerationStructure::CopySRVDescriptor(Byte* dst) const
+void RHIAccelerationStructure::CopySRVDescriptor(lib::Span<Byte> dst) const
 {
 	SPT_CHECK(IsValid());
 
-	VkDescriptorGetInfoEXT info{ VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
-	info.type                       = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-	info.data.accelerationStructure = GetDeviceAddress();
+	VkDeviceAddressRangeEXT addressRange;
+	addressRange.address = GetDeviceAddress();
+	addressRange.size    = 0u;
 
-	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
+	VkResourceDescriptorInfoEXT descriptorInfo{ VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT };
+	descriptorInfo.type               = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+	descriptorInfo.data.pAddressRange = &addressRange;
 
-	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().SizeOf(rhi::EDescriptorType::AccelerationStructure), dst);
+	VkHostAddressRangeEXT hostAddressRange;
+	hostAddressRange.address = dst.data();
+	hostAddressRange.size    = dst.size();
+
+	vkWriteResourceDescriptorsEXT(VulkanRHI::GetDeviceHandle(), 1u, &descriptorInfo, &hostAddressRange);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

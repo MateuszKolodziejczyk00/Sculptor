@@ -5,8 +5,8 @@
 #endif // USE_STABLE_BLENDS
 
 
-[[descriptor_set(RenderViewDS)]]
-[[descriptor_set(SRTemporalAccumulationDS)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(SRTemporalAccumulationParams, PARAMS_S_R_TEMPORAL_ACCUMULATION)]]
 
 
 #include "Utils/SceneViewUtils.hlsli"
@@ -61,20 +61,20 @@ void FindTemporalReprojection(in float2 surfaceHistoryUV,
 
 	if (all(reprojectedUV >= 0.f) && all(reprojectedUV <= 1.f))
 	{
-		const float historySampleDepth = u_historyDepthTexture.SampleLevel(u_nearestSampler, reprojectedUV, 0.f);
+		const float historySampleDepth = PARAMS_S_R_TEMPORAL_ACCUMULATION->historyDepthTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), reprojectedUV, 0.f);
 
 		for(uint sampleIdx = 0; sampleIdx < HISTORY_SAMPLE_COUNT; ++sampleIdx)
 		{
 			const float2 sampleUV = reprojectedUV + g_historyOffsets[sampleIdx] * pixelSize;
 
 			const float3 historySampleNDC = float3(sampleUV * 2.f - 1.f, historySampleDepth);
-			const float3 historySampleWS = NDCToWorldSpaceNoJitter(historySampleNDC, u_prevFrameSceneView);
+			const float3 historySampleWS = NDCToWorldSpaceNoJitter(historySampleNDC, VIEW->prevFrameSceneView);
 
 			const float historySampleDistToCurrentSamplePlane = currentSamplePlane.Distance(historySampleWS);
 			if (abs(historySampleDistToCurrentSamplePlane) < maxPlaneDistance)
 			{
-				const float3 historyNormals  = OctahedronDecodeNormal(u_historyNormalsTexture.SampleLevel(u_nearestSampler, sampleUV, 0.f));
-				const float historyRoughness = u_historyRoughnessTexture.SampleLevel(u_nearestSampler, sampleUV, 0.f);
+				const float3 historyNormals  = OctahedronDecodeNormal(PARAMS_S_R_TEMPORAL_ACCUMULATION->historyNormalsTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), sampleUV, 0.f));
+				const float historyRoughness = PARAMS_S_R_TEMPORAL_ACCUMULATION->historyRoughnessTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), sampleUV, 0.f);
 
 				const float normalsSimilarity   = dot(historyNormals, currentSampleNormal);
 				const float roughnessDifference = abs(roughness - historyRoughness);
@@ -136,7 +136,7 @@ void PrecacheLocalSpecularValues(in int2 groupID, in int2 localID, in int2 resol
 		const int sampleX = sampleIdx - sampleY * GS_DATA_SIZE_X;
 		const int2 sampleCoords = clamp(groupOffset + int2(sampleX, sampleY) - GS_RADIUS, 0, maxCoords);
 
-		const float4 specular = u_specularTexture[sampleCoords];
+		const float4 specular = PARAMS_S_R_TEMPORAL_ACCUMULATION->specularTexture[sampleCoords];
 		gs_specular[sampleY][sampleX] = float4(RGBToYCoCg(specular.rgb), specular.w);
 	}
 }
@@ -225,23 +225,22 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 {
 	const uint2 pixel = input.globalID.xy;
 	
-	uint2 outputRes;
-	u_rwSpecularY_SH2.GetDimensions(outputRes.x, outputRes.y);
+	uint2 outputRes = PARAMS_S_R_TEMPORAL_ACCUMULATION->rwSpecularY_SH2.GetResolution();
 
 	PrecacheLocalSpecularValues(int2(input.groupID.xy), int2(input.localID.xy), int2(outputRes));
 
 	if(pixel.x < outputRes.x && pixel.y < outputRes.y)
 	{
-		const float roughness = u_roughnessTexture.Load(uint3(pixel, 0));
+		const float roughness = PARAMS_S_R_TEMPORAL_ACCUMULATION->roughnessTexture.Load(uint3(pixel, 0));
 
 		const float2 pixelSize = rcp(float2(outputRes));
 		const float2 uv = (float2(pixel) + 0.5f) * pixelSize;
 
-		const float3 currentSampleNormal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(pixel, 0)));
-		const float3 lightDirection      = OctahedronDecodeNormal(u_lightDirection.Load(uint3(pixel, 0)));
+		const float3 currentSampleNormal = OctahedronDecodeNormal(PARAMS_S_R_TEMPORAL_ACCUMULATION->normalsTexture.Load(uint3(pixel, 0)));
+		const float3 lightDirection      = OctahedronDecodeNormal(PARAMS_S_R_TEMPORAL_ACCUMULATION->lightDirection.Load(uint3(pixel, 0)));
 
-		float4 specular = u_specularTexture[pixel];
-		float4 diffuse  = u_diffuseTexture[pixel];
+		float4 specular = PARAMS_S_R_TEMPORAL_ACCUMULATION->specularTexture[pixel];
+		float4 diffuse  = PARAMS_S_R_TEMPORAL_ACCUMULATION->diffuseTexture[pixel];
 		specular.rgb = RGBToYCoCg(specular.rgb);
 		diffuse.rgb = RGBToYCoCg(diffuse.rgb);
 
@@ -255,7 +254,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		RTSphericalBasis outDiffuseY;
 		float2 outDiffuseCoCg;
 
-		const float currentDepth = u_depthTexture.Load(uint3(pixel, 0));
+		const float currentDepth = PARAMS_S_R_TEMPORAL_ACCUMULATION->depthTexture.Load(uint3(pixel, 0));
 		if(currentDepth == 0.f)
 		{
 			return;
@@ -266,16 +265,16 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		float hitDistance = ComputeHitDistance(neighbourhoodInfo);
 
 		const float3 currentNDC = float3(uv * 2.f - 1.f, currentDepth);
-		const float3 currentSampleWS = NDCToWorldSpaceNoJitter(currentNDC, u_sceneView);
-		const float3 projectedReflectionWS = currentSampleWS + normalize(currentSampleWS - u_sceneView.viewLocation) * hitDistance;
-		const float3 prevFrameNDC = WorldSpaceToNDCNoJitter(projectedReflectionWS, u_prevFrameSceneView);
+		const float3 currentSampleWS = NDCToWorldSpaceNoJitter(currentNDC, VIEW->sceneView);
+		const float3 projectedReflectionWS = currentSampleWS + normalize(currentSampleWS - VIEW->sceneView.viewLocation) * hitDistance;
+		const float3 prevFrameNDC = WorldSpaceToNDCNoJitter(projectedReflectionWS, VIEW->prevFrameSceneView);
 
-		const float currentLinearDepth = ComputeLinearDepth(currentDepth, u_sceneView);
+		const float currentLinearDepth = ComputeLinearDepth(currentDepth, VIEW->sceneView);
 		const float maxPlaneDistance = max(0.015f * currentLinearDepth, 0.025f);
 
 		const float2 virtualPointHistoryUV = prevFrameNDC.xy * 0.5f + 0.5f;
 
-		const float2 motion = u_motionTexture.Load(uint3(pixel, 0));
+		const float2 motion = PARAMS_S_R_TEMPORAL_ACCUMULATION->motionTexture.Load(uint3(pixel, 0));
 		const float2 surfaceHistoryUV = uv - motion;
 
 		float2 diffuseReprojectedUV;
@@ -307,19 +306,19 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		{
 			const uint3 historyPixel = uint3(diffuseReprojectedUV * outputRes.xy, 0u);
 
-			diffuseHistoryLength += u_historyDiffuseHistoryLengthTexture.Load(historyPixel);
+			diffuseHistoryLength += PARAMS_S_R_TEMPORAL_ACCUMULATION->historyDiffuseHistoryLengthTexture.Load(historyPixel);
 
 			diffuseHistoryLength = min(diffuseHistoryLength, uint(motionBasedReprojectionConfidence * MAX_ACCUMULATED_FRAMES_NUM));
 			float currentFrameWeight = diffuseHistoryLength <= boostedAccumulationFramesNum ? 0.5f : rcp(float(diffuseHistoryLength + 1u));
 
-			const float2 diffuseHistoryMoments = u_diffuseHistoryTemporalVarianceTexture.Load(historyPixel);
+			const float2 diffuseHistoryMoments = PARAMS_S_R_TEMPORAL_ACCUMULATION->diffuseHistoryTemporalVarianceTexture.Load(historyPixel);
 			diffuseMoments = lerp(diffuseHistoryMoments, diffuseMoments, max(currentFrameWeight, 0.02f));
 
 			const float diffuseFrameWeight = currentFrameWeight + min(1.f - currentFrameWeight, 0.3f) * (1.f - motionBasedReprojectionConfidence);
 
-			RTSphericalBasis diffuseHistoryY = RawToRTSphericalBasis(u_historyDiffuseY_SH2.SampleLevel(u_linearSampler, diffuseReprojectedUV, 0.f));
+			RTSphericalBasis diffuseHistoryY = RawToRTSphericalBasis(PARAMS_S_R_TEMPORAL_ACCUMULATION->historyDiffuseY_SH2.SampleLevel(BindlessSamplers::LinearClampEdge(), diffuseReprojectedUV, 0.f));
 			diffuseHistoryY = diffuseHistoryY * HistoryToCurrentExposedLuminanceFactor();
-			const float4 diffSpecCoCgHistory = ExposedHistoryLuminanceToCurrentExposedLuminance(u_historyDiffSpecCoCg.SampleLevel(u_linearSampler, diffuseReprojectedUV, 0.f));
+			const float4 diffSpecCoCgHistory = ExposedHistoryLuminanceToCurrentExposedLuminance(PARAMS_S_R_TEMPORAL_ACCUMULATION->historyDiffSpecCoCg.SampleLevel(BindlessSamplers::LinearClampEdge(), diffuseReprojectedUV, 0.f));
 
 			AccumulateSH(diffuseHistoryY, diffSpecCoCgHistory.xy, diffuseY, diffuseCoCg, currentSampleNormal, diffuseFrameWeight, OUT outDiffuseY, OUT outDiffuseCoCg);
 
@@ -327,25 +326,25 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 			const float currentFrameWeightFast = max(0.25f, diffuseFrameWeight);
 
-			const float3 diffuseFastHistory = u_diffuseFastHistoryTexture.SampleLevel(u_nearestSampler, diffuseReprojectedUV, 0.f);
-			u_rwDiffuseFastHistoryTexture[pixel] = lerp(diffuseFastHistory, diffuse.rgb, currentFrameWeightFast);
+			const float3 diffuseFastHistory = PARAMS_S_R_TEMPORAL_ACCUMULATION->diffuseFastHistoryTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), diffuseReprojectedUV, 0.f);
+			PARAMS_S_R_TEMPORAL_ACCUMULATION->rwDiffuseFastHistoryTexture[pixel] = lerp(diffuseFastHistory, diffuse.rgb, currentFrameWeightFast);
 
-			motionBasedSpecularY = RawToRTSphericalBasis(u_historySpecularY_SH2.SampleLevel(u_linearSampler, diffuseReprojectedUV, 0.f));
+			motionBasedSpecularY = RawToRTSphericalBasis(PARAMS_S_R_TEMPORAL_ACCUMULATION->historySpecularY_SH2.SampleLevel(BindlessSamplers::LinearClampEdge(), diffuseReprojectedUV, 0.f));
 			motionBasedSpecularY = motionBasedSpecularY * HistoryToCurrentExposedLuminanceFactor();
 			motionBasedSpecularCoCg = diffSpecCoCgHistory.zw;
 
-			motionBasedSpecularHistoryLength = u_historyDiffuseHistoryLengthTexture.Load(historyPixel);
-			motionBasedFastSpecular          = u_specularFastHistoryTexture.SampleLevel(u_nearestSampler, diffuseReprojectedUV, 0.f);
-			motionBasedSpecularMoments       = u_specularHistoryTemporalVarianceTexture.Load(historyPixel);
+			motionBasedSpecularHistoryLength = PARAMS_S_R_TEMPORAL_ACCUMULATION->historyDiffuseHistoryLengthTexture.Load(historyPixel);
+			motionBasedFastSpecular          = PARAMS_S_R_TEMPORAL_ACCUMULATION->specularFastHistoryTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), diffuseReprojectedUV, 0.f);
+			motionBasedSpecularMoments       = PARAMS_S_R_TEMPORAL_ACCUMULATION->specularHistoryTemporalVarianceTexture.Load(historyPixel);
 		}
 		else
 		{
 			outDiffuseY    = diffuseY;
 			outDiffuseCoCg = diffuseCoCg;
-			u_rwDiffuseFastHistoryTexture[pixel] = diffuse.rgb;
+			PARAMS_S_R_TEMPORAL_ACCUMULATION->rwDiffuseFastHistoryTexture[pixel] = diffuse.rgb;
 		}
 
-		u_diffuseHistoryLengthTexture[pixel] = diffuseHistoryLength;
+		PARAMS_S_R_TEMPORAL_ACCUMULATION->diffuseHistoryLengthTexture[pixel] = diffuseHistoryLength;
 
 		float2 specularReprojectedUV;
 		float specularReprojectionConfidence;
@@ -374,14 +373,14 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		{
 			const uint3 historyPixel = uint3(specularReprojectedUV * outputRes.xy, 0u);
 
-			virtualPointSpecularY = RawToRTSphericalBasis(u_historySpecularY_SH2.SampleLevel(u_nearestSampler, specularReprojectedUV, 0.f));
+			virtualPointSpecularY = RawToRTSphericalBasis(PARAMS_S_R_TEMPORAL_ACCUMULATION->historySpecularY_SH2.SampleLevel(BindlessSamplers::NearestClampEdge(), specularReprojectedUV, 0.f));
 			virtualPointSpecularY = virtualPointSpecularY * HistoryToCurrentExposedLuminanceFactor();
 
-			virtualPointSpecularCoCg = ExposedHistoryLuminanceToCurrentExposedLuminance(u_historyDiffSpecCoCg.SampleLevel(u_nearestSampler, specularReprojectedUV, 0.f).zw);
+			virtualPointSpecularCoCg = ExposedHistoryLuminanceToCurrentExposedLuminance(PARAMS_S_R_TEMPORAL_ACCUMULATION->historyDiffSpecCoCg.SampleLevel(BindlessSamplers::NearestClampEdge(), specularReprojectedUV, 0.f).zw);
 
-			virtualPointSpecularHistoryLength = u_historySpecularHistoryLengthTexture.Load(historyPixel);
-			virtualPointFastSpecular          = u_specularFastHistoryTexture.SampleLevel(u_nearestSampler, specularReprojectedUV, 0.f);
-			virtualPointSpecularMoments       = u_specularHistoryTemporalVarianceTexture.Load(historyPixel);
+			virtualPointSpecularHistoryLength = PARAMS_S_R_TEMPORAL_ACCUMULATION->historySpecularHistoryLengthTexture.Load(historyPixel);
+			virtualPointFastSpecular          = PARAMS_S_R_TEMPORAL_ACCUMULATION->specularFastHistoryTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), specularReprojectedUV, 0.f);
+			virtualPointSpecularMoments       = PARAMS_S_R_TEMPORAL_ACCUMULATION->specularHistoryTemporalVarianceTexture.Load(historyPixel);
 		}
 
 		if(motionBasedReprojectionConfidence > 0.2f || specularReprojectionConfidence > 0.2f)
@@ -401,7 +400,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			const RTSphericalBasis specularYHistoryClamped = virtualPointSpecularY;
 			const float2 specularCoCgHistoryClamped = virtualPointSpecularCoCg;
 
-			const float parallaxCos = dot(normalize(u_sceneView.viewLocation - specularReprojectedWS), normalize(u_sceneView.viewLocation - currentSampleWS));
+			const float parallaxCos = dot(normalize(VIEW->sceneView.viewLocation - specularReprojectedWS), normalize(VIEW->sceneView.viewLocation - currentSampleWS));
 			const float parallaxConfidence = Pow3(saturate((parallaxCos - 0.7f) / 0.3f));
 
 			RTSphericalBasis specularYHistory = virtualPointSpecularY * vpWeightNorm + motionBasedSpecularY * mbWeightNorm;
@@ -450,25 +449,25 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 			const float currentFrameWeightFast = max(0.2f, specularFrameWeight);
 
-			u_rwSpecularFastHistoryTexture[pixel] = lerp(fastHistory, specular.rgb, currentFrameWeightFast);
+			PARAMS_S_R_TEMPORAL_ACCUMULATION->rwSpecularFastHistoryTexture[pixel] = lerp(fastHistory, specular.rgb, currentFrameWeightFast);
 		}
 		else
 		{
-			u_rwSpecularFastHistoryTexture[pixel]  = specular.rgb;
+			PARAMS_S_R_TEMPORAL_ACCUMULATION->rwSpecularFastHistoryTexture[pixel]  = specular.rgb;
 
 			outSpecularY    = specularY;
 			outSpecularCoCg = specularCoCg;
 		}
 
-		u_rwSpecHitDist[pixel] = hitDistance;
+		PARAMS_S_R_TEMPORAL_ACCUMULATION->rwSpecHitDist[pixel] = hitDistance;
 
-		u_rwSpecularY_SH2[pixel] = RTSphericalBasisToRaw(outSpecularY);
-		u_rwDiffuseY_SH2[pixel]  = RTSphericalBasisToRaw(outDiffuseY);
-		u_rwDiffSpecCoCg[pixel]  = float4(any(isnan(outDiffuseCoCg)) ? 0.f : outDiffuseCoCg, any(isnan(outSpecularCoCg)) ? 0.f : outSpecularCoCg);
+		PARAMS_S_R_TEMPORAL_ACCUMULATION->rwSpecularY_SH2[pixel] = RTSphericalBasisToRaw(outSpecularY);
+		PARAMS_S_R_TEMPORAL_ACCUMULATION->rwDiffuseY_SH2[pixel]  = RTSphericalBasisToRaw(outDiffuseY);
+		PARAMS_S_R_TEMPORAL_ACCUMULATION->rwDiffSpecCoCg[pixel]  = float4(any(isnan(outDiffuseCoCg)) ? 0.f : outDiffuseCoCg, any(isnan(outSpecularCoCg)) ? 0.f : outSpecularCoCg);
 
-		u_specularHistoryLengthTexture[pixel] = specularHistoryLength;
+		PARAMS_S_R_TEMPORAL_ACCUMULATION->specularHistoryLengthTexture[pixel] = specularHistoryLength;
 
-		u_rwSpecularTemporalVarianceTexture[pixel] = specularMoments;
-		u_rwDiffuseTemporalVarianceTexture[pixel]  = diffuseMoments;
+		PARAMS_S_R_TEMPORAL_ACCUMULATION->rwSpecularTemporalVarianceTexture[pixel] = specularMoments;
+		PARAMS_S_R_TEMPORAL_ACCUMULATION->rwDiffuseTemporalVarianceTexture[pixel]  = diffuseMoments;
 	}
 }

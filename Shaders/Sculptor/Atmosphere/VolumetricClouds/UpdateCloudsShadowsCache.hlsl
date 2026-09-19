@@ -1,8 +1,8 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(CloudscapeDS)]]
+[[shader_params(CloudscapeConstants, PARAMS_CLOUDSCAPE)]]
 
-[[shader_params(CloudsShadowsCacheConstants, u_constants)]]
+[[shader_params(CloudsShadowsCacheConstants, PARAMS_CLOUDS_SHADOWS_CACHE_CONSTANTS)]]
 
 #include "Atmosphere/VolumetricClouds/CloudscapeRaymarcher.hlsli"
 
@@ -16,9 +16,9 @@ struct CS_INPUT
 [numthreads(8, 8, 1)]
 void UpdateCloudsShadowsCacheCS(CS_INPUT input)
 {
-    const uint3 coords = input.globalID.xyz + uint3(u_constants.updateOffset, 0u);
+    const uint3 coords = input.globalID.xyz + uint3(PARAMS_CLOUDS_SHADOWS_CACHE_CONSTANTS->updateOffset, 0u);
 
-    const CloudscapeConstants cloudscape = u_cloudscapeConstants;
+    const CloudscapeConstants cloudscape = *PARAMS_CLOUDSCAPE;
 
 	const float3 uvw = float3(coords + 0.5f) * cloudscape.shadowsCacheVoxelSize;
 	const float2 voxelLocation2D = cloudscape.shadowsCacheOrigin + uvw.xy * cloudscape.shadowsCacheSize;
@@ -33,17 +33,17 @@ void UpdateCloudsShadowsCacheCS(CS_INPUT input)
 
 	CloudscapeRaymarchParams raymarchParams = CloudscapeRaymarchParams::Create();
 	raymarchParams.ray         = Ray::Create(float3(voxelLocation2D, voxelLocationZ), rayDirection);
-	raymarchParams.samplesNum  = u_constants.resetCache ? 256.f : 8.f;
-	raymarchParams.maxDistance = u_constants.resetCache ? -1.f : 512.f;
+	raymarchParams.samplesNum  = PARAMS_CLOUDS_SHADOWS_CACHE_CONSTANTS->resetCache ? 256.f : 8.f;
+	raymarchParams.maxDistance = PARAMS_CLOUDS_SHADOWS_CACHE_CONSTANTS->resetCache ? -1.f : 512.f;
 	float transmittance = RaymarchCloudscapeTransmittance(raymarchParams, OUT tracedDistance);
 
-	if (tracedDistance > 512.f * 0.99f && u_constants.prevShadowsCache.IsValid())
+	if (tracedDistance > 512.f * 0.99f && PARAMS_CLOUDS_SHADOWS_CACHE_CONSTANTS->prevShadowsCache.IsValid())
 	{
 		const float3 rayEnd = raymarchParams.ray.origin + rayDirection * tracedDistance;
 		const float3 shadowCacheUVW = GetShadowCacheUVW(rayEnd);
 
-		transmittance *= u_constants.prevShadowsCache.SampleLevel(u_cloadsLinearClampSampler, shadowCacheUVW, 0.f);
+		transmittance *= PARAMS_CLOUDS_SHADOWS_CACHE_CONSTANTS->prevShadowsCache.SampleLevel(BindlessSamplers::LinearClampEdge(), shadowCacheUVW, 0.f);
 	}
 
-	u_constants.rwShadowsCache.Store(coords, transmittance);
+	PARAMS_CLOUDS_SHADOWS_CACHE_CONSTANTS->rwShadowsCache.Store(coords, transmittance);
 }

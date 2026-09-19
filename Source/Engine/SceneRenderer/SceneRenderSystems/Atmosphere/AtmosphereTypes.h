@@ -57,7 +57,7 @@ END_SHADER_STRUCT();
 
 struct AtmosphereContext
 {
-	lib::SharedPtr<rdr::Buffer> atmosphereParamsBuffer;
+	rdr::GPUPtr<AtmosphereParams> atmosphereParams;
 
 	lib::SharedPtr<rdr::Buffer> directionalLightsBuffer;
 

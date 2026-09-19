@@ -1,10 +1,5 @@
 #include "SRATrousFilter.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "RGDescriptorSetState.h"
 #include "ResourcesManager.h"
 #include "RenderGraphBuilder.h"
 #include "View/RenderView.h"
@@ -30,18 +25,14 @@ BEGIN_SHADER_STRUCT(SRATrousFilteringParams)
 	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
 	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
 	SHADER_STRUCT_FIELD(Int32,          samplesOffset)
+
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, inVariance)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>, outVariance)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         linearDepthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, normalsTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         roughnessTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Uint32>,         specularHistoryLengthTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(SRATrousFilterDS, rg::RGDescriptorSetState<SRATrousFilterDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_inVariance)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),             u_outVariance)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_linearDepthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                    u_specularHistoryLengthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRATrousFilteringParams>), u_constants)
-DS_END();
 
 
 static rdr::PipelineStateID CreateSRATrousFilterPipeline(Bool wideRadius, Bool outputSH)
@@ -106,19 +97,17 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilte
 		dispatchConstants.rwDiffSpecCoCg = passParams.outSHTextures->diffSpecCoCg;
 	}
 
-	lib::MTHandle<SRATrousFilterDS> ds = graphBuilder.CreateDescriptorSet<SRATrousFilterDS>(RENDERER_RESOURCE_NAME("SR A-Trous Filter DS"));
-	ds->u_inVariance                    = passParams.inVariance;
-	ds->u_outVariance                   = passParams.outVariance;
-	ds->u_linearDepthTexture            = filterParams.linearDepthTexture;
-	ds->u_normalsTexture                = filterParams.normalsTexture;
-	ds->u_roughnessTexture              = filterParams.roughnessTexture;
-	ds->u_specularHistoryLengthTexture  = filterParams.specularHistoryLengthTexture;
-	ds->u_constants                     = dispatchConstants;
+	dispatchConstants.inVariance                    = passParams.inVariance;
+	dispatchConstants.outVariance                   = passParams.outVariance;
+	dispatchConstants.linearDepthTexture            = filterParams.linearDepthTexture;
+	dispatchConstants.normalsTexture                = filterParams.normalsTexture;
+	dispatchConstants.roughnessTexture              = filterParams.roughnessTexture;
+	dispatchConstants.specularHistoryLengthTexture  = filterParams.specularHistoryLengthTexture;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("{}: Denoise Spatial A-Trous Filter (Iteration {})", filterParams.name.Get().ToString(), passParams.iterationIdx)),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds)));
+						  rg::ShaderParams(dispatchConstants));
 }
 
 } // spt::rsc::sr_denoiser

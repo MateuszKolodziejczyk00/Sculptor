@@ -107,7 +107,7 @@ private:
 
 	lib::SharedPtr<gf::World>			m_world;
 
-	rsc::RenderView*					m_renderView;
+	rsc::RenderView*					m_renderView = nullptr;
 
 	rsc::SceneRendererHandle			m_sceneRenderer;
 

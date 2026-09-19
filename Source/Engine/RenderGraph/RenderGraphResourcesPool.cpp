@@ -1,7 +1,6 @@
 #include "RenderGraphResourcesPool.h"
 #include "ResourcesManager.h"
 #include "GPUApi.h"
-#include "Types/DescriptorSetState/DescriptorSetStateTypes.h"
 #include "Types/GPUMemoryPool.h"
 #include "Types/Texture.h"
 

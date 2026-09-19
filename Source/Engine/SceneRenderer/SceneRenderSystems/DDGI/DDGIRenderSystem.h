@@ -78,8 +78,8 @@ struct DDGIVolumeRelitParameters
 	lib::DynamicArray<rg::RGTextureViewHandle> probesHitDistanceTextureViews;
 	rg::RGTextureViewHandle probesAverageLuminanceTextureView;
 
-	lib::SharedPtr<rdr::BindableBufferView> relitParamsBuffer;
-	lib::SharedPtr<rdr::BindableBufferView> ddgiVolumeParamsBuffer;
+	rdr::GPUPtr<DDGIRelitGPUParams>  relitParams;
+	rdr::GPUPtr<DDGIVolumeGPUParams> volumeParams;
 
 	Uint32 probesNumToUpdate;
 	Uint32 raysNumPerProbe;
@@ -87,7 +87,7 @@ struct DDGIVolumeRelitParameters
 	math::Vector2u probeIlluminanceDataWithBorderRes;
 	math::Vector2u probeHitDistanceDataWithBorderRes;
 
-	lib::MTHandle<DDGISceneDS> ddgiSceneDS;
+	rdr::GPUPtr<DDGIGPUScene> ddgiGPUScene;
 };
 
 
@@ -107,7 +107,8 @@ public:
 	void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const lib::DynamicPushArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings);
 	// End SceneRenderSystem overrides
 
-	const lib::MTHandle<DDGISceneDS>& GetDDGISceneDS() const { return m_ddgiScene.GetDDGIDS(); }
+	const rdr::GPUPtr<DDGIGPUScene>& GetDDGIGPUScene() const { return m_ddgiScene.GetDDGIGPUScene(); }
+
 
 	Bool IsDDGIEnabled() const;
 

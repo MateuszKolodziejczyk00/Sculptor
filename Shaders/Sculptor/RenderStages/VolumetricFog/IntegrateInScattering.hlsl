@@ -1,8 +1,8 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderVolumetricFogDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
-[[descriptor_set(IntegrateInScatteringDS, 2)]]
+[[shader_params(VolumetricFogConstants, PARAMS_RENDER_VOLUMETRIC_FOG)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(IntegrateInScatteringConstants, PARAMS_INTEGRATE_IN_SCATTERING)]]
 
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
@@ -17,21 +17,21 @@ struct CS_INPUT
 [numthreads(8, 8, 1)]
 void IntegrateInScatteringCS(CS_INPUT input)
 {
-	if (all(input.globalID.xy < u_fogConstants.fogGridRes.xy))
+	if (all(input.globalID.xy < PARAMS_RENDER_VOLUMETRIC_FOG->fogGridRes.xy))
 	{
-		const float2 uv = (input.globalID.xy + 0.5f) * u_fogConstants.fogGridInvRes.xy;
+		const float2 uv = (input.globalID.xy + 0.5f) * PARAMS_RENDER_VOLUMETRIC_FOG->fogGridInvRes.xy;
 
 		float currentZ = 0.f;
 
 		float3 integratedScattering = 0.f;
 		float integratedTransmittance = 1.f;
 
-		for (uint z = 0; z < u_fogConstants.fogGridRes.z; ++z)
+		for (uint z = 0; z < PARAMS_RENDER_VOLUMETRIC_FOG->fogGridRes.z; ++z)
 		{
-			const float fogFroxelDepth = (z + 0.5f) * u_fogConstants.fogGridInvRes.z;
-			const float nextZ = ComputeFogFroxelLinearDepth(fogFroxelDepth, u_fogConstants.fogNearPlane, u_fogConstants.fogFarPlane);
+			const float fogFroxelDepth = (z + 0.5f) * PARAMS_RENDER_VOLUMETRIC_FOG->fogGridInvRes.z;
+			const float nextZ = ComputeFogFroxelLinearDepth(fogFroxelDepth, PARAMS_RENDER_VOLUMETRIC_FOG->fogNearPlane, PARAMS_RENDER_VOLUMETRIC_FOG->fogFarPlane);
 			
-			const float4 inScatteringExtinction = u_inScatteringTexture.SampleLevel(u_inScatteringSampler, float3(uv, z * u_fogConstants.fogGridInvRes.z), 0);
+			const float4 inScatteringExtinction = PARAMS_INTEGRATE_IN_SCATTERING->inScatteringTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), float3(uv, z * PARAMS_RENDER_VOLUMETRIC_FOG->fogGridInvRes.z), 0);
 
 			const float3 inScattering = inScatteringExtinction.rgb;
 			const float extinction = inScatteringExtinction.a;
@@ -47,7 +47,7 @@ void IntegrateInScatteringCS(CS_INPUT input)
 
 			currentZ = nextZ;
 		
-			u_integratedInScatteringTexture[uint3(input.globalID.xy, z)] = float4(integratedScattering, integratedTransmittance);
+			PARAMS_INTEGRATE_IN_SCATTERING->integratedInScatteringTexture[uint3(input.globalID.xy, z)] = float4(integratedScattering, integratedTransmittance);
 		}
 	}
 }

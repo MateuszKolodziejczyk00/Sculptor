@@ -12,7 +12,6 @@
 #include "GPUDiagnose/Diagnose.h"
 #include "Engine.h"
 #include "ImGui/SculptorImGui.h"
-#include "Types/Sampler.h"
 #include "JobSystem/JobSystem.h"
 #include "UIElements/ApplicationUI.h"
 #include "UI/SandboxUIView.h"

@@ -65,8 +65,8 @@ struct RenderPassDefinition : public rg::RGRenderPassDefinition
 		
 	{}
 
-	math::Vector2u                              resolution;
-	lib::MTHandle<rg::RGDescriptorSetStateBase> perPassDS;
+	math::Vector2u             resolution;
+	rg::GenericShaderParamsPtr perPassParams;
 };
 
 

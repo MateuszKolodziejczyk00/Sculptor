@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[shader_params(GeneratePBRTexturesMipsConstants, u_params)]]
+[[shader_params(GeneratePBRTexturesMipsConstants, PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS)]]
 
 #include "Utils/ColorSpaces.hlsli"
 #include "Utils/Packing.hlsli"
@@ -12,8 +12,7 @@ struct CS_INPUT
 };
 
 
-template<typename T>
-void DownsampleLinear(in SRVTexture2D<T> inputTexture, in UAVTexture2D<T> outputTexture, in int2 outputCoords)
+void DownsampleLinear<T : ITexelElement & IFloat>(in SRVTexture2D<T> inputTexture, in UAVTexture2D<T> outputTexture, in int2 outputCoords)
 {
 	if (any(outputCoords >= outputTexture.GetResolution()))
 	{
@@ -24,7 +23,7 @@ void DownsampleLinear(in SRVTexture2D<T> inputTexture, in UAVTexture2D<T> output
 
 	const uint2 inputRes = inputTexture.GetResolution();
 
-	T sum = (T)0.f;
+	T sum = {};
 	float weightSum = 0.f;
 
 	const float2 inputCoords = uv * inputRes;
@@ -39,19 +38,19 @@ void DownsampleLinear(in SRVTexture2D<T> inputTexture, in UAVTexture2D<T> output
 			const T sample = inputTexture.Load(sampleCoords);
 			float weight = 1.f - abs(frac(inputCoords.x) - x) * (1.f - abs(frac(inputCoords.y) - y));
 
-			if (u_params.inAlpha.IsValid())
+			if (PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->inAlpha.IsValid())
 			{
 				const float2 sampleUV = (float2(sampleCoords) + 0.5f) / inputRes.xy;
-				const float alpha = u_params.inAlpha.SampleLevel(BindlessSamplers::LinearClampEdge(), sampleUV, 0);
+				const float alpha = PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->inAlpha.SampleLevel(BindlessSamplers::LinearClampEdge(), sampleUV, 0.f);
 				weight *= alpha;
 			}
 
-			sum += sample * weight;
+			sum = sum + sample * (T)weight;
 			weightSum += weight;
 		}
 	}
 
-	const T result = weightSum > 0.f ? sum / weightSum : (T)0.f;
+	const T result = weightSum > 0.f ? sum / (T)weightSum : DefaultValue<T>();
 	outputTexture.Store(outputCoords, result);
 }
 
@@ -82,10 +81,10 @@ void DownsampleSRGB(in SRVTexture2D<float4> inputTexture, in UAVTexture2D<float4
 			const float4 sample = inputTexture.Load(sampleCoords);
 			float weight = 1.f - abs(frac(inputCoords.x) - x) * (1.f - abs(frac(inputCoords.y) - y));
 
-			if (u_params.inAlpha.IsValid())
+			if (PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->inAlpha.IsValid())
 			{
 				const float2 sampleUV = (float2(sampleCoords) + 0.5f) / inputRes.xy;
-				const float alpha = u_params.inAlpha.SampleLevel(BindlessSamplers::LinearClampEdge(), sampleUV, 0);
+				const float alpha = PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->inAlpha.SampleLevel(BindlessSamplers::LinearClampEdge(), sampleUV, 0);
 				weight *= alpha;
 			}
 
@@ -124,10 +123,10 @@ void DownsampleNormals(in SRVTexture2D<float2> inputTexture, in UAVTexture2D<flo
 			const float2 sample = inputTexture.Load(sampleCoords);
 			float weight = 1.f - abs(frac(inputCoords.x) - x) * (1.f - abs(frac(inputCoords.y) - y));
 
-			if (u_params.inAlpha.IsValid())
+			if (PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->inAlpha.IsValid())
 			{
 				const float2 sampleUV = (float2(sampleCoords) + 0.5f) / inputRes.xy;
-				const float alpha = u_params.inAlpha.SampleLevel(BindlessSamplers::LinearClampEdge(), sampleUV, 0);
+				const float alpha = PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->inAlpha.SampleLevel(BindlessSamplers::LinearClampEdge(), sampleUV, 0);
 				weight *= alpha;
 			}
 
@@ -147,45 +146,45 @@ void GeneratePBRTexturesMipsCS(CS_INPUT input)
 	const int2 coords = input.globalID.xy;
 
 	float4 alphaValues = 1.f;
-	if (u_params.rwAlpha.IsValid())
+	if (PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->rwAlpha.IsValid())
 	{
-		const float2 alphaUV = (float2(coords) + 0.5f) / u_params.rwAlpha.GetResolution().xy;
-		const float outAlpha = dot(u_params.inAlpha.Gather<float4>(BindlessSamplers::LinearClampEdge(), alphaUV), 0.25f);
-		u_params.rwAlpha.Store(coords, outAlpha);
+		const float2 alphaUV = (float2(coords) + 0.5f) / PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->rwAlpha.GetResolution().xy;
+		const float outAlpha = dot(PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->inAlpha.Gather(BindlessSamplers::LinearClampEdge(), alphaUV), 0.25f);
+		PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->rwAlpha.Store(coords, outAlpha);
 	}
 
-	if (u_params.rwBaseColor.IsValid())
+	if (PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->rwBaseColor.IsValid())
 	{
-		DownsampleSRGB(u_params.inBaseColor, u_params.rwBaseColor, coords);
+		DownsampleSRGB(PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->inBaseColor, PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->rwBaseColor, coords);
 	}
 
-	if (u_params.rwMetallicRoughness.IsValid())
+	if (PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->rwMetallicRoughness.IsValid())
 	{
-		DownsampleLinear(u_params.inMetallicRoughness, u_params.rwMetallicRoughness, coords);
+		DownsampleLinear(PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->inMetallicRoughness, PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->rwMetallicRoughness, coords);
 	}
 
-	if (u_params.rwNormals.IsValid())
+	if (PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->rwNormals.IsValid())
 	{
-		DownsampleNormals(u_params.inNormals, u_params.rwNormals, coords);
+		DownsampleNormals(PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->inNormals, PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->rwNormals, coords);
 	}
 
-	if (u_params.rwEmissive.IsValid())
+	if (PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->rwEmissive.IsValid())
 	{
-		DownsampleSRGB(u_params.inEmissive, u_params.rwEmissive, coords);
+		DownsampleSRGB(PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->inEmissive, PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->rwEmissive, coords);
 	}
 
-	if (u_params.rwDepth.IsValid())
+	if (PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->rwDepth.IsValid())
 	{
-		DownsampleLinear(u_params.inDepth, u_params.rwDepth, coords);
+		DownsampleLinear(PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->inDepth, PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->rwDepth, coords);
 	}
 
-	if (u_params.rwOcclusion.IsValid())
+	if (PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->rwOcclusion.IsValid())
 	{
-		DownsampleLinear(u_params.inOcclusion, u_params.rwOcclusion, coords);
+		DownsampleLinear(PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->inOcclusion, PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->rwOcclusion, coords);
 	}
 
-	if (u_params.rwDisplacement.IsValid())
+	if (PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->rwDisplacement.IsValid())
 	{
-		DownsampleLinear(u_params.inDisplacement, u_params.rwDisplacement, coords);
+		DownsampleLinear(PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->inDisplacement, PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->rwDisplacement, coords);
 	}
 }

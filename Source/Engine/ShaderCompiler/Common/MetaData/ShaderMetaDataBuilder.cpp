@@ -1,7 +1,7 @@
 #include "ShaderMetaDataBuilder.h"
 #include "Common/CompiledShader.h"
-#include "ShaderMetaDataBuilderTypes.h"
 #include "ShaderMetaData.h"
+#include "ShaderMetaDataBuilderTypes.h"
 
 
 namespace spt::sc
@@ -14,15 +14,7 @@ static void BuildShaderMetaData(const ShaderCompilationMetaData& compilationMeta
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK_MSG(compilationMetaData.GetDSTypeID(0u) == idxNone<Uint64>, "Shaders using bindless cannot use descriptor set 0");
-	
-	for (SizeType dsIdx = 0; dsIdx < compilationMetaData.GetDescriptorSetsNum(); ++dsIdx)
-	{
-		const SizeType dsTypeID = compilationMetaData.GetDSTypeID(dsIdx);
-		outShaderMetaData.SetDescriptorSetStateTypeID(dsIdx, dsTypeID);
-	}
-
-	outShaderMetaData.SetShaderParamsTypeName(compilationMetaData.GetShaderParamsTypeName());
+	outShaderMetaData.SetShaderParamsTypes(compilationMetaData.GetShaderParamsTypes());
 
 #if WITH_SHADERS_HOT_RELOAD
 	for (const auto& [structName, versionHash] : compilationMetaData.shaderStructsVersionHashes)

@@ -2,11 +2,11 @@
 
 #define RT_MATERIAL_TRACING
 
-[[descriptor_set(RenderSceneDS)]]
-[[descriptor_set(GlobalLightsDS)]]
-[[descriptor_set(DDGISceneDS)]]
-[[descriptor_set(CloudscapeProbesDS)]]
-[[descriptor_set(DDGITraceRaysDS)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
+[[shader_params(GlobalLightsParams, PARAMS_GLOBAL_LIGHTS)]]
+[[shader_params(DDGIGPUScene, PARAMS_DDGI_SCENE)]]
+[[shader_params(CloudscapeProbesParams, PARAMS_CLOUDSCAPE_PROBES)]]
+[[shader_params(DDGITraceRaysConsts, CONSTS)]]
 
 
 #include "RayTracing/RayTracingHelpers.hlsli"
@@ -24,19 +24,26 @@ void DDGIProbeRaysRTG()
 	const uint2 dispatchIdx = DispatchRaysIndex().xy;
 	
 	const uint rayIdx = dispatchIdx.y;
-	const uint3 probeCoords = ComputeUpdatedProbeCoords(dispatchIdx.x, u_relitParams.probesToUpdateCoords, u_relitParams.probesToUpdateCount);
+	const uint3 probeCoords = ComputeUpdatedProbeCoords(dispatchIdx.x, CONSTS->relitParams->probesToUpdateCoords, CONSTS->relitParams->probesToUpdateCount);
 
-	float3 rayDirection = GetProbeRayDirection(rayIdx, u_relitParams.raysNumPerProbe);
+	float3 rayDirection = GetProbeRayDirection(rayIdx, CONSTS->relitParams->raysNumPerProbe);
 
-	const float3 probeWorldLocation = GetProbeWorldLocation(u_volumeParams, probeCoords);
+	const float3 probeWorldLocation = GetProbeWorldLocation(*CONSTS->volumeParams, probeCoords);
 
 	RayDesc rayDesc;
-	rayDesc.TMin        = u_relitParams.probeRaysMinT;
-	rayDesc.TMax        = u_relitParams.probeRaysMaxT;
+	rayDesc.TMin        = CONSTS->relitParams->probeRaysMinT;
+	rayDesc.TMax        = CONSTS->relitParams->probeRaysMaxT;
 	rayDesc.Origin      = probeWorldLocation;
 	rayDesc.Direction   = rayDirection;
 
-	const RayPayloadData traceResult = RTScene().TraceMaterialRay(rayDesc);
+	rayDesc.TMin        = 0.001f;
+	rayDesc.TMax        = 0.002f;
+	rayDesc.Origin      = 9999.f;
+	rayDesc.Direction   = 1.f;
+
+	RayPayloadData traceResult;
+	traceResult.visibility.isValidHit = false;
+	traceResult.visibility.isMiss = RTScene().VisibilityTest(rayDesc);
 
 	float3 luminance = 0.f;
 
@@ -71,8 +78,8 @@ void DDGIProbeRaysRTG()
 	}
 	else if (traceResult.visibility.isMiss)
 	{
-		const float3 probeAtmosphereLocation = GetLocationInAtmosphere(u_atmosphereParams, probeWorldLocation);
-		luminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, probeAtmosphereLocation, rayDirection);
+		const float3 probeAtmosphereLocation = GetLocationInAtmosphere(*CONSTS->atmosphereParams, probeWorldLocation);
+		luminance = GetLuminanceFromSkyViewLUT(*CONSTS->atmosphereParams, CONSTS->skyViewLUT, BindlessSamplers::LinearClampEdge(), probeAtmosphereLocation, rayDirection);
 
 		const CloudscapeSample cloudscapeSample = SampleCloudscape(probeWorldLocation, rayDirection);
 		luminance = cloudscapeSample.inScattering + luminance * cloudscapeSample.transmittance;
@@ -90,9 +97,9 @@ void DDGIProbeRaysRTG()
 
 	if (!isBackface)
 	{
-		const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(u_lightsParams.heightFog, probeWorldLocation, traceEndLocation);
+		const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(PARAMS_GLOBAL_LIGHTS->heightFog, probeWorldLocation, traceEndLocation);
 		luminance *= fogTransmittance;
 	}
 
-	u_traceRaysResultTexture[dispatchIdx] = float4(luminance, distanceTraveled);
+	CONSTS->traceRaysResultTexture[dispatchIdx] = float4(luminance, distanceTraveled);
 }

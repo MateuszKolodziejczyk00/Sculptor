@@ -1,9 +1,4 @@
 #include "SRTemporalAccumulation.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ResourcesManager.h"
 #include "RenderGraphBuilder.h"
 #include "View/RenderView.h"
@@ -16,40 +11,38 @@
 namespace spt::rsc::sr_denoiser
 {
 
-DS_BEGIN(SRTemporalAccumulationDS, rg::RGDescriptorSetState<SRTemporalAccumulationDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                                     u_specularHistoryLengthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                                    u_historySpecularHistoryLengthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                                     u_diffuseHistoryLengthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                                    u_historyDiffuseHistoryLengthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_historyDepthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_motionTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_historyNormalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_historyRoughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_specularTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_diffuseTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<RTSphericalBasisType>),                       u_rwSpecularY_SH2)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<RTSphericalBasisType>),                       u_rwDiffuseY_SH2)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_rwDiffSpecCoCg)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_rwSpecHitDist)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_lightDirection)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<RTSphericalBasisType>),                      u_historySpecularY_SH2)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<RTSphericalBasisType>),                      u_historyDiffuseY_SH2)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_historyDiffSpecCoCg)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_rwSpecularTemporalVarianceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_specularHistoryTemporalVarianceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_rwSpecularFastHistoryTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_specularFastHistoryTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_rwDiffuseTemporalVarianceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_diffuseHistoryTemporalVarianceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_rwDiffuseFastHistoryTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_diffuseFastHistoryTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_baseColorMetallicTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),  u_linearSampler)
-DS_END();
+BEGIN_SHADER_STRUCT(SRTemporalAccumulationParams)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Uint32>,               specularHistoryLengthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Uint32>,               historySpecularHistoryLengthTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Uint32>,               diffuseHistoryLengthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Uint32>,               historyDiffuseHistoryLengthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,               historyDepthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,               depthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>,       motionTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>,       normalsTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>,       historyNormalsTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,               historyRoughnessTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,               roughnessTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>,       specularTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>,       diffuseTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<RTSphericalBasisType>, rwSpecularY_SH2)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<RTSphericalBasisType>, rwDiffuseY_SH2)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>,       rwDiffSpecCoCg)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,               rwSpecHitDist)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>,       lightDirection)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<RTSphericalBasisType>, historySpecularY_SH2)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<RTSphericalBasisType>, historyDiffuseY_SH2)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>,       historyDiffSpecCoCg)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>,       rwSpecularTemporalVarianceTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>,       specularHistoryTemporalVarianceTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector3f>,       rwSpecularFastHistoryTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>,       specularFastHistoryTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>,       rwDiffuseTemporalVarianceTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>,       diffuseHistoryTemporalVarianceTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector3f>,       rwDiffuseFastHistoryTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>,       diffuseFastHistoryTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>,       baseColorMetallicTexture)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CreateTemporalAccumulationPipeline(const TemporalAccumulationParameters& params)
@@ -67,44 +60,44 @@ void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const Tempo
 
 	const math::Vector2u resolution = params.currentSpecularTexture->GetResolution2D();
 
-	lib::MTHandle<SRTemporalAccumulationDS> ds = graphBuilder.CreateDescriptorSet<SRTemporalAccumulationDS>(RENDERER_RESOURCE_NAME("SRTemporalAccumulationDS"));
-	ds->u_specularHistoryLengthTexture           = params.specularHistoryLengthTexture;
-	ds->u_historySpecularHistoryLengthTexture    = params.historySpecularHistoryLengthTexture;
-	ds->u_diffuseHistoryLengthTexture            = params.diffuseHistoryLengthTexture;
-	ds->u_historyDiffuseHistoryLengthTexture     = params.historyDiffuseHistoryLengthTexture;
-	ds->u_historyDepthTexture                    = params.historyDepthTexture;
-	ds->u_depthTexture                           = params.currentDepthTexture;
-	ds->u_motionTexture	                         = params.motionTexture;
-	ds->u_normalsTexture                         = params.normalsTexture;
-	ds->u_historyNormalsTexture                  = params.historyNormalsTexture;
-	ds->u_historyRoughnessTexture                = params.historyRoughnessTexture;
-	ds->u_roughnessTexture                       = params.currentRoughnessTexture;
-	ds->u_specularTexture                        = params.currentSpecularTexture;
-	ds->u_diffuseTexture                         = params.currentDiffuseTexture;
-	ds->u_rwSpecularY_SH2                        = params.specularY_SH2;
-	ds->u_rwDiffuseY_SH2                         = params.diffuseY_SH2;
-	ds->u_rwDiffSpecCoCg                         = params.diffSpecCoCg;
-	ds->u_rwSpecHitDist                          = params.specHitDist;
-	ds->u_lightDirection                         = params.lightDirection;
-	ds->u_historySpecularY_SH2                   = params.historySpecularY_SH2;
-	ds->u_historyDiffuseY_SH2                    = params.historyDiffuseY_SH2;
-	ds->u_historyDiffSpecCoCg                    = params.historyDiffSpecCoCg;
-	ds->u_rwSpecularTemporalVarianceTexture      = params.temporalVarianceSpecularTexture;
-	ds->u_specularHistoryTemporalVarianceTexture = params.historyTemporalVarianceSpecularTexture;
-	ds->u_rwSpecularFastHistoryTexture           = params.fastHistorySpecularTexture;
-	ds->u_specularFastHistoryTexture             = params.fastHistorySpecularOutputTexture;
-	ds->u_rwDiffuseTemporalVarianceTexture       = params.temporalVarianceDiffuseTexture;
-	ds->u_diffuseHistoryTemporalVarianceTexture  = params.historyTemporalVarianceDiffuseTexture;
-	ds->u_rwDiffuseFastHistoryTexture            = params.fastHistoryDiffuseTexture;
-	ds->u_diffuseFastHistoryTexture              = params.fastHistoryDiffuseOutputTexture;
-	ds->u_baseColorMetallicTexture               = params.baseColorMetallic;
+	SRTemporalAccumulationParams shaderParams;
+	shaderParams.specularHistoryLengthTexture           = params.specularHistoryLengthTexture;
+	shaderParams.historySpecularHistoryLengthTexture    = params.historySpecularHistoryLengthTexture;
+	shaderParams.diffuseHistoryLengthTexture            = params.diffuseHistoryLengthTexture;
+	shaderParams.historyDiffuseHistoryLengthTexture     = params.historyDiffuseHistoryLengthTexture;
+	shaderParams.historyDepthTexture                    = params.historyDepthTexture;
+	shaderParams.depthTexture                           = params.currentDepthTexture;
+	shaderParams.motionTexture                          = params.motionTexture;
+	shaderParams.normalsTexture                         = params.normalsTexture;
+	shaderParams.historyNormalsTexture                  = params.historyNormalsTexture;
+	shaderParams.historyRoughnessTexture                = params.historyRoughnessTexture;
+	shaderParams.roughnessTexture                       = params.currentRoughnessTexture;
+	shaderParams.specularTexture                        = params.currentSpecularTexture;
+	shaderParams.diffuseTexture                         = params.currentDiffuseTexture;
+	shaderParams.rwSpecularY_SH2                        = params.specularY_SH2;
+	shaderParams.rwDiffuseY_SH2                         = params.diffuseY_SH2;
+	shaderParams.rwDiffSpecCoCg                         = params.diffSpecCoCg;
+	shaderParams.rwSpecHitDist                          = params.specHitDist;
+	shaderParams.lightDirection                         = params.lightDirection;
+	shaderParams.historySpecularY_SH2                   = params.historySpecularY_SH2;
+	shaderParams.historyDiffuseY_SH2                    = params.historyDiffuseY_SH2;
+	shaderParams.historyDiffSpecCoCg                    = params.historyDiffSpecCoCg;
+	shaderParams.rwSpecularTemporalVarianceTexture      = params.temporalVarianceSpecularTexture;
+	shaderParams.specularHistoryTemporalVarianceTexture = params.historyTemporalVarianceSpecularTexture;
+	shaderParams.rwSpecularFastHistoryTexture           = params.fastHistorySpecularTexture;
+	shaderParams.specularFastHistoryTexture             = params.fastHistorySpecularOutputTexture;
+	shaderParams.rwDiffuseTemporalVarianceTexture       = params.temporalVarianceDiffuseTexture;
+	shaderParams.diffuseHistoryTemporalVarianceTexture  = params.historyTemporalVarianceDiffuseTexture;
+	shaderParams.rwDiffuseFastHistoryTexture            = params.fastHistoryDiffuseTexture;
+	shaderParams.diffuseFastHistoryTexture              = params.fastHistoryDiffuseOutputTexture;
+	shaderParams.baseColorMetallicTexture               = params.baseColorMetallic;
 
 	const rdr::PipelineStateID pipeline = CreateTemporalAccumulationPipeline(params);
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{}: SR Temporal Accumulation", params.name.AsString()),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds)));
+						  rg::ShaderParams(shaderParams));
 }
 
 } // spt::rsc::sr_denoiser

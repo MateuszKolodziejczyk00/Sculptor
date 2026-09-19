@@ -4,7 +4,6 @@
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHIPipelineTypes.h"
 #include "RHICore/RHIPipelineDefinitionTypes.h"
-#include "Vulkan/Pipeline/PipelineLayout.h"
 #include "Vulkan/Debug/DebugUtils.h"
 
 
@@ -30,13 +29,13 @@ public:
 	RHIPipeline();
 
 	/** Initialize graphics pipeline */
-	void InitializeRHI(const rhi::GraphicsPipelineShadersDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, const rhi::PipelineLayoutDefinition& layoutDefinition);
+	void InitializeRHI(const rhi::GraphicsPipelineShadersDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition);
 
 	/** Initialize compute pipeline */
-	void InitializeRHI(const rhi::RHIShaderModule& computeShaderModule, const rhi::PipelineLayoutDefinition& layoutDefinition);
+	void InitializeRHI(const rhi::RHIShaderModule& computeShaderModule);
 
 	/** Initialize ray tracing pipeline */
-	void InitializeRHI(const rhi::RayTracingShadersDefinition& shadersDef, const rhi::RayTracingPipelineDefinition& pipelineDef, const rhi::PipelineLayoutDefinition& layoutDefinition);
+	void InitializeRHI(const rhi::RayTracingShadersDefinition& shadersDef, const rhi::RayTracingPipelineDefinition& pipelineDef);
 
 	void ReleaseRHI();
 
@@ -55,20 +54,13 @@ public:
 
 	SPT_NODISCARD VkPipeline			GetHandle() const;
 
-	/** Can be called only on valid pipeline */
-	SPT_NODISCARD const PipelineLayout&	GetPipelineLayout() const;
-
 private:
 
-	void InitializePipelineLayout(const rhi::PipelineLayoutDefinition& layoutDefinition);
-
-	void InitializeGraphicsPipeline(const rhi::GraphicsPipelineShadersDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, const PipelineLayout& layout);
-	void InitializeComputePipeline(const rhi::RHIShaderModule& computeShaderModule, const PipelineLayout& layout);
-	void InitializeRayTracingPipeline(const rhi::RayTracingShadersDefinition& shadersDef, const rhi::RayTracingPipelineDefinition& pipelineDef, const PipelineLayout& layout);
+	void InitializeGraphicsPipeline(const rhi::GraphicsPipelineShadersDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition);
+	void InitializeComputePipeline(const rhi::RHIShaderModule& computeShaderModule);
+	void InitializeRayTracingPipeline(const rhi::RayTracingShadersDefinition& shadersDef, const rhi::RayTracingPipelineDefinition& pipelineDef);
 	
 	VkPipeline						m_handle;
-
-	lib::SharedPtr<PipelineLayout>	m_layout;
 
 	rhi::EPipelineType				m_pipelineType;
 

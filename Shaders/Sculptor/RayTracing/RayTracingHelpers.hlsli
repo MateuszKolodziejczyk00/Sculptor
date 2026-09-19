@@ -1,7 +1,7 @@
 #ifndef RAY_TRACING_HELPERS_HLSLI
 #define RAY_TRACING_HELPERS_HLSLI
 
-#ifdef DS_RenderSceneDS
+#ifdef PARAM_RenderSceneConstants
 #include "RayTracing/RayTracingPayload.hlsli"
 #include "RayTracing/RayTracingMaterials.hlsli"
 
@@ -47,5 +47,5 @@ void GenericRTM(inout RayPayloadData payload)
 	payload.visibility.isMiss = true;
 }
 
-#endif // DS_RenderSceneDS
+#endif // PARAM_RenderSceneConstants
 #endif // RAY_TRACING_HELPERS_HLSLI

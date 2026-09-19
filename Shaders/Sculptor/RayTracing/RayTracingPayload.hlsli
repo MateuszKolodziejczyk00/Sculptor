@@ -12,7 +12,7 @@ struct MaterialPayload
 	half  roughness;
 	half3 emissive;
 
-	void Encode(in MaterialEvaluationOutput evaluatedMat)
+	[mutating] void Encode(in MaterialEvaluationOutput evaluatedMat)
 	{
 		normal            = half3(evaluatedMat.shadingNormal);
 		roughness         = half(evaluatedMat.roughness);

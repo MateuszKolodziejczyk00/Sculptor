@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RTVariableRateTextureDS, 1)]]
+[[shader_params(VariableRateRTConstants, PARAMS_R_T_VARIABLE_RATE_TEXTURE)]]
 
 #define VR_BUILDER_SINGLE_LANE_PER_QUAD 0
 
@@ -25,10 +25,10 @@ float2 EdgeFilter(in VariableRateProcessor processor, in float brightness)
 
 	// In theory this can be problematic as we ignore diffuse here but 
 	// both diffuse and specular use same ray in case of mirrors so computing edge from one of them should be representative
-	float upperLeft  = Luminance(u_specularReflectionsTexture.Load(coords, int2(-1,  1)));
-	float upperRight = Luminance(u_specularReflectionsTexture.Load(coords, int2( 1,  1)));
-	float lowerLeft  = Luminance(u_specularReflectionsTexture.Load(coords, int2(-1, -1)));
-	float lowerRight = Luminance(u_specularReflectionsTexture.Load(coords, int2( 1, -1)));
+	float upperLeft  = Luminance(PARAMS_R_T_VARIABLE_RATE_TEXTURE->specularReflectionsTexture.GetResource().Load(coords, int2(-1,  1)));
+	float upperRight = Luminance(PARAMS_R_T_VARIABLE_RATE_TEXTURE->specularReflectionsTexture.GetResource().Load(coords, int2( 1,  1)));
+	float lowerLeft  = Luminance(PARAMS_R_T_VARIABLE_RATE_TEXTURE->specularReflectionsTexture.GetResource().Load(coords, int2(-1, -1)));
+	float lowerRight = Luminance(PARAMS_R_T_VARIABLE_RATE_TEXTURE->specularReflectionsTexture.GetResource().Load(coords, int2( 1, -1)));
 
 	if(laneIdx & 0x1)
 	{
@@ -66,18 +66,18 @@ float2 EdgeFilter(in VariableRateProcessor processor, in float brightness)
 }
 
 
-struct RTVariableRateCallback
+struct RTVariableRateCallback : IVariableRateBuilderCallback
 {
-	static uint ComputeVariableRateMask(in VariableRateProcessor processor)
+	uint ComputeVariableRateMask(in VariableRateProcessor processor)
 	{
-		if(u_rtConstants.forceFullRateTracing)
+		if(PARAMS_R_T_VARIABLE_RATE_TEXTURE->forceFullRateTracing)
 		{
 			return SPT_VARIABLE_RATE_1X1;
 		}
 
 		const uint3 coords = uint3(processor.GetCoords(), 0u);
 
-		const float linearDepth = u_linearDepthTexture.Load(coords);
+		const float linearDepth = PARAMS_R_T_VARIABLE_RATE_TEXTURE->linearDepthTexture.Load(coords);
 		const bool isDepthValid = linearDepth > 0.f;
 
 		const float validDepthMask = select(isDepthValid, 1.f, 0.f);
@@ -87,12 +87,12 @@ struct RTVariableRateCallback
 			return SPT_VARIABLE_RATE_4X4;
 		}
 
-		const float2 rtReflectionsInfluence = u_influenceTexture.Load(coords);
+		const float2 rtReflectionsInfluence = PARAMS_R_T_VARIABLE_RATE_TEXTURE->influenceTexture.Load(coords);
  
-		const float roughness = u_roughnessTexture.Load(coords);
+		const float roughness = PARAMS_R_T_VARIABLE_RATE_TEXTURE->roughnessTexture.Load(coords);
 
-		const float specularBrightness = Luminance(u_specularReflectionsTexture.Load(coords));
-		const float diffuseBrightness  = Luminance(u_diffuseReflectionsTexture.Load(coords));
+		const float specularBrightness = Luminance(PARAMS_R_T_VARIABLE_RATE_TEXTURE->specularReflectionsTexture.Load(coords));
+		const float diffuseBrightness  = Luminance(PARAMS_R_T_VARIABLE_RATE_TEXTURE->diffuseReflectionsTexture.Load(coords));
 
 		uint variableRate = SPT_VARIABLE_RATE_4X4;
 
@@ -112,7 +112,7 @@ struct RTVariableRateCallback
 		}
 		else if(variableRate != SPT_VARIABLE_RATE_1X1)
 		{
-			const float2 varianceEstimation = u_varianceEstimation.Load(coords);
+			const float2 varianceEstimation = PARAMS_R_T_VARIABLE_RATE_TEXTURE->varianceEstimation.Load(coords);
 			const float specularStdDevEstimation = sqrt(varianceEstimation.x);
 			const float diffuseStdDevEstimation  = sqrt(varianceEstimation.y);
 
@@ -168,5 +168,6 @@ struct RTVariableRateCallback
 [numthreads(GROUP_SIZE_X * GROUP_SIZE_Y, 1, 1)]
 void CreateVariableRateTextureCS(CS_INPUT input)
 {
-	VariableRateBuilder::BuildVariableRateTexture<RTVariableRateCallback>(input.groupID.xy, input.localID.x);
+	RTVariableRateCallback callback;
+	VariableRateBuilder::BuildVariableRateTexture(input.groupID.xy, input.localID.x, callback);
 }

@@ -2,10 +2,6 @@
 #include "Utils/ViewRenderingSpec.h"
 #include "RenderGraphBuilder.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ResourcesManager.h"
 #include "Common/ShaderCompilationInput.h"
 
@@ -16,20 +12,14 @@ namespace HiZ
 {
 
 BEGIN_SHADER_STRUCT(BuildHiZParams)
-	SHADER_STRUCT_FIELD(Uint32, downsampleMipsNum)
+	SHADER_STRUCT_FIELD(Uint32,                       downsampleMipsNum)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>, depthTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<Real32>, HiZMip0)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,    HiZMip1)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,    HiZMip2)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,    HiZMip3)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,    HiZMip4)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(BuildHiZDS, rg::RGDescriptorSetState<BuildHiZDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<BuildHiZParams>),                            u_buildParams)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>), u_depthSampler)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                      u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                       u_HiZMip0)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),                               u_HiZMip1)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),                               u_HiZMip2)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),                               u_HiZMip3)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),                               u_HiZMip4)
-DS_END();
 
 
 static rdr::PipelineStateID CompileBuildHiZPipeline()
@@ -79,26 +69,23 @@ void CreateHierarchicalZ(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureView
 
 		BuildHiZParams params;
 		params.downsampleMipsNum = downsampleMipsNum;
-
-		const lib::MTHandle<BuildHiZDS> buildHiZDS = graphBuilder.CreateDescriptorSet<BuildHiZDS>(RENDERER_RESOURCE_NAME(std::format("BuildHiZDS (Mips {} - {})", mipIdx, mipIdx0 + downsampleMipsNum)));
-		buildHiZDS->u_buildParams = params;
-		buildHiZDS->u_depthTexture = inputDepthTexture;
-		buildHiZDS->u_HiZMip0 = hiZMipViews[mipIdx];
+		params.depthTexture = inputDepthTexture;
+		params.HiZMip0 = hiZMipViews[mipIdx];
 		if (downsampleMipsNum >= 2)
 		{
-			buildHiZDS->u_HiZMip1 = hiZMipViews[mipIdx + 1];
+			params.HiZMip1 = hiZMipViews[mipIdx + 1];
 		}
 		if (downsampleMipsNum >= 3)
 		{
-			buildHiZDS->u_HiZMip2 = hiZMipViews[mipIdx + 2];
+			params.HiZMip2 = hiZMipViews[mipIdx + 2];
 		}
 		if (downsampleMipsNum >= 4)
 		{
-			buildHiZDS->u_HiZMip3 = hiZMipViews[mipIdx + 3];
+			params.HiZMip3 = hiZMipViews[mipIdx + 3];
 		}
 		if (downsampleMipsNum >= 5)
 		{
-			buildHiZDS->u_HiZMip4 = hiZMipViews[mipIdx + 4];
+			params.HiZMip4 = hiZMipViews[mipIdx + 4];
 		}
 
 		const math::Vector2u outputRes(std::max(hiZRes.x() >> mipIdx, 1u), std::max(hiZRes.y() >> mipIdx, 1u));
@@ -106,7 +93,7 @@ void CreateHierarchicalZ(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureView
 		graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("Build HiZ (Mips ({} - {})", mipIdx, mipIdx0 + downsampleMipsNum)),
 							  buildHiZPipeline, 
 							  groupCount,
-							  rg::BindDescriptorSets(buildHiZDS));
+							  rg::ShaderParams(params));
 
 		inputDepthTexture = hiZMipViews[mipIdx + downsampleMipsNum - 1];
 	}

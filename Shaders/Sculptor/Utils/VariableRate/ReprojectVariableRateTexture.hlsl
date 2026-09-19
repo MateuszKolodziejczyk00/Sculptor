@@ -1,9 +1,9 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(ReprojectVariableRateTextureDS, 0)]]
+[[shader_params(ReprojectVariableRateTextureConstants, PARAMS_REPROJECT_VARIABLE_RATE_TEXTURE)]]
 
 #if USE_DEPTH_TEST
-[[descriptor_set(RenderViewDS, 1)]]
+[[shader_params(GPURenderView, VIEW)]]
 #endif // USE_DEPTH_TEST
 
 #include "Utils/VariableRate/VariableRate.hlsli"
@@ -27,7 +27,7 @@ float2 SampleMotionTexture(in uint2 pixel)
 	{
 		for(uint x = 0; x < 2; ++ x)
 		{
-			const float2 sampleMotion = u_motionTexture.Load(uint3(pixel * 2 + uint2(x, y), 0)).xy;
+			const float2 sampleMotion = PARAMS_REPROJECT_VARIABLE_RATE_TEXTURE->motionTexture.Load(uint3(pixel * 2 + uint2(x, y), 0)).xy;
 			const float sampleMotionSquared = dot(sampleMotion, sampleMotion);
 			if(sampleMotionSquared > maxMotionSquared)
 			{
@@ -43,20 +43,20 @@ float2 SampleMotionTexture(in uint2 pixel)
 
 uint GetReprojectionFailedVariableRate()
 {
-	if (u_constants.reprojectionFailedMode == 0)
+	if (PARAMS_REPROJECT_VARIABLE_RATE_TEXTURE->reprojectionFailedMode == 0)
 	{
 		return SPT_VARIABLE_RATE_1X1;
 	}
-	else if (u_constants.reprojectionFailedMode == 1)
+	else if (PARAMS_REPROJECT_VARIABLE_RATE_TEXTURE->reprojectionFailedMode == 1)
 	{
 		return SPT_VARIABLE_RATE_2Y;
 	}
-	else if (u_constants.reprojectionFailedMode == 2)
+	else if (PARAMS_REPROJECT_VARIABLE_RATE_TEXTURE->reprojectionFailedMode == 2)
 	{
 		return SPT_VARIABLE_RATE_2X2;
 	}
 #if SPT_VARIABLE_RATE_MODE >= SPT_VARIABLE_RATE_MODE_4X4
-	else if (u_constants.reprojectionFailedMode == 3)
+	else if (PARAMS_REPROJECT_VARIABLE_RATE_TEXTURE->reprojectionFailedMode == 3)
 	{
 		return SPT_VARIABLE_RATE_4X4;
 	}
@@ -79,18 +79,18 @@ bool CanUseReprojection(in uint2 coords, in float2 uv, in uint2 reprojectedCoord
 	bool canUseReprojection = true;
 
 #if USE_DEPTH_TEST
-	const float depth = u_depthTexture.Load(uint3(coords, 0u));
+	const float depth = PARAMS_REPROJECT_VARIABLE_RATE_TEXTURE->depthTexture.Load(uint3(coords, 0u));
 
 	if(depth > 0.f)
 	{
-		const float3 currentWS = NDCToWorldSpace(float3(uv * 2.f - 1.f, depth), u_sceneView);
-		const float3 normal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(coords, 0u)).xy);
+		const float3 currentWS = NDCToWorldSpace(float3(uv * 2.f - 1.f, depth), VIEW->sceneView);
+		const float3 normal = OctahedronDecodeNormal(PARAMS_REPROJECT_VARIABLE_RATE_TEXTURE->normalsTexture.Load(uint3(coords, 0u)).xy);
 		const Plane plane = Plane::Create(normal, currentWS);
 
-		const float reprojectedDepth = u_historyDepthTexture.Load(uint3(reprojectedCoords, 0u));
-		const float3 reprojectedWS = NDCToWorldSpace(float3(reprojectedUV * 2.f - 1.f, reprojectedDepth), u_prevFrameSceneView);
+		const float reprojectedDepth = PARAMS_REPROJECT_VARIABLE_RATE_TEXTURE->historyDepthTexture.Load(uint3(reprojectedCoords, 0u));
+		const float3 reprojectedWS = NDCToWorldSpace(float3(reprojectedUV * 2.f - 1.f, reprojectedDepth), VIEW->prevFrameSceneView);
 
-		canUseReprojection = canUseReprojection && plane.Distance(reprojectedWS) < u_constants.reprojectionMaxPlaneDistance;
+		canUseReprojection = canUseReprojection && plane.Distance(reprojectedWS) < PARAMS_REPROJECT_VARIABLE_RATE_TEXTURE->reprojectionMaxPlaneDistance;
 	}
 #endif // USE_DEPTH_TEST
 
@@ -107,15 +107,15 @@ VariableRateReprojectionResult TryReproject(in uint2 coords, in float2 uv, in fl
 
 	if(all(reprojectedUV >= 0.f) && all(reprojectedUV <= 1.f))
 	{
-		const uint2 reprojectedCoords = uint2(reprojectedUV * u_constants.resolution);
+		const uint2 reprojectedCoords = uint2(reprojectedUV * PARAMS_REPROJECT_VARIABLE_RATE_TEXTURE->resolution);
 
 		// depth targets have 2x higher res than variable rate so we need to shift the coords
 		if (CanUseReprojection(coords << 1u, uv, reprojectedCoords << 1u, reprojectedUV))
 		{
 			const bool hasNoMotion = IsNearlyZero(motion.x) && IsNearlyZero(motion.y);
 			const uint variableRate = hasNoMotion 
-									? LoadHistoryVariableRate(u_inputTexture, reprojectedCoords)
-									: LoadHistoryVariableRateSubsampled(u_inputTexture, reprojectedCoords);
+									? LoadHistoryVariableRate(PARAMS_REPROJECT_VARIABLE_RATE_TEXTURE->inputTexture, reprojectedCoords)
+									: LoadHistoryVariableRateSubsampled(PARAMS_REPROJECT_VARIABLE_RATE_TEXTURE->inputTexture, reprojectedCoords);
 
 			result.isSuccessful     = true;
 			result.variableRateMask = variableRate;
@@ -132,14 +132,14 @@ void ReprojectVariableRateTextureCS(CS_INPUT input)
 {
 	const uint2 pixel = input.globalID.xy;
 
-	const float2 uv = (pixel + 0.5f) * u_constants.invResolution;
+	const float2 uv = (pixel + 0.5f) * PARAMS_REPROJECT_VARIABLE_RATE_TEXTURE->invResolution;
 
 	const float2 motion = SampleMotionTexture(pixel);
 
 	const VariableRateReprojectionResult reprojectionResult = TryReproject(pixel, uv, motion);
 	const uint variableRate = reprojectionResult.isSuccessful ? reprojectionResult.variableRateMask : CreateCompressedVariableRateData(GetReprojectionFailedVariableRate());
 
-	u_rwOutputTexture[pixel] = variableRate;
+	PARAMS_REPROJECT_VARIABLE_RATE_TEXTURE->rwOutputTexture[pixel] = variableRate;
 
 #if OUTPUT_REPROJECTION_SUCCESS_MASK
 
@@ -148,7 +148,7 @@ void ReprojectVariableRateTextureCS(CS_INPUT input)
 	uint successMask = reprojectionResult.isSuccessful ? 1u << WaveGetLaneIndex() : 0;
 	successMask = WaveActiveBitOr(successMask);
 
-	u_rwReprojectionSuccessMask[maskCoords] = successMask;
+	PARAMS_REPROJECT_VARIABLE_RATE_TEXTURE->rwReprojectionSuccessMask[maskCoords] = successMask;
 
 #endif // OUTPUT_REPROJECTION_SUCCESS_MASK
 }

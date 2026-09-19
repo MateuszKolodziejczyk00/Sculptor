@@ -1,13 +1,10 @@
 #include "TemporalAccumulationRenderer.h"
 #include "RenderGraphBuilder.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ResourcesManager.h"
 #include "MathUtils.h"
 #include "Common/ShaderCompilationInput.h"
 #include "Bindless/BindlessTypes.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
 
 
 namespace spt::gfx
@@ -21,13 +18,8 @@ BEGIN_SHADER_STRUCT(TemporalAccumulationConstants)
 	SHADER_STRUCT_FIELD(Real32, historyWeight)
 	SHADER_STRUCT_FIELD(Uint32, exposureOffset)
 	SHADER_STRUCT_FIELD(Uint32, historyExposureOffset)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<Real32>, exposure)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(TemporalAccumulationDS, rg::RGDescriptorSetState<TemporalAccumulationDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TemporalAccumulationConstants>), u_constants)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Real32>),                      u_exposure)
-DS_END();
 
 
 static rdr::PipelineStateID GetTemporalAccumulationPipeline()
@@ -113,17 +105,14 @@ void TemporalAccumulationRenderer::Render(rg::RenderGraphBuilder& graphBuilder, 
 	shaderConstants.historyWeight         = historyWeight;
 	shaderConstants.exposureOffset        = renderingParams.exposure.exposureOffset / sizeof(Real32);
 	shaderConstants.historyExposureOffset = renderingParams.exposure.historyExposureOffset / sizeof(Real32);
-
-	const lib::MTHandle<TemporalAccumulationDS> ds = graphBuilder.CreateDescriptorSet<TemporalAccumulationDS>(RENDERER_RESOURCE_NAME("Temporal Accumulation DS"));
-	ds->u_constants = shaderConstants;
-	ds->u_exposure  = renderingParams.exposure.exposureBuffer;
+	shaderConstants.exposure              = renderingParams.exposure.exposureBuffer;
 
 	static rdr::PipelineStateID pipeline = GetTemporalAccumulationPipeline();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Temporal Accumulation"),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(ds));
+						  rg::ShaderParams(shaderConstants));
 }
 
 } // spt::gfx

@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(TilesVarianceDS, 0)]]
+[[shader_params(TiledVarianceParams, PARAMS_TILES_VARIANCE)]]
 
 
 #define TILE_SIZE_X 16
@@ -32,15 +32,14 @@ struct CS_INPUT
 [numthreads(TILE_SIZE_X, TILE_SIZE_Y, 1)]
 void TilesVarianceCS(CS_INPUT input)
 {
-    uint2 inputRes;
-    u_inputValueTexture.GetDimensions(inputRes.x, inputRes.y);
+    uint2 inputRes = PARAMS_TILES_VARIANCE->inputValueTexture.GetResolution();
 
     const uint2 pixel = input.globalID.xy;
     const float2 uv = saturate(float2((float(pixel.x) + 0.5f) / float(inputRes.x), (float(pixel.y) + 0.5f) / float(inputRes.y)));
 
     uint2 localPixel = input.localID.xy;
     
-    const float sampleValue = u_inputValueTexture.SampleLevel(u_nearestSampler, uv, 0).x;
+    const float sampleValue = PARAMS_TILES_VARIANCE->inputValueTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0).x;
     float2 moments = float2(sampleValue, Pow2(sampleValue));
     groupMoments[localPixel.x][localPixel.y] = moments;
 
@@ -85,7 +84,7 @@ void TilesVarianceCS(CS_INPUT input)
     {
         moments = ComputeMoments2x2(localPixel);
         //const float variance = abs(moments.y - Pow2(moments.x));
-        //u_tilesVarianceTexture[input.groupID.xy] = variance;
+        //PARAMS_TILES_VARIANCE->tilesVarianceTexture[input.groupID.xy] = variance;
     }
 
     // Iteration 4
@@ -103,6 +102,6 @@ void TilesVarianceCS(CS_INPUT input)
     {
         moments = ComputeMoments2x2(localPixel);
         const float variance = abs(moments.y - Pow2(moments.x));
-        u_tilesVarianceTexture[input.groupID.xy] = variance;
+        PARAMS_TILES_VARIANCE->tilesVarianceTexture[input.groupID.xy] = variance;
     }
 }

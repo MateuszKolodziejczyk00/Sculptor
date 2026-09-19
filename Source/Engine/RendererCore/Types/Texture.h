@@ -5,7 +5,7 @@
 #include "RHICore/RHIAllocationTypes.h"
 #include "RendererResource.h"
 #include "RendererUtils.h"
-#include "DescriptorSetState/DescriptorTypes.h"
+#include "Descriptors/DescriptorTypes.h"
 
 
 namespace spt::rhi
@@ -73,8 +73,8 @@ public:
 	math::Vector3u GetResolution() const;
 	math::Vector2u GetResolution2D() const;
 
-	ResourceDescriptorIdx GetSRVDescriptor() const { return m_srvDescriptor; }
-	ResourceDescriptorIdx GetUAVDescriptor() const { return m_uavDescriptor; }
+	ResourceDescriptorIdx GetSRVDescriptor() const;
+	ResourceDescriptorIdx GetUAVDescriptor() const;
 
 	lib::SharedPtr<TextureView> AsShared() { return shared_from_this(); }
 

@@ -29,11 +29,7 @@ public:
 
 	static void	DestroyFontsTemporaryObjects();
 
-	static ui::TextureID GetUITextureID(const lib::SharedRef<TextureView>& texture, const lib::SharedRef<Sampler>& sampler);
-	static ui::TextureID GetUITextureID(const lib::SharedRef<TextureView>& texture,
-										rhi::ESamplerFilterType filterType = rhi::ESamplerFilterType::Linear,
-										rhi::EMipMapAddressingMode mipMapAddressing = rhi::EMipMapAddressingMode::Nearest,
-										rhi::EAxisAddressingMode axisAddressing = rhi::EAxisAddressingMode::Repeat);
+	static ui::TextureID GetUITextureID(const lib::SharedRef<TextureView>& texture, rhi::ESamplerFilterType filterType = rhi::ESamplerFilterType::Linear);
 
 	static rhi::RHIUIBackend& GetRHI();
 	

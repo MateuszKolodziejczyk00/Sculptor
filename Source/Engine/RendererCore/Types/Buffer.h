@@ -4,8 +4,8 @@
 #include "RHIBridge/RHIBufferImpl.h"
 #include "RHICore/RHIAllocationTypes.h"
 #include "RendererResource.h"
-#include "DescriptorSetState/DescriptorTypes.h"
 #include "Utility/Templates/TypeStorage.h"
+#include "Descriptors/DescriptorTypes.h"
 
 
 namespace spt::rhi
@@ -58,7 +58,7 @@ public:
 	BindableBufferView(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint64 size, BufferViewDescriptorsAllocation externalDescriptorsAllocation = BufferViewDescriptorsAllocation{});
 	~BindableBufferView();
 
-	ResourceDescriptorIdx GetUAVDescriptor() const { return m_uavDescriptor.Get(); }
+	ResourceDescriptorIdx GetUAVDescriptor() const;
 
 	lib::SharedPtr<BindableBufferView> AsSharedPtr();
 

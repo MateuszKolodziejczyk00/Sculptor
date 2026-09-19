@@ -1,36 +1,27 @@
 #include "TracesAllocator.h"
 #include "RenderGraphBuilder.h"
-#include "RenderGraphBuilder.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "GlobalResources/GlobalResources.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
+#include "ResourcesManager.h"
 
 
 namespace spt::rsc::vrt
 {
 
 BEGIN_SHADER_STRUCT(AllocateTracesConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
-	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
-	SHADER_STRUCT_FIELD(math::Vector2u, vrtResolution)
-	SHADER_STRUCT_FIELD(math::Vector2f, vrtInvResolution)
-	SHADER_STRUCT_FIELD(Uint32,         traceIdx)
-	SHADER_STRUCT_FIELD(Bool,           enableBlueNoiseLocalOffset)
+	SHADER_STRUCT_FIELD(math::Vector2u,                             resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,                             invResolution)
+	SHADER_STRUCT_FIELD(math::Vector2u,                             vrtResolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,                             vrtInvResolution)
+	SHADER_STRUCT_FIELD(Uint32,                                     traceIdx)
+	SHADER_STRUCT_FIELD(Bool,                                       enableBlueNoiseLocalOffset)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Uint32>,                  variableRateTexture)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<EncodedRayTraceCommand>, rayTracesCommands)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,                 commandsNum)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Uint32>,                  rwVariableRateBlocksTexture)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,                 tracesDispatchGroupsNum)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,                 tracesNum)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(AllocateTracesDS, rg::RGDescriptorSetState<AllocateTracesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                       u_variableRateTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<AllocateTracesConstants>),    u_constants)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<EncodedRayTraceCommand>), u_rayTracesCommands)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                 u_commandsNum)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                        u_rwVariableRateBlocksTexture)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<Uint32>),         u_tracesDispatchGroupsNum)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<Uint32>),         u_tracesNum)
-DS_END();
 
 
 static rdr::PipelineStateID CreateAllocateTracesPipeline(const vrt::VariableRatePermutationSettings& permutationSettings, Bool outputTracesAndDispatchGroupsNum)
@@ -99,18 +90,15 @@ TracesAllocation AllocateTraces(rg::RenderGraphBuilder& graphBuilder, const Trac
 	shaderConstants.vrtResolution              = vrtResolution;
 	shaderConstants.vrtInvResolution           = vrtResolution.cast<Real32>().cwiseInverse();
 	shaderConstants.traceIdx                   = definition.traceIdx;
-
-	lib::MTHandle<AllocateTracesDS> allocateTracesDS = graphBuilder.CreateDescriptorSet<AllocateTracesDS>(RENDERER_RESOURCE_NAME("AllocateTracesDS"));
-	allocateTracesDS->u_constants                   = shaderConstants;
-	allocateTracesDS->u_variableRateTexture         = definition.variableRateTexture;
-	allocateTracesDS->u_rayTracesCommands           = tracesAllocation.rayTraceCommands;
-	allocateTracesDS->u_commandsNum                 = tracesAllocation.tracingIndirectArgs;
-	allocateTracesDS->u_rwVariableRateBlocksTexture = tracesAllocation.variableRateBlocksTexture;
+	shaderConstants.variableRateTexture         = definition.variableRateTexture;
+	shaderConstants.rayTracesCommands           = tracesAllocation.rayTraceCommands;
+	shaderConstants.commandsNum                 = tracesAllocation.tracingIndirectArgs;
+	shaderConstants.rwVariableRateBlocksTexture = tracesAllocation.variableRateBlocksTexture;
 
 	if (definition.outputTracesAndDispatchGroupsNum)
 	{
-		allocateTracesDS->u_tracesDispatchGroupsNum = tracesAllocation.dispatchIndirectArgs;
-		allocateTracesDS->u_tracesNum               = tracesAllocation.tracesNum;
+		shaderConstants.tracesDispatchGroupsNum = tracesAllocation.dispatchIndirectArgs;
+		shaderConstants.tracesNum               = tracesAllocation.tracesNum;
 	}
 
 	const rdr::PipelineStateID allocateTracesPipeline = CreateAllocateTracesPipeline(definition.vrtPermutationSettings, definition.outputTracesAndDispatchGroupsNum);
@@ -118,7 +106,7 @@ TracesAllocation AllocateTraces(rg::RenderGraphBuilder& graphBuilder, const Trac
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("Allocate Traces: {}", definition.debugName.AsString().data()),
 						  allocateTracesPipeline,
 						  math::Utils::DivideCeil(definition.resolution, math::Vector2u(32u, 32u)),
-						  rg::BindDescriptorSets(allocateTracesDS));
+						  rg::ShaderParams(shaderConstants));
 
 	return tracesAllocation;
 }

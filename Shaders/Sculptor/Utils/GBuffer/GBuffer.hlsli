@@ -27,11 +27,11 @@ struct GBufferOutput
 
 struct GBufferInput
 {
-	Texture2D<float4> gBuffer0;
-	Texture2D<float4> gBuffer1;
-	Texture2D<float>  gBuffer2;
-	Texture2D<float3> gBuffer3;
-	Texture2D<uint>   gBuffer4;
+	SRVTexture2D<float4> gBuffer0;
+	SRVTexture2D<float4> gBuffer1;
+	SRVTexture2D<float>  gBuffer2;
+	SRVTexture2D<float3> gBuffer3;
+	SRVTexture2D<uint>   gBuffer4;
 };
 
 
@@ -124,8 +124,9 @@ struct SurfaceInfo
 
 [[shader_struct(GPUGBuffer)]]
 
-#ifdef DS_RenderViewDS
-struct GBufferInterface : GPUGBuffer
+#ifdef PARAM_GPURenderView
+
+extension GPUGBuffer
 {
 	uint2 GetResolution()
 	{
@@ -137,7 +138,7 @@ struct GBufferInterface : GPUGBuffer
 		const float2 uv = float2(coords + 0.5f) * pixelSize;
 		const float d = depth.Load(coords);
 		const float3 ndc = float3(uv * 2.f - 1.f, d);
-		return NDCToWorldSpace(ndc, u_sceneView);
+		return NDCToWorldSpace(ndc, VIEW->sceneView);
 	}
 
 	float3 GetWorldNormal(in uint2 coords)
@@ -148,11 +149,11 @@ struct GBufferInterface : GPUGBuffer
 	GBufferData GetGBufferData(in uint2 coords)
 	{
 		GBufferInput inputTextures;
-		inputTextures.gBuffer0 = gBuffer0.GetResource();
-		inputTextures.gBuffer1 = gBuffer1.GetResource();
-		inputTextures.gBuffer2 = gBuffer2.GetResource();
-		inputTextures.gBuffer3 = gBuffer3.GetResource();
-		inputTextures.gBuffer4 = gBuffer4.GetResource();
+		inputTextures.gBuffer0 = gBuffer0;
+		inputTextures.gBuffer1 = gBuffer1;
+		inputTextures.gBuffer2 = gBuffer2;
+		inputTextures.gBuffer3 = gBuffer3;
+		inputTextures.gBuffer4 = gBuffer4;
 
 		return DecodeGBuffer(inputTextures, uint3(coords, 0u));
 	}
@@ -164,7 +165,7 @@ struct GBufferInterface : GPUGBuffer
 		const float2 uv = float2(coords + 0.5f) * pixelSize;
 		const float d = depth.Load(coords);
 		const float3 ndc = float3(uv * 2.f - 1.f, d);
-		const float3 location = NDCToWorldSpace(ndc, u_sceneView);
+		const float3 location = NDCToWorldSpace(ndc, VIEW->sceneView);
 
 		SurfaceInfo surfaceInfo;
 		surfaceInfo.location          = location;
@@ -183,6 +184,8 @@ struct GBufferInterface : GPUGBuffer
 	}
 };
 
-#endif // DS_RenderViewDS
+typealias GBufferInterface = GPUGBuffer;
+
+#endif // PARAM_GPURenderView
 
 #endif // GBUFFER_HLSLI

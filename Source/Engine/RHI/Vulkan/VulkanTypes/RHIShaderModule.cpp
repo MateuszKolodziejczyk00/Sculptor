@@ -32,7 +32,8 @@ void RHIShaderModule::InitializeRHI(const rhi::ShaderModuleDefinition& definitio
     moduleInfo.codeSize	= definition.binary.size();
     moduleInfo.pCode	= reinterpret_cast<const Uint32*>(definition.binary.data());
 	m_stage				= definition.stage;
-	m_entryPoint		= definition.entryPoint;
+	//m_entryPoint		= definition.entryPoint;
+	m_entryPoint		= "main";
 
 	SPT_VK_CHECK(vkCreateShaderModule(VulkanRHI::GetDeviceHandle(), &moduleInfo, VulkanRHI::GetAllocationCallbacks(), &m_handle))
 }

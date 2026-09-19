@@ -16,7 +16,6 @@ namespace spt::vulkan
 
 class RHIRenderContext;
 class RHIPipeline;
-class RHIDescriptorSet;
 class RHITexture;
 class RHIBuffer;
 class RHIAccelerationStructure;
@@ -70,7 +69,7 @@ public:
 
 	void	BindGfxPipeline(const RHIPipeline& pipeline);
 
-	void	BindGfxDescriptors(const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset);
+	void	PushData(lib::Span<const Byte> data);
 
 	// Compute rendering ====================================
 
@@ -93,8 +92,6 @@ public:
 	// Ray Tracing ==========================================
 
 	void	BindRayTracingPipeline(const RHIPipeline& pipeline);
-
-	void	BindRayTracingDescriptors(const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset);
 
 	void	TraceRays(const RHIShaderBindingTable& sbt, const math::Vector3u& traceCount);
 	void	TraceRaysIndirect(const RHIShaderBindingTable& sbt, const RHIBuffer& indirectArgsBuffer, Uint64 indirectArgsOffset);
@@ -146,8 +143,6 @@ private:
 
 	void BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline);
 
-	void BindDescriptorsImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset);
-
 	void BuildASImpl(const RHIAccelerationStructure& as, const VkAccelerationStructureBuildGeometryInfoKHR& buildInfo, const VkAccelerationStructureBuildRangeInfoKHR* buildRanges);
 
 	lib::MemoryArena*				m_memArena = nullptr;
@@ -156,8 +151,6 @@ private:
 
 	rhi::EDeviceCommandQueueType	m_queueType;
 	rhi::ECommandBufferType			m_cmdBufferType;
-
-	std::optional<Uint32>			m_boundDescriptorHeapSize;
 
 	DebugName						m_name;
 

@@ -10,7 +10,7 @@
 #endif // GROUP_SIZE_X
 
 
-[[descriptor_set(DDGIInvalidateProbesDS, 0)]]
+[[shader_params(DDGIInvalidateProbesConsts, PARAMS_D_D_G_I_INVALIDATE_PROBES)]]
 
 #include "DDGI/DDGItypes.hlsli"
 
@@ -28,25 +28,25 @@ void DDGIInvalidateProbesCS(CS_INPUT input)
 {
 	const uint3 updatedProbeCoords = input.groupID;
 	
-	const float3 probeWorldLocation = GetProbeWorldLocation(u_volumeParams, updatedProbeCoords);
+	const float3 probeWorldLocation = GetProbeWorldLocation(*PARAMS_D_D_G_I_INVALIDATE_PROBES->volumeParams, updatedProbeCoords);
 
-	if (u_invalidateParams.forceInvalidateAll || any(probeWorldLocation < u_invalidateParams.prevAABBMin - 0.01f) || any(probeWorldLocation > u_invalidateParams.prevAABBMax + 0.01f))
+	if (PARAMS_D_D_G_I_INVALIDATE_PROBES->forceInvalidateAll || any(probeWorldLocation < PARAMS_D_D_G_I_INVALIDATE_PROBES->prevAABBMin - 0.01f) || any(probeWorldLocation > PARAMS_D_D_G_I_INVALIDATE_PROBES->prevAABBMax + 0.01f))
 	{
-		const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(u_volumeParams, updatedProbeCoords);
+		const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(*PARAMS_D_D_G_I_INVALIDATE_PROBES->volumeParams, updatedProbeCoords);
 
-		const DDGIProbeDataCoords probeHitDistanceDataCoords = ComputeProbeHitDistanceDataOffset(u_volumeParams, probeWrappedCoords);
-		const DDGIProbeDataCoords probeIlluminanceDataCoords = ComputeProbeIlluminanceDataOffset(u_volumeParams, probeWrappedCoords);
+		const DDGIProbeDataCoords probeHitDistanceDataCoords = ComputeProbeHitDistanceDataOffset(*PARAMS_D_D_G_I_INVALIDATE_PROBES->volumeParams, probeWrappedCoords);
+		const DDGIProbeDataCoords probeIlluminanceDataCoords = ComputeProbeIlluminanceDataOffset(*PARAMS_D_D_G_I_INVALIDATE_PROBES->volumeParams, probeWrappedCoords);
 
-		const RWTexture2D<float4> hitDistanceTexture = u_volumeHitDistanceTextures[probeHitDistanceDataCoords.textureIdx];
-		const RWTexture2D<float4> illuminanceTexture = u_volumeIlluminanceTextures[probeIlluminanceDataCoords.textureIdx];
-		const RWTexture3D<float4> averageLuminanceTexture = u_volumeProbesAverageLuminanceTexture;
+		UAVTexture2D<float4> hitDistanceTexture = PARAMS_D_D_G_I_INVALIDATE_PROBES->volumeHitDistanceTextures[probeHitDistanceDataCoords.textureIdx];
+		UAVTexture2D<float4> illuminanceTexture = PARAMS_D_D_G_I_INVALIDATE_PROBES->volumeIlluminanceTextures[probeIlluminanceDataCoords.textureIdx];
+		UAVTexture3D<float4> averageLuminanceTexture = PARAMS_D_D_G_I_INVALIDATE_PROBES->volumeProbesAverageLuminanceTexture;
 
-		if(all(input.localID.xy < u_volumeParams.probeHitDistanceDataWithBorderRes))
+		if(all(input.localID.xy < PARAMS_D_D_G_I_INVALIDATE_PROBES->volumeParams->probeHitDistanceDataWithBorderRes))
 		{
 			hitDistanceTexture[probeHitDistanceDataCoords.textureLocalCoords + input.localID.xy] = -1.f;
 		}
 
-		if(all(input.localID.xy < u_volumeParams.probeIlluminanceDataWithBorderRes))
+		if(all(input.localID.xy < PARAMS_D_D_G_I_INVALIDATE_PROBES->volumeParams->probeIlluminanceDataWithBorderRes))
 		{
 			illuminanceTexture[probeIlluminanceDataCoords.textureLocalCoords + input.localID.xy] = 0.f;
 		}

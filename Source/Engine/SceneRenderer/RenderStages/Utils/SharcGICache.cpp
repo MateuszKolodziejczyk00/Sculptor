@@ -4,9 +4,6 @@
 #include "ResourcesManager.h"
 #include "Types/Buffer.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "Utils/ScreenSpaceTracer.h"
 #include "Utils/ViewRenderingSpec.h"
 #include "RenderGraphBuilder.h"
@@ -44,25 +41,24 @@ BEGIN_SHADER_STRUCT(SharcUpdateConstants)
 END_SHADER_STRUCT()
 
 
-DS_BEGIN(SharcUpdateDS, rg::RGDescriptorSetState<SharcUpdateDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_skyViewLUT)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_transmittanceLUT)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),                    u_atmosphereParams)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint64>),                             u_hashEntries)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint64>),                             u_hashEntriesPrev)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<math::Vector4u>),                     u_voxelData)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<math::Vector4u>),                     u_voxelDataPrev)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SharcUpdateConstants>),                   u_constants)
-DS_END();
+BEGIN_SHADER_STRUCT(SharcUpdateParams)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>,  skyViewLUT)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>,  transmittanceLUT)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<AtmosphereParams>,      atmosphereParams)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint64>,         hashEntries)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint64>,         hashEntriesPrev)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<math::Vector4u>, voxelData)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<math::Vector4u>, voxelDataPrev)
+	SHADER_STRUCT_FIELD(SharcUpdateConstants,               sharcConstants)
+END_SHADER_STRUCT();
 
 
-DS_BEGIN(SharcResolveDS, rg::RGDescriptorSetState<SharcResolveDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint64>),                             u_hashEntries)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<math::Vector4u>),                     u_voxelData)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<math::Vector4u>),                     u_voxelDataPrev)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SharcUpdateConstants>),                   u_constants)
-DS_END();
+BEGIN_SHADER_STRUCT(SharcResolveParams)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint64>,         hashEntries)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<math::Vector4u>, voxelData)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<math::Vector4u>, voxelDataPrev)
+	SHADER_STRUCT_FIELD(SharcUpdateConstants,               sharcConstants)
+END_SHADER_STRUCT();
 
 
 RT_PSO(SharcUpdatePSO)
@@ -216,15 +212,15 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 
 	graphBuilder.CopyFullBuffer(RG_DEBUG_NAME("Copy Prev Hash Entries"), hashEntriesView, hashEntriesPrev);
 
-	lib::MTHandle<sharc_passes::SharcUpdateDS> updateDS = graphBuilder.CreateDescriptorSet<sharc_passes::SharcUpdateDS>(RENDERER_RESOURCE_NAME("Sharc Update DS"));
-	updateDS->u_skyViewLUT               = viewContext.skyViewLUT;
-	updateDS->u_transmittanceLUT         = atmosphereContext.transmittanceLUT;
-	updateDS->u_atmosphereParams         = atmosphereContext.atmosphereParamsBuffer->GetFullView();
-	updateDS->u_hashEntries              = m_hashEntriesBuffer->GetFullView();
-	updateDS->u_hashEntriesPrev          = hashEntriesPrev;
-	updateDS->u_voxelData                = m_voxelData->GetFullView();
-	updateDS->u_voxelDataPrev            = m_prevVoxelData->GetFullView();
-	updateDS->u_constants                = shaderConstants;
+	sharc_passes::SharcUpdateParams updateParams;
+	updateParams.skyViewLUT               = viewContext.skyViewLUT;
+	updateParams.transmittanceLUT         = atmosphereContext.transmittanceLUT;
+	updateParams.atmosphereParams         = atmosphereContext.atmosphereParams;
+	updateParams.hashEntries              = m_hashEntriesBuffer->GetFullView();
+	updateParams.hashEntriesPrev          = hashEntriesPrev;
+	updateParams.voxelData                = m_voxelData->GetFullView();
+	updateParams.voxelDataPrev            = m_prevVoxelData->GetFullView();
+	updateParams.sharcConstants           = shaderConstants;
 
 	const LightsRenderSystem& lightsRenderSystem   = rendererInterface.GetRenderSystemChecked<LightsRenderSystem>();
 	const ddgi::DDGIRenderSystem& ddgiRenderSystem = rendererInterface.GetRenderSystemChecked<ddgi::DDGIRenderSystem>();
@@ -234,31 +230,25 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 	graphBuilder.TraceRays(RG_DEBUG_NAME("Update Sharc GI Cache"),
 						   sharc_passes::SharcUpdatePSO::GetPermutation(permutation),
 						   tracesNum,
-						   rg::BindDescriptorSets(std::move(updateDS),
-												  ddgiRenderSystem.GetDDGISceneDS(),
-												  lightsRenderSystem.GetGlobalLightsDS(),
-												  viewContext.cloudscapeProbesDS));
+						   rg::ShaderParams(updateParams, ddgiRenderSystem.GetDDGIGPUScene(), lightsRenderSystem.GetGlobalLightsParams(), viewContext.cloudscapeProbesParams));
 
-	lib::MTHandle<sharc_passes::SharcResolveDS> resolveDS = graphBuilder.CreateDescriptorSet<sharc_passes::SharcResolveDS>(RENDERER_RESOURCE_NAME("Sharc Resolve DS"));
-	resolveDS->u_hashEntries   = m_hashEntriesBuffer->GetFullView();
-	resolveDS->u_voxelData     = m_voxelData->GetFullView();
-	resolveDS->u_voxelDataPrev = m_prevVoxelData->GetFullView();
-	resolveDS->u_constants     = shaderConstants;
+	sharc_passes::SharcResolveParams resolveParams;
+	resolveParams.hashEntries    = m_hashEntriesBuffer->GetFullView();
+	resolveParams.voxelData      = m_voxelData->GetFullView();
+	resolveParams.voxelDataPrev  = m_prevVoxelData->GetFullView();
+	resolveParams.sharcConstants = shaderConstants;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Resolve Sharc GI Cache"),
 						  sharc_passes::SharcResolvePSO::GetPermutation(permutation),
 						  math::Utils::DivideCeil(m_entriesNum, 64u),
-						  rg::BindDescriptorSets(std::move(resolveDS)));
+						  rg::ShaderParams(resolveParams));
 
-	SharcCacheConstants sharcCacheConstants;
-	sharcCacheConstants.entriesNum = m_entriesNum;
+	SharcCacheParams sharcCacheParams;
+	sharcCacheParams.hashEntries = m_hashEntriesBuffer->GetFullView();
+	sharcCacheParams.voxelData   = m_voxelData->GetFullView();
+	sharcCacheParams.entriesNum  = m_entriesNum;
 
-	lib::MTHandle<SharcCacheDS> sharcCacheDS = graphBuilder.CreateDescriptorSet<SharcCacheDS>(RENDERER_RESOURCE_NAME("Sharc Cache DS"));
-	sharcCacheDS->u_hashEntries         = m_hashEntriesBuffer->GetFullView();
-	sharcCacheDS->u_voxelData           = m_voxelData->GetFullView();
-	sharcCacheDS->u_sharcCacheConstants = sharcCacheConstants;
-
-	viewContext.sharcCacheDS = std::move(sharcCacheDS);
+	viewContext.sharcCacheParams = graphBuilder.CreateGPUData(sharcCacheParams);
 
 	if (renderer_params::debugViewOn)
 	{
@@ -272,8 +262,7 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 		graphBuilder.Dispatch(RG_DEBUG_NAME("Sharc GI Cache Debug View"),
 							  sharc_passes::SharcDebugViewPSO::GetPermutation(debugViewPermutation),
 							  math::Utils::DivideCeil(resolution, math::Vector2u(16u, 16u)),
-							  rg::BindDescriptorSets(viewContext.sharcCacheDS),
-							  debugViewConstants);
+							  rg::ShaderParams(viewContext.sharcCacheParams, debugViewConstants));
 	}
 }
 

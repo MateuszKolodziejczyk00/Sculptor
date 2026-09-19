@@ -85,21 +85,21 @@ float2 ComputeAtmosphereLUTsUV(in AtmosphereParams atmosphere, in float3 locatio
 }
 
 
-float3 GetTransmittanceFromLUT(in AtmosphereParams atmosphere, in Texture2D<float3> transmittanceLUT, in SamplerState lutSampler, in float3 location, in float3 sunDirection)
+float3 GetTransmittanceFromLUT(in AtmosphereParams atmosphere, in SRVTexture2D<float3> transmittanceLUT, in SamplerState lutSampler, in float3 location, in float3 sunDirection)
 {
     const float2 uv = ComputeAtmosphereLUTsUV(atmosphere, location, sunDirection);
     return transmittanceLUT.SampleLevel(lutSampler, uv, 0);
 }
 
 
-float3 GetMultiScatteringPsiFromLUT(in AtmosphereParams atmosphere, in Texture2D<float3> multiScatteringLUT, in SamplerState lutSampler, in float3 location, in float3 sunDirection)
+float3 GetMultiScatteringPsiFromLUT(in AtmosphereParams atmosphere, in SRVTexture2D<float3> multiScatteringLUT, in SamplerState lutSampler, in float3 location, in float3 sunDirection)
 {
     const float2 uv = ComputeAtmosphereLUTsUV(atmosphere, location, sunDirection);
     return multiScatteringLUT.SampleLevel(lutSampler, uv, 0);
 }
 
 
-float3 GetLuminanceFromSkyViewLUT(in AtmosphereParams atmosphere, in Texture2D<float3> skyViewLUT, in SamplerState skyViewSampler, float3 viewLocation, float3 rayDirection)
+float3 GetLuminanceFromSkyViewLUT(in AtmosphereParams atmosphere, in SRVTexture2D<float3> skyViewLUT, in SamplerState skyViewSampler, float3 viewLocation, float3 rayDirection)
 {
     const float viewHeight = length(viewLocation);
     const float3 upVector = viewLocation / viewHeight;

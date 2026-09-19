@@ -20,17 +20,17 @@ struct MinimalSurfaceInfo
 
 struct MinimalGBuffer
 {
-	Texture2D<float>  depthTexture;
-	Texture2D<float2> normalsTexture;
-	Texture2D<float4> baseColorMetallicTexture;
-	Texture2D<float>  roughnessTexture;
+	SRVTexture2D<float>  depthTexture;
+	SRVTexture2D<float2> normalsTexture;
+	SRVTexture2D<float4> baseColorMetallicTexture;
+	SRVTexture2D<float>  roughnessTexture;
 };
 
 
-MinimalSurfaceInfo GetMinimalSurfaceInfo(in MinimalGBuffer minimalGBuffer, in uint2 pixel, in SceneViewData sceneView)
+MinimalSurfaceInfo GetMinimalSurfaceInfo(in MinimalGBuffer minimalGBuffer, in uint2 pixel, in float2 pixelSize, in SceneViewData sceneView)
 {
 	const float depth = minimalGBuffer.depthTexture.Load(uint3(pixel, 0));
-	const float2 uv = (pixel + 0.5f) * u_resamplingConstants.pixelSize;
+	const float2 uv = (pixel + 0.5f) * pixelSize;
 	const float3 ndc = float3(uv * 2.f - 1.f, depth);
 
 	const float3 sampleLocation = NDCToWorldSpace(ndc, sceneView);

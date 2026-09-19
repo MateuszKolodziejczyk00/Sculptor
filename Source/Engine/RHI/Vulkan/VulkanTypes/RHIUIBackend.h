@@ -5,6 +5,7 @@
 #include "SculptorCoreTypes.h"
 #include "UIContext.h"
 #include "UITypes.h"
+#include "RHICore/RHISamplerTypes.h"
 
 
 namespace spt::vulkan
@@ -35,7 +36,7 @@ public:
 
 	void				Render(const RHICommandBuffer& cmdBuffer);
 
-	ui::TextureID		GetUITexture(const RHITextureView& textureView, const RHISampler& sampler);
+	ui::TextureID		GetUITexture(const RHITextureView& textureView, rhi::ESamplerFilterType filterType);
 
 private:
 
@@ -45,6 +46,9 @@ private:
 
 	lib::DynamicArray<VkDescriptorPool> m_uiDescriptorPools;
 	SizeType m_lastPoolIdx;
+
+	VkSampler m_linearSampler  = VK_NULL_HANDLE;
+	VkSampler m_nearestSampler = VK_NULL_HANDLE;
 };
 
 } // spt::vulkan

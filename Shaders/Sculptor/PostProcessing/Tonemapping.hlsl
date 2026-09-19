@@ -1,8 +1,8 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderViewDS)]]
+[[shader_params(GPURenderView, VIEW)]]
 
-[[shader_params(TonemappingPassConstants, u_tonemappingConstants)]]
+[[shader_params(TonemappingPassConstants, CONSTS)]]
 
 #include "Utils/Exposure.hlsli"
 #include "Utils/TonemappingOperators.hlsli"
@@ -27,7 +27,7 @@ float3 TonyMCMapface(float3 stimulus)
     const float LUT_DIMS = 48.0;
     const float3 uv = encoded * ((LUT_DIMS - 1.0) / LUT_DIMS) + 0.5 / LUT_DIMS;
 
-	return u_tonemappingConstants.tonemappingLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), uv);
+	return CONSTS->tonemappingLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), uv);
 }
 
 
@@ -89,21 +89,21 @@ float3 ApplyLocalExposure(in float3 linearColor, in int2 pixel)
 
 	const float logLuminance = log2(luminance + 0.0001f);
 
-	const float bilateralGridDepth = saturate((logLuminance - u_tonemappingConstants.minLogLuminance) * u_tonemappingConstants.inverseLogLuminanceRange);
+	const float bilateralGridDepth = saturate((logLuminance - CONSTS->minLogLuminance) * CONSTS->inverseLogLuminanceRange);
 
-	const float2 bilateralGridUV = pixel * u_tonemappingConstants.bilateralGridUVPerPixel;
+	const float2 bilateralGridUV = pixel * CONSTS->bilateralGridUVPerPixel;
 
-	const float downsampledLocalLogLuminance = u_tonemappingConstants.logLuminance.SampleLevel(BindlessSamplers::LinearClampEdge(), bilateralGridUV, 0).x;
+	const float downsampledLocalLogLuminance = CONSTS->logLuminance.SampleLevel(BindlessSamplers::LinearClampEdge(), bilateralGridUV, 0).x;
 
-	const float2 bilateralGridValue = u_tonemappingConstants.luminanceBilateralGrid.SampleLevel(BindlessSamplers::LinearClampEdge(), float3(bilateralGridUV, bilateralGridDepth), 0.f);
+	const float2 bilateralGridValue = CONSTS->luminanceBilateralGrid.SampleLevel(BindlessSamplers::LinearClampEdge(), float3(bilateralGridUV, bilateralGridDepth), 0.f);
 	const float gridLocalLogLuminance = bilateralGridValue.x / (bilateralGridValue.y + 0.0001f);
 
-	const float localLogLuminance = lerp(downsampledLocalLogLuminance, gridLocalLogLuminance, u_tonemappingConstants.bilateralGridStrength);
+	const float localLogLuminance = lerp(downsampledLocalLogLuminance, gridLocalLogLuminance, CONSTS->bilateralGridStrength);
 
 	const float imageLogLuminance = GetAverageLogLuminance();
 
-	const float contrastStrength = u_tonemappingConstants.contrastStrength;
-	const float detailStrength   = u_tonemappingConstants.detailStrength;
+	const float contrastStrength = CONSTS->contrastStrength;
+	const float detailStrength   = CONSTS->detailStrength;
 
 	const float outputLogLuminance = contrastStrength * (localLogLuminance - imageLogLuminance) + detailStrength * (logLuminance - localLogLuminance) + imageLogLuminance;
 	const float outputLuminance = exp2(outputLogLuminance);
@@ -135,16 +135,16 @@ void TonemappingCS(CS_INPUT input)
 {
 	const int2 coords = input.globalID.xy;
 
-	float3 color = u_tonemappingConstants.linearColor.Load(coords).rgb;
+	float3 color = CONSTS->linearColor.Load(coords).rgb;
 
 	color = ApplyLocalExposure(color, coords);
 
-	if (u_tonemappingConstants.purkinjeShiftIntensity > 0.f)
+	if (CONSTS->purkinjeShiftIntensity > 0.f)
 	{
-		color = ApplyPurkinjeShift(color, u_tonemappingConstants.purkinjeShiftIntensity);
+		color = ApplyPurkinjeShift(color, CONSTS->purkinjeShiftIntensity);
 	}
 
-	color = ApplyWhiteBalance(color, u_tonemappingConstants.whitePointTemperature);
+	color = ApplyWhiteBalance(color, CONSTS->whitePointTemperature);
 
 #if TONEMAPPER == 1
 	GT7ToneMapping tonemapOp;
@@ -156,19 +156,19 @@ void TonemappingCS(CS_INPUT input)
 	color = TonyMCMapface(color);
 #endif
 
-	if(u_tonemappingConstants.debugGeometry.IsValid())
+	if(CONSTS->debugGeometry.IsValid())
 	{
-		const float2 uv = coords * u_tonemappingConstants.pixelSize;
-		const float4 debugGeometry = u_tonemappingConstants.debugGeometry.SampleLevel(BindlessSamplers::LinearClampEdge(), uv);
+		const float2 uv = coords * CONSTS->pixelSize;
+		const float4 debugGeometry = CONSTS->debugGeometry.SampleLevel(BindlessSamplers::LinearClampEdge(), uv);
 		color = lerp(color, debugGeometry.rgb, debugGeometry.a);
 	}
 
 	color = LinearTosRGB(color);
 
-	if(u_tonemappingConstants.enableColorDithering)
+	if(CONSTS->enableColorDithering)
 	{
 		color += Random(coords) * rcp(255.f);
 	}
 
-	u_tonemappingConstants.rwLDRTexture.Store(coords, float4(color, 1.f));
+	CONSTS->rwLDRTexture.Store(coords, float4(color, 1.f));
 }

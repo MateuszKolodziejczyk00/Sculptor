@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(VisibilityMomentsComputationDS, 0)]]
+[[shader_params(VisibilityMomentsComputationParams, PARAMS_VISIBILITY_MOMENTS_COMPUTATION)]]
 
 
 struct CS_INPUT
@@ -14,8 +14,7 @@ void VisibilityDataMomentsCS(CS_INPUT input)
 {
     const int2 pixel = input.globalID.xy;
     
-    uint2 outputRes;
-    u_momentsTexture.GetDimensions(outputRes.x, outputRes.y);
+    uint2 outputRes = PARAMS_VISIBILITY_MOMENTS_COMPUTATION->momentsTexture.GetResolution();
 
     if(pixel.x < outputRes.x && pixel.y < outputRes.y)
     {
@@ -24,8 +23,7 @@ void VisibilityDataMomentsCS(CS_INPUT input)
 
         const int2 tile = int2(pixel.x >> 3, pixel.y >> 2);
 
-        int2 tilesRes;
-        u_compressedDataTexture.GetDimensions(tilesRes.x, tilesRes.y);
+        int2 tilesRes = PARAMS_VISIBILITY_MOMENTS_COMPUTATION->compressedDataTexture.GetResolution();
 
         const uint2 sampleLocalID = uint2(pixel.x & 7, pixel.y & 3);
 
@@ -101,7 +99,7 @@ void VisibilityDataMomentsCS(CS_INPUT input)
                 const uint validSamplesNum = countbits(mask);
 
                 const int3 tileCoords = int3(clamp(tile.x + x, 0, tilesRes.x), clamp(tile.y + y, 0, tilesRes.y), 0);
-                const uint tileSamples = u_compressedDataTexture.Load(tileCoords).x;
+                const uint tileSamples = PARAMS_VISIBILITY_MOMENTS_COMPUTATION->compressedDataTexture.Load(tileCoords).x;
 
                 samplesSum += countbits(tileSamples & mask);
                 samplesCount += validSamplesNum;
@@ -110,6 +108,6 @@ void VisibilityDataMomentsCS(CS_INPUT input)
 
         const float moments = float(samplesSum) / float(samplesCount);
 
-        u_momentsTexture[pixel] = moments;
+        PARAMS_VISIBILITY_MOMENTS_COMPUTATION->momentsTexture[pixel] = moments;
     }
 }

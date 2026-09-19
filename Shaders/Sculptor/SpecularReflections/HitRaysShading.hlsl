@@ -1,19 +1,19 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderSceneDS)]]
-[[descriptor_set(RenderViewDS)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
+[[shader_params(GPURenderView, VIEW)]]
 
-[[descriptor_set(RTShadingDS)]]
-[[descriptor_set(GlobalLightsDS)]]
+[[shader_params(RTShadingConstants, PARAMS_R_T_SHADING)]]
+[[shader_params(GlobalLightsParams, PARAMS_GLOBAL_LIGHTS)]]
 
 #ifndef USE_DDGI
 #error "USE_DDGI must be defined"
 #endif // USE_DDGI
 
 #if USE_DDGI
-[[descriptor_set(DDGISceneDS)]]
+[[shader_params(DDGIGPUScene, PARAMS_D_D_G_I_SCENE)]]
 #else
-[[descriptor_set(SharcCacheDS)]]
+[[shader_params(SharcCacheParams, PARAMS_SHARC_CACHE)]]
 #endif // USE_DDGI
 
 
@@ -40,34 +40,34 @@ void HitRaysShadingRTG()
 {
 	const uint hitIdx = DispatchRaysIndex().x;
 
-	if(hitIdx >= u_tracesNum[0].hitRaysNum)
+	if(hitIdx >= PARAMS_R_T_SHADING->tracesNum[0].hitRaysNum)
 	{
 		return;
 	}
 
-	const uint traceCommandIndex = u_sortedTraces[hitIdx];
+	const uint traceCommandIndex = PARAMS_R_T_SHADING->sortedTraces[hitIdx];
 
-	const EncodedRayTraceCommand encodedTraceCommand = u_traceCommands[traceCommandIndex];
+	const EncodedRayTraceCommand encodedTraceCommand = PARAMS_R_T_SHADING->traceCommands[traceCommandIndex];
 	const RayTraceCommand traceCommand = DecodeTraceCommand(encodedTraceCommand);
 
 	const uint2 pixel = traceCommand.blockCoords + traceCommand.localOffset;
 
-	const float depth = u_depthTexture.Load(uint3(pixel, 0));
+	const float depth = PARAMS_R_T_SHADING->depthTexture.Load(uint3(pixel, 0));
 	if(depth == 0.f)
 	{
 		return;
 	}
 
-	const float2 uv = (pixel + 0.5f) * u_constants.invResolution;
+	const float2 uv = (pixel + 0.5f) * PARAMS_R_T_SHADING->invResolution;
 	const float3 ndc = float3(uv * 2.f - 1.f, depth);
 
-	const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
+	const float3 worldLocation = NDCToWorldSpace(ndc, VIEW->sceneView);
 
-	const RayHitResult hitResult = UnpackRTGBuffer(u_hitMaterialInfos[traceCommandIndex]);
+	const RayHitResult hitResult = UnpackRTGBuffer(PARAMS_R_T_SHADING->hitMaterialInfos[traceCommandIndex]);
 
 	if(hitResult.hitType == RTGBUFFER_HIT_TYPE_VALID_HIT)
 	{
-		const uint encodedRayDirection = u_rayDirections[traceCommandIndex];
+		const uint encodedRayDirection = PARAMS_R_T_SHADING->rayDirections[traceCommandIndex];
 		const float3 rayDirection = OctahedronDecodeNormal(UnpackHalf2x16Norm(encodedRayDirection));
 
 		const float3 hitLocation = worldLocation + rayDirection * hitResult.hitDistance;
@@ -81,7 +81,7 @@ void HitRaysShadingRTG()
 		surface.roughness      = max(hitResult.roughness, minSecondaryRoughness);
 		ComputeSurfaceColor(hitResult.baseColor, hitResult.metallic, surface.diffuseColor, surface.specularColor);
 
-		const float3 primaryHitToView = normalize(u_sceneView.viewLocation - worldLocation);
+		const float3 primaryHitToView = normalize(VIEW->sceneView.viewLocation - worldLocation);
 
 		float3 luminance;
 #if USE_DDGI
@@ -90,12 +90,12 @@ void HitRaysShadingRTG()
         const float3 tangent = abs(dot(hitResult.normal, UP_VECTOR)) > 0.9f ? cross(hitResult.normal, RIGHT_VECTOR) : cross(hitResult.normal, UP_VECTOR);
         const float3 bitangent = cross(hitResult.normal, tangent);
 
-		const HashGridParameters gridParams = CreateHashGridParameters(u_sceneView.viewLocation);
+		const HashGridParameters gridParams = CreateHashGridParameters(VIEW->sceneView.viewLocation);
 
 		const uint  gridLevel = HashGridGetLevel(hitLocation, gridParams);
 		const float voxelSize = HashGridGetVoxelSize(gridLevel, gridParams);
 
-		RngState rng = RngState::Create(pixel, u_constants.frameIdx);
+		RngState rng = RngState::Create(pixel, PARAMS_R_T_SHADING->frameIdx);
 
 		const float2 normalizedOffset = float2(rng.Next(), rng.Next()) * 2.f - 1.f;
 
@@ -107,15 +107,15 @@ void HitRaysShadingRTG()
 		query.location = sampledLocation;
 		query.normal   = hitResult.normal;
 #if SHARC_MATERIAL_DEMODULATION
-		query.materialDemodulation = ComputeMaterialDemodulation(u_brdfIntegrationLUT, u_brdfIntegrationLUTSampler, surface.diffuseColor, surface.specularColor, NdotV, surface.roughness);
+		query.materialDemodulation = ComputeMaterialDemodulation(PARAMS_GLOBAL_LIGHTS->brdfIntegrationLUT, BindlessSamplers::LinearClampEdge(), surface.diffuseColor, surface.specularColor, NdotV, surface.roughness);
 #endif // SHARC_MATERIAL_DEMODULATION
-		if (!QueryCachedLuminance(u_sceneView.viewLocation, u_viewExposure.exposure, query, OUT luminance))
+		if (!QueryCachedLuminance(VIEW->sceneView.viewLocation, VIEW->viewExposure->exposure, query, OUT luminance))
 		{
 			luminance = 0.f;
 		}
 #endif // USE_DDGI
 
-		const GeneratedRayPDF rayPdf = LoadGeneratedRayPDF(u_rayPdfs, traceCommandIndex);
+		const GeneratedRayPDF rayPdf = LoadGeneratedRayPDF(PARAMS_R_T_SHADING->rayPdfs, traceCommandIndex);
 
 		SRReservoir reservoir = SRReservoir::Create(hitLocation, hitResult.normal, luminance, rayPdf.pdf);
 
@@ -128,7 +128,7 @@ void HitRaysShadingRTG()
 			reservoir.AddFlag(SR_RESERVOIR_FLAGS_SPECULAR_TRACE);
 		}
 
-		WriteReservoirToScreenBuffer(u_reservoirsBuffer, u_constants.reservoirsResolution, reservoir, traceCommand);
+		WriteReservoirToScreenBuffer(PARAMS_R_T_SHADING->reservoirsBuffer, PARAMS_R_T_SHADING->reservoirsResolution, reservoir, traceCommand);
 	}
 }
 

@@ -3,9 +3,7 @@
 #include "RayTracingSceneTypes.h"
 #include "Types/AccelerationStructure.h"
 #include "ResourcesManager.h"
-#include "GPUApi.h"
 #include "CommandsRecorder/CommandRecorder.h"
-#include "Types/RenderContext.h"
 #include "Materials/MaterialsRenderingCommon.h"
 #include "MaterialsSubsystem.h"
 #include "RenderSceneConstants.h"
@@ -90,7 +88,6 @@ static void ExecuteRayTracingDebug(rg::RenderGraphBuilder& graphBuilder, SceneRe
 	graphBuilder.TraceRays(RG_DEBUG_NAME("Ray Tracing Debug"),
 						  RayTracingDebugPSO::rtInstances,
 						  traceCount,
-						  rg::EmptyDescriptorSets(),
 						  constants);
 }
 
@@ -181,6 +178,8 @@ void RayTracingRenderSystem::OnBuildTLAS(rg::RenderGraphBuilder& graphBuilder, S
 
 		for(SizeType idx = 0; idx < rtGeometries.size(); ++idx)
 		{
+			SPT_CHECK(materialsSlots != nullptr);
+
 			const RayTracingGeometryDefinition& rtGeometry   = rtGeometries[idx];
 			const ecs::EntityHandle material                 = materialsSlots->slots[currentSlotIdxInChunk++];
 			const mat::MaterialProxyComponent& materialProxy = material.get<const mat::MaterialProxyComponent>();
@@ -244,7 +243,6 @@ void RayTracingRenderSystem::OnBuildTLAS(rg::RenderGraphBuilder& graphBuilder, S
 			{
 				currentSlotIdxInChunk = 0u;
 				materialsSlots = scene.materials.slots.Get(materialsSlots->next);
-				SPT_CHECK(materialsSlots != nullptr);
 			}
 		}
 	};
@@ -253,19 +251,19 @@ void RayTracingRenderSystem::OnBuildTLAS(rg::RenderGraphBuilder& graphBuilder, S
 
 	const Uint32 instancesNum = currentInstanceIdx;
 
+	const rg::RGBufferViewHandle scratchBuffer = graphBuilder.CreateStorageBufferView(RG_DEBUG_NAME("TLAS Builder Scratch Buffer"), m_tlas->GetRHI().GetBuildScratchSize(), rhi::EMemoryUsage::GPUOnly);
+
+	graphBuilder.BuildTLAS(RG_DEBUG_NAME("Build Scene TLAS"), 
+			rg::TLASBuildCommand
+			{
+				.tlas                   = m_tlas,
+				.instanceDefsBufferView = graphBuilder.AcquireExternalBufferView(instancesDefsBuffer->GetFullView()),
+				.instancesNum           = instancesNum,
+				.scratchBufferView      = scratchBuffer
+			});
+
 	if (instancesNum > 0)
 	{
-		const rg::RGBufferViewHandle scratchBuffer = graphBuilder.CreateStorageBufferView(RG_DEBUG_NAME("TLAS Builder Scratch Buffer"), m_tlas->GetRHI().GetBuildScratchSize(), rhi::EMemoryUsage::GPUOnly);
-
-		graphBuilder.BuildTLAS(RG_DEBUG_NAME("Build Scene TLAS"), 
-				rg::TLASBuildCommand
-				{
-					.tlas                   = m_tlas,
-					.instanceDefsBufferView = graphBuilder.AcquireExternalBufferView(instancesDefsBuffer->GetFullView()),
-					.instancesNum           = instancesNum,
-					.scratchBufferView      = scratchBuffer
-				});
-
 		const rg::RGBufferViewHandle rtInstancesBuffer = graphBuilder.AcquireExternalBufferView(m_rtInstancesDataBuffer->GetFullView());
 		const rg::RGBufferViewHandle rtInstancesStagingBuffer = graphBuilder.AcquireExternalBufferView(m_rtInstancesDataStagingBuffer->GetFullView());
 		graphBuilder.CopyBuffer(RG_DEBUG_NAME("Upload RT Instances Data"),

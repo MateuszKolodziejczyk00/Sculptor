@@ -106,6 +106,18 @@ struct TuplePushFront<TType, std::tuple<void>>
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// IsTuple =======================================================================================
+
+template <typename T>
+struct IsTuple : std::false_type {};
+
+template <typename... Ts>
+struct IsTuple<std::tuple<Ts...>> : std::true_type {};
+
+template <typename T>
+inline constexpr bool isTuple = IsTuple<T>::value;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 // ParameterPackSize =============================================================================
 
 template<typename... Ts>

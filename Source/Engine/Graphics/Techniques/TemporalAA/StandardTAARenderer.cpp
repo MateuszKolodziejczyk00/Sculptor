@@ -1,12 +1,6 @@
 #include "StandardTAARenderer.h"
 #include "RenderGraphBuilder.h"
-#include "ShaderStructs/ShaderStructs.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
+#include "Bindless/BindlessTypes.h"
 #include "ResourcesManager.h"
 #include "MathUtils.h"
 #include "Common/ShaderCompilationInput.h"
@@ -16,23 +10,16 @@ namespace spt::gfx
 {
 
 BEGIN_SHADER_STRUCT(TemporalAAConstants)
-	SHADER_STRUCT_FIELD(Uint32, useYCoCg)
-	SHADER_STRUCT_FIELD(Uint32, exposureOffset)
-	SHADER_STRUCT_FIELD(Uint32, historyExposureOffset)
+	SHADER_STRUCT_FIELD(Uint32,                               useYCoCg)
+	SHADER_STRUCT_FIELD(Uint32,                               exposureOffset)
+	SHADER_STRUCT_FIELD(Uint32,                               historyExposureOffset)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,         depth)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector3f>, historyColor)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector3f>, inputColor)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>, motion)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector3f>, outputColor)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<Real32>,          exposure)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(TemporalAADS, rg::RGDescriptorSetState<TemporalAADS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depth)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_historyColor)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_inputColor)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_motion)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_outputColor)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),  u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Real32>),                                u_exposure)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TemporalAAConstants>),                     u_params)
-DS_END();
 
 
 static rdr::PipelineStateID GetTemporalAAPipeline()
@@ -105,22 +92,19 @@ void StandardTAARenderer::Render(rg::RenderGraphBuilder& graphBuilder, const Tem
 		shaderConstants.useYCoCg              = false;
 		shaderConstants.exposureOffset        = renderingParams.exposure.exposureOffset / sizeof(Uint32);
 		shaderConstants.historyExposureOffset = renderingParams.exposure.historyExposureOffset / sizeof(Uint32);
-
-		const lib::MTHandle<TemporalAADS> temporalAADS = graphBuilder.CreateDescriptorSet<TemporalAADS>(RENDERER_RESOURCE_NAME("Temporal AA DS"));
-		temporalAADS->u_depth           = renderingParams.depth;
-		temporalAADS->u_inputColor      = renderingParams.inputColor;
-		temporalAADS->u_historyColor    = historyTexture;
-		temporalAADS->u_motion          = renderingParams.motion;
-		temporalAADS->u_outputColor     = renderingParams.outputColor;
-		temporalAADS->u_exposure        = renderingParams.exposure.exposureBuffer;
-		temporalAADS->u_params          = shaderConstants;
+		shaderConstants.depth                 = renderingParams.depth;
+		shaderConstants.inputColor            = renderingParams.inputColor;
+		shaderConstants.historyColor          = historyTexture;
+		shaderConstants.motion                = renderingParams.motion;
+		shaderConstants.outputColor           = renderingParams.outputColor;
+		shaderConstants.exposure              = renderingParams.exposure.exposureBuffer;
 
 		static rdr::PipelineStateID temporalAAPipelineStateID = GetTemporalAAPipeline();
 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("Temporal AA"),
 							  temporalAAPipelineStateID,
 							  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
-							  rg::BindDescriptorSets(temporalAADS));
+							  rg::ShaderParams(shaderConstants));
 
 	}
 	else

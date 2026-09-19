@@ -30,8 +30,6 @@ struct DepthBasedUpsampleParams
 
 	rg::RGTextureViewHandle normalsHalfRes;
 
-	lib::MTHandle<RenderViewDS> renderViewDS;
-
 	Bool fireflyFilteringEnabled = false;
 };
 

@@ -23,7 +23,8 @@ CommandRecorder::CommandRecorder(const rdr::RendererResourceName& name, const li
 	m_commandsBuffer = ResourcesManager::CreateCommandBuffer(name, context, cmdBufferDef);
 	m_commandsBuffer->StartRecording(commandBufferUsage);
 
-	BindDescriptorHeap(GPUApi::GetDescriptorHeap());
+	BindDescriptorHeap(GPUApi::GetResourceDescriptorHeap());
+	BindDescriptorHeap(GPUApi::GetSamplerDescriptorHeap());
 
 	m_canReuseCommandBuffer = !lib::HasAnyFlag(commandBufferUsage.beginFlags, rhi::ECommandBufferBeginFlags::OneTimeSubmit);
 }
@@ -111,7 +112,7 @@ void CommandRecorder::SetScissor(const math::AlignedBox2u& renderingScissor)
 
 void CommandRecorder::DrawIndirectCount(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const lib::SharedRef<Buffer>& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount)
 {
-	m_pipelineState.FlushDirtyDSForGraphicsPipeline(GetCommandBufferRHI());
+	m_pipelineState.FlushParamsForGraphicsPipeline(GetCommandBufferRHI());
 
 	GetCommandBufferRHI().DrawIndirectCount(drawsBuffer->GetRHI(), drawsOffset, drawsStride, countBuffer->GetRHI(), countOffset, maxDrawsCount);
 }
@@ -123,7 +124,7 @@ void CommandRecorder::DrawIndirectCount(const BufferView& drawsBufferView, Uint6
 
 void CommandRecorder::DrawIndirect(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, Uint32 drawsCount)
 {
-	m_pipelineState.FlushDirtyDSForGraphicsPipeline(GetCommandBufferRHI());
+	m_pipelineState.FlushParamsForGraphicsPipeline(GetCommandBufferRHI());
 
 	GetCommandBufferRHI().DrawIndirect(drawsBuffer->GetRHI(), drawsOffset, drawsStride, drawsCount);
 }
@@ -135,28 +136,28 @@ void CommandRecorder::DrawIndirect(const BufferView& drawsBufferView, Uint64 dra
 
 void CommandRecorder::DrawInstances(Uint32 verticesNum, Uint32 instancesNum, Uint32 firstVertex /*= 0*/, Uint32 firstInstance /*= 0*/)
 {
-	m_pipelineState.FlushDirtyDSForGraphicsPipeline(GetCommandBufferRHI());
+	m_pipelineState.FlushParamsForGraphicsPipeline(GetCommandBufferRHI());
 
 	GetCommandBufferRHI().DrawInstances(verticesNum, instancesNum, firstVertex, firstInstance);
 }
 
 void CommandRecorder::DrawMeshTasks(const math::Vector3u& groupCount)
 {
-	m_pipelineState.FlushDirtyDSForGraphicsPipeline(GetCommandBufferRHI());
+	m_pipelineState.FlushParamsForGraphicsPipeline(GetCommandBufferRHI());
 
 	GetCommandBufferRHI().DrawMeshTasks(groupCount);
 }
 
 void CommandRecorder::DrawMeshTasksIndirect(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, Uint32 drawsCount)
 {
-	m_pipelineState.FlushDirtyDSForGraphicsPipeline(GetCommandBufferRHI());
+	m_pipelineState.FlushParamsForGraphicsPipeline(GetCommandBufferRHI());
 
 	GetCommandBufferRHI().DrawMeshTasksIndirect(drawsBuffer->GetRHI(), drawsOffset, drawsStride, drawsCount);
 }
 
 void CommandRecorder::DrawMeshTasksIndirectCount(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const lib::SharedRef<Buffer>& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount)
 {
-	m_pipelineState.FlushDirtyDSForGraphicsPipeline(GetCommandBufferRHI());
+	m_pipelineState.FlushParamsForGraphicsPipeline(GetCommandBufferRHI());
 
 	GetCommandBufferRHI().DrawMeshTasksIndirectCount(drawsBuffer->GetRHI(), drawsOffset, drawsStride, countBuffer->GetRHI(), countOffset, maxDrawsCount);
 }
@@ -216,7 +217,7 @@ void CommandRecorder::Dispatch(const math::Vector3u& groupCount)
 {
 	SPT_CHECK(!!m_pipelineState.GetBoundComputePipeline());
 
-	m_pipelineState.FlushDirtyDSForComputePipeline(GetCommandBufferRHI());
+	m_pipelineState.FlushParamsForComputePipeline(GetCommandBufferRHI());
 
 	GetCommandBufferRHI().Dispatch(groupCount);
 }
@@ -225,7 +226,7 @@ void CommandRecorder::DispatchIndirect(const lib::SharedRef<Buffer>& indirectArg
 {
 	SPT_CHECK(!!m_pipelineState.GetBoundComputePipeline());
 
-	m_pipelineState.FlushDirtyDSForComputePipeline(GetCommandBufferRHI());
+	m_pipelineState.FlushParamsForComputePipeline(GetCommandBufferRHI());
 
 	GetCommandBufferRHI().DispatchIndirect(indirectArgsBuffer->GetRHI(), indirectArgsOffset);
 }
@@ -240,7 +241,7 @@ void CommandRecorder::TraceRays(const math::Vector3u& traceCount)
 	const lib::SharedPtr<RayTracingPipeline>& boundPipeline = m_pipelineState.GetBoundRayTracingPipeline();
 	SPT_CHECK(!!boundPipeline);
 
-	m_pipelineState.FlushDirtyDSForRayTracingPipeline(GetCommandBufferRHI());
+	m_pipelineState.FlushParamsForRayTracingPipeline(GetCommandBufferRHI());
 
 	GetCommandBufferRHI().TraceRays(boundPipeline->GetShaderBindingTable(), traceCount);
 }
@@ -250,7 +251,7 @@ void CommandRecorder::TraceRaysIndirect(const lib::SharedRef<Buffer>& indirectAr
 	const lib::SharedPtr<RayTracingPipeline>& boundPipeline = m_pipelineState.GetBoundRayTracingPipeline();
 	SPT_CHECK(!!boundPipeline);
 
-	m_pipelineState.FlushDirtyDSForRayTracingPipeline(GetCommandBufferRHI());
+	m_pipelineState.FlushParamsForRayTracingPipeline(GetCommandBufferRHI());
 
 	GetCommandBufferRHI().TraceRaysIndirect(boundPipeline->GetShaderBindingTable(), indirectArgsBuffer->GetRHI(), indirectArgsOffset);
 }
@@ -260,19 +261,14 @@ void CommandRecorder::TraceRaysIndirect(const BufferView& indirectArgsBufferView
 	TraceRaysIndirect(indirectArgsBufferView.GetBuffer(), indirectArgsBufferView.GetOffset() + indirectArgsOffset);
 }
 
-void CommandRecorder::BindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state)
+void CommandRecorder::BindShaderParams(lib::HashedString type, rhi::DeviceAddress address)
 {
-	m_pipelineState.BindDescriptorSetState(state);
+	m_pipelineState.BindShaderParams(type, address);
 }
 
-void CommandRecorder::UnbindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state)
+void CommandRecorder::UnbindShaderParams(lib::HashedString type)
 {
-	m_pipelineState.UnbindDescriptorSetState(state);
-}
-
-void CommandRecorder::BindShaderParams(Uint32 heapOffset)
-{
-	m_pipelineState.BindShaderParams(heapOffset);
+	m_pipelineState.UnbindShaderParams(type);
 }
 
 void CommandRecorder::ExecuteCommands(const lib::SharedRef<rdr::GPUWorkload>& workload)

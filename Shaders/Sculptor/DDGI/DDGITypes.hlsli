@@ -6,6 +6,26 @@
 [[shader_struct(DDGIVolumeGPUParams)]]
 
 
+interface IDDGISampleContext
+{
+	float3 ComputeBiasedSampleLocation(in const DDGIVolumeGPUParams volumeParams, in DDGISampleParams sampleParams);
+}
+
+
+interface IDDGISampleCallback
+{
+    associatedtype SampledDataType;
+
+    SampledDataType Sample(in DDGIVolumeGPUParams volumeParams, uint3 probeWrappedCoords, float2 luminanceOctCoords);
+    bool IsValid(SampledDataType sample);
+    SampledDataType MakeInvalid();
+    void PostProcess(inout SampledDataType result);
+
+	SampledDataType Accumulate(SampledDataType accumulated, SampledDataType sample, float weight);
+	SampledDataType Normalize(SampledDataType accumulated, float weightSum);
+};
+
+
 float3 GetProbeRayDirection(in uint rayIdx, in uint raysNum)
 {
 	return FibbonaciSphereDistribution(rayIdx, raysNum);
@@ -136,13 +156,13 @@ float3 ComputeDDGIBiasedSampleLocation(in const DDGIVolumeGPUParams volumeParams
 	return clamp(sampleParams.worldLocation + biasVector, minWorldLocation, maxWorldLocation);
 }
 
-#ifdef DS_DDGISceneDS
+#ifdef PARAM_DDGIGPUScene
 
 float3 SampleProbeIlluminance(in const DDGIVolumeGPUParams volumeParams, SamplerState illuminanceSampler, in uint3 probeWrappedCoords, float2 octahedronUV)
 {
 	const DDGIProbeDataCoords probeDataCoords = ComputeProbeDataCoords(volumeParams, probeWrappedCoords);
 
-	const Texture2D<float4> probesIlluminanceTexture = u_probesTextures2D[volumeParams.illuminanceTextureIdx + probeDataCoords.textureIdx];
+	const SRVTexture2D<float4> probesIlluminanceTexture = volumeParams.illuminanceTextures[probeDataCoords.textureIdx];
 	
 	// Probe data begin UV
 	float2 uv = probeDataCoords.textureLocalCoords * volumeParams.probesIlluminanceTextureUVDeltaPerProbe;
@@ -161,7 +181,7 @@ float2 SampleProbeHitDistance(in const DDGIVolumeGPUParams volumeParams, Sampler
 {
 	const DDGIProbeDataCoords probeDataCoords = ComputeProbeDataCoords(volumeParams, probeWrappedCoords);
 
-	Texture2D<float4> probesHitDistanceTexture = u_probesTextures2D[volumeParams.hitDistanceTextureIdx + probeDataCoords.textureIdx];
+	SRVTexture2D<float2> probesHitDistanceTexture = volumeParams.hitDistanceTextures[probeDataCoords.textureIdx];
 
 	// Probe data begin UV
 	float2 uv = probeDataCoords.textureLocalCoords * volumeParams.probesHitDistanceUVDeltaPerProbe;
@@ -199,19 +219,19 @@ DDGIVolumeSampleInfo GetDDGIVolumeSampleInfo(in float3 location)
 	info.volumeIndices = IDX_NONE_32;
 	info.weights = 0.0f;
 	
-	for(uint lodIdx = 0u; lodIdx < u_ddgiLODs.lodsNum; ++lodIdx)
+	for(uint lodIdx = 0u; lodIdx < PARAM_DDGIGPUScene->ddgiLODs.lodsNum; ++lodIdx)
 	{
-		const DDGILODDefinition lodDef = u_ddgiLODs.lods[lodIdx];
-		const DDGIVolumeGPUParams volume = u_volumesDef.volumes[lodDef.volumeIdx];
+		const DDGILODDefinition lodDef = PARAM_DDGIGPUScene->ddgiLODs.lods[lodIdx];
+		const DDGIVolumeGPUParams volume = PARAM_DDGIGPUScene->volumesDef.volumes[lodDef.volumeIdx];
 
 		if (IsInsideDDGIVolume(volume, location))
 		{
 			info.volumeIndices[0] = lodDef.volumeIdx;
 			info.weights[0] = ComputeDDGIVolumeWeight(volume, location);
 
-			if(info.weights[0] < 0.99f && lodIdx + 1 < u_ddgiLODs.lodsNum)
+			if(info.weights[0] < 0.99f && lodIdx + 1 < PARAM_DDGIGPUScene->ddgiLODs.lodsNum)
 			{
-				const DDGILODDefinition nextLodDef = u_ddgiLODs.lods[lodIdx + 1];
+				const DDGILODDefinition nextLodDef = PARAM_DDGIGPUScene->ddgiLODs.lods[lodIdx + 1];
 
 				info.volumeIndices[1] = nextLodDef.volumeIdx;
 				info.weights[1] = 1.f - info.weights[0];
@@ -226,24 +246,24 @@ DDGIVolumeSampleInfo GetDDGIVolumeSampleInfo(in float3 location)
 
 float3 SampleProbeIlluminance(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords, float2 octahedronUV)
 {
-	return SampleProbeIlluminance(volumeParams, u_probesDataSampler, probeWrappedCoords, octahedronUV);
+	return SampleProbeIlluminance(volumeParams, BindlessSamplers::LinearClampEdge(), probeWrappedCoords, octahedronUV);
 }
 
 
 float3 SampleProbeAverageLuminance(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords)
 {
-	const Texture3D<float4> probesAverageLuminanceTexture = u_probesTextures3D[volumeParams.averageLuminanceTextureIdx];
+	const SRVTexture3D<float3> probesAverageLuminanceTexture = volumeParams.averageLuminanceTexture;
 	return probesAverageLuminanceTexture.Load(int4(probeWrappedCoords, 0)).rgb;
 }
 
 
 float2 SampleProbeHitDistance(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords, float2 octahedronUV)
 {
-	return SampleProbeHitDistance(volumeParams, u_probesDataSampler, probeWrappedCoords, octahedronUV);
+	return SampleProbeHitDistance(volumeParams, BindlessSamplers::LinearClampEdge(), probeWrappedCoords, octahedronUV);
 }
 
 
-struct DDGISampleContext
+struct DDGISampleContext : IDDGISampleContext
 {
 	static DDGISampleContext Create()
 	{
@@ -258,7 +278,7 @@ struct DDGISampleContext
 };
 
 
-struct DDGISecondaryBounceSampleContext
+struct DDGISecondaryBounceSampleContext : IDDGISampleContext
 {
 	static DDGISecondaryBounceSampleContext Create(in float3 inPrevBounceLocation, in float3 inPrevBounceViewDirection)
 	{
@@ -292,8 +312,8 @@ struct DDGISecondaryBounceSampleContext
 };
 
 
-template<typename TSampledDataType, typename TSampleCallback, typename TSampleContext>
-TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in DDGISampleParams sampleParams, in TSampleContext sampleContext, in TSampleCallback sampleCallback)
+TCallback.SampledDataType DDGISampleProbe<TContext : IDDGISampleContext, TCallback : IDDGISampleCallback>(in const DDGIVolumeGPUParams volumeParams, in DDGISampleParams sampleParams, in TContext sampleContext, in TCallback sampleCallback)
+	where TCallback.SampledDataType : IFloat
 {
 	const float3 biasedWorldLocation = sampleContext.ComputeBiasedSampleLocation(volumeParams, sampleParams);
 
@@ -302,7 +322,7 @@ TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in 
 
 	const float3 baseProbeDistAlpha = saturate((biasedWorldLocation - baseProbeWorldLocation) * volumeParams.rcpProbesSpacing);
 
-	TSampledDataType sampledDataSum = 0.f;
+	TCallback.SampledDataType sampledDataSum = Zero<TCallback.SampledDataType>();
 	float weightSum = 0.f;
 
 	const float2 luminanceOctCoords = GetProbeOctCoords(sampleParams.sampleDirection);
@@ -317,7 +337,7 @@ TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in 
 
 		const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(volumeParams, probeCoords);
 
-		const TSampledDataType probleSample = sampleCallback.Sample(volumeParams, probeWrappedCoords, luminanceOctCoords);
+		const TCallback.SampledDataType probleSample = sampleCallback.Sample(volumeParams, probeWrappedCoords, luminanceOctCoords);
 
 		const float3 probeWorldLocation = GetProbeWorldLocation(volumeParams, probeCoords);
 		
@@ -370,11 +390,12 @@ TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in 
 			hasValidSamples = false;
 		}
 
-		sampledDataSum += probleSample * weight;
+		sampledDataSum = sampleCallback.Accumulate(sampledDataSum, probleSample, weight);
+
 		weightSum += weight;
 	}
 
-	TSampledDataType result;
+	TCallback.SampledDataType result;
 
 	if (!hasValidSamples)
 	{
@@ -382,7 +403,7 @@ TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in 
 	}
 	else
 	{
-		result = sampledDataSum / weightSum;
+		result = sampleCallback.Normalize(sampledDataSum, weightSum);
 		sampleCallback.PostProcess(result);
 	}
 
@@ -390,8 +411,10 @@ TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in 
 }
 
 
-class DDGILuminanceSampleCallback
+struct DDGILuminanceSampleCallback : IDDGISampleCallback
 {
+	typedef float3 SampledDataType;
+
 	float3 Sample(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords, in float2 octahedronUV)
 	{
 		float3 luminance = SampleProbeIlluminance(volumeParams, probeWrappedCoords, octahedronUV);
@@ -415,19 +438,27 @@ class DDGILuminanceSampleCallback
 	void PostProcess(inout float3 result)
 	{
 	}
+
+	SampledDataType Accumulate(SampledDataType accumulated, SampledDataType sample, float weight)
+	{
+		return accumulated + sample * weight;
+	}
+
+	SampledDataType Normalize(SampledDataType accumulated, float weightSum)
+	{
+		return accumulated / weightSum;
+	}
 };
 
 
-template<typename TSampleContext>
-float3 DDGISampleLuminanceInternal(in const DDGISampleParams sampleParams, in const TSampleContext context, in const DDGIVolumeGPUParams volumeParams)
+float3 DDGISampleLuminanceInternal<TSampleContext : IDDGISampleContext>(in const DDGISampleParams sampleParams, in const TSampleContext context, in const DDGIVolumeGPUParams volumeParams)
 {
 	DDGILuminanceSampleCallback callback;
-	return DDGISampleProbes<float3>(volumeParams, sampleParams, context, callback) * 2.f; // multiply by 2 because of cosine-weighted hemisphere sampling
+	return DDGISampleProbe(volumeParams, sampleParams, context, callback) * 2.f; // multiply by 2 because of cosine-weighted hemisphere sampling
 }
 
 
-template<typename TSampleContext>
-float3 DDGISampleLuminance(in DDGISampleParams sampleParams, in const TSampleContext context)
+float3 DDGISampleLuminance<TSampleContext : IDDGISampleContext>(in DDGISampleParams sampleParams, in const TSampleContext context)
 {
 	const DDGIVolumeSampleInfo sampleInfo = GetDDGIVolumeSampleInfo(sampleParams.worldLocation);
 
@@ -435,7 +466,7 @@ float3 DDGISampleLuminance(in DDGISampleParams sampleParams, in const TSampleCon
 	{
 		if (sampleInfo.volumeIndices[i] != IDX_NONE_32)
 		{
-			const DDGIVolumeGPUParams volumeParams = u_volumesDef.volumes[sampleInfo.volumeIndices[i]];
+			const DDGIVolumeGPUParams volumeParams = PARAM_DDGIGPUScene->volumesDef.volumes[sampleInfo.volumeIndices[i]];
 			const float3 luminance = DDGISampleLuminanceInternal(sampleParams, context, volumeParams);
 			if(all(luminance >= 0.0f))
 			{
@@ -448,8 +479,7 @@ float3 DDGISampleLuminance(in DDGISampleParams sampleParams, in const TSampleCon
 }
 
 
-template<typename TSampleContext>
-float3 DDGISampleLuminanceBlended(in DDGISampleParams sampleParams, in float random, in const TSampleContext context)
+float3 DDGISampleLuminanceBlended<TSampleContext : IDDGISampleContext>(in DDGISampleParams sampleParams, in float random, in const TSampleContext context)
 {
 	const DDGIVolumeSampleInfo sampleInfo = GetDDGIVolumeSampleInfo(sampleParams.worldLocation);
 
@@ -468,13 +498,15 @@ float3 DDGISampleLuminanceBlended(in DDGISampleParams sampleParams, in float ran
 		return 0.f;
 	}
 
-	const DDGIVolumeGPUParams volumeParams = u_volumesDef.volumes[sampledVolume];
+	const DDGIVolumeGPUParams volumeParams = PARAM_DDGIGPUScene->volumesDef.volumes[sampledVolume];
 	return DDGISampleLuminanceInternal(sampleParams, context, volumeParams);
 }
 
 
-class AverageLuminanceSampleCallback
+struct AverageLuminanceSampleCallback : IDDGISampleCallback
 {
+	typedef float3 SampledDataType;
+
 	float3 Sample(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords, in float2 octahedronUV)
 	{
 		float3 luminance = SampleProbeAverageLuminance(volumeParams, probeWrappedCoords);
@@ -494,19 +526,27 @@ class AverageLuminanceSampleCallback
 	void PostProcess(inout float3 result)
 	{
 	}
+
+	SampledDataType Accumulate(SampledDataType accumulated, SampledDataType sample, float weight)
+	{
+		return accumulated + sample * weight;
+	}
+
+	SampledDataType Normalize(SampledDataType accumulated, float weightSum)
+	{
+		return accumulated / weightSum;
+	}
 };
 
 
-template<typename TSampleContext>
-float3 DDGISampleAverageLuminanceInternal(in const DDGISampleParams sampleParams, in const TSampleContext context, in const DDGIVolumeGPUParams volumeParams)
+float3 DDGISampleAverageLuminanceInternal<TSampleContext : IDDGISampleContext>(in const DDGISampleParams sampleParams, in const TSampleContext context, in const DDGIVolumeGPUParams volumeParams)
 {
 	AverageLuminanceSampleCallback callback;
-	return DDGISampleProbes<float3>(volumeParams, sampleParams, context, callback);
+	return DDGISampleProbe(volumeParams, sampleParams, context, callback);
 }
 
 
-template<typename TSampleContext>
-float3 DDGISampleAverageLuminance(in DDGISampleParams sampleParams, in const TSampleContext context)
+float3 DDGISampleAverageLuminance<TSampleContext : IDDGISampleContext>(in DDGISampleParams sampleParams, in const TSampleContext context)
 {
 	const DDGIVolumeSampleInfo sampleInfo = GetDDGIVolumeSampleInfo(sampleParams.worldLocation);
 
@@ -514,7 +554,7 @@ float3 DDGISampleAverageLuminance(in DDGISampleParams sampleParams, in const TSa
 	{
 		if (sampleInfo.volumeIndices[i] != IDX_NONE_32)
 		{
-			const DDGIVolumeGPUParams volumeParams = u_volumesDef.volumes[sampleInfo.volumeIndices[i]];
+			const DDGIVolumeGPUParams volumeParams = PARAM_DDGIGPUScene->volumesDef.volumes[sampleInfo.volumeIndices[i]];
 			const float3 luminance = DDGISampleAverageLuminanceInternal(sampleParams, context, volumeParams);
 			if(all(luminance >= 0.0f))
 			{
@@ -527,8 +567,7 @@ float3 DDGISampleAverageLuminance(in DDGISampleParams sampleParams, in const TSa
 }
 
 
-template<typename TSampleContext>
-float3 DDGISampleIlluminanceBlended(in DDGISampleParams sampleParams, in float random, in const TSampleContext context)
+float3 DDGISampleIlluminanceBlended<TSampleContext : IDDGISampleContext>(in DDGISampleParams sampleParams, in float random, in const TSampleContext context)
 {
 	const float3 luminance = DDGISampleLuminanceBlended(sampleParams, random, context);
 
@@ -536,13 +575,12 @@ float3 DDGISampleIlluminanceBlended(in DDGISampleParams sampleParams, in float r
 }
 
 
-template<typename TSampleContext>
-float3 DDGISampleIlluminance(in DDGISampleParams sampleParams, in const TSampleContext context)
+float3 DDGISampleIlluminance<TSampleContext : IDDGISampleContext>(in DDGISampleParams sampleParams, in const TSampleContext context)
 {
 	const float3 luminance = DDGISampleLuminance(sampleParams, context);
 
 	return luminance * PI; // multiply by integration domain area (2 * pi) and by expected value of cosine NoL (0.5f)
 }
-#endif // DS_DDGISceneDS
+#endif // PARAM_DDGIGPUScene
 
 #endif // DDGI_TYPES_HLSLI

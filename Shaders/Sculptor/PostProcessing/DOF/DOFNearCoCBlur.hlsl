@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(DOFNearCoCBlurDS, 0)]]
+[[shader_params(DOFNearCoCBlurParams, PARAMS_D_O_F_NEAR_CO_C_BLUR)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 
@@ -27,8 +27,7 @@ void DOFNearCoCBlurCS(CS_INPUT input)
 {
     const uint2 pixel = input.globalID.xy;
     
-    uint2 outputRes;
-    u_cocTextureBlurred.GetDimensions(outputRes.x, outputRes.y);
+    uint2 outputRes = PARAMS_D_O_F_NEAR_CO_C_BLUR->cocTextureBlurred.GetResolution();
 
     if(pixel.x < outputRes.x && pixel.y < outputRes.y)
     {
@@ -37,10 +36,10 @@ void DOFNearCoCBlurCS(CS_INPUT input)
 
         const int blurSize = 6;
 
-        float2 direction = u_params.isHorizontal ? float2(1.0f, 0.0f) : float2(0.0f, 1.0f);
+        float2 direction = PARAMS_D_O_F_NEAR_CO_C_BLUR->isHorizontal ? float2(1.0f, 0.0f) : float2(0.0f, 1.0f);
         direction *= pixelSize;
 
-        const float2 center = u_cocTexture.SampleLevel(u_nearestSampler, uv, 0.f);
+        const float2 center = PARAMS_D_O_F_NEAR_CO_C_BLUR->cocTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0.f);
 
 #if DOF_BLUR_OP == DOF_BLUR_OP_AVG
  
@@ -48,8 +47,8 @@ void DOFNearCoCBlurCS(CS_INPUT input)
 
         for (int offset = 1; offset <= blurSize; ++offset)
         {
-            sum += u_cocTexture.SampleLevel(u_nearestSampler, uv + offset * direction, 0.f).r;
-            sum += u_cocTexture.SampleLevel(u_nearestSampler, uv - offset * direction, 0.f).r;
+            sum += PARAMS_D_O_F_NEAR_CO_C_BLUR->cocTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv + offset * direction, 0.f).r;
+            sum += PARAMS_D_O_F_NEAR_CO_C_BLUR->cocTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv - offset * direction, 0.f).r;
         }
 
         float newValue = center.x + sum;
@@ -61,12 +60,12 @@ void DOFNearCoCBlurCS(CS_INPUT input)
 
         for (int offset = 1; offset <= blurSize; ++offset)
         {
-            newValue = max(u_cocTexture.SampleLevel(u_nearestSampler, uv + offset * direction, 0.f).r, newValue);
-            newValue = max(u_cocTexture.SampleLevel(u_nearestSampler, uv - offset * direction, 0.f).r, newValue);
+            newValue = max(PARAMS_D_O_F_NEAR_CO_C_BLUR->cocTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv + offset * direction, 0.f).r, newValue);
+            newValue = max(PARAMS_D_O_F_NEAR_CO_C_BLUR->cocTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv - offset * direction, 0.f).r, newValue);
         }
 
 #endif // DOF_BLUR_OP
 
-        u_cocTextureBlurred[pixel] = newValue;
+        PARAMS_D_O_F_NEAR_CO_C_BLUR->cocTextureBlurred[pixel] = newValue;
     }
 }

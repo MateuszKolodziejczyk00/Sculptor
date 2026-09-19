@@ -1,14 +1,15 @@
 #include "SculptorShader.hlsli"
 
 
-[[descriptor_set(RenderVolumetricFogDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
-[[descriptor_set(RenderSceneDS, 2)]]
-[[descriptor_set(RenderParticipatingMediaDS, 3)]]
+[[shader_params(VolumetricFogConstants, FOG)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
+[[shader_params(RenderParticipatingMediaParams, CONSTS)]]
 
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
 #include "Utils/PerlinNoise.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
+#include "SceneRendering/GPUScene.hlsli"
 
 
 struct CS_INPUT
@@ -33,28 +34,28 @@ float EvaluateDensityAtLocation(in RenderParticipatingMediaParams params, in flo
 [numthreads(4, 4, 4)]
 void ParticipatingMediaCS(CS_INPUT input)
 {
-	if (all(input.globalID < u_fogConstants.fogGridRes))
+	if (all(input.globalID < FOG->fogGridRes))
 	{
 		float4 scatteringExtinction = 0.f;
 
-		const float3 fogFroxelUVW = ComputeFogGridSampleUVW(u_fogConstants, u_sceneView, input.globalID.xyz, u_fogConstants.fogGridRes, u_depthTexture, u_depthSampler);
+		const float3 fogFroxelUVW = ComputeFogGridSampleUVW(*FOG, VIEW->sceneView, input.globalID.xyz, FOG->fogGridRes, FOG->depthTexture, BindlessSamplers::LinearMinClampEdge());
 		
-		const float fogNearPlane = u_fogConstants.fogNearPlane;
-		const float fogFarPlane = u_fogConstants.fogFarPlane;
+		const float fogNearPlane = FOG->fogNearPlane;
+		const float fogFarPlane = FOG->fogFarPlane;
 		
 		const float fogFroxelLinearDepth = ComputeFogFroxelLinearDepth(fogFroxelUVW.z, fogNearPlane, fogFarPlane);
 
-		const float3 fogFroxelNDC = FogFroxelToNDC(fogFroxelUVW.xy, fogFroxelLinearDepth, GetNearPlane(u_sceneView));
+		const float3 fogFroxelNDC = FogFroxelToNDC(fogFroxelUVW.xy, fogFroxelLinearDepth, GetNearPlane(VIEW->sceneView));
 		
-		const float3 fogFroxelWorldLocation = NDCToWorldSpaceNoJitter(fogFroxelNDC, u_sceneView);
+		const float3 fogFroxelWorldLocation = NDCToWorldSpaceNoJitter(fogFroxelNDC, VIEW->sceneView);
 
-		const float density = EvaluateDensityAtLocation(u_participatingMediaParams, fogFroxelWorldLocation);
+		const float density = EvaluateDensityAtLocation(*CONSTS, fogFroxelWorldLocation);
 
-		const float3 fogAlbedo = u_participatingMediaParams.constantFogAlbedo;
+		const float3 fogAlbedo = CONSTS->constantFogAlbedo;
 
 		// Apply constant fog term
-		scatteringExtinction += ComputeScatteringAndExtinction(fogAlbedo, u_participatingMediaParams.constantFogExtinction, density);
+		scatteringExtinction += ComputeScatteringAndExtinction(fogAlbedo, CONSTS->constantFogExtinction, density);
 
-		u_participatingMediaTexture[input.globalID] = scatteringExtinction;
+		CONSTS->participatingMediaTexture[input.globalID] = scatteringExtinction;
 	}
 }

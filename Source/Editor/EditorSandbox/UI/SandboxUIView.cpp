@@ -14,6 +14,7 @@
 #include "CloudscapeEditor.h"
 #include "UIElements/ApplicationUI.h"
 #include "EngineFrame.h"
+#include "ResourcesManager.h"
 
 namespace spt::ed
 {

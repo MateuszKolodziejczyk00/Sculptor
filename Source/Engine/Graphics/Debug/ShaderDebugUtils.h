@@ -2,11 +2,7 @@
 
 #include "GraphicsMacros.h"
 #include "SculptorCoreTypes.h"
-#include "ShaderStructs/ShaderStructs.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
+#include "Bindless/BindlessTypes.h"
 #include "DebugRenderer.h"
 
 
@@ -17,21 +13,16 @@ class ShaderDebugCommandsExecutor;
 
 
 BEGIN_SHADER_STRUCT(ShaderDebugCommandBufferParams)
-	SHADER_STRUCT_FIELD(math::Vector2f,       mouseUV)
-	SHADER_STRUCT_FIELD(math::Vector2i,       mousePositionHalfRes)
-	SHADER_STRUCT_FIELD(Uint32,               bufferSize)
-	SHADER_STRUCT_FIELD(GPUDebugRendererData, dynamicDebugRendererData)
-	SHADER_STRUCT_FIELD(GPUDebugRendererData, persistentDebugRendererData)
+	SHADER_STRUCT_FIELD(math::Vector2f,                    mouseUV)
+	SHADER_STRUCT_FIELD(math::Vector2i,                    mousePositionHalfRes)
+	SHADER_STRUCT_FIELD(Uint32,                            bufferSize)
+	SHADER_STRUCT_FIELD(GPUDebugRendererData,              dynamicDebugRendererData)
+	SHADER_STRUCT_FIELD(GPUDebugRendererData,              persistentDebugRendererData)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,        debugCommandsBuffer)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,        debugCommandsBufferOffset)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, debugOutputTexture) // HDR
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, debugOnScreenOutputTexture) // LDR
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(ShaderDebugCommandBufferDS, rg::RGDescriptorSetState<ShaderDebugCommandBufferDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                                 u_debugCommandsBuffer)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                                 u_debugCommandsBufferOffset)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<ShaderDebugCommandBufferParams>), u_debugCommandsBufferParams)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),                        u_debugOutputTexture) // HDR
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),                        u_debugOnScreenOutputTexture) // LDR
-DS_END();
 
 
 namespace shader_command_op
@@ -71,15 +62,11 @@ private:
 	void InitializeDefaultExecutors();
 	void CleanupResources();
 
-	void SetDebugParameters(const ShaderDebugParameters& debugParameters);
-
 	void                        PrepareBuffers(rg::RenderGraphBuilder& graphBuilder);
 	void                        PrepareDebugOutputTexture(rg::RenderGraphBuilder& graphBuilder, const ShaderDebugParameters& debugParameters);
 	lib::SharedRef<rdr::Buffer> ExtractData(rg::RenderGraphBuilder& graphBuilder, const lib::SharedRef<rdr::Buffer>& sourceBuffer);
 
 	void ScheduleCommandsExecution(rg::RenderGraphBuilder& graphBuilder, const lib::SharedRef<rdr::Buffer>& commands, const lib::SharedRef<rdr::Buffer>& size) const;
-
-	lib::MTHandle<ShaderDebugCommandBufferDS> m_ds;
 
 	lib::SharedPtr<rdr::Buffer> m_debugCommandsBuffer;
 	lib::SharedPtr<rdr::Buffer> m_debugCommandsBufferOffset;

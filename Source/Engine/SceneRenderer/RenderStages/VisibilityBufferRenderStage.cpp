@@ -85,8 +85,7 @@ static void ApplyPOMOffset(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureVi
 	graphBuilder.FullScreenPass(RG_DEBUG_NAME("Apply POM Offset"),
 								renderPassDef,
 								ApplyPOMOffsetPSO::pso,
-								rg::EmptyDescriptorSets(),
-								constants);
+								rg::ShaderParams(constants));
 }
 
 } // utils
@@ -283,13 +282,10 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 
 	shadingContext.hiZ = hiZ;
 
-	DepthCullingParams depthCullingParams;
-	depthCullingParams.hiZResolution = hiZ->GetResolution2D().cast<Real32>();
-
-	lib::MTHandle<DepthCullingDS> depthCullingDS = graphBuilder.CreateDescriptorSet<DepthCullingDS>(RENDERER_RESOURCE_NAME("DepthCullingDS"));
-	depthCullingDS->u_hiZTexture         = hiZ;
-	depthCullingDS->u_depthCullingParams = depthCullingParams;
-	shadingContext.depthCullingDS = std::move(depthCullingDS);
+	DepthCullingData depthCullingData;
+	depthCullingData.hiZTexture    = hiZ;
+	depthCullingData.hiZResolution = hiZ->GetResolution2D().cast<Real32>();
+	shadingContext.depthCullingGPUData = graphBuilder.CreateGPUData(depthCullingData);
 }
 
 void VisibilityBufferRenderStage::CreateGBuffer(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec)

@@ -9,6 +9,7 @@ IncludeProject("VMA")
 IncludeProject("JSON")
 IncludeProject("Entt")
 IncludeProject("NsightAftermath")
+IncludeProject("Slang")
 IncludeProject("TileableVolumeNoise")
 
 IncludeProject("TinyGLTF")

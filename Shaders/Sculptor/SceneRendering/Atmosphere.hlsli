@@ -18,13 +18,13 @@ struct SceneAtmosphereInterface : SceneAtmosphereData
 	}
 };
 
-#ifdef DS_RenderSceneDS
+#ifdef PARAM_RenderSceneConstants
 
 SceneAtmosphereInterface SceneAtmosphere()
 {
-	return SceneAtmosphereInterface(u_renderSceneConstants.atmosphere);
+	return SceneAtmosphereInterface(SCENE->atmosphere);
 }
 
-#endif // DS_RenderSceneDS
+#endif // PARAM_RenderSceneConstants
 
 #endif // SCENE_ATMOSPHERE_HLSLI

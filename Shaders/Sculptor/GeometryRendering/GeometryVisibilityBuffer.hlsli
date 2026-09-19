@@ -1,5 +1,6 @@
 #ifdef GEOMETRY_PIPELINE_DEFINITIONS_PASS
-[[descriptor_set(VisBufferRenderingDS)]]
+
+[[shader_params(VisBufferRenderingParams, VIS_BUFFER)]]
 
 struct CustomMeshletsData
 {
@@ -8,7 +9,9 @@ struct CustomMeshletsData
 #define GEOMETRY_PIPELINE_CUSTOM_MESHLETS_DATA_TYPE CustomMeshletsData
 
 #define GEOMETRY_PIPELINE_CUSTOM_PER_PRIMITIVE_DATA \
-	uint packedVisibilityInfo : PACKED_VISBILITY_INFO;
+	nointerpolation uint packedVisibilityInfo : PACKED_VISBILITY_INFO;
+//#define GEOMETRY_PIPELINE_CUSTOM_PER_PRIMITIVE_DATA \
+//	nointerpolation uint packedVisibilityInfo : SV_PrimitiveID;
 
 #else
 
@@ -20,7 +23,7 @@ void DispatchMeshlet(in MeshletDispatchContext context, out CustomMeshletsData c
 		uint visibleMeshletIdx = 0u;
 		if (WaveIsFirstLane())
 		{
-			InterlockedAdd(u_visibleMeshletsCount[0], visibleMeshletsNumInWave, visibleMeshletIdx);
+			visibleMeshletIdx = VIS_BUFFER->visibleMeshletsCount.AtomicAdd(0u, visibleMeshletsNumInWave);
 			customMeshletsData.firstVisibleMeshletIdx = visibleMeshletIdx;
 		}
 		visibleMeshletIdx = WaveReadLaneFirst(visibleMeshletIdx) + context.compactedLocalVisibleIdx;
@@ -32,7 +35,7 @@ void DispatchMeshlet(in MeshletDispatchContext context, out CustomMeshletsData c
 		visibleMeshletInfo.materialDataHandle = context.batchElement.materialDataHandle;
 		visibleMeshletInfo.materialBatchIdx   = context.batchElement.materialBatchIdx;
 
-		u_visibleMeshlets[visibleMeshletIdx] = visibleMeshletInfo;
+		VIS_BUFFER->visibleMeshlets[visibleMeshletIdx] = visibleMeshletInfo;
 	}
 }
 
@@ -60,6 +63,7 @@ FRAGMENT_SHADER_OUTPUT_TYPE DispatchFragment(in FragmentDispatchContext context)
 {
 	VIS_BUFFER_PS_OUT output;
 	output.packedVisibilityInfo = context.primData.packedVisibilityInfo;
+
 	return output;
 }
 #endif // GEOMETRY_PIPELINE_DEFINITIONS_PASS

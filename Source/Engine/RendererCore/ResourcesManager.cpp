@@ -2,10 +2,8 @@
 #include "GPUApi.h"
 #include "Shaders/ShadersManager.h"
 #include "Pipelines/PipelinesCache.h"
-#include "Samplers/SamplersCache.h"
 #include "Types/RenderContext.h"
 #include "Types/Buffer.h"
-#include "Types/Sampler.h"
 #include "Types/Texture.h"
 #include "Types/Window.h"
 #include "Types/Semaphore.h"
@@ -18,7 +16,6 @@
 #include "Types/GPUEvent.h"
 #include "Types/QueryPool.h"
 #include "Types/GPUMemoryPool.h"
-#include "Types/DescriptorSetLayout.h"
 #include "Types/DescriptorHeap.h"
 #include "CommandsRecorder/CommandRecorder.h"
 
@@ -94,19 +91,9 @@ static lib::SharedRef<DescriptorHeap> CreateDescriptorHeap(const RendererResourc
 	return lib::MakeShared<DescriptorHeap>(name, definition);
 }
 
-static lib::SharedRef<DescriptorSetLayout> CreateDescriptorSetLayout(const RendererResourceName& name, const rhi::DescriptorSetDefinition& def)
-{
-	return lib::MakeShared<DescriptorSetLayout>(name, def);
-}
-
 static lib::SharedRef<QueryPool> CreateQueryPool(const rhi::QueryPoolDefinition& def)
 {
 	return lib::MakeShared<QueryPool>(def);
-}
-
-static lib::SharedRef<Sampler> CreateSampler(const rhi::SamplerDefinition& def)
-{
-	return lib::MakeShared<Sampler>(def);
 }
 
 static lib::SharedRef<GraphicsPipeline> CreateGfxPipeline(const RendererResourceName& name, const GraphicsPipelineShadersDefinition& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef)
@@ -156,9 +143,7 @@ struct GPUApiFactory
 	lib::RawCallable<lib::SharedRef<BottomLevelAS>(const RendererResourceName& /* name */, const rhi::BLASDefinition& /* definition */)> createBLASFunc;
 	lib::RawCallable<lib::SharedRef<TopLevelAS>(const RendererResourceName& /* name */, const rhi::TLASDefinition& /* definition */)> createTLASFunc;
 	lib::RawCallable<lib::SharedRef<DescriptorHeap>(const RendererResourceName& /* name */, const rhi::DescriptorHeapDefinition& /* definition */)> createDescriptorHeapFunc;
-	lib::RawCallable<lib::SharedRef<DescriptorSetLayout>(const RendererResourceName& /* name */, const rhi::DescriptorSetDefinition& /* def */)> createDescriptorSetLayoutFunc;
 	lib::RawCallable<lib::SharedRef<QueryPool>(const rhi::QueryPoolDefinition& /* def */)> createQueryPoolFunc;
-	lib::RawCallable<lib::SharedRef<Sampler>(const rhi::SamplerDefinition& /* def */)> createSamplerFunc;
 	lib::RawCallable<lib::SharedRef<GraphicsPipeline>(const RendererResourceName& /* name */, const GraphicsPipelineShadersDefinition& /* shaders */, const rhi::GraphicsPipelineDefinition& /* pipelineDef */)> createGfxPipelineFunc;
 	lib::RawCallable<lib::SharedRef<ComputePipeline>(const RendererResourceName& /* name */, const lib::SharedRef<Shader>& /* shader */)> createComputePipelineFunc;
 	lib::RawCallable<lib::SharedRef<RayTracingPipeline>(const RendererResourceName& /* name */, const RayTracingPipelineShaderObjects& /* shaders */, const rhi::RayTracingPipelineDefinition& /* pipelineDef */)> createRayTracingPipelineFunc;
@@ -190,9 +175,7 @@ GPUApiFactoryData* ResourcesManager::Initialize()
 	g_GPUApiFactory->createBLASFunc                = utils::CreateBLAS;
 	g_GPUApiFactory->createTLASFunc                = utils::CreateTLAS;
 	g_GPUApiFactory->createDescriptorHeapFunc      = utils::CreateDescriptorHeap;
-	g_GPUApiFactory->createDescriptorSetLayoutFunc = utils::CreateDescriptorSetLayout;
 	g_GPUApiFactory->createQueryPoolFunc           = utils::CreateQueryPool;
-	g_GPUApiFactory->createSamplerFunc             = utils::CreateSampler;
 	g_GPUApiFactory->createGfxPipelineFunc         = utils::CreateGfxPipeline;
 	g_GPUApiFactory->createComputePipelineFunc     = utils::CreateComputePipeline;
 	g_GPUApiFactory->createRayTracingPipelineFunc  = utils::CreateRayTracingPipeline;
@@ -390,24 +373,9 @@ PipelineStateID ResourcesManager::CreateRayTracingPipeline(const RendererResourc
 	return GPUApi::GetPipelinesCache().GetOrCreateRayTracingPipeline(nameInNotCached, shaders, pipelineDef);
 }
 
-lib::SharedRef<Sampler> ResourcesManager::CreateSampler(const rhi::SamplerDefinition& def)
-{
-	return GPUApi::GetSamplersCache().GetOrCreateSampler(def);
-}
-
-lib::SharedRef<Sampler> ResourcesManager::CreateSamplerObject(const rhi::SamplerDefinition& def)
-{
-	return g_GPUApiFactory->createSamplerFunc(def);
-}
-
 lib::SharedRef<DescriptorHeap> ResourcesManager::CreateDescriptorHeap(const RendererResourceName& name, const rhi::DescriptorHeapDefinition& definition)
 {
 	return g_GPUApiFactory->createDescriptorHeapFunc(name, definition);
-}
-
-lib::SharedRef<DescriptorSetLayout> ResourcesManager::CreateDescriptorSetLayout(const RendererResourceName& name, const rhi::DescriptorSetDefinition& def)
-{
-	return g_GPUApiFactory->createDescriptorSetLayoutFunc(name, def);
 }
 
 lib::SharedRef<QueryPool> ResourcesManager::CreateQueryPool(const rhi::QueryPoolDefinition& def)

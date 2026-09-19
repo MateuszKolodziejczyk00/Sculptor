@@ -2,18 +2,18 @@
 #include "GeometryRendering/GeometryDefines.hlsli"
 
 
-[[descriptor_set(RenderSceneDS)]]
-[[descriptor_set(RenderViewDS)]]
-[[descriptor_set(GeometryCullingDS)]]
-[[descriptor_set(GeometryBatchDS)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(GeometryCullingParams, CULLING)]]
+[[shader_params(GeometryGPUBatchData, BATCH)]]
 
 
 #if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
-[[descriptor_set(GeometryDrawMeshes_VisibleGeometryPassDS)]]
+[[shader_params(GeometryDrawMeshes_VisibleGeometryPassParams, PASS)]]
 #elif GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
-[[descriptor_set(GeometryDrawMeshes_DisoccludedGeometryPassDS)]]
+[[shader_params(GeometryDrawMeshes_DisoccludedGeometryPassParams, PASS)]]
 #else
-[[descriptor_set(GeometryDrawMeshes_DisoccludedMeshletsPassDS)]]
+[[shader_params(GeometryDrawMeshes_DisoccludedMeshletsPassParams, PASS)]]
 #endif // GEOMETRY_PASS_IDX
 
 
@@ -54,25 +54,26 @@
 #error "Missing GEOMETRY_PIPELINE_SHADER definition."
 #endif
 
+#define SLANG_HACK_FIX 1
 
 groupshared MeshPayload s_payload;
 
 
 bool WasOccludedLastFrame(in Sphere sphere)
 {
-	const HiZCullingProcessor occlusionCullingProcessor = HiZCullingProcessor::Create(u_historyHiZTexture, u_visCullingParams.historyHiZResolution, u_hiZSampler, u_prevFrameSceneView);
+	const HiZCullingProcessor occlusionCullingProcessor = HiZCullingProcessor::Create(CULLING->historyHiZTexture, CULLING->historyHiZResolution, VIEW->prevFrameSceneView);
 	return !occlusionCullingProcessor.DoCulling(sphere);
 }
 
 
 bool IsOccludedCurrentFrame(in Sphere sphere)
 {
-	const HiZCullingProcessor occlusionCullingProcessor = HiZCullingProcessor::Create(u_hiZTexture, u_visCullingParams.hiZResolution, u_hiZSampler, u_sceneView);
+	const HiZCullingProcessor occlusionCullingProcessor = HiZCullingProcessor::Create(CULLING->hiZTexture, CULLING->hiZResolution, VIEW->sceneView);
 	return !occlusionCullingProcessor.DoCulling(sphere);
 }
 
 
-#ifdef DS_GeometryDrawMeshes_VisibleGeometryPassDS
+#ifdef PARAM_GeometryDrawMeshes_VisibleGeometryPassParams
 void AppendOccludedMeshlet(in OccludedMeshletData occludedMeshlet)
 {
 	const uint2 meshletOccludedBallot = WaveActiveBallot(true).xy;
@@ -80,18 +81,17 @@ void AppendOccludedMeshlet(in OccludedMeshletData occludedMeshlet)
 	uint outputOccludedMeshletIdx = 0;
 	if (WaveIsFirstLane())
 	{
-		InterlockedAdd(u_occludedMeshletsCount[0], occludedmeshletsNum, outputOccludedMeshletIdx);
+		outputOccludedMeshletIdx = PASS->occludedMeshletsCount.AtomicAdd(0u, occludedmeshletsNum);
 
 		const uint occludedMeshletsNum = outputOccludedMeshletIdx + occludedmeshletsNum;
 		const uint requiredOccludedMeshletsGroups = (occludedMeshletsNum + TS_GROUP_SIZE - 1) / TS_GROUP_SIZE;
-		uint prevGroups = 0;
-		InterlockedMax(u_occludedMeshletsDispatchCommand[0].dispatchGroupsX, requiredOccludedMeshletsGroups, prevGroups);
+		PASS->occludedMeshletsDispatchCommand.Cast<uint>().AtomicMax(0u, requiredOccludedMeshletsGroups);
 	}
 	outputOccludedMeshletIdx = WaveReadLaneFirst(outputOccludedMeshletIdx) + GetCompactedIndex(meshletOccludedBallot, WaveGetLaneIndex());
 
-	u_occludedMeshlets[outputOccludedMeshletIdx] = occludedMeshlet;
+	PASS->occludedMeshlets[outputOccludedMeshletIdx] = occludedMeshlet;
 }
-#endif // DS_GeometryDrawMeshes_VisibleGeometryPassDS
+#endif // PARAM_GeometryDrawMeshes_VisibleGeometryPassParams
 
 
 struct TSInput
@@ -99,10 +99,11 @@ struct TSInput
 	uint3 globalID : SV_DispatchThreadID;
     uint3 groupID : SV_GroupID;
     uint3 localID : SV_GroupThreadID;
-	[[vk::builtin("DrawIndex")]] uint drawCommandIndex : DRAW_INDEX;
+	uint drawCommandIndex : SV_DrawIndex;
 };
 
 
+[shader("task")]
 [numthreads(TS_GROUP_SIZE, 1, 1)]
 void GeometryPipeline_TS(in TSInput input)
 {
@@ -111,17 +112,22 @@ void GeometryPipeline_TS(in TSInput input)
 #endif // !MESHLETS_SHARE_ENTITY
 
 #if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
-	const GeometryDrawMeshTaskCommand drawCommand = u_drawCommands[input.drawCommandIndex];
+#if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
+	const GeometryDrawMeshTaskCommand drawCommand = PASS->drawCommands[input.drawCommandIndex];
+#else
+	const GeometryDrawMeshTaskCommand drawCommand = PASS->drawCommands[input.drawCommandIndex];
+#endif // GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
+
 	const uint batchElementIdx = drawCommand.batchElemIdx;
 	const uint localMeshletIdx = input.globalID.x;
 	const uint groupFirstLocalMesletIdx = input.groupID.x * TS_GROUP_SIZE;
 #else
-	if(input.globalID.x >= u_occludedMeshletsCount[0])
+	if(input.globalID.x >= PASS->occludedMeshletsCount[0])
 	{
 		return;
 	}
 
-	const OccludedMeshletData occludedMeshlet = u_occludedMeshlets[input.globalID.x];
+	const OccludedMeshletData occludedMeshlet = PASS->occludedMeshlets[input.globalID.x];
 	const uint batchElementIdx = occludedMeshlet.batchElemIdx;
 	const uint localMeshletIdx = occludedMeshlet.localMeshletIdx;
 #endif // GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
@@ -129,13 +135,13 @@ void GeometryPipeline_TS(in TSInput input)
 #if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
 	if(input.globalID.x == 0)
 	{
-		u_occludedMeshletsDispatchCommand[0].dispatchGroupsX = 0u;
-		u_occludedMeshletsDispatchCommand[0].dispatchGroupsY = 1u;
-		u_occludedMeshletsDispatchCommand[0].dispatchGroupsZ = 1u;
+		PASS->occludedMeshletsDispatchCommand[0].dispatchGroupsX = 0u;
+		PASS->occludedMeshletsDispatchCommand[0].dispatchGroupsY = 1u;
+		PASS->occludedMeshletsDispatchCommand[0].dispatchGroupsZ = 1u;
 	}
 #endif	// GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
 
-	const GeometryBatchElement batchElement = u_batchElements[batchElementIdx];
+	const GeometryBatchElement batchElement = BATCH->batchElements[batchElementIdx];
 	const SubmeshGPUData submesh            = batchElement.submeshPtr.Load();
 	const RenderEntityGPUData entityData    = batchElement.entityPtr.Load();
 
@@ -157,7 +163,7 @@ void GeometryPipeline_TS(in TSInput input)
 		const float meshletBoundingSphereRadius = meshlet.boundingSphereRadius * entityData.uniformScale;
 
 #if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
-		isMeshletVisible = IsSphereInFrustum(u_cullingData.cullingPlanes, meshletBoundingSphereCenter, meshletBoundingSphereRadius);
+		isMeshletVisible = IsSphereInFrustum(VIEW->cullingData.cullingPlanes, meshletBoundingSphereCenter, meshletBoundingSphereRadius);
 
 #ifndef DOUBLE_SIDED
 		if(isMeshletVisible)
@@ -174,7 +180,7 @@ void GeometryPipeline_TS(in TSInput input)
 			{
 				coneAxis = normalize(mul(entityRotationAndScale, coneAxis));
 
-				isMeshletVisible = isMeshletVisible && IsConeVisible(meshletBoundingSphereCenter, meshletBoundingSphereRadius, coneAxis, coneCutoff, u_sceneView.viewLocation);
+				isMeshletVisible = isMeshletVisible && IsConeVisible(meshletBoundingSphereCenter, meshletBoundingSphereRadius, coneAxis, coneCutoff, VIEW->sceneView.viewLocation);
 			}
 		}
 #endif // DOUBLE_SIDED
@@ -203,6 +209,19 @@ void GeometryPipeline_TS(in TSInput input)
 
 #endif // GEOMETRY_PASS_IDX
 		}
+
+#if SLANG_HACK_FIX
+		// From some reasong after starting using slang, sometimes output in visibility buffer gets corrupted
+		// It looks like already mesh shader sometimes gets incorrect batch element reference
+		// this happens regardless of pass type
+		// From some reason it always works fine if first lane doesn't cull meshlet...
+		// No idea what is going on, slang support for task shaders is questionable according to https://github.com/shader-slang/slang/issues/8785
+		//  For now using this as workaround
+		if (WaveActiveAnyTrue(isMeshletVisible))
+		{
+			isMeshletVisible = isMeshletVisible || WaveIsFirstLane();
+		}
+#endif // SLANG_HACK_FIX
 
 		uint compactedLocalVisibleIdx = 0xffffffff;
 		if(isMeshletVisible)
@@ -340,6 +359,7 @@ bool IsTriangleVisible(in MeshletTriangle tri, in TriangleCullingParams cullingP
 
 
 
+[shader("mesh")]
 [outputtopology("triangle")]
 [numthreads(MS_GROUP_SIZE, 1, 1)]
 void GeometryPipeline_MS(
@@ -357,11 +377,11 @@ void GeometryPipeline_MS(
 	const uint commandIdx = WaveActiveMin(groupIdxForCommands == groupID.x ? WaveGetLaneIndex() : MS_GROUP_SIZE); // select only one command per group
 	SPT_CHECK_MSG(commandIdx <= MS_GROUP_SIZE, L"Invalid command Idx");
 	const uint localMeshletIdx   = inPayload.firstLocalMeshletIdx + commandIdx;
-	const GeometryBatchElement batchElement = u_batchElements[inPayload.batchElementIdx];
+	const GeometryBatchElement batchElement = BATCH->batchElements[inPayload.batchElementIdx];
 #else
 	const uint localMeshletIdx   = inPayload.localMeshletIdx[groupID.x];
 	const uint batchElementIdx   = inPayload.batchElementIdx[groupID.x];
-	const GeometryBatchElement batchElement = u_batchElements[batchElementIdx];
+	const GeometryBatchElement batchElement = BATCH->batchElements[batchElementIdx];
 #endif // MESHLETS_SHARE_ENTITY
 
 	const RenderEntityGPUData entityData = batchElement.entityPtr.Load();
@@ -383,9 +403,9 @@ void GeometryPipeline_MS(
 	for (uint meshletVertexIdx = WaveGetLaneIndex(); meshletVertexIdx < meshlet.vertexCount; meshletVertexIdx += MS_GROUP_SIZE)
 	{
 		const uint vertexIdx = UGB().LoadVertexIndex(meshletGlobalVertexIndicesOffset, meshletVertexIdx);
-		SPT_CHECK_MSG(vertexIdx < submesh.indicesNum, L"Invalid vertex index - {}", vertexIdx);
+		SPT_CHECK_MSG(vertexIdx < submesh.indicesNum, L"Invalid vertex index - {} (submesh vertices - {}, idx - {})", vertexIdx, submesh.indicesNum, meshletVertexIdx);
 		const float3 vertexLocation = UGB().LoadLocation(locationsOffset, vertexIdx);
-		const float4 vertexCS = mul(u_sceneView.viewProjectionMatrix, mul(entityData.transform, float4(vertexLocation, 1.f)));
+		const float4 vertexCS = mul(VIEW->sceneView.viewProjectionMatrix, mul(entityData.transform, float4(vertexLocation, 1.f)));
 		outVerts[meshletVertexIdx].locationCS = vertexCS;
 		localVerticesCS[(meshletVertexIdx >= MS_GROUP_SIZE)] = vertexCS;
 
@@ -396,8 +416,8 @@ void GeometryPipeline_MS(
 	}
 
 	TriangleCullingParams cullingParams;
-	cullingParams.nearPlane          = GetNearPlane(u_sceneView);
-	cullingParams.viewportResolution = u_viewRenderingParams.renderingResolution;
+	cullingParams.nearPlane          = GetNearPlane(VIEW->sceneView);
+	cullingParams.viewportResolution = VIEW->renderingResolution;
 	
 	// Warning: each thread must iterate same number of times to make sure that WaveReadLaneAt works correctly
 	for (uint groupTriangleIdx = 0; groupTriangleIdx < meshlet.triangleCount; groupTriangleIdx += MS_GROUP_SIZE)
@@ -415,7 +435,6 @@ void GeometryPipeline_MS(
 			const float4 cs1 = WaveReadLaneAt(localVerticesCS[1], (triangleVertices[i] & 31)); // Read vertices in range [32, 63]
 			tri.verticesCS[i] = triangleVertices[i] < MS_GROUP_SIZE ? cs0 : cs1;
 		}
-
 
 		PerPrimitiveData primData;
 #if SPT_MESH_SHADER
@@ -449,6 +468,8 @@ void GeometryPipeline_MS(
 #endif // FRAGMENT_SHADER_OUTPUT_TYPE
 
 
+#if SPT_FRAGMENT_SHADER
+[shader("fragment")]
 FRAGMENT_SHADER_OUTPUT_TYPE GeometryPipeline_FS(in PerVertexData vertData, in PerPrimitiveData primData)
 {
 #if GEOMETRY_PIPELINE_USE_MATERIAL
@@ -467,11 +488,12 @@ FRAGMENT_SHADER_OUTPUT_TYPE GeometryPipeline_FS(in PerVertexData vertData, in Pe
 #endif // GEOMETRY_PIPELINE_USE_MATERIAL
 
 	FragmentDispatchContext fragDispatchContext;
-	fragDispatchContext.vertData = vertData;
-	fragDispatchContext.primData = primData;
-#if GEOMETRY_PIPELINE_USE_MATERIAL
-	fragDispatchContext.materialData = materialData;
-#endif // GEOMETRY_PIPELINE_USE_MATERIAL
+	fragDispatchContext.vertData     = vertData;
+	fragDispatchContext.primData     = primData;
+//#if GEOMETRY_PIPELINE_USE_MATERIAL
+//	fragDispatchContext.materialData = materialData;
+//#endif // GEOMETRY_PIPELINE_USE_MATERIAL
 
 	return DispatchFragment(fragDispatchContext);
 }
+#endif // SPT_FRAGMENT_SHADER

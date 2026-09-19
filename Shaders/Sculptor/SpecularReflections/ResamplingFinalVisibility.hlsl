@@ -1,8 +1,8 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderSceneDS)]]
-[[descriptor_set(SRResamplingFinalVisibilityTestDS)]]
-[[descriptor_set(RenderViewDS)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
+[[shader_params(SRResamplingFinalVisibilityTestParams, PARAMS_S_R_RESAMPLING_FINAL_VISIBILITY_TEST)]]
+[[shader_params(GPURenderView, VIEW)]]
 
 #include "RayTracing/RayTracingHelpers.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
@@ -36,24 +36,24 @@ void ResamplingFinalVisibilityTestRTG()
 #else
 	const uint traceCommandIndex = DispatchRaysIndex().x;
 
-	const EncodedRayTraceCommand encodedTraceCommand = u_traceCommands[traceCommandIndex];
+	const EncodedRayTraceCommand encodedTraceCommand = PARAMS_S_R_RESAMPLING_FINAL_VISIBILITY_TEST->traceCommands[traceCommandIndex];
 	const RayTraceCommand traceCommand = DecodeTraceCommand(encodedTraceCommand);
 #endif // FORCE_FULL_RATE
 
-	const uint3 pixel = uint3(min(traceCommand.blockCoords + traceCommand.localOffset, u_resamplingConstants.resolution - 1u), 0);
+	const uint3 pixel = uint3(min(traceCommand.blockCoords + traceCommand.localOffset, PARAMS_S_R_RESAMPLING_FINAL_VISIBILITY_TEST->resamplingConstants->resolution - 1u), 0);
 
-	const float2 uv = (pixel.xy + 0.5f) * u_resamplingConstants.pixelSize;
-	const float depth = u_depthTexture.Load(pixel);
+	const float2 uv = (pixel.xy + 0.5f) * PARAMS_S_R_RESAMPLING_FINAL_VISIBILITY_TEST->resamplingConstants->pixelSize;
+	const float depth = PARAMS_S_R_RESAMPLING_FINAL_VISIBILITY_TEST->depthTexture.Load(pixel);
 
 	if(depth > 0.f)
 	{
 		const float3 ndc = float3(uv * 2.f - 1.f, depth);
-		const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
+		const float3 worldLocation = NDCToWorldSpace(ndc, VIEW->sceneView);
 
 		const float bias = 0.005f;
 
-		const uint reservoirIdx =  GetScreenReservoirIdx(pixel.xy, u_resamplingConstants.reservoirsResolution);
-		const SRReservoir reservoir = UnpackReservoir(u_inOutReservoirsBuffer[reservoirIdx]);
+		const uint reservoirIdx =  GetScreenReservoirIdx(pixel.xy, PARAMS_S_R_RESAMPLING_FINAL_VISIBILITY_TEST->resamplingConstants->reservoirsResolution);
+		const SRReservoir reservoir = UnpackReservoir(PARAMS_S_R_RESAMPLING_FINAL_VISIBILITY_TEST->inOutReservoirsBuffer[reservoirIdx]);
 		if (!reservoir.HasFlag(SR_RESERVOIR_FLAGS_VALIDATED))
 		{
 			bool isVisible = false;
@@ -64,10 +64,10 @@ void ResamplingFinalVisibilityTestRTG()
 			{
 				const float3 rayDirection = (reservoir.hitLocation - worldLocation) / distance;
 
-				const RngState rng = RngState::Create(pixel.xy, 123u);
+				RngState rng = RngState::Create(pixel.xy, 123u);
 
-				const float traceDist = min(u_resamplingConstants.ssrTraceLength, distance - bias);
-				const SSTraceResultExtended ssResult = TraceScreenSpaceRay(u_resamplingConstants.ssTracer, u_sceneView, uv, depth, rayDirection, traceDist, rng.Next());
+				const float traceDist = min(PARAMS_S_R_RESAMPLING_FINAL_VISIBILITY_TEST->resamplingConstants->ssrTraceLength, distance - bias);
+				const SSTraceResultExtended ssResult = TraceScreenSpaceRay(PARAMS_S_R_RESAMPLING_FINAL_VISIBILITY_TEST->resamplingConstants->ssTracer, VIEW->sceneView, uv, depth, rayDirection, traceDist, rng.Next());
 				if (ssResult.isHit)
 				{
 					isVisible = false;
@@ -86,12 +86,12 @@ void ResamplingFinalVisibilityTestRTG()
 
 			if(!isVisible)
 			{
-				SRPackedReservoir initialReservoir = u_initialReservoirsBuffer[reservoirIdx];
+				SRPackedReservoir initialReservoir = PARAMS_S_R_RESAMPLING_FINAL_VISIBILITY_TEST->initialReservoirsBuffer[reservoirIdx];
 				uint packedProps = initialReservoir.MAndProps;
 				packedProps = ModifyPackedSpatialResamplingRangeID(packedProps, -3);
 				initialReservoir.MAndProps = packedProps;
 
-				u_inOutReservoirsBuffer[reservoirIdx] = initialReservoir;
+				PARAMS_S_R_RESAMPLING_FINAL_VISIBILITY_TEST->inOutReservoirsBuffer[reservoirIdx] = initialReservoir;
 			}
 		}
 	}

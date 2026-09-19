@@ -24,9 +24,141 @@ namespace debug
 #define INT4_TYPE_CODE uint(12)
 
 
-class DebugCommandsWriter
+interface IDebugStreamDataType
 {
-	void Write(uint val)
+	void writeSelfWithCode(inout DebugCommandsWriter writer);
+}
+
+extension float : IDebugStreamDataType
+{
+	void writeSelfWithCode(inout DebugCommandsWriter writer)
+	{
+		writer.Write(FLOAT_TYPE_CODE);
+		writer.Write(this);
+	}
+}
+
+extension float2 : IDebugStreamDataType
+{
+	void writeSelfWithCode(inout DebugCommandsWriter writer)
+	{
+		writer.Write(FLOAT2_TYPE_CODE);
+		writer.Write(this.x);
+		writer.Write(this.y);
+	}
+}
+
+extension float3 : IDebugStreamDataType
+{
+	void writeSelfWithCode(inout DebugCommandsWriter writer)
+	{
+		writer.Write(FLOAT3_TYPE_CODE);
+		writer.Write(this.x);
+		writer.Write(this.y);
+		writer.Write(this.z);
+	}
+}
+
+extension float4 : IDebugStreamDataType
+{
+	void writeSelfWithCode(inout DebugCommandsWriter writer)
+	{
+		writer.Write(FLOAT4_TYPE_CODE);
+		writer.Write(this.x);
+		writer.Write(this.y);
+		writer.Write(this.z);
+		writer.Write(this.w);
+	}
+}
+
+extension uint : IDebugStreamDataType
+{
+	void writeSelfWithCode(inout DebugCommandsWriter writer)
+	{
+		writer.Write(UINT_TYPE_CODE);
+		writer.Write(this);
+	}
+}
+
+extension uint2 : IDebugStreamDataType
+{
+	void writeSelfWithCode(inout DebugCommandsWriter writer)
+	{
+		writer.Write(UINT2_TYPE_CODE);
+		writer.Write(this.x);
+		writer.Write(this.y);
+	}
+}
+
+extension uint3 : IDebugStreamDataType
+{
+	void writeSelfWithCode(inout DebugCommandsWriter writer)
+	{
+		writer.Write(UINT3_TYPE_CODE);
+		writer.Write(this.x);
+		writer.Write(this.y);
+		writer.Write(this.z);
+	}
+}
+
+extension uint4 : IDebugStreamDataType
+{
+	void writeSelfWithCode(inout DebugCommandsWriter writer)
+	{
+		writer.Write(UINT4_TYPE_CODE);
+		writer.Write(this.x);
+		writer.Write(this.y);
+		writer.Write(this.z);
+		writer.Write(this.w);
+	}
+}
+
+extension int : IDebugStreamDataType
+{
+	void writeSelfWithCode(inout DebugCommandsWriter writer)
+	{
+		writer.Write(INT_TYPE_CODE);
+		writer.Write(this);
+	}
+}
+
+extension int2 : IDebugStreamDataType
+{
+	void writeSelfWithCode(inout DebugCommandsWriter writer)
+	{
+		writer.Write(INT2_TYPE_CODE); // Fixed original typo: was UINT2_TYPE_CODE
+		writer.Write(this.x);
+		writer.Write(this.y);
+	}
+}
+
+extension int3 : IDebugStreamDataType
+{
+	void writeSelfWithCode(inout DebugCommandsWriter writer)
+	{
+		writer.Write(INT3_TYPE_CODE);
+		writer.Write(this.x);
+		writer.Write(this.y);
+		writer.Write(this.z);
+	}
+}
+
+extension int4 : IDebugStreamDataType
+{
+	void writeSelfWithCode(inout DebugCommandsWriter writer)
+	{
+		writer.Write(INT4_TYPE_CODE);
+		writer.Write(this.x);
+		writer.Write(this.y);
+		writer.Write(this.z);
+		writer.Write(this.w);
+	}
+}
+
+
+struct DebugCommandsWriter
+{
+	[mutating] void Write(uint val)
 	{
 		if(m_currentIdx < 255)
 		{
@@ -38,17 +170,17 @@ class DebugCommandsWriter
 		}
 	}
 
-	void Write(int val)
+	[mutating] void Write(int val)
 	{
 		Write(uint(val));
 	}
 
-	void Write(float val)
+	[mutating] void Write(float val)
 	{
 		Write(asuint(val));
 	}
 
-	void WriteLiteral(Literal literal)
+	[mutating] void WriteLiteral(Literal literal)
 	{
 		Write(literal.val.x);
 		Write(literal.val.y);
@@ -56,123 +188,34 @@ class DebugCommandsWriter
 
 	// Write with code
 
-	void WriteSingleWithCode(float val)
+	[mutating] void WriteSingleWithCode<T : IDebugStreamDataType>(T val)
 	{
-		Write(FLOAT_TYPE_CODE);
-		Write(val);
+		val.writeSelfWithCode(this);
 	}
 
-	void WriteSingleWithCode(float2 val)
-	{
-		Write(FLOAT2_TYPE_CODE);
-		Write(val.x);
-		Write(val.y);
-	}
-
-	void WriteSingleWithCode(float3 val)
-	{
-		Write(FLOAT3_TYPE_CODE);
-		Write(val.x);
-		Write(val.y);
-		Write(val.z);
-	}
-
-	void WriteSingleWithCode(float4 val)
-	{
-		Write(FLOAT4_TYPE_CODE);
-		Write(val.x);
-		Write(val.y);
-		Write(val.z);
-		Write(val.w);
-	}
-
-	void WriteSingleWithCode(uint val)
-	{
-		Write(UINT_TYPE_CODE);
-		Write(val);
-	}
-
-	void WriteSingleWithCode(uint2 val)
-	{
-		Write(UINT2_TYPE_CODE);
-		Write(val.x);
-		Write(val.y);
-	}
-
-	void WriteSingleWithCode(uint3 val)
-	{
-		Write(UINT3_TYPE_CODE);
-		Write(val.x);
-		Write(val.y);
-		Write(val.z);
-	}
-
-	void WriteSingleWithCode(uint4 val)
-	{
-		Write(UINT4_TYPE_CODE);
-		Write(val.x);
-		Write(val.y);
-		Write(val.z);
-		Write(val.w);
-	}
-
-	void WriteSingleWithCode(int val)
-	{
-		Write(INT_TYPE_CODE);
-		Write(val);
-	}
-
-	void WriteSingleWithCode(int2 val)
-	{
-		Write(UINT2_TYPE_CODE);
-		Write(val.x);
-		Write(val.y);
-	}
-
-	void WriteSingleWithCode(int3 val)
-	{
-		Write(INT3_TYPE_CODE);
-		Write(val.x);
-		Write(val.y);
-		Write(val.z);
-	}
-
-	void WriteSingleWithCode(int4 val)
-	{
-		Write(INT4_TYPE_CODE);
-		Write(val.x);
-		Write(val.y);
-		Write(val.z);
-		Write(val.w);
-	}
-
-	void WriteWithCodes()
+	[mutating] void WriteWithCodes()
 	{
 	}
 
-	template<typename TType1>
-	void WriteWithCodes(TType1 val1)
+	[mutating] void WriteWithCodes<TType1 : IDebugStreamDataType>(TType1 val1)
 	{
 		WriteSingleWithCode(val1);
 	}
 
-	template<typename TType1, typename TType2>
-	void WriteWithCodes(TType1 val1, TType2 val2)
+	[mutating] void WriteWithCodes<TType1 : IDebugStreamDataType, TType2 : IDebugStreamDataType>(TType1 val1, TType2 val2)
 	{
 		WriteSingleWithCode(val1);
 		WriteSingleWithCode(val2);
 	}
 
-	template<typename TType1, typename TType2, typename TType3>
-	void WriteWithCodes(TType1 val1, TType2 val2, TType3 val3)
+	[mutating] void WriteWithCodes<TType1 : IDebugStreamDataType, TType2 : IDebugStreamDataType, TType3 : IDebugStreamDataType>(TType1 val1, TType2 val2, TType3 val3)
 	{
 		WriteSingleWithCode(val1);
 		WriteSingleWithCode(val2);
 		WriteSingleWithCode(val3);
 	}
 
-	template<typename TType1, typename TType2, typename TType3, typename TType4>
-	void WriteWithCodes(TType1 val1, TType2 val2, TType3 val3, TType4 val4)
+	[mutating] void WriteWithCodes<TType1 : IDebugStreamDataType, TType2 : IDebugStreamDataType, TType3 : IDebugStreamDataType, TType4 : IDebugStreamDataType>(TType1 val1, TType2 val2, TType3 val3, TType4 val4)
 	{
 		WriteSingleWithCode(val1);
 		WriteSingleWithCode(val2);
@@ -180,8 +223,7 @@ class DebugCommandsWriter
 		WriteSingleWithCode(val4);
 	}
 
-	template<typename TType1, typename TType2, typename TType3, typename TType4, typename TType5>
-	void WriteWithCodes(TType1 val1, TType2 val2, TType3 val3, TType4 val4, TType5 val5)
+	[mutating] void WriteWithCodes<TType1 : IDebugStreamDataType, TType2 : IDebugStreamDataType, TType3 : IDebugStreamDataType, TType4 : IDebugStreamDataType, TType5 : IDebugStreamDataType>(TType1 val1, TType2 val2, TType3 val3, TType4 val4, TType5 val5)
 	{
 		WriteSingleWithCode(val1);
 		WriteSingleWithCode(val2);
@@ -196,14 +238,13 @@ class DebugCommandsWriter
 		{
 			const uint size = m_currentIdx;
 
-			uint offset = 0;
-			InterlockedAdd(u_debugCommandsBufferOffset[0], size, OUT offset);
+			uint offset = PARAM_ShaderDebugCommandBufferParams->debugCommandsBufferOffset.AtomicAdd(0u, size);
 
-			if(offset + size < u_debugCommandsBufferParams.bufferSize)
+			if(offset + size < PARAM_ShaderDebugCommandBufferParams->bufferSize)
 			{
 				for (uint i = 0; i < size; ++i)
 				{
-					u_debugCommandsBuffer[offset + i] = m_buffer[i];
+					PARAM_ShaderDebugCommandBufferParams->debugCommandsBuffer[offset + i] = m_buffer[i];
 				}
 			}
 		}

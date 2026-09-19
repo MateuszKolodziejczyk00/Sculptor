@@ -5,13 +5,13 @@
 #include "RHICore/RHISemaphoreTypes.h"
 #include "RHICore/RHITextureTypes.h"
 #include "RHICore/RHIPipelineTypes.h"
-#include "RHICore/RHIPipelineLayoutTypes.h"
 #include "RHICore/Commands/RHIRenderingDefinition.h"
 #include "RHICore/RHIPipelineDefinitionTypes.h"
 #include "RHICore/RHISamplerTypes.h"
 #include "RHICore/RHISynchronizationTypes.h"
 #include "RHICore/RHIAccelerationStructureTypes.h"
 #include "RHICore/RHIQueryTypes.h"
+#include "RHICore/RHIDescriptorTypes.h"
 
 
 namespace spt::vulkan
@@ -37,10 +37,6 @@ public:
 	static VkResolveModeFlagBits			GetResolveMode(rhi::ERTResolveMode resolveMode);
 
 	static VkDescriptorType					GetDescriptorType(rhi::EDescriptorType descriptorType);
-
-	static VkDescriptorBindingFlags			GetBindingFlags(rhi::EDescriptorSetBindingFlags bindingFlags);
-
-	static VkDescriptorSetLayoutCreateFlags	GetDescriptorSetFlags(rhi::EDescriptorSetFlags dsFlags);
 
 	static VkShaderStageFlagBits			GetShaderStage(rhi::EShaderStage stage);
 	static VkShaderStageFlags				GetShaderStages(rhi::EShaderStageFlags stages);

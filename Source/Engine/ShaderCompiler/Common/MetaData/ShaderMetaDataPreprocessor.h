@@ -15,22 +15,6 @@ struct ShaderPreprocessingMetaData
 };
 
 
-struct OverrideTypeInfo
-{
-	lib::HashedString typeName;
-	lib::String       typeStr;
-};
-
-
-using TypeOverrideMap = lib::HashMap<lib::HashedString, OverrideTypeInfo>;
-
-
-struct ShaderPreprocessingState
-{
-	TypeOverrideMap overrides;
-};
-
-
 class ShaderMetaDataPrerpocessor
 {
 public:

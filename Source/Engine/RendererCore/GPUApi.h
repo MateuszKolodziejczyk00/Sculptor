@@ -57,17 +57,14 @@ public:
 	static ShadersManager&						GetShadersManager();
 
 	static PipelinesCache&						GetPipelinesCache();
-
-	static SamplersCache&						GetSamplersCache();
 	
 	static DeviceQueuesManager&					GetDeviceQueuesManager();
 
-	static DescriptorHeap&						GetDescriptorHeap();
+	static DescriptorHeap&						GetResourceDescriptorHeap();
+	static DescriptorHeap&						GetSamplerDescriptorHeap();
 	static DescriptorManager&					GetDescriptorManager();
 
 	static TransfersManager&					GetTransfersManager();
-
-	static DescriptorSetStateLayoutsRegistry&	GetDSLayoutsRegistry();
 
 	static const lib::SharedPtr<DescriptorSetLayout>&	GetShaderParamsDSLayout();
 

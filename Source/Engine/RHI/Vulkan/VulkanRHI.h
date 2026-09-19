@@ -25,8 +25,6 @@ namespace spt::vulkan
 class VulkanMemoryManager;
 class LogicalDevice;
 class CommandPoolsManager;
-class LayoutsManager;
-class PipelineLayoutsManager;
 
 
 class RHI_API VulkanRHI
@@ -40,8 +38,6 @@ public:
 
 	static void                InitializeModule(rhi::RHIModuleData* data);
 	static rhi::RHIModuleData* GetModuleData();
-
-	static void				FlushCaches();
 
 	static rhi::ERHIType	GetRHIType();
 
@@ -84,8 +80,6 @@ public:
 	static VkPhysicalDevice					GetPhysicalDeviceHandle();
 
 	static CommandPoolsManager&				GetCommandPoolsManager();
-
-	static PipelineLayoutsManager&			GetPipelineLayoutsManager();
 
 	static const LogicalDevice&				GetLogicalDevice();
 

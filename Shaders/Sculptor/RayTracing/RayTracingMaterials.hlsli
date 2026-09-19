@@ -74,17 +74,21 @@ MaterialEvaluationOutput EvaluateMat_StaticMesh(const RTInstanceInterface instan
 	const float3 barycentricCoords = float3(1.f - evalParams.barycentricCoords.x - evalParams.barycentricCoords.y, evalParams.barycentricCoords.x, evalParams.barycentricCoords.y);
 
 	uint3 indices;
-	[unroll]
-	for (uint idx = 0; idx < 3; ++idx)
 	{
-		indices[idx] = UGB().LoadVertexIndex(instanceData.indicesDataUGBOffset, evalParams.triangleIdx * 3 + idx);
+		[unroll]
+		for (uint idx = 0; idx < 3; ++idx)
+		{
+			indices[idx] = UGB().LoadVertexIndex(instanceData.indicesDataUGBOffset, evalParams.triangleIdx * 3 + idx);
+		}
 	}
 
 	float3 normal = 0.f;
-	[unroll]
-	for (uint idx = 0; idx < 3; ++idx)
 	{
-		normal += UGB().LoadNormal(instanceData.normalsDataUGBOffset, indices[idx]) * barycentricCoords[idx];
+		[unroll]
+		for (uint idx = 0; idx < 3; ++idx)
+		{
+			normal += UGB().LoadNormal(instanceData.normalsDataUGBOffset, indices[idx]) * barycentricCoords[idx];
+		}
 	}
 
 	normal = mul(instanceData.entity.Load().transform, float4(normal, 0.f)).xyz;
@@ -96,10 +100,12 @@ MaterialEvaluationOutput EvaluateMat_StaticMesh(const RTInstanceInterface instan
 	}
 
 	float2 normalizedUV = 0.f;
-	[unroll]
-	for (uint idx = 0; idx < 3; ++idx)
 	{
-		normalizedUV += UGB().LoadNormalizedUV(instanceData.uvsDataUGBOffset, indices[idx]) * barycentricCoords[idx];
+		[unroll]
+		for (uint idx = 0; idx < 3; ++idx)
+		{
+			normalizedUV += UGB().LoadNormalizedUV(instanceData.uvsDataUGBOffset, indices[idx]) * barycentricCoords[idx];
+		}
 	}
 	const float2 uv = instanceData.uvsMin + normalizedUV * instanceData.uvsRange;
 
@@ -165,17 +171,21 @@ CustomOpacityOutput EvaluateOpacity(in RTMaterialEvaluationParams evalParams)
 	const float3 barycentricCoords = float3(1.f - evalParams.barycentricCoords.x - evalParams.barycentricCoords.y, evalParams.barycentricCoords.x, evalParams.barycentricCoords.y);
 
 	uint3 indices;
-	[unroll]
-	for (uint idx = 0; idx < 3; ++idx)
 	{
-		indices[idx] = UGB().LoadVertexIndex(instanceData.indicesDataUGBOffset, evalParams.triangleIdx * 3 + idx);
+		[unroll]
+		for (uint idx = 0; idx < 3; ++idx)
+		{
+			indices[idx] = UGB().LoadVertexIndex(instanceData.indicesDataUGBOffset, evalParams.triangleIdx * 3 + idx);
+		}
 	}
 
 	float2 normalizedUV = 0.f;
-	[unroll]
-	for (uint idx = 0; idx < 3; ++idx)
 	{
-		normalizedUV += UGB().LoadNormalizedUV(instanceData.uvsDataUGBOffset, indices[idx]) * barycentricCoords[idx];
+		[unroll]
+		for (uint idx = 0; idx < 3; ++idx)
+		{
+			normalizedUV += UGB().LoadNormalizedUV(instanceData.uvsDataUGBOffset, indices[idx]) * barycentricCoords[idx];
+		}
 	}
 	const float2 uv = instanceData.uvsMin + normalizedUV * instanceData.uvsRange;
 

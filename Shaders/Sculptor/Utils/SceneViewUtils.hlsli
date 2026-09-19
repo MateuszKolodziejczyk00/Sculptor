@@ -11,31 +11,21 @@ float GetNearPlane(in SceneViewData sceneView)
 }
 
 
-template<typename TDepthType>
-TDepthType ComputeLinearDepth(TDepthType depth, in SceneViewData sceneView)
+TDepthType ComputeLinearDepth<TDepthType : IFloat>(TDepthType depth, in SceneViewData sceneView)
 {
-	return GetNearPlane(sceneView) / depth;
+	return TDepthType(GetNearPlane(sceneView)) / depth;
 }
 
 
-template<typename TDepthType>
-TDepthType ComputeHWDepth(TDepthType linearDepth, in SceneViewData sceneView)
+TDepthType ComputeHWDepth<TDepthType : IFloat>(TDepthType linearDepth, in SceneViewData sceneView)
 {
-	return GetNearPlane(sceneView) / linearDepth;
+	return TDepthType(GetNearPlane(sceneView)) / linearDepth;
 }
 
 
-template<typename TDepthType>
-TDepthType ComputeLinearDepthDiff(TDepthType invDepth0, TDepthType invDepth1, in SceneViewData sceneView)
+TDepthType ComputeProjectionDepth<TDepthType : IFloat>(TDepthType linearDepth, in SceneViewData sceneView)
 {
-	return GetNearPlane(sceneView) * abs(invDepth0 - invDepth1);
-}
-
-
-template<typename TDepthType>
-TDepthType ComputeProjectionDepth(TDepthType linearDepth, in SceneViewData sceneView)
-{
-	return GetNearPlane(sceneView) / linearDepth;
+	return TDepthType(GetNearPlane(sceneView)) / linearDepth;
 }
 
 
@@ -212,64 +202,64 @@ Plane ConstructNearPlane(in SceneViewData sceneView)
 	return Plane::Create(sceneView.viewForward, sceneView.viewLocation + sceneView.viewForward * GetNearPlane(sceneView));
 }
 
-#ifdef DS_RenderViewDS
+#ifdef PARAM_GPURenderView
 
 float GetViewExposure()
 {
-	return u_viewExposure.exposure;
+	return VIEW->viewExposure->exposure;
 }
 
 
 float3 LuminanceToExposedLuminance(float3 linearLuminance)
 {
-	return linearLuminance * u_viewExposure.exposure;
+	return linearLuminance * VIEW->viewExposure->exposure;
 }
 
 float3 ExposedLuminanceToLuminance(float3 exposedLuminance)
 {
-	return exposedLuminance * u_viewExposure.rcpExposure;
+	return exposedLuminance * VIEW->viewExposure->rcpExposure;
 }
 
 float3 HistoryLuminanceToExposedLuminance(float3 linearLuminance)
 {
-	return linearLuminance * u_viewExposure.exposureLastFrame;
+	return linearLuminance * VIEW->viewExposure->exposureLastFrame;
 }
 
 float3 HistoryExposedLuminanceToLuminance(float3 exposedLuminance)
 {
-	return exposedLuminance * u_viewExposure.rcpExposureLastFrame;
+	return exposedLuminance * VIEW->viewExposure->rcpExposureLastFrame;
 }
 
 float HistoryToCurrentExposedLuminanceFactor()
 {
-	return u_viewExposure.exposure / u_viewExposure.exposureLastFrame;
+	return VIEW->viewExposure->exposure / VIEW->viewExposure->exposureLastFrame;
 }
 
 float2 ExposedHistoryLuminanceToCurrentExposedLuminance(float2 exposedLuminance)
 {
-	return exposedLuminance * (u_viewExposure.exposure / u_viewExposure.exposureLastFrame);
+	return exposedLuminance * (VIEW->viewExposure->exposure / VIEW->viewExposure->exposureLastFrame);
 }
 
 float3 ExposedHistoryLuminanceToCurrentExposedLuminance(float3 exposedLuminance)
 {
-	return exposedLuminance * (u_viewExposure.exposure / u_viewExposure.exposureLastFrame);
+	return exposedLuminance * (VIEW->viewExposure->exposure / VIEW->viewExposure->exposureLastFrame);
 }
 
 float4 ExposedHistoryLuminanceToCurrentExposedLuminance(float4 exposedLuminance)
 {
-	return exposedLuminance * (u_viewExposure.exposure / u_viewExposure.exposureLastFrame);
+	return exposedLuminance * (VIEW->viewExposure->exposure / VIEW->viewExposure->exposureLastFrame);
 }
 
 float ComputeLuminanceFromEC(float EC)
 {
-	return pow(2.f, u_viewExposure.EV100 + EC);
+	return pow(2.f, VIEW->viewExposure->EV100 + EC);
 }
 
 float GetAverageLogLuminance()
 {
-	return u_viewExposure.averageLogLuminance;
+	return VIEW->viewExposure->averageLogLuminance;
 }
 
-#endif // DS_RenderViewDS
+#endif // PARAM_GPURenderView
 
 #endif // SCENE_VIEW_UTILS_H

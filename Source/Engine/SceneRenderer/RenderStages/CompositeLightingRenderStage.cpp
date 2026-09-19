@@ -2,12 +2,6 @@
 #include "SceneRenderSystems/Atmosphere/AtmosphereRenderSystem.h"
 #include "RenderGraphBuilder.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "DescriptorSetBindings/ConstantBufferRefBinding.h"
 #include "ResourcesManager.h"
 #include "Utils/SceneRenderingTypes.h"
 #include "View/RenderView.h"
@@ -33,64 +27,51 @@ RendererBoolParameter enableColoredAO("Enable Colored AO", { "Lighting" }, true)
 namespace composite_pass_impl
 {
 
-BEGIN_SHADER_STRUCT(CompositeLightingConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
-	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
-	SHADER_STRUCT_FIELD(Bool,           enableColoredAO)
+
+BEGIN_SHADER_STRUCT(CompositeAtmosphereConstants)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<AtmosphereParams>,             atmosphereParams)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<DirectionalLightGPUData>, directionalLights)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>,         transmittanceLUT)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>,         skyViewLUT)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector4f>,         aerialPerspective)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>,         volumetricClouds)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>,         cirrusClouds)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,                 volumetricCloudsDepth)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(CompositeLightingDS, rg::RGDescriptorSetState<CompositeLightingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_aoTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                            u_luminanceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<CompositeLightingConstants>),             u_constants)
-DS_END();
-
-
-DS_BEGIN(CompositeAtmosphereDS, rg::RGDescriptorSetState<CompositeAtmosphereDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),       u_atmosphereParams)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<DirectionalLightGPUData>), u_directionalLights)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),              u_transmittanceLUT)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),              u_skyViewLUT)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),              u_aerialPerspective)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),      u_volumetricClouds)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),      u_cirrusClouds)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),              u_volumetricCloudsDepth)
-DS_END();
 
 
 BEGIN_SHADER_STRUCT(CompositeFogConstants)
-	SHADER_STRUCT_FIELD(math::Vector3f, fogResolution)
-	SHADER_STRUCT_FIELD(Real32,         fogNearPlane)
-	SHADER_STRUCT_FIELD(Real32,         fogFarPlane)
+	SHADER_STRUCT_FIELD(math::Vector3f,                    fogResolution)
+	SHADER_STRUCT_FIELD(Real32,                            fogNearPlane)
+	SHADER_STRUCT_FIELD(Real32,                            fogFarPlane)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector4f>, integratedInScatteringTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(CompositeFogDS, rg::RGDescriptorSetState<CompositeFogDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),          u_integratedInScatteringTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<CompositeFogConstants>), u_fogParams)
-DS_END();
 
 
 BEGIN_SHADER_STRUCT(CompositeRTReflectionsConstants)
-	SHADER_STRUCT_FIELD(Uint32, halfResInfluence)
-	SHADER_STRUCT_FIELD(Uint32, aoEnabled)
+	SHADER_STRUCT_FIELD(Uint32,                            halfResInfluence)
+	SHADER_STRUCT_FIELD(Uint32,                            aoEnabled)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, specularGI)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, diffuseGI)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         ambientOcclusion)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>, reflectionsInfluenceTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, brdfIntegrationLUT)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, baseColorMetallicTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         roughnessTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, tangentFrameTexture)
 END_SHADER_STRUCT();
 
-
-DS_BEGIN(CompositeRTReflectionsDS, rg::RGDescriptorSetState<CompositeRTReflectionsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                    u_specularGI)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                    u_diffuseGI)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                    u_ambientOcclusion)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                     u_reflectionsInfluenceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                    u_brdfIntegrationLUT)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                    u_baseColorMetallicTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                            u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                    u_tangentFrameTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<CompositeRTReflectionsConstants>), u_rtReflectionsConstants)
-DS_END();
+BEGIN_SHADER_STRUCT(CompositeLightingConstants)
+	SHADER_STRUCT_FIELD(math::Vector2u,                               resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,                               invResolution)
+	SHADER_STRUCT_FIELD(Bool,                                         enableColoredAO)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,                    depthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,                    aoTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector3f>,            luminanceTexture)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<CompositeFogConstants>,           fogParams)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<CompositeAtmosphereConstants>,    atmosphereParams)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<CompositeRTReflectionsConstants>, rtReflectionsParams)
+END_SHADER_STRUCT();
 
 
 BEGIN_SHADER_STRUCT(CompositeLightingPermutation)
@@ -132,16 +113,12 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	shaderConstants.resolution    = resolution;
 	shaderConstants.invResolution = resolution.cast<Real32>().cwiseInverse();
 	shaderConstants.enableColoredAO = renderer_params::enableColoredAO;
-
-	const lib::MTHandle<CompositeLightingDS> compositeLightingDS = graphBuilder.CreateDescriptorSet<CompositeLightingDS>(RENDERER_RESOURCE_NAME("CompositeLightingDS"));
-	compositeLightingDS->u_luminanceTexture = viewContext.luminance;
-	compositeLightingDS->u_depthTexture     = viewContext.depth;
-	compositeLightingDS->u_aoTexture        = viewContext.gBuffer[GBuffer::Texture::Occlusion];
-	compositeLightingDS->u_constants        = shaderConstants;
+	shaderConstants.luminanceTexture = viewContext.luminance;
+	shaderConstants.depthTexture     = viewContext.depth;
+	shaderConstants.aoTexture        = viewContext.gBuffer[GBuffer::Texture::Occlusion];
 
 	CompositeLightingPermutation permutation;
 
-	lib::MTHandle<CompositeFogDS> compositeFogDS;
 	if (const ParticipatingMediaViewRenderSystem* participatingMediaSystem = viewSpec.GetRenderSystem<ParticipatingMediaViewRenderSystem>())
 	{
 		permutation.VOLUMETRIC_FOG_ENABLED = true;
@@ -149,72 +126,66 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 		const VolumetricFogParams& fogParams = participatingMediaSystem->GetVolumetricFogParams();
 
 		CompositeFogConstants fogConstants;
-		fogConstants.fogResolution = fogParams.volumetricFogResolution.cast<Real32>();
-		fogConstants.fogNearPlane  = fogParams.nearPlane;
-		fogConstants.fogFarPlane   = fogParams.farPlane;
+		fogConstants.fogResolution                 = fogParams.volumetricFogResolution.cast<Real32>();
+		fogConstants.fogNearPlane                  = fogParams.nearPlane;
+		fogConstants.fogFarPlane                   = fogParams.farPlane;
+		fogConstants.integratedInScatteringTexture = fogParams.integratedInScatteringTextureView;
 
-		compositeFogDS = graphBuilder.CreateDescriptorSet<CompositeFogDS>(RENDERER_RESOURCE_NAME("CompositeFogDS"));
-		compositeFogDS->u_integratedInScatteringTexture = fogParams.integratedInScatteringTextureView;
-		compositeFogDS->u_fogParams                     = fogConstants;
+		shaderConstants.fogParams = graphBuilder.CreateGPUData(fogConstants);
 	}
 
-	lib::MTHandle<CompositeAtmosphereDS> compositeAtmosphereDS;
 	if (const AtmosphereRenderSystem* atmosphereRenderSystem = rendererInterface.GetRenderSystem<AtmosphereRenderSystem>())
 	{
 		permutation.ATMOSPHERE_ENABLED = true;
 
 		const AtmosphereContext& atmosphereContext = atmosphereRenderSystem->GetAtmosphereContext();
 
-		compositeAtmosphereDS = graphBuilder.CreateDescriptorSet<CompositeAtmosphereDS>(RENDERER_RESOURCE_NAME("CompositeAtmosphereDS"));
-		compositeAtmosphereDS->u_atmosphereParams      = atmosphereContext.atmosphereParamsBuffer->GetFullView();
-		compositeAtmosphereDS->u_directionalLights     = atmosphereContext.directionalLightsBuffer->GetFullView();
-		compositeAtmosphereDS->u_transmittanceLUT      = atmosphereContext.transmittanceLUT;
-		compositeAtmosphereDS->u_skyViewLUT            = viewContext.skyViewLUT;
-		compositeAtmosphereDS->u_aerialPerspective     = viewContext.aerialPerspective;
+		CompositeAtmosphereConstants atmosphereConstants;
+		atmosphereConstants.atmosphereParams      = atmosphereContext.atmosphereParams;
+		atmosphereConstants.directionalLights     = atmosphereContext.directionalLightsBuffer->GetFullView();
+		atmosphereConstants.transmittanceLUT      = atmosphereContext.transmittanceLUT;
+		atmosphereConstants.skyViewLUT            = viewContext.skyViewLUT;
+		atmosphereConstants.aerialPerspective     = viewContext.aerialPerspective;
 
 		if (viewContext.volumetricClouds.IsValid())
 		{
 			permutation.VOLUMETRIC_CLOUDS_ENABLED = true;
 
-			compositeAtmosphereDS->u_volumetricClouds      = viewContext.volumetricClouds;
-			compositeAtmosphereDS->u_cirrusClouds          = viewContext.cirrusClouds;
-			compositeAtmosphereDS->u_volumetricCloudsDepth = viewContext.volumetricCloudsDepth;
+			atmosphereConstants.volumetricClouds      = viewContext.volumetricClouds;
+			atmosphereConstants.cirrusClouds          = viewContext.cirrusClouds;
+			atmosphereConstants.volumetricCloudsDepth = viewContext.volumetricCloudsDepth;
 		}
+
+		shaderConstants.atmosphereParams = graphBuilder.CreateGPUData(atmosphereConstants);
 	}
 
-	lib::MTHandle<CompositeRTReflectionsDS> compositeRTReflectionsDS;
 	if (const RTReflectionsViewData* rtReflectionsData = viewSpec.GetBlackboard().Find<RTReflectionsViewData>())
 	{
 		permutation.RT_REFLECTIONS_ENABLED = true;
 
 		CompositeRTReflectionsConstants rtReflectionsConstants;
 		rtReflectionsConstants.halfResInfluence = rtReflectionsData->halfResReflections;
-
-		compositeRTReflectionsDS = graphBuilder.CreateDescriptorSet<CompositeRTReflectionsDS>(RENDERER_RESOURCE_NAME("CompositeRTReflectionsDS"));
-		compositeRTReflectionsDS->u_specularGI                  = rtReflectionsData->finalSpecularGI;
-		compositeRTReflectionsDS->u_diffuseGI                   = rtReflectionsData->finalDiffuseGI;
-		compositeRTReflectionsDS->u_reflectionsInfluenceTexture = rtReflectionsData->reflectionsInfluenceTexture;
-		compositeRTReflectionsDS->u_brdfIntegrationLUT          = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
-		compositeRTReflectionsDS->u_baseColorMetallicTexture    = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
-		compositeRTReflectionsDS->u_roughnessTexture            = viewContext.gBuffer[GBuffer::Texture::Roughness];
-		compositeRTReflectionsDS->u_tangentFrameTexture         = viewContext.gBuffer[GBuffer::Texture::TangentFrame];
+		rtReflectionsConstants.specularGI                  = rtReflectionsData->finalSpecularGI;
+		rtReflectionsConstants.diffuseGI                   = rtReflectionsData->finalDiffuseGI;
+		rtReflectionsConstants.reflectionsInfluenceTexture = rtReflectionsData->reflectionsInfluenceTexture;
+		rtReflectionsConstants.brdfIntegrationLUT          = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
+		rtReflectionsConstants.baseColorMetallicTexture    = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
+		rtReflectionsConstants.roughnessTexture            = viewContext.gBuffer[GBuffer::Texture::Roughness];
+		rtReflectionsConstants.tangentFrameTexture         = viewContext.gBuffer[GBuffer::Texture::TangentFrame];
 
 		if (viewContext.ambientOcclusion.IsValid())
 		{
-			compositeRTReflectionsDS->u_ambientOcclusion = viewContext.ambientOcclusion;
+			rtReflectionsConstants.ambientOcclusion = viewContext.ambientOcclusion;
 			rtReflectionsConstants.aoEnabled = 1u;
 		}
 
-		compositeRTReflectionsDS->u_rtReflectionsConstants = rtReflectionsConstants;
+		shaderConstants.rtReflectionsParams = graphBuilder.CreateGPUData(rtReflectionsConstants);
 	}
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Composite Lighting"),
 						  CompositeLightingPSO::GetPermutation(permutation),
 						  math::Utils::DivideCeil(viewSpec.GetRenderingRes(), math::Vector2u(8u, 4u)),
-						  rg::BindDescriptorSets(std::move(compositeLightingDS),
-												 std::move(compositeFogDS),
-												 std::move(compositeAtmosphereDS),
-												 std::move(compositeRTReflectionsDS)));
+						  rg::ShaderParams(shaderConstants));
 }
 
 } // composite_pass_impl

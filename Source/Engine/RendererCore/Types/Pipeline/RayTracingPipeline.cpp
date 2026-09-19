@@ -41,11 +41,9 @@ RayTracingPipeline::RayTracingPipeline(const RendererResourceName& name, const R
 		rayTracingShaders.missModules.emplace_back(shader->GetRHI());
 	}
 	
-	const rhi::PipelineLayoutDefinition pipelineLayoutDef = CreateLayoutDefinition();
-
 	rhi::RHIPipeline& rhiPipeline = GetRHI();
 
-	rhiPipeline.InitializeRHI(rayTracingShaders, definition, pipelineLayoutDef);
+	rhiPipeline.InitializeRHI(rayTracingShaders, definition);
 	rhiPipeline.SetName(name.Get());
 
 	m_shaderBindingTable.InitializeRHI(rhiPipeline, rayTracingShaders);

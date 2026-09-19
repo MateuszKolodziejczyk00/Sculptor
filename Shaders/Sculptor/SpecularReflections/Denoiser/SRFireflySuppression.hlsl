@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(SRFireflySuppressionDS, 0)]]
+[[shader_params(SRFireflySuppressionConstants, PARAMS_S_R_FIREFLY_SUPPRESSION)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
@@ -36,7 +36,7 @@ void PreloadSharedSamples(in uint2 groupID, in uint2 localID)
 
 	const uint sharedSamplesNum = SHARED_SAMPLES_RES * SHARED_SAMPLES_RES;
 
-	const int2 maxPixel = u_constants.resolution - 1;
+	const int2 maxPixel = PARAMS_S_R_FIREFLY_SUPPRESSION->resolution - 1;
 
 	for(uint pixelIdx = localThreadID; pixelIdx < sharedSamplesNum; pixelIdx += GROUP_SIZE * GROUP_SIZE)
 	{
@@ -46,14 +46,14 @@ void PreloadSharedSamples(in uint2 groupID, in uint2 localID)
 
 		const int2 samplePixel = clamp(groupOffset + localPixel, 0, maxPixel);
 
-		const float depth = u_depth.Load(uint3(samplePixel, 0));
+		const float depth = PARAMS_S_R_FIREFLY_SUPPRESSION->depth.Load(uint3(samplePixel, 0));
 		bool isValid = depth > 0.f;
 		gs_isValid[localPixel.x][localPixel.y] = isValid;
 		if(isValid)
 		{
-			gs_specularY_SH2[localPixel.x][localPixel.y] = u_inSpecularY_SH2.Load(uint3(samplePixel, 0));
-			gs_diffuseY_SH2[localPixel.x][localPixel.y]  = u_inDiffuseY_SH2.Load(uint3(samplePixel, 0));
-			gs_diffSpecCoCg[localPixel.x][localPixel.y]  = half4(u_inDiffSpecCoCg.Load(uint3(samplePixel, 0)));
+			gs_specularY_SH2[localPixel.x][localPixel.y] = PARAMS_S_R_FIREFLY_SUPPRESSION->inSpecularY_SH2.Load(uint3(samplePixel, 0));
+			gs_diffuseY_SH2[localPixel.x][localPixel.y]  = PARAMS_S_R_FIREFLY_SUPPRESSION->inDiffuseY_SH2.Load(uint3(samplePixel, 0));
+			gs_diffSpecCoCg[localPixel.x][localPixel.y]  = half4(PARAMS_S_R_FIREFLY_SUPPRESSION->inDiffSpecCoCg.Load(uint3(samplePixel, 0)));
 		}
 	}
 }
@@ -68,7 +68,7 @@ void SRFireflySuppressionCS(CS_INPUT input)
 
 	GroupMemoryBarrierWithGroupSync();
 
-	if(all(pixel < u_constants.resolution))
+	if(all(pixel < PARAMS_S_R_FIREFLY_SUPPRESSION->resolution))
 	{
 		const bool isValidCenterSample = gs_isValid[input.localID.x + BORDER_SIZE][input.localID.y + BORDER_SIZE];
 		if (!isValidCenterSample)
@@ -90,11 +90,11 @@ void SRFireflySuppressionCS(CS_INPUT input)
 		RTSphericalBasis maxDiffSH;
 		half2 maxDiffCoCg;
 
-		const float3 centerNormal = OctahedronDecodeNormal(u_normals.Load(uint3(pixel, 0)));
+		const float3 centerNormal = OctahedronDecodeNormal(PARAMS_S_R_FIREFLY_SUPPRESSION->normals.Load(uint3(pixel, 0)));
 
-		RTSphericalBasis centerSpecular = RawToRTSphericalBasis(u_inSpecularY_SH2.Load(uint3(pixel, 0)));
-		RTSphericalBasis centerDiffuse  = RawToRTSphericalBasis(u_inDiffuseY_SH2.Load(uint3(pixel, 0)));
-		float4     centerDiffSpecCoCg   = u_inDiffSpecCoCg.Load(uint3(pixel, 0));
+		RTSphericalBasis centerSpecular = RawToRTSphericalBasis(PARAMS_S_R_FIREFLY_SUPPRESSION->inSpecularY_SH2.Load(uint3(pixel, 0)));
+		RTSphericalBasis centerDiffuse  = RawToRTSphericalBasis(PARAMS_S_R_FIREFLY_SUPPRESSION->inDiffuseY_SH2.Load(uint3(pixel, 0)));
+		float4     centerDiffSpecCoCg   = PARAMS_S_R_FIREFLY_SUPPRESSION->inDiffSpecCoCg.Load(uint3(pixel, 0));
 
 		bool anySampleValid = false;
 
@@ -177,7 +177,7 @@ void SRFireflySuppressionCS(CS_INPUT input)
 				}
 			}
 
-			u_outSpecularY_SH2[pixel] = RTSphericalBasisToRaw(centerSpecular);
+			PARAMS_S_R_FIREFLY_SUPPRESSION->outSpecularY_SH2[pixel] = RTSphericalBasisToRaw(centerSpecular);
 		}
 
 		// Diffuse
@@ -197,9 +197,9 @@ void SRFireflySuppressionCS(CS_INPUT input)
 				}
 			}
 
-			u_outDiffuseY_SH2[pixel] = RTSphericalBasisToRaw(centerDiffuse);
+			PARAMS_S_R_FIREFLY_SUPPRESSION->outDiffuseY_SH2[pixel] = RTSphericalBasisToRaw(centerDiffuse);
 		}
 
-		u_outDiffSpecCoCg[pixel] = centerDiffSpecCoCg;
+		PARAMS_S_R_FIREFLY_SUPPRESSION->outDiffSpecCoCg[pixel] = centerDiffSpecCoCg;
 	}
 }

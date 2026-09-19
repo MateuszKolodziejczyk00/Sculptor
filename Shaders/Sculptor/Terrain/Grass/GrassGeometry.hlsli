@@ -204,7 +204,7 @@ struct GrassVertexProcessor
 	{
 		const float3 bladeOrigin = GetBladeOrigin();
 
-		const float3 viewDir = normalize(u_sceneView.viewLocation - bladeOrigin);
+		const float3 viewDir = normalize(VIEW->sceneView.viewLocation - bladeOrigin);
 		const float dotVN = abs(dot(viewDir, GetBladeNormal()));
 		const float thickeningFactor = 1.f / max(dotVN, 0.8f);
 

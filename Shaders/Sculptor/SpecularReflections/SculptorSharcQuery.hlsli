@@ -3,15 +3,15 @@
 
 #include "SpecularReflections/SculptorSharc.hlsli"
 
-#ifdef DS_SharcCacheDS
+#ifdef PARAM_SharcCacheParams
 
 SharcParameters CreateSharcParameters(in float3 viewLocation, in float exposure)
 {
     SharcDef sharcDef;
     sharcDef.cameraPosition = viewLocation;
-    sharcDef.capacity       = u_sharcCacheConstants.entriesNum;
-    sharcDef.hashEntries    = u_hashEntries;
-    sharcDef.voxelData      = u_voxelData;
+    sharcDef.capacity       = PARAM_SharcCacheParams->entriesNum;
+    sharcDef.hashEntries    = PARAM_SharcCacheParams->hashEntries.GetResource();
+    sharcDef.voxelData      = PARAM_SharcCacheParams->voxelData.GetResource();
     sharcDef.exposure       = exposure;
 
     return CreateSharcParameters(sharcDef);
@@ -49,7 +49,7 @@ bool QueryCachedLuminance(in float3 viewLocation, in float exposure, in SharcQue
     return QueryCachedLuminance(sharcParams, query, OUT luminance);
 }
 
-#endif // DS_SharcCacheDS
+#endif // PARAM_SharcCacheParams
 
 //#undef RW_STRUCTURED_BUFFER
 

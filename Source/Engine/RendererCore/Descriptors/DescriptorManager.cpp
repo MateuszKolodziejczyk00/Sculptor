@@ -1,12 +1,10 @@
 #include "DescriptorManager.h"
 #include "Types/DescriptorHeap.h"
 #include "Vulkan/VulkanRHI.h"
-#include "Types/DescriptorSetLayout.h"
 #include "ResourcesManager.h"
-#include "DescriptorSetStateTypes.h"
+#include "DescriptorTypes.h"
 #include "Types/Texture.h"
 #include "Types/Buffer.h"
-#include "Types/Sampler.h"
 #include "Types/AccelerationStructure.h"
 
 
@@ -18,18 +16,18 @@ SPT_DEFINE_LOG_CATEGORY(DescriptorManager, true);
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DescriptorsAllocator ==========================================================================
 
-DescriptorAllocator::DescriptorAllocator(const rhi::RHIDescriptorRange& range, const DescriptorSetLayout& layout, Uint32 binding)
-	: m_descriptorsIndexer(DescriptorSetIndexer(range.data, layout)[binding])
-	, m_freeDescriptorsNum(m_descriptorsIndexer.GetSize())
-	, m_freeStack(m_descriptorsIndexer.GetSize(), idxNone<Uint32>)
+DescriptorAllocator::DescriptorAllocator(const DescriptorHeap& descriptorHeap)
+	: m_descriptorsNum(descriptorHeap.GetRHI().GetDescriptorsNum())
+	, m_freeDescriptorsNum(descriptorHeap.GetRHI().GetDescriptorsNum())
+	, m_freeStack(descriptorHeap.GetRHI().GetDescriptorsNum(), idxNone<Uint32>)
 {
-	for (Uint32 idx = 0u; idx < m_descriptorsIndexer.GetSize(); ++idx)
+	for (Uint32 idx = 0u; idx < m_descriptorsNum; ++idx)
 	{
 		m_freeStack[idx] = idx; // next free descriptor index
 	}
 
 #if SPT_DESCRIPTOR_MANAGER_DEBUG
-	m_descriptorsOccupation.resize(m_descriptorsIndexer.GetSize(), false);
+	m_descriptorsOccupation.resize(m_descriptorsNum, false);
 #endif // SPT_DESCRIPTOR_MANAGER_DEBUG
 }
 
@@ -50,11 +48,7 @@ Uint32 DescriptorAllocator::AllocateDescriptor()
 #endif // SPT_DESCRIPTOR_MANAGER_DEBUG
 	}
 
-	SPT_CHECK(descriptorIdx < m_descriptorsIndexer.GetSize());
-
-	const lib::Span<Byte> descriptorData = GetDescriptorData(descriptorIdx);
-
-	std::memset(descriptorData.data(), 0, descriptorData.size());
+	SPT_CHECK(descriptorIdx < m_descriptorsNum);
 
 	return descriptorIdx;
 }
@@ -84,12 +78,10 @@ Bool DescriptorAllocator::IsDescriptorOccupied(Uint32 idx) const
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DescriptorManager =============================================================================
 
-DescriptorManager::DescriptorManager(DescriptorHeap& descriptorHeap)
-	: m_descriptorHeap(descriptorHeap)
-	, m_bindlessLayout(CreateBindlessLayout())
-	, m_descriptorRange(descriptorHeap.GetRHI().AllocateRange(m_bindlessLayout->GetRHI().GetDescriptorsDataSize()))
-	, m_resourceDescriptorAllocator(m_descriptorRange, *m_bindlessLayout, 0u)
-	, m_samplerDescriptorsIndexer(DescriptorSetIndexer(m_descriptorRange.data, *m_bindlessLayout)[1])
+DescriptorManager::DescriptorManager(DescriptorHeap& resourceDescriptorHeap, DescriptorHeap& samplerDescriptorHeap)
+	: m_resourceDescriptorHeap(resourceDescriptorHeap)
+	, m_samplerDescriptorHeap(samplerDescriptorHeap)
+	, m_resourceDescriptorAllocator(resourceDescriptorHeap)
 {
 	m_resourceDescriptorInfos.resize(m_resourceDescriptorAllocator.GetDescriptorsNum());
 }
@@ -97,8 +89,6 @@ DescriptorManager::DescriptorManager(DescriptorHeap& descriptorHeap)
 DescriptorManager::~DescriptorManager()
 {
 	SPT_PROFILER_FUNCTION();
-
-	SPT_CHECK(m_descriptorRange.IsValid());
 
 #if SPT_DESCRIPTOR_MANAGER_DEBUG
 	if (!m_resourceDescriptorAllocator.IsFull())
@@ -118,13 +108,17 @@ DescriptorManager::~DescriptorManager()
 #else
 	SPT_CHECK(m_resourceDescriptorAllocator.IsFull());
 #endif // SPT_DESCRIPTOR_MANAGER_DEBUG
-
-	m_descriptorHeap.GetRHI().DeallocateRange(m_descriptorRange);
 }
 
 ResourceDescriptorHandle DescriptorManager::AllocateResourceDescriptor()
 {
-	return ResourceDescriptorHandle(std::move(m_resourceDescriptorAllocator.AllocateDescriptor()));
+	const Uint32 descriptorIdx = m_resourceDescriptorAllocator.AllocateDescriptor();
+
+	const lib::Span<Byte> descriptorData = m_resourceDescriptorHeap.GetRHI().GetDescriptorData(descriptorIdx);
+
+	std::memset(descriptorData.data(), 0, descriptorData.size());
+
+	return ResourceDescriptorHandle(descriptorIdx);
 }
 
 void DescriptorManager::FreeResourceDescriptor(ResourceDescriptorHandle&& handle)
@@ -149,9 +143,9 @@ void DescriptorManager::UploadSRVDescriptor(ResourceDescriptorIdx idx, TextureVi
 	m_resourceDescriptorInfos[idx].resourceName = textureView.GetRHI().GetName();
 #endif // SPT_DESCRIPTOR_MANAGER_DEBUG
 
-	const lib::Span<Byte> descriptorData = m_resourceDescriptorAllocator.GetDescriptorData(idx);
+	const lib::Span<Byte> descriptorData = m_resourceDescriptorHeap.GetRHI().GetDescriptorData(idx);
 
-	textureView.GetRHI().CopySRVDescriptor(descriptorData.data());
+	textureView.GetRHI().CopySRVDescriptor(descriptorData);
 
 	m_resourceDescriptorInfos[idx].Encode(&textureView);
 }
@@ -167,9 +161,9 @@ void DescriptorManager::UploadUAVDescriptor(ResourceDescriptorIdx idx, TextureVi
 	m_resourceDescriptorInfos[idx].resourceName = textureView.GetRHI().GetName();
 #endif // SPT_DESCRIPTOR_MANAGER_DEBUG
 
-	const lib::Span<Byte> descriptorData = m_resourceDescriptorAllocator.GetDescriptorData(idx);
+	const lib::Span<Byte> descriptorData = m_resourceDescriptorHeap.GetRHI().GetDescriptorData(idx);
 
-	textureView.GetRHI().CopyUAVDescriptor(descriptorData.data());
+	textureView.GetRHI().CopyUAVDescriptor(descriptorData);
 
 	m_resourceDescriptorInfos[idx].Encode(&textureView);
 }
@@ -184,12 +178,12 @@ void DescriptorManager::UploadSRVDescriptor(ResourceDescriptorIdx idx, BindableB
 
 #if SPT_DESCRIPTOR_MANAGER_DEBUG
 	SPT_CHECK(m_resourceDescriptorAllocator.IsDescriptorOccupied(idx));
-	m_resourceDescriptorInfos[idx].resourceName = textureView.GetRHI().GetName();
+	m_resourceDescriptorInfos[idx].resourceName = bufferView.GetBuffer()->GetRHI().GetName();
 #endif // SPT_DESCRIPTOR_MANAGER_DEBUG
 
-	const lib::Span<Byte> descriptorData = m_resourceDescriptorAllocator.GetDescriptorData(idx);
+	const lib::Span<Byte> descriptorData = m_resourceDescriptorHeap.GetRHI().GetDescriptorData(idx);
 
-	buffer->GetRHI().CopySRVDescriptor(bufferView.GetOffset(), bufferView.GetSize(), descriptorData.data());
+	buffer->GetRHI().CopySRVDescriptor(bufferView.GetOffset(), bufferView.GetSize(), descriptorData);
 
 	m_resourceDescriptorInfos[idx].Encode(&bufferView);
 }
@@ -204,12 +198,12 @@ void DescriptorManager::UploadUAVDescriptor(ResourceDescriptorIdx idx, BindableB
 
 #if SPT_DESCRIPTOR_MANAGER_DEBUG
 	SPT_CHECK(m_resourceDescriptorAllocator.IsDescriptorOccupied(idx));
-	m_resourceDescriptorInfos[idx].resourceName = textureView.GetRHI().GetName();
+	m_resourceDescriptorInfos[idx].resourceName = bufferView.GetBuffer()->GetRHI().GetName();
 #endif // SPT_DESCRIPTOR_MANAGER_DEBUG
 
-	const lib::Span<Byte> descriptorData = m_resourceDescriptorAllocator.GetDescriptorData(idx);
+	const lib::Span<Byte> descriptorData = m_resourceDescriptorHeap.GetRHI().GetDescriptorData(idx);
 
-	buffer->GetRHI().CopyUAVDescriptor(bufferView.GetOffset(), bufferView.GetSize(), descriptorData.data());
+	buffer->GetRHI().CopyUAVDescriptor(bufferView.GetOffset(), bufferView.GetSize(), descriptorData);
 
 	m_resourceDescriptorInfos[idx].Encode(&bufferView);
 }
@@ -220,12 +214,12 @@ void DescriptorManager::UploadSRVDescriptor(ResourceDescriptorIdx idx, TopLevelA
 
 #if SPT_DESCRIPTOR_MANAGER_DEBUG
 	SPT_CHECK(m_resourceDescriptorAllocator.IsDescriptorOccupied(idx));
-	m_resourceDescriptorInfos[idx].resourceName = textureView.GetRHI().GetName();
+	m_resourceDescriptorInfos[idx].resourceName = tlas.GetRHI().GetName();
 #endif // SPT_DESCRIPTOR_MANAGER_DEBUG
 
-	const lib::Span<Byte> descriptorData = m_resourceDescriptorAllocator.GetDescriptorData(idx);
+	const lib::Span<Byte> descriptorData = m_resourceDescriptorHeap.GetRHI().GetDescriptorData(idx);
 
-	tlas.GetRHI().CopySRVDescriptor(descriptorData.data());
+	tlas.GetRHI().CopySRVDescriptor(descriptorData);
 
 	m_resourceDescriptorInfos[idx].Encode(&tlas);
 }
@@ -244,13 +238,11 @@ void DescriptorManager::ClearDescriptorInfo(ResourceDescriptorIdx idx)
 	m_resourceDescriptorInfos[idx].Clear();
 }
 
-void DescriptorManager::UploadSamplerDescriptor(Uint32 idx, Sampler& sampler)
+void DescriptorManager::UploadSamplerDescriptor(Uint32 idx, const rhi::SamplerDefinition& sampler)
 {
-	SPT_CHECK(idx < m_samplerDescriptorsIndexer.GetSize());
+	SPT_CHECK(idx < m_samplerDescriptorHeap.GetRHI().GetDescriptorsNum());
 
-	const rhi::RHISampler& rhiSampler = sampler.GetRHI();
-
-	rhiSampler.CopyDescriptor(m_samplerDescriptorsIndexer[idx]);
+	rhi::RHIDescriptorHeap::CopySamplerDescriptor(sampler, m_samplerDescriptorHeap.GetRHI().GetDescriptorData(idx));
 }
 
 TextureView* DescriptorManager::GetTextureView(ResourceDescriptorIdx idx) const
@@ -313,31 +305,6 @@ debug::DescrptorBufferState DescriptorManager::DumpCurrentDescriptorBufferState(
 	}
 
 	return state;
-}
-
-lib::SharedPtr<DescriptorSetLayout> DescriptorManager::CreateBindlessLayout() const
-{
-	constexpr Uint64 descriptorsNum = 1024u * 128u;
-
-	rhi::DescriptorSetBindingDefinition resourcesBinding;
-	resourcesBinding.bindingIdx      = 0u;
-	resourcesBinding.descriptorType  = rhi::EDescriptorType::CBV_SRV_UAV;
-	resourcesBinding.descriptorCount = descriptorsNum;
-	resourcesBinding.shaderStages    = rhi::EShaderStageFlags::All;
-	resourcesBinding.flags           = rhi::EDescriptorSetBindingFlags::PartiallyBound;
-
-	rhi::DescriptorSetBindingDefinition samplersBinding;
-	samplersBinding.bindingIdx      = 1u,
-	samplersBinding.descriptorType  = rhi::EDescriptorType::Sampler,
-	samplersBinding.descriptorCount = 16u,
-	samplersBinding.shaderStages    = rhi::EShaderStageFlags::All;
-	samplersBinding.flags           = rhi::EDescriptorSetBindingFlags::PartiallyBound;
-
-	rhi::DescriptorSetDefinition bindlessSetDef;
-	bindlessSetDef.bindings.emplace_back(resourcesBinding);
-	bindlessSetDef.bindings.emplace_back(samplersBinding);
-
-	return ResourcesManager::CreateDescriptorSetLayout(RENDERER_RESOURCE_NAME("Bindless Layout"), bindlessSetDef);
 }
 
 } // spt::rdr

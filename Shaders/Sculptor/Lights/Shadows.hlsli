@@ -43,14 +43,23 @@ struct ShadowMapsManagerInterface : ShadowMapsData
 };
 
 
-#ifdef DS_RenderSceneDS
+extension ShadowMapsManagerInterface
+{
+	__init(ShadowMapsData data)
+	{
+		(ShadowMapsData)this = data;
+	}
+};
+
+
+#ifdef PARAM_RenderSceneConstants
 
 ShadowMapsManagerInterface ShadowMapsManager()
 {
-	return ShadowMapsManagerInterface(u_renderSceneConstants.shadows);
+	return ShadowMapsManagerInterface(SCENE->shadows);
 }
 
-#endif // DS_RenderSceneDS
+#endif // PARAM_RenderSceneConstants
 
 
 static const float2 pcssShadowSamples[PCSS_SHADOW_SAMPLES_NUM] =
@@ -324,7 +333,7 @@ float EvaluateShadowsDPCF(in SRVTexture2D<float> shadowMap, SamplerState shadowS
 		offset = mul(samplesRotation, offset);
 		const float2 uv = shadowMapUV + offset;
 		
-		const float4 depths = shadowMap.Gather<float4>(shadowSampler, uv);
+		const float4 depths = shadowMap.Gather(shadowSampler, uv);
 
 		[unroll]
 		for (uint depthIdx = 0; depthIdx < 4; ++depthIdx)

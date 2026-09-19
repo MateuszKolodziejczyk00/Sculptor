@@ -34,7 +34,6 @@ void RenderCloudscapeInfluenceGizmo(rg::RenderGraphBuilder& graphBuilder, const 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Cloudscape Influence Gizmo"),
 						  CloudscapeInfluenceGizmoPSO::pso,
 						  math::Utils::DivideCeil(params.color->GetResolution2D(), math::Vector2u(16u, 16u)),
-						  rg::EmptyDescriptorSets(),
 						  shaderConstants);
 }
 
@@ -78,7 +77,6 @@ void ExecuteWeatherMapPaintCommand(rg::RenderGraphBuilder& graphBuilder, const S
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Execute Weather Map Paint Command"),
 						  TerrainMaterialPaintCommandPSO::pso,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(16u, 16u)),
-						  rg::EmptyDescriptorSets(),
 						  shaderConstants);
 }
 

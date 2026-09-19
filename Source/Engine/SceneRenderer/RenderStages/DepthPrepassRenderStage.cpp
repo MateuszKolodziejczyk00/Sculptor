@@ -2,6 +2,7 @@
 #include "View/RenderView.h"
 #include "RenderGraphBuilder.h"
 #include "RenderScene.h"
+#include "ResourcesManager.h"
 
 namespace spt::rsc
 {
@@ -99,7 +100,7 @@ void DepthPrepassRenderStage::ExecuteDepthPrepass(rg::RenderGraphBuilder& graphB
 	
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Depth Prepass"),
 							renderPassDef,
-							rg::EmptyDescriptorSets(),
+							rg::ShaderParams(),
 							[resolution](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
 								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), resolution.cast<Real32>()), 0.f, 1.f);

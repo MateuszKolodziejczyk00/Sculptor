@@ -74,6 +74,110 @@
 #define SPT_RAY_TRACING_SHADER 0
 #endif
 
+
+#define SPT_NAMED_DESCRIPTOR(name, access) \
+struct Accessor_##name : INamedBuffer \
+{ \
+	static uint Get() \
+	{ \
+		return access; \
+	} \
+};
+
+
+interface IWeightable
+{
+	[mutating]
+	void Accumulate(This value, float weight);
+
+	[mutating]
+	void Normalize(float weight);
+
+	static This Lerp(This a, This b, float t)
+	{
+		This result = Zero<This>();
+		result.Accumulate(a, 1.0f - t);
+		result.Accumulate(b, t);
+		return result;
+	}
+};
+
+
+extension float : IWeightable
+{
+	[mutating]
+	void Accumulate(float value, float weight)
+	{
+		this += value * weight;
+	}
+
+	[mutating]
+	void Normalize(float weight)
+	{
+		this /= weight;
+	}
+};
+
+extension float2 : IWeightable
+{
+	[mutating]
+	void Accumulate(float2 value, float weight)
+	{
+		this += value * weight;
+	}
+
+	[mutating]
+	void Normalize(float weight)
+	{
+		this /= weight;
+	}
+};
+
+extension float3 : IWeightable
+{
+	[mutating]
+	void Accumulate(float3 value, float weight)
+	{
+		this += value * weight;
+	}
+
+	[mutating]
+	void Normalize(float weight)
+	{
+		this /= weight;
+	}
+};
+
+extension float4 : IWeightable
+{
+	[mutating]
+	void Accumulate(float4 value, float weight)
+	{
+		this += value * weight;
+	}
+
+	[mutating]
+	void Normalize(float weight)
+	{
+		this /= weight;
+	}
+};
+
+
+TType DefaultValue<TType>()
+{
+	TType value = {};
+	return value;
+}
+
+
+TType Zero<TType>()
+{
+	TType value = {};
+	return value;
+}
+
+
 struct TextureCoord
 {
 	static TextureCoord Zero()
@@ -91,74 +195,63 @@ struct TextureCoord
 };
 
 
-template<typename TType>
-TType Pow2(TType val)
+TType Pow2<TType : IArithmetic>(TType val)
 {
     return val * val;
 }
 
-template<typename TType>
-TType Pow3(TType val)
+TType Pow3<TType : IArithmetic>(TType val)
 {
     return Pow2(val) * val;
 }
 
-template<typename TType>
-TType Pow4(TType val)
+TType Pow4<TType : IArithmetic>(TType val)
 {
-	const float p2 = Pow2(val);
+	const TType p2 = Pow2(val);
     return Pow2(p2);
 }
 
-template<typename TType>
-TType Pow5(TType val)
+TType Pow5<TType : IArithmetic>(TType val)
 {
     return Pow4(val) * val;
 }
 
-template<typename TType>
-TType Pow8(TType val)
+TType Pow8<TType : IArithmetic>(TType val)
 {
     const TType p4 = Pow4(val);
 	return Pow2(p4);
 }
 
-template<typename TType>
-TType Pow16(TType val)
+TType Pow16<TType : IArithmetic>(TType val)
 {
     const TType p4 = Pow4(val);
 	return Pow4(p4);
 }
 
-template<typename TType>
-TType Pow32(TType val)
+TType Pow32<TType : IArithmetic>(TType val)
 {
     const TType p4 = Pow4(val);
 	return Pow8(p4);
 }
 
-template<typename TType>
-TType Pow64(TType val)
+TType Pow64<TType : IArithmetic>(TType val)
 {
     const TType p8 = Pow8(val);
 	return Pow8(p8);
 }
 
-template<typename TType>
-float Dist2(in TType a, in TType b)
+T Dist2<let N : int, T : __BuiltinFloatingPointType>(in vector<T, N> a, in vector<T, N> b)
 {
-    const TType d = b - a;
-    return dot(d, d);
+    const vector<T, N> d = b - a;
+    return dot<T, N>(d, d);
 }
 
-template<typename TType>
-float Dist(in TType a, in TType b)
+T Dist<let N : int, T : __BuiltinFloatingPointType>(in vector<T, N> a, in vector<T, N> b)
 {
-    return sqrt(Dist2<TType>(a, b));
+    return sqrt(Dist2<N, T>(a, b));
 }
 
-template<typename TType>
-void Swap(inout TType a, inout TType b)
+void Swap<TType>(inout TType a, inout TType b)
 {
 	TType temp = a;
 	a = b;
@@ -224,20 +317,24 @@ float MinComponent(in float4 value)
 }
 
 
-template<typename TType>
-float RemapNoClamp(TType value, TType inputMin, TType inputMax, TType outputMin, TType outputMax)
+TType Lerp<TType : __BuiltinFloatingPointType>(TType a, TType b, TType t)
 {
-	const float t = (value - inputMin) / (inputMax - inputMin);
-	return lerp(outputMin, outputMax, t);
+	return a + (b - a) * t;
 }
 
 
-template<typename TType>
-float Remap(TType value, TType inputMin, TType inputMax, TType outputMin, TType outputMax)
+TType RemapNoClamp<TType : __BuiltinFloatingPointType>(TType value, TType inputMin, TType inputMax, TType outputMin, TType outputMax)
+{
+	const TType t = (value - inputMin) / (inputMax - inputMin);
+	return Lerp(outputMin, outputMax, t);
+}
+
+
+TType Remap<TType : __BuiltinFloatingPointType>(TType value, TType inputMin, TType inputMax, TType outputMin, TType outputMax)
 {
 	value = clamp(value, inputMin, inputMax);
-	const float t = (value - inputMin) / (inputMax - inputMin);
-	return lerp(outputMin, outputMax, t);
+	const TType t = (value - inputMin) / (inputMax - inputMin);
+	return Lerp(outputMin, outputMax, t);
 }
 
 float S_Curve(float x, float steepness)

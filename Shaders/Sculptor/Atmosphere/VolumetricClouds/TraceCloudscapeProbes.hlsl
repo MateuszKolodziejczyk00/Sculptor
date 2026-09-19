@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(TraceCloudscapeProbesDS, 0)]]
-[[descriptor_set(CloudscapeDS, 1)]]
+[[shader_params(TraceCloudscapeProbesConsts, PARAMS_TRACE_CLOUDSCAPE_PROBES)]]
+[[shader_params(CloudscapeConstants, PARAMS_CLOUDSCAPE)]]
 
 #include "Atmosphere/VolumetricClouds/CloudscapeRaymarcher.hlsli"
 #include "Atmosphere/VolumetricClouds/Cloudscape.hlsli"
@@ -18,21 +18,21 @@ void TraceCloudscapeProbesCS(CS_INPUT input)
     const uint probeIdx = input.groupID.y;
     const uint rayIdx   = input.groupID.x;
 
-	const float3 direction = ComputeCloudscapeProbeRayDirection(rayIdx, u_constants.raysPerProbe);
+	const float3 direction = ComputeCloudscapeProbeRayDirection(rayIdx, PARAMS_TRACE_CLOUDSCAPE_PROBES->constants.raysPerProbe);
 
-    const uint2 probesNum = u_cloudscapeConstants.probesNum;
+    const uint2 probesNum = PARAMS_CLOUDSCAPE->probesNum;
 
 #if FULL_UPDATE
     const uint2 probeCoords = uint2(probeIdx % probesNum.x, probeIdx / probesNum.x);
 #else
-    const uint2 probeCoords = u_constants.probesToUpdate[probeIdx].xy;
+    const uint2 probeCoords = PARAMS_TRACE_CLOUDSCAPE_PROBES->constants.probesToUpdate[probeIdx].xy;
 #endif // FULL_UPDATE
 
-    const float3 probeLocation = GetCloudscapeProbeLocation(u_cloudscapeConstants, probeCoords);
+    const float3 probeLocation = GetCloudscapeProbeLocation(*PARAMS_CLOUDSCAPE, probeCoords);
 
     const Ray ray = Ray::Create(probeLocation, direction);
 
-    const float3 skyAvgLuminance = u_skyViewProbe.Load(0u);
+    const float3 skyAvgLuminance = PARAMS_TRACE_CLOUDSCAPE_PROBES->skyViewProbe.Load(0u);
 
     CloudscapeRaymarchParams raymarchParams = CloudscapeRaymarchParams::Create();
     raymarchParams.ray = ray;
@@ -44,6 +44,6 @@ void TraceCloudscapeProbesCS(CS_INPUT input)
 
     if(WaveIsFirstLane())
     {
-        u_rwTraceResult[uint2(rayIdx, probeIdx)] = float4(raymarchRes.inScattering, raymarchRes.transmittance);
+        PARAMS_TRACE_CLOUDSCAPE_PROBES->rwTraceResult[uint2(rayIdx, probeIdx)] = float4(raymarchRes.inScattering, raymarchRes.transmittance);
     }
 }

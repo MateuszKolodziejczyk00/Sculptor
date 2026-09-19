@@ -11,6 +11,7 @@
 #include "RHIQueryPool.h"
 #include "RHIDescriptorHeap.h"
 #include "Vulkan/VulkanUtils.h"
+#include "Vulkan/VulkanRHILimits.h"
 
 namespace spt::vulkan
 {
@@ -134,19 +135,39 @@ void RHICommandBuffer::BindDescriptorHeap(const RHIDescriptorHeap& descriptorHea
 {
 	SPT_CHECK(IsValid());
 	SPT_CHECK(descriptorHeap.IsValid());
-	SPT_CHECK(!m_boundDescriptorHeapSize);
 	
 	const RHIBuffer& buffer = descriptorHeap.GetBuffer();
 
+	const VkPhysicalDeviceDescriptorHeapPropertiesEXT& descriptorProps = VulkanRHILimits::GetDescriptorProps();
+
 	SPT_CHECK(buffer.IsValid());
+	SPT_CHECK(lib::HasAnyFlag(buffer.GetUsage(), lib::Flags(rhi::EBufferUsage::ResourceDescriptorHeap, rhi::EBufferUsage::SamplerDescriptorHeap)));
 
-	VkDescriptorBufferBindingInfoEXT bindingInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT };
-	bindingInfo.address = buffer.GetDeviceAddress();
-	bindingInfo.usage   = buffer.GetVulkanUsage();
+	const Bool isResourceHeap = lib::HasAnyFlag(buffer.GetUsage(), rhi::EBufferUsage::ResourceDescriptorHeap);
+	const Uint64 minReservedRange = isResourceHeap ? descriptorProps.minResourceHeapReservedRange : descriptorProps.minSamplerHeapReservedRange;
 
-	vkCmdBindDescriptorBuffersEXT(m_cmdBufferHandle, 1, &bindingInfo);
+	SPT_CHECK(buffer.GetSize() >= minReservedRange);
 
-	m_boundDescriptorHeapSize = static_cast<Uint32>(buffer.GetSize());
+	VkBindHeapInfoEXT bindHeapInfo{ VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT };
+	bindHeapInfo.heapRange.address   = buffer.GetDeviceAddress();
+	bindHeapInfo.heapRange.size      = buffer.GetSize();
+	bindHeapInfo.reservedRangeOffset = buffer.GetSize() - minReservedRange;
+	bindHeapInfo.reservedRangeSize   = minReservedRange;
+
+	const rhi::EDescriptorHeapType heapType = descriptorHeap.GetType();
+
+	if (heapType == rhi::EDescriptorHeapType::Resource)
+	{
+		vkCmdBindResourceHeapEXT(m_cmdBufferHandle, &bindHeapInfo);
+	}
+	else if (heapType == rhi::EDescriptorHeapType::Sampler)
+	{
+		vkCmdBindSamplerHeapEXT(m_cmdBufferHandle, &bindHeapInfo);
+	}
+	else
+	{
+		SPT_CHECK_NO_ENTRY();
+	}
 }
 
 void RHICommandBuffer::BeginRendering(const rhi::RenderingDefinition& renderingDefinition)
@@ -325,19 +346,24 @@ void RHICommandBuffer::BindGfxPipeline(const RHIPipeline& pipeline)
 	BindPipelineImpl(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 }
 
-void RHICommandBuffer::BindGfxDescriptors(const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset)
-{
-	BindDescriptorsImpl(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline, dsIdx, heapOffset);
-}
-
 void RHICommandBuffer::BindComputePipeline(const RHIPipeline& pipeline)
 {
 	BindPipelineImpl(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
 }
 
-void RHICommandBuffer::BindComputeDescriptors(const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset)
+void RHICommandBuffer::PushData(lib::Span<const Byte> data)
 {
-	BindDescriptorsImpl(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline, dsIdx, heapOffset);
+	SPT_CHECK(IsValid());
+
+	SPT_CHECK(data.size() > 0);
+	SPT_CHECK(data.size() % 4u == 0);
+
+	VkPushDataInfoEXT pushDataInfo{ VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT };
+	pushDataInfo.offset       = 0u;
+	pushDataInfo.data.address = data.data();
+	pushDataInfo.data.size    = data.size();
+
+	vkCmdPushDataEXT(m_cmdBufferHandle, &pushDataInfo);
 }
 
 void RHICommandBuffer::Dispatch(const math::Vector3u& groupCount)
@@ -383,7 +409,6 @@ void RHICommandBuffer::BuildTLAS(const RHITopLevelAS& tlas, const rhi::TLASBuild
 {
 	SPT_CHECK(scratchBuffer.IsValid());
 	SPT_CHECK(scratchBufferOffset + tlas.GetBuildScratchSize() <= scratchBuffer.GetSize());
-	SPT_CHECK(buildInfo.instancesNum > 0);
 	SPT_CHECK(buildInfo.instancesNum <= tlas.GetMaxPrimitivesCount());
 
 	VkAccelerationStructureGeometryKHR geometry;
@@ -455,11 +480,6 @@ void RHICommandBuffer::ExecuteBLASesBuildBatch()
 void RHICommandBuffer::BindRayTracingPipeline(const RHIPipeline& pipeline)
 {
 	BindPipelineImpl(VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline);
-}
-
-void RHICommandBuffer::BindRayTracingDescriptors(const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset)
-{
-	BindDescriptorsImpl(VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline, dsIdx, heapOffset);
 }
 
 void RHICommandBuffer::TraceRays(const RHIShaderBindingTable& sbt, const math::Vector3u& traceCount)
@@ -813,21 +833,6 @@ void RHICommandBuffer::BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHI
 	SPT_CHECK(pipeline.IsValid());
 
 	vkCmdBindPipeline(m_cmdBufferHandle, bindPoint, pipeline.GetHandle());
-}
-
-void RHICommandBuffer::BindDescriptorsImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset)
-{
-	SPT_CHECK(IsValid());
-	SPT_CHECK(!!m_boundDescriptorHeapSize);
-
-	const PipelineLayout& layout = pipeline.GetPipelineLayout();
-
-	SPT_CHECK(heapOffset + layout.GetDescriptorSetLayout(dsIdx).GetDescriptorsDataSize() <= *m_boundDescriptorHeapSize);
-
-	const Uint32 bufferIdx          = 0u;
-	const VkDeviceSize bufferOffset = heapOffset;
-
-	vkCmdSetDescriptorBufferOffsetsEXT(m_cmdBufferHandle, bindPoint, layout.GetHandle(), dsIdx, 1u, &bufferIdx, &bufferOffset);
 }
 
 void RHICommandBuffer::BuildASImpl(const RHIAccelerationStructure& as, const VkAccelerationStructureBuildGeometryInfoKHR& buildInfo, const VkAccelerationStructureBuildRangeInfoKHR* buildRanges)

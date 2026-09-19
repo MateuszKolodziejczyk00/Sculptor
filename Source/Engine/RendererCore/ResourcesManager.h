@@ -7,7 +7,6 @@
 #include "RHIBridge/RHIFwd.h"
 #include "RendererUtils.h"
 #include "UIContext.h"
-#include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "Shaders/ShaderTypes.h"
 #include "Pipelines/PipelineState.h"
 #include "Common/ShaderCompilationInput.h"
@@ -26,7 +25,6 @@ struct SemaphoreDefinition;
 struct ShaderModuleDefinition;
 struct GraphicsPipelineDefinition;
 struct ShaderModuleDefinition;
-struct SamplerDefinition;
 struct EventDefinition;
 struct RHIWindowInitializationInfo;
 struct BLASDefinition;
@@ -62,11 +60,9 @@ class CommandBuffer;
 class Shader;
 class GraphicsPipeline;
 class ComputePipeline;
-class Sampler;
 class BottomLevelAS;
 class TopLevelAS;
 class QueryPool;
-class DescriptorSetLayout;
 class DescriptorSetStackAllocator;
 class Pipeline;
 class DescriptorHeap;
@@ -129,14 +125,7 @@ public:
 	SPT_NODISCARD static lib::SharedRef<BottomLevelAS> CreateBLAS(const RendererResourceName& name, const rhi::BLASDefinition& definition);
 	SPT_NODISCARD static lib::SharedRef<TopLevelAS>    CreateTLAS(const RendererResourceName& name, const rhi::TLASDefinition& definition);
 
-	SPT_NODISCARD static lib::SharedRef<Sampler> CreateSampler(const rhi::SamplerDefinition& def);
-	SPT_NODISCARD static lib::SharedRef<Sampler> CreateSamplerObject(const rhi::SamplerDefinition& def);
-
 	SPT_NODISCARD static lib::SharedRef<DescriptorHeap> CreateDescriptorHeap(const RendererResourceName& name, const rhi::DescriptorHeapDefinition& definition);
-
-	template<typename TDSState>
-	SPT_NODISCARD static lib::MTHandle<TDSState>                     CreateDescriptorSetState(const RendererResourceName& name, const DescriptorSetStateParams& params = DescriptorSetStateParams());
-	SPT_NODISCARD static lib::SharedRef<DescriptorSetLayout>         CreateDescriptorSetLayout(const RendererResourceName& name, const rhi::DescriptorSetDefinition& def);
 
 	SPT_NODISCARD static lib::SharedRef<QueryPool> CreateQueryPool(const rhi::QueryPoolDefinition& def);
 
@@ -145,12 +134,5 @@ private:
 	// block creating instance
 	ResourcesManager() = default;
 };
-
-
-template<typename TDSState>
-lib::MTHandle<TDSState> ResourcesManager::CreateDescriptorSetState(const RendererResourceName& name, const DescriptorSetStateParams& params /*= DescriptorSetStateParams()*/)
-{
-	return lib::MTHandle<TDSState>(new TDSState(name, params));
-}
 
 } // spt::rdr

@@ -1,10 +1,6 @@
 #include "AmbientOcclusionRenderStage.h"
 #include "RenderGraphBuilder.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "RenderScene.h"
 #include "Utility/Random.h"
 #include "MaterialsSubsystem.h"
@@ -35,20 +31,14 @@ namespace trace_rays
 {
 
 BEGIN_SHADER_STRUCT(RTAOTraceRaysParams)
-	SHADER_STRUCT_FIELD(math::Vector2f,	randomSeed)
-	SHADER_STRUCT_FIELD(Uint32,			raysNumber)
-	SHADER_STRUCT_FIELD(Real32,			raysLength)
-	SHADER_STRUCT_FIELD(Real32,			raysMinHitDistance)
+	SHADER_STRUCT_FIELD(math::Vector2f,                    randomSeed)
+	SHADER_STRUCT_FIELD(Uint32,                            raysNumber)
+	SHADER_STRUCT_FIELD(Real32,                            raysLength)
+	SHADER_STRUCT_FIELD(Real32,                            raysMinHitDistance)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         depthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, normalsTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         ambientOcclusionTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(RTAOTraceRaysDS, rg::RGDescriptorSetState<RTAOTraceRaysDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_ambientOcclusionTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<RTAOTraceRaysParams>),                     u_rtaoParams)
-DS_END();
 
 
 RT_PSO(AOTraceRaysPSO)
@@ -80,21 +70,18 @@ static rg::RGTextureViewHandle TraceAmbientOcclusionRays(rg::RenderGraphBuilder&
 	const rg::RGTextureViewHandle traceRaysResultTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("AO Trace Rays Result"), rg::TextureDef(traceRaysResolution, rhi::EFragmentFormat::R8_UN_Float));
 
 	RTAOTraceRaysParams params;
-	params.randomSeed			= math::Vector2f(lib::rnd::Random<Real32>(), lib::rnd::Random<Real32>());
-	params.raysNumber			= 1u;
-	params.raysLength			= 0.25f;
-	params.raysMinHitDistance	= 0.02f;
-
-	lib::MTHandle<RTAOTraceRaysDS> traceRaysDS = graphBuilder.CreateDescriptorSet<RTAOTraceRaysDS>(RENDERER_RESOURCE_NAME("RTAOTraceRaysDS"));
-	traceRaysDS->u_depthTexture               = context.depthTextureHalfRes;
-	traceRaysDS->u_normalsTexture             = context.normalsTextureHalfRes;
-	traceRaysDS->u_ambientOcclusionTexture    = traceRaysResultTexture;
-	traceRaysDS->u_rtaoParams                 = params;
+	params.randomSeed              = math::Vector2f(lib::rnd::Random<Real32>(), lib::rnd::Random<Real32>());
+	params.raysNumber              = 1u;
+	params.raysLength              = 0.25f;
+	params.raysMinHitDistance      = 0.02f;
+	params.depthTexture            = context.depthTextureHalfRes;
+	params.normalsTexture          = context.normalsTextureHalfRes;
+	params.ambientOcclusionTexture = traceRaysResultTexture;
 
 	graphBuilder.TraceRays(RG_DEBUG_NAME("RTAO Trace Rays"),
 						   AOTraceRaysPSO::pso,
 						   traceRaysResolution,
-						   rg::BindDescriptorSets(std::move(traceRaysDS)));
+						   rg::ShaderParams(params));
 
 	return traceRaysResultTexture;
 }
@@ -126,7 +113,6 @@ static rg::RGTextureViewHandle RenderAO(rg::RenderGraphBuilder& graphBuilder, co
 	upsampleParams.depth          = context.depthTexture;
 	upsampleParams.depthHalfRes   = context.depthTextureHalfRes;
 	upsampleParams.normalsHalfRes = context.normalsTextureHalfRes;
-	upsampleParams.renderViewDS   = context.viewSpec.GetRenderViewDS();
 	return upsampler::DepthBasedUpsample(graphBuilder, aoHalfResTexture, upsampleParams);
 }
 

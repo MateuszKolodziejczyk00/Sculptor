@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(DOComputationPassDS, 0)]]
+[[shader_params(DOComputationPassParams, PARAMS_D_O_COMPUTATION_PASS)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 
@@ -77,7 +77,7 @@ float3 ComputeNear(float2 uv, float2 pixelSize)
     for (int sampleIdx = 0; sampleIdx < DOF_SAMPLES_NUM; ++sampleIdx)
     {
         const float2 sampleUV = uv + dofSamples[sampleIdx] * pixelSize * dofScale;
-        result += u_linearColorTexture.SampleLevel(u_linearSampler, sampleUV, 0.f);
+        result += PARAMS_D_O_COMPUTATION_PASS->linearColorTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), sampleUV, 0.f);
     }
 
     return result / DOF_SAMPLES_NUM;
@@ -92,8 +92,8 @@ float3 ComputeFar(float2 uv, float2 pixelSize)
     for (int sampleIdx = 0; sampleIdx < DOF_SAMPLES_NUM; ++sampleIdx)
     {
         const float2 sampleUV = uv + dofSamples[sampleIdx] * pixelSize * dofScale;
-        result += u_linearColorMulFarTexture.SampleLevel(u_linearSampler, sampleUV, 0.f);
-        weight += u_cocTexture.SampleLevel(u_linearSampler, sampleUV, 0.f).y;
+        result += PARAMS_D_O_COMPUTATION_PASS->linearColorMulFarTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), sampleUV, 0.f);
+        weight += PARAMS_D_O_COMPUTATION_PASS->cocTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), sampleUV, 0.f).y;
     }
 
     return result / weight;
@@ -105,8 +105,7 @@ void DOFComputationCS(CS_INPUT input)
 {
     const uint2 pixel = input.globalID.xy;
     
-    uint2 outputRes;
-    u_farFieldDOFTexture.GetDimensions(outputRes.x, outputRes.y);
+    uint2 outputRes = PARAMS_D_O_COMPUTATION_PASS->farFieldDOFTexture.GetResolution();
 
     if(pixel.x < outputRes.x && pixel.y < outputRes.y)
     {
@@ -114,12 +113,12 @@ void DOFComputationCS(CS_INPUT input)
         
         const float2 uv = float2(pixel + 0.5f) * pixelSize;
 
-        const float cocNear = u_cocNearBlurredTexture.SampleLevel(u_nearestSampler, uv, 0.f);
-        const float cocFar = u_cocTexture.SampleLevel(u_nearestSampler, uv, 0.f).y;
+        const float cocNear = PARAMS_D_O_COMPUTATION_PASS->cocNearBlurredTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0.f);
+        const float cocFar = PARAMS_D_O_COMPUTATION_PASS->cocTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0.f).y;
 
-        const float3 linearColor = u_linearColorTexture.SampleLevel(u_nearestSampler, uv, 0.f);
+        const float3 linearColor = PARAMS_D_O_COMPUTATION_PASS->linearColorTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0.f);
 
-        u_nearFieldDOFTexture[pixel] = cocNear > 0.f ? ComputeNear(uv, pixelSize) : linearColor;
-        u_farFieldDOFTexture[pixel] = cocFar > 0.f ? ComputeFar(uv, pixelSize) : 0.f;
+        PARAMS_D_O_COMPUTATION_PASS->nearFieldDOFTexture[pixel] = cocNear > 0.f ? ComputeNear(uv, pixelSize) : linearColor;
+        PARAMS_D_O_COMPUTATION_PASS->farFieldDOFTexture[pixel] = cocFar > 0.f ? ComputeFar(uv, pixelSize) : 0.f;
     }
 }

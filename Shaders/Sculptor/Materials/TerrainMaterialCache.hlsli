@@ -14,8 +14,7 @@
 #define TERRAIN_POM_LODS_NUM 5
 
 
-template<typename TSampler>
-CustomOpacityOutput EvaluateCustomOpacity(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
+CustomOpacityOutput EvaluateCustomOpacity<TSampler : IMaterialSampler>(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
 {
     CustomOpacityOutput output;
     output.shouldDiscard = false;
@@ -23,8 +22,7 @@ CustomOpacityOutput EvaluateCustomOpacity(TSampler sampler, MaterialEvaluationPa
 }
 
 
-template<typename TSampler>
-MaterialEvaluationOutput EvaluateMaterial(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
+MaterialEvaluationOutput EvaluateMaterial<TSampler : IMaterialSampler>(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
 {
 	MaterialEvaluationOutput output;
 

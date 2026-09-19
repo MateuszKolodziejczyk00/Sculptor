@@ -7,7 +7,7 @@
 #include "Utils/VariableRate/VariableRate.hlsli"
 
 
-void WriteReservoirToScreenBuffer(in RWStructuredBuffer<SRPackedReservoir> reservoirsBuffer, in uint2 reservoirsRes, in SRReservoir reservoir, in RayTraceCommand traceCommand)
+void WriteReservoirToScreenBuffer(in RWTypedBuffer<SRPackedReservoir> reservoirsBuffer, in uint2 reservoirsRes, in SRReservoir reservoir, in RayTraceCommand traceCommand)
 {
 	const SRPackedReservoir packedReservoir = PackReservoir(reservoir);
 
@@ -25,7 +25,7 @@ struct GeneratedRayPDF
 };
 
 
-GeneratedRayPDF LoadGeneratedRayPDF(in StructuredBuffer<float> rayPdfs, in uint rayIdx)
+GeneratedRayPDF LoadGeneratedRayPDF(in TypedBuffer<float> rayPdfs, in uint rayIdx)
 {
 	const float pdf = rayPdfs[rayIdx];
 	const bool isSpecular = pdf < 0.f;

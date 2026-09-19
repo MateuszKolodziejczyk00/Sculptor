@@ -1,8 +1,5 @@
 #include "GrassRenderer.h"
 #include "Utils/IndirectUtils.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
 #include <Utils/ViewRenderingSpec.h>
 
 
@@ -68,7 +65,6 @@ GrassBlades GenerateGrassBlades(rg::RenderGraphBuilder& graphBuilder, const View
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Generate Grass Blades Buffer"),
 						  GenerateGrassBladesBufferPSO::pso,
 						  dispatchGroups,
-						  rg::EmptyDescriptorSets(),
 						  shaderConstants);
 
 	return blades;
@@ -83,11 +79,6 @@ BEGIN_SHADER_STRUCT(GrassBladesVisibilityPassConstants)
 	SHADER_STRUCT_FIELD(BladeDefsLODs, bladeDefsLODs)
 	SHADER_STRUCT_FIELD(BladesNumLODs, bladesNumLODs)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(GrassBladesVisibilityPassDS, rg::RGDescriptorSetState<GrassBladesVisibilityPassDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<GrassBladesVisibilityPassConstants>), u_constants)
-DS_END()
 
 
 BEGIN_SHADER_STRUCT(GrassBladesVisibilityPassPSOPermutation)
@@ -170,12 +161,9 @@ void RenderGrassVisibility(rg::RenderGraphBuilder& graphBuilder, const GrassVisi
 	shaderConstants.bladeDefsLODs = bladeDefsLODs;
 	shaderConstants.bladesNumLODs = bladesNumLODs;
 
-	lib::MTHandle<GrassBladesVisibilityPassDS> ds = graphBuilder.CreateDescriptorSet<GrassBladesVisibilityPassDS>(RENDERER_RESOURCE_NAME("Grass Visibility DS"));
-	ds->u_constants = shaderConstants;
-
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Grass Blades Visibility Pass"),
 							renderPassDef,
-							rg::BindDescriptorSets(ds),
+							rg::ShaderParams(shaderConstants),
 							std::tie(indirectParams),
 							[resolution, indirectParams](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{

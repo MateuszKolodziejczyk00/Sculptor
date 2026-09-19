@@ -3,8 +3,11 @@
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHIDescriptorTypes.h"
 #include "DescriptorTypes.h"
-#include "DescriptorSetStateTypes.h"
 
+namespace spt::rhi
+{
+struct SamplerDefinition;
+} // spt::rhi
 
 namespace spt::rdr
 {
@@ -24,25 +27,19 @@ class DescriptorAllocator
 {
 public:
 
-	DescriptorAllocator(const rhi::RHIDescriptorRange& range, const DescriptorSetLayout& layout, Uint32 binding);
+	explicit DescriptorAllocator(const DescriptorHeap& descriptorHeap);
 
 	Uint32 AllocateDescriptor();
 	void   FreeDescriptor(Uint32 idx);
 
-	lib::Span<Byte> GetDescriptorData(Uint32 idx) const
-	{
-		SPT_CHECK(idx != idxNone<Uint32>);
-		return lib::Span<Byte>{ m_descriptorsIndexer[idx], m_descriptorsIndexer.GetDescriptorSize() };
-	}
-
 	Bool IsFull() const
 	{
-		return m_freeDescriptorsNum == m_descriptorsIndexer.GetSize();
+		return m_freeDescriptorsNum == m_descriptorsNum;
 	}
 
 	Uint32 GetDescriptorsNum() const
 	{
-		return m_descriptorsIndexer.GetSize();
+		return m_descriptorsNum;
 	}
 
 #if SPT_DESCRIPTOR_MANAGER_DEBUG
@@ -51,7 +48,7 @@ public:
 
 private:
 
-	DescriptorArrayIndexer m_descriptorsIndexer;
+	Uint32 m_descriptorsNum = 0u;
 
 	lib::Spinlock m_lock;
 	Uint32 m_freeDescriptorsNum = 0u;
@@ -177,7 +174,7 @@ class RENDERER_CORE_API DescriptorManager
 {
 public:
 
-	DescriptorManager(DescriptorHeap& descriptorHeap);
+	DescriptorManager(DescriptorHeap& resourceDescriptorHeap, DescriptorHeap& samplerDescriptorHeap);
 	~DescriptorManager();
 
 	ResourceDescriptorHandle AllocateResourceDescriptor();
@@ -195,32 +192,22 @@ public:
 
 	void ClearDescriptorInfo(ResourceDescriptorIdx idx);
 
-	void UploadSamplerDescriptor(Uint32 idx, Sampler& sampler);
+	void UploadSamplerDescriptor(Uint32 idx, const rhi::SamplerDefinition& sampler);
 
 	TextureView*        GetTextureView(ResourceDescriptorIdx idx) const;
 	BindableBufferView* GetBufferView(ResourceDescriptorIdx idx) const;
 	void*               GetCustomDescriptorInfo(ResourceDescriptorIdx idx) const;
 
-	Uint32 GetHeapOffset() const { return m_descriptorRange.heapOffset; }
-
-	const lib::SharedPtr<DescriptorSetLayout>& GetBindlessLayout() const { return m_bindlessLayout; }
-
 	debug::DescrptorBufferState DumpCurrentDescriptorBufferState() const;
 
 private:
 
-	lib::SharedPtr<DescriptorSetLayout> CreateBindlessLayout() const;
-
-	DescriptorHeap& m_descriptorHeap;
-
-	lib::SharedPtr<DescriptorSetLayout> m_bindlessLayout;
-
-	rhi::RHIDescriptorRange m_descriptorRange;
+	DescriptorHeap& m_resourceDescriptorHeap;
+	DescriptorHeap& m_samplerDescriptorHeap;
 
 	DescriptorAllocator m_resourceDescriptorAllocator;
-	lib::DynamicArray<DescriptorInfo> m_resourceDescriptorInfos;
 
-	DescriptorArrayIndexer m_samplerDescriptorsIndexer;
+	lib::DynamicArray<DescriptorInfo> m_resourceDescriptorInfos;
 };
 
 } // spt::rdr

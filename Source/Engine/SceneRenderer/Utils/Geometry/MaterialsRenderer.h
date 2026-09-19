@@ -21,12 +21,12 @@ class ViewRenderingSpec;
 namespace materials_renderer
 {
 
-class MaterialBatchDS;
+struct MaterialBatchConstants;
 
 struct MaterialRenderCommand
 {
-	rdr::PipelineStateID           pipelineState;
-	lib::MTHandle<MaterialBatchDS> materialBatchDS;
+	rdr::PipelineStateID                pipelineState;
+	rdr::GPUPtr<MaterialBatchConstants> materialBatchParams;
 };
 
 

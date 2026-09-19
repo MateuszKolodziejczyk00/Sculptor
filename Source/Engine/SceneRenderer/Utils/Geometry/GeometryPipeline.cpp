@@ -1,10 +1,6 @@
 #include "GeometryPipeline.h"
 #include "ResourcesManager.h"
 #include "RenderGraphBuilder.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "Utils/ViewRenderingSpec.h"
 #include "SceneRenderer/RenderStages/Utils/hiZRenderer.h"
 
@@ -48,37 +44,31 @@ END_SHADER_STRUCT();
 
 
 BEGIN_SHADER_STRUCT(GeometryCullingParams)
-	SHADER_STRUCT_FIELD(math::Vector2f, hiZResolution)
-	SHADER_STRUCT_FIELD(math::Vector2f, historyHiZResolution)
-	SHADER_STRUCT_FIELD(Bool,           hasHistoryHiZ)
+	SHADER_STRUCT_FIELD(math::Vector2f,            hiZResolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,            historyHiZResolution)
+	SHADER_STRUCT_FIELD(Bool,                      hasHistoryHiZ)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>, hiZTexture) // valid only for 2nd pass
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>, historyHiZTexture)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(GeometryCullingDS, rg::RGDescriptorSetState<GeometryCullingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                              u_hiZTexture) // valid only for 2nd pass
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                              u_historyHiZTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>), u_hiZSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<GeometryCullingParams>),                     u_visCullingParams)
-DS_END();
+BEGIN_SHADER_STRUCT(GeometryCullSubmeshes_VisibleGeometryPassParams)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<GeometryDrawMeshTaskCommand>, drawCommands)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,                      drawCommandsCount)
+
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<OccludedBatchElement>,                 occludedBatchElements)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,                               occludedBatchElementsCount)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<DispatchOccludedBatchElementsCommand>, dispatchOccludedElementsCommand)
+END_SHADER_STRUCT();
 
 
-DS_BEGIN(GeometryCullSubmeshes_VisibleGeometryPassDS, rg::RGDescriptorSetState<GeometryCullSubmeshes_VisibleGeometryPassDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<GeometryDrawMeshTaskCommand>), u_drawCommands)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                      u_drawCommandsCount)
-	
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<OccludedBatchElement>),                 u_occludedBatchElements)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                               u_occludedBatchElementsCount)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<DispatchOccludedBatchElementsCommand>), u_dispatchOccludedElementsCommand)
-DS_END();
+BEGIN_SHADER_STRUCT(GeometryCullSubmeshes_DisoccludedGeometryPassParams)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<GeometryDrawMeshTaskCommand>, drawCommands)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,                      drawCommandsCount)
 
-
-DS_BEGIN(GeometryCullSubmeshes_DisoccludedGeometryPassDS, rg::RGDescriptorSetState<GeometryCullSubmeshes_DisoccludedGeometryPassDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<GeometryDrawMeshTaskCommand>), u_drawCommands)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                      u_drawCommandsCount)
-
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<OccludedBatchElement>), u_occludedBatchElements)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),               u_occludedBatchElementsCount)
-DS_END();
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<OccludedBatchElement>, occludedBatchElements)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<Uint32>,               occludedBatchElementsCount)
+END_SHADER_STRUCT();
 
 
 BEGIN_RG_NODE_PARAMETERS_STRUCT(IndirectGeometryBatchDrawParams)
@@ -87,7 +77,7 @@ BEGIN_RG_NODE_PARAMETERS_STRUCT(IndirectGeometryBatchDrawParams)
 END_RG_NODE_PARAMETERS_STRUCT();
 
 
-static lib::MTHandle<GeometryCullingDS> CreateCullingDS(rg::RGTextureViewHandle hiZ, rg::RGTextureViewHandle historyHiZ)
+static rdr::GPUPtr<GeometryCullingParams> CreateCullingParams(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle hiZ, rg::RGTextureViewHandle historyHiZ)
 {
 	const Bool hasHistoryHiZ = historyHiZ.IsValid();
 
@@ -95,34 +85,31 @@ static lib::MTHandle<GeometryCullingDS> CreateCullingDS(rg::RGTextureViewHandle 
 	visCullingParams.hiZResolution        = hiZ->GetResolution2D().cast<Real32>();
 	visCullingParams.historyHiZResolution = hasHistoryHiZ ? historyHiZ->GetResolution2D().cast<Real32>() : math::Vector2f{};
 	visCullingParams.hasHistoryHiZ        = hasHistoryHiZ;
+	visCullingParams.hiZTexture        = hiZ;
+	visCullingParams.historyHiZTexture = historyHiZ;
 
-	lib::MTHandle<GeometryCullingDS> visCullingDS = rdr::ResourcesManager::CreateDescriptorSetState<GeometryCullingDS>(RENDERER_RESOURCE_NAME("VisCullingDS"));
-	visCullingDS->u_hiZTexture        = hiZ;
-	visCullingDS->u_historyHiZTexture = historyHiZ;
-	visCullingDS->u_visCullingParams  = visCullingParams;
-
-	return visCullingDS;
+	return graphBuilder.CreateGPUData(visCullingParams);
 }
 
 
-DS_BEGIN(GeometryDrawMeshes_VisibleGeometryPassDS, rg::RGDescriptorSetState<GeometryDrawMeshes_VisibleGeometryPassDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<GeometryDrawMeshTaskCommand>), u_drawCommands)
+BEGIN_SHADER_STRUCT(GeometryDrawMeshes_VisibleGeometryPassParams)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<GeometryDrawMeshTaskCommand>, drawCommands)
 	
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<OccludedMeshletData>),                  u_occludedMeshlets)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                               u_occludedMeshletsCount)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<DispatchOccludedBatchElementsCommand>), u_occludedMeshletsDispatchCommand)
-DS_END();
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<OccludedMeshletData>,                  occludedMeshlets)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,                               occludedMeshletsCount)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<DispatchOccludedBatchElementsCommand>, occludedMeshletsDispatchCommand)
+END_SHADER_STRUCT();
 
 
-DS_BEGIN(GeometryDrawMeshes_DisoccludedGeometryPassDS, rg::RGDescriptorSetState<GeometryDrawMeshes_DisoccludedGeometryPassDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<GeometryDrawMeshTaskCommand>), u_drawCommands)
-DS_END();
+BEGIN_SHADER_STRUCT(GeometryDrawMeshes_DisoccludedGeometryPassParams)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<GeometryDrawMeshTaskCommand>, drawCommands)
+END_SHADER_STRUCT();
 
 
-DS_BEGIN(GeometryDrawMeshes_DisoccludedMeshletsPassDS, rg::RGDescriptorSetState<GeometryDrawMeshes_DisoccludedMeshletsPassDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<OccludedMeshletData>),       u_occludedMeshlets)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                    u_occludedMeshletsCount)
-DS_END();
+BEGIN_SHADER_STRUCT(GeometryDrawMeshes_DisoccludedMeshletsPassParams)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<OccludedMeshletData>, occludedMeshlets)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,              occludedMeshletsCount)
+END_SHADER_STRUCT();
 
 
 template<EGeometryPass passIdx>
@@ -133,7 +120,7 @@ struct GeometryPassTraits
 template<>
 struct GeometryPassTraits<EGeometryPass::VisibleGeometryPass>
 {
-	using DrawMeshesDSType = GeometryDrawMeshes_VisibleGeometryPassDS;
+	using DrawMeshesParamsType = GeometryDrawMeshes_VisibleGeometryPassParams;
 
 	static constexpr const char* GetPassName() { return "Visible Geometry Pass"; }
 };
@@ -141,7 +128,7 @@ struct GeometryPassTraits<EGeometryPass::VisibleGeometryPass>
 template<>
 struct GeometryPassTraits<EGeometryPass::DisoccludedGeometryPass>
 {
-	using DrawMeshesDSType = GeometryDrawMeshes_DisoccludedGeometryPassDS;
+	using DrawMeshesParamsType = GeometryDrawMeshes_DisoccludedGeometryPassParams;
 
 	static constexpr const char* GetPassName() { return "Disoccluded Geometry Pass"; }
 };
@@ -149,7 +136,7 @@ struct GeometryPassTraits<EGeometryPass::DisoccludedGeometryPass>
 template<>
 struct GeometryPassTraits<EGeometryPass::DisoccludedMeshletsPass>
 {
-	using DrawMeshesDSType = GeometryDrawMeshes_DisoccludedMeshletsPassDS;
+	using DrawMeshesParamsType = GeometryDrawMeshes_DisoccludedMeshletsPassParams;
 
 	static constexpr const char* GetPassName() { return "Disoccluded Meshlets Pass"; }
 };
@@ -245,7 +232,7 @@ void CullBatchElements(rg::RenderGraphBuilder& graphBuilder, const GeometryPassP
 
 	static_assert(passIdx == EGeometryPass::VisibleGeometryPass || passIdx == EGeometryPass::DisoccludedGeometryPass);
 
-	using CullSubmeshesDS = std::conditional_t<passIdx == EGeometryPass::VisibleGeometryPass, GeometryCullSubmeshes_VisibleGeometryPassDS, GeometryCullSubmeshes_DisoccludedGeometryPassDS>;
+	using CullSubmeshesParams = std::conditional_t<passIdx == EGeometryPass::VisibleGeometryPass, GeometryCullSubmeshes_VisibleGeometryPassParams, GeometryCullSubmeshes_DisoccludedGeometryPassParams>;
 
 	for(SizeType batchIdx = 0u; batchIdx < geometryPassParams.geometryPassData.geometryBatches.size(); ++batchIdx)
 	{
@@ -254,14 +241,14 @@ void CullBatchElements(rg::RenderGraphBuilder& graphBuilder, const GeometryPassP
 
 		graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Initialize Draw Commands Count"), batchGPUData.drawCommandsCount, 0u);
 
-		const lib::MTHandle<CullSubmeshesDS> cullSubmeshesDS = graphBuilder.CreateDescriptorSet<CullSubmeshesDS>(RENDERER_RESOURCE_NAME("CullSubmeshesDS"));
-		cullSubmeshesDS->u_drawCommands               = batchGPUData.drawCommands;
-		cullSubmeshesDS->u_drawCommandsCount          = batchGPUData.drawCommandsCount;
-		cullSubmeshesDS->u_occludedBatchElements      = batchGPUData.occludedBatchElements;
-		cullSubmeshesDS->u_occludedBatchElementsCount = batchGPUData.occludedBatchElementsCount;
+		CullSubmeshesParams cullSubmeshesParams;
+		cullSubmeshesParams.drawCommands               = batchGPUData.drawCommands;
+		cullSubmeshesParams.drawCommandsCount          = batchGPUData.drawCommandsCount;
+		cullSubmeshesParams.occludedBatchElements      = batchGPUData.occludedBatchElements;
+		cullSubmeshesParams.occludedBatchElementsCount = batchGPUData.occludedBatchElementsCount;
 		if constexpr (passIdx == EGeometryPass::VisibleGeometryPass)
 		{
-			cullSubmeshesDS->u_dispatchOccludedElementsCommand = batchGPUData.dispatchOccludedBatchElementsCommand;
+			cullSubmeshesParams.dispatchOccludedElementsCommand = batchGPUData.dispatchOccludedBatchElementsCommand;
 		}
 
 		if constexpr (passIdx == EGeometryPass::VisibleGeometryPass)
@@ -272,7 +259,7 @@ void CullBatchElements(rg::RenderGraphBuilder& graphBuilder, const GeometryPassP
 			graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("Cull Submeshes ({})", GeometryPassTraits<passIdx>::GetPassName()),
 								  CullBatchElementsPSO::passes[static_cast<Int32>(passIdx)],
 								  dispatchGroups,
-								  rg::BindDescriptorSets(batch.batchDS, cullSubmeshesDS));
+								  rg::ShaderParams(batch.batchData, cullSubmeshesParams));
 		}
 		else if constexpr (passIdx == EGeometryPass::DisoccludedGeometryPass)
 		{
@@ -280,7 +267,7 @@ void CullBatchElements(rg::RenderGraphBuilder& graphBuilder, const GeometryPassP
 										  CullBatchElementsPSO::passes[static_cast<Int32>(passIdx)],
 										  batchGPUData.dispatchOccludedBatchElementsCommand,
 										  0u,
-										  rg::BindDescriptorSets(batch.batchDS, cullSubmeshesDS));
+										  rg::ShaderParams(batch.batchData, cullSubmeshesParams));
 		}
 	}
 }
@@ -295,7 +282,7 @@ static void CreateRenderPass(rg::RenderGraphBuilder& graphBuilder, const Geometr
 	
 	graphBuilder.RenderPass(RG_DEBUG_NAME_FORMATTED("Geometry Pass ({})", GeometryPassTraits<passIdx>::GetPassName()),
 							renderPassDef,
-							rg::BindDescriptorSets(renderPassDef.perPassDS),
+							rg::ShaderParams(renderPassDef.perPassParams),
 							[resolution = renderPassDef.resolution](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
 								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), resolution.cast<Real32>()), 0.f, 1.f);
@@ -311,7 +298,7 @@ static void DrawBatchElements(rg::RenderGraphBuilder& graphBuilder, const Geomet
 
 	static_assert(passIdx == EGeometryPass::VisibleGeometryPass || passIdx == EGeometryPass::DisoccludedGeometryPass);
 
-	using GeometryDrawMeshesDS = typename GeometryPassTraits<passIdx>::DrawMeshesDSType;
+	using GeometryDrawMeshesParams = typename GeometryPassTraits<passIdx>::DrawMeshesParamsType;
 
 	CreateRenderPass<passIdx>(graphBuilder, geometryPassParams, pipelineContext);
 
@@ -320,14 +307,14 @@ static void DrawBatchElements(rg::RenderGraphBuilder& graphBuilder, const Geomet
 		const GeometryBatch& batch       = geometryPassParams.geometryPassData.geometryBatches[batchIdx];
 		const BatchGPUData& batchGPUData = gpuBatches[batchIdx];
 
-		lib::MTHandle<GeometryDrawMeshesDS> drawMeshesDS = graphBuilder.CreateDescriptorSet<GeometryDrawMeshesDS>(RENDERER_RESOURCE_NAME("GeometryDrawMeshesDS"));
-		drawMeshesDS->u_drawCommands = batchGPUData.drawCommands;
+		GeometryDrawMeshesParams drawMeshesParams;
+		drawMeshesParams.drawCommands = batchGPUData.drawCommands;
 
 		if constexpr (passIdx == EGeometryPass::VisibleGeometryPass)
 		{
-			drawMeshesDS->u_occludedMeshlets                = batchGPUData.occludedMeshlets;
-			drawMeshesDS->u_occludedMeshletsCount           = batchGPUData.occludedMeshletsCount;
-			drawMeshesDS->u_occludedMeshletsDispatchCommand = batchGPUData.dispatchOccludedMeshletsCommand;
+			drawMeshesParams.occludedMeshlets                = batchGPUData.occludedMeshlets;
+			drawMeshesParams.occludedMeshletsCount           = batchGPUData.occludedMeshletsCount;
+			drawMeshesParams.occludedMeshletsDispatchCommand = batchGPUData.dispatchOccludedMeshletsCommand;
 		}
 
 		const rdr::PipelineStateID pipeline = pipelineContext.pipeline.CreatePipelineForBatch(geometryPassParams, batch, passIdx);
@@ -339,7 +326,7 @@ static void DrawBatchElements(rg::RenderGraphBuilder& graphBuilder, const Geomet
 		indirectDrawParams.drawCommandsCount = batchGPUData.drawCommandsCount;
 
 		graphBuilder.AddSubpass(RG_DEBUG_NAME_FORMATTED("Batch Subpass ({})", GeometryPassTraits<passIdx>::GetPassName()),
-								rg::BindDescriptorSets(drawMeshesDS, batch.batchDS),
+								rg::ShaderParams(drawMeshesParams, batch.batchData),
 								std::tie(indirectDrawParams),
 								[indirectDrawParams, pipeline, maxDrawsCount]
 								(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
@@ -373,9 +360,9 @@ static void DrawDisoccludedMeshlets(rg::RenderGraphBuilder& graphBuilder, const 
 		const GeometryBatch& batch       = geometryPassParams.geometryPassData.geometryBatches[batchIdx];
 		const BatchGPUData& batchGPUData = gpuBatches[batchIdx];
 
-		lib::MTHandle<GeometryDrawMeshes_DisoccludedMeshletsPassDS> drawMeshesDS = graphBuilder.CreateDescriptorSet<GeometryDrawMeshes_DisoccludedMeshletsPassDS>(RENDERER_RESOURCE_NAME("GeometryDrawMeshes_DisoccludedMeshletsPassDS"));
-		drawMeshesDS->u_occludedMeshlets      = batchGPUData.occludedMeshlets;
-		drawMeshesDS->u_occludedMeshletsCount = batchGPUData.occludedMeshletsCount;
+		GeometryDrawMeshes_DisoccludedMeshletsPassParams drawMeshesParams;
+		drawMeshesParams.occludedMeshlets      = batchGPUData.occludedMeshlets;
+		drawMeshesParams.occludedMeshletsCount = batchGPUData.occludedMeshletsCount;
 
 		const rdr::PipelineStateID pipeline = pipelineContext.pipeline.CreatePipelineForBatch(geometryPassParams, batch, passIdx);
 
@@ -383,7 +370,7 @@ static void DrawDisoccludedMeshlets(rg::RenderGraphBuilder& graphBuilder, const 
 		indirectDrawParams.drawCommands = batchGPUData.dispatchOccludedMeshletsCommand;
 
 		graphBuilder.AddSubpass(RG_DEBUG_NAME("Batch Subpass"),
-								rg::BindDescriptorSets(drawMeshesDS, batch.batchDS),
+								rg::ShaderParams(drawMeshesParams, batch.batchData),
 								std::tie(indirectDrawParams),
 								[indirectDrawParams, pipeline]
 								(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
@@ -426,7 +413,7 @@ struct GeometryPipelineExecutor
 		 : geometryPassParams(inGeometryPassParams)
 		 , pipelineContext(inPipeline)
 	{
-		cullingDS = CreateCullingDS(geometryPassParams.hiZ, geometryPassParams.historyHiZ);
+		cullingParams = CreateCullingParams(graphBuilder, geometryPassParams.hiZ, geometryPassParams.historyHiZ);
 
 		gpuBatches = BuildGPUBatches(graphBuilder, geometryPassParams);
 	}
@@ -434,7 +421,7 @@ struct GeometryPipelineExecutor
 	const GeometryPassParams& geometryPassParams;
 	GeometryPipelineContext pipelineContext;
 
-	lib::MTHandle<GeometryCullingDS> cullingDS;
+	rdr::GPUPtr<GeometryCullingParams> cullingParams;
 
 	lib::DynamicArray<BatchGPUData> gpuBatches;
 };
@@ -456,8 +443,7 @@ void ExecuteFirstPass(rg::RenderGraphBuilder& graphBuilder, const GeometryPipeli
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rg::BindDescriptorSetsScope geometryCullingDSScope(graphBuilder,
-															 rg::BindDescriptorSets(executor.cullingDS));
+	const rg::BindShaderParamsScope geometryCullingParamsScope(graphBuilder, rg::ShaderParams(executor.cullingParams));
 
 	executor.pipelineContext.pipeline.Prologue(graphBuilder, executor.geometryPassParams);
 
@@ -469,8 +455,7 @@ void ExecuteSecondPass(rg::RenderGraphBuilder& graphBuilder, const GeometryPipel
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rg::BindDescriptorSetsScope geometryCullingDSScope(graphBuilder,
-															 rg::BindDescriptorSets(executor.cullingDS));
+	const rg::BindShaderParamsScope geometryCullingParamsScope(graphBuilder, rg::ShaderParams(executor.cullingParams));
 
 	DrawDisoccludedGeometry(graphBuilder, executor.geometryPassParams, executor.pipelineContext, executor.gpuBatches);
 }

@@ -1,7 +1,7 @@
 #include "Texture.h"
 #include "GPUMemoryPool.h"
 #include "GPUApi.h"
-#include "DescriptorSetState/DescriptorManager.h"
+#include "Descriptors/DescriptorManager.h"
 #include "ResourcesManager.h"
 
 namespace spt::rdr
@@ -150,6 +150,16 @@ math::Vector3u TextureView::GetResolution() const
 math::Vector2u TextureView::GetResolution2D() const
 {
 	return GetResolution().head<2>();
+}
+
+ResourceDescriptorIdx TextureView::GetSRVDescriptor() const
+{
+	return ResourceDescriptorIdx(m_srvDescriptor.Get() * rhi::RHI::GetDescriptorProps().textureDescriptorIdxFactor);
+}
+
+ResourceDescriptorIdx TextureView::GetUAVDescriptor() const
+{
+	return ResourceDescriptorIdx(m_uavDescriptor.Get() * rhi::RHI::GetDescriptorProps().textureDescriptorIdxFactor);
 }
 
 void TextureView::CreateDescriptors(TextureViewDescriptorsAllocation externalDescriptorsAllocation)

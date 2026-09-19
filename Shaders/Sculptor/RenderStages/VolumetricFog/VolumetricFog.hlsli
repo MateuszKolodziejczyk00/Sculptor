@@ -116,7 +116,7 @@ float3 ComputeFogFroxelUVW(in float2 uv, in float linearDepth, in float fogNearP
 	return float3(uv, w);
 }
 
-#ifdef DS_RenderVolumetricFogDS
+#ifdef PARAM_VolumetricFogConstants
 
 float2 ComputeFogFroxelDepthBounds(in VolumetricFogConstants fogConstants, in uint froxelZ, float3 rcpResolution)
 {
@@ -128,12 +128,12 @@ float2 ComputeFogFroxelDepthBounds(in VolumetricFogConstants fogConstants, in ui
 float ComputeFogDepthJitter(in VolumetricFogConstants fogConstants, in uint2 pixel)
 {
 	const uint2 blueNoiseTexturePixel = pixel & fogConstants.blueNoiseResMask;
-	const float blueNoise = u_blueNoiseTexture.Load(uint3(blueNoiseTexturePixel, 0)).x;
+	const float blueNoise = PARAM_VolumetricFogConstants->blueNoiseTexture.Load(uint3(blueNoiseTexturePixel, 0)).x;
 	const float goldenRationSequence = (fogConstants.frameIdx & 7u) * SPT_GOLDEN_RATIO;
 	return (frac(blueNoise + goldenRationSequence) - 0.5f);
 }
 
-float3 ComputeFogGridSampleUVW(in VolumetricFogConstants fogConstants, in SceneViewData sceneView, in uint3 froxel, in uint3 resolution, in Texture2D<float> depthTexture, in SamplerState depthSampler, float bias = 0.05f)
+float3 ComputeFogGridSampleUVW(in VolumetricFogConstants fogConstants, in SceneViewData sceneView, in uint3 froxel, in uint3 resolution, in SRVTexture2D<float> depthTexture, in SamplerState depthSampler, float bias = 0.05f)
 {
 	const float3 rcpResolution = 1.f / float3(resolution);
 	const float2 froxelLinearDepthBounds = ComputeFogFroxelDepthBounds(fogConstants, froxel.z, rcpResolution);
@@ -157,6 +157,6 @@ float3 ComputeFogGridSampleUVW(in VolumetricFogConstants fogConstants, in SceneV
 	return fogFroxelUVW;
 }
 
-#endif // DS_RenderVolumetricFogDS
+#endif // PARAM_VolumetricFogConstants
 
 #endif // VOLUMETRIC_FOG_HLSLI

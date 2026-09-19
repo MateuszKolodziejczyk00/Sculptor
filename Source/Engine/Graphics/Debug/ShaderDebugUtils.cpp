@@ -4,6 +4,7 @@
 #include "ShaderDebugCommandsProcessor.h"
 #include "JobSystem.h"
 #include "EngineFrame.h"
+#include "ResourcesManager.h"
 
 
 namespace spt::gfx::dbg
@@ -22,8 +23,6 @@ void ShaderDebugUtils::Bind(rg::RenderGraphBuilder& graphBuilder, const ShaderDe
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(m_ds.IsValid());
-
 	{
 		DebugRenderingFrameSettings dynamicDebugsSettings;
 		dynamicDebugsSettings.clearGeometry = true;
@@ -34,22 +33,28 @@ void ShaderDebugUtils::Bind(rg::RenderGraphBuilder& graphBuilder, const ShaderDe
 		m_persistentDebugRenderer->PrepareResourcesForRecording(graphBuilder, persistentDebugsSettings);
 	}
 
-	SetDebugParameters(debugParameters);
-
 	PrepareBuffers(graphBuilder);
 
 	PrepareDebugOutputTexture(graphBuilder, debugParameters);
 
-	graphBuilder.BindDescriptorSetState(m_ds);
+	ShaderDebugCommandBufferParams shaderParams;
+	shaderParams.mouseUV                     = debugParameters.mouseUV;
+	shaderParams.bufferSize                  = static_cast<Uint32>(m_debugCommandsBuffer->GetSize());
+	shaderParams.dynamicDebugRendererData    = m_dynamicDebugRenderer->GetGPUDebugRendererData();
+	shaderParams.persistentDebugRendererData = m_persistentDebugRenderer->GetGPUDebugRendererData();
+	shaderParams.debugCommandsBuffer         = m_debugCommandsBuffer->GetFullView();
+	shaderParams.debugCommandsBufferOffset   = m_debugCommandsBufferOffset->GetFullView();
+	shaderParams.debugOutputTexture          = m_debugOutputTexture;
+	shaderParams.debugOnScreenOutputTexture  = m_debugOnScreenOutputTexture;
+
+	graphBuilder.BindShaderParam(graphBuilder.CreateGPUData(shaderParams));
 }
 
 void ShaderDebugUtils::Unbind(rg::RenderGraphBuilder& graphBuilder)
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(m_ds.IsValid());
-
-	graphBuilder.UnbindDescriptorSetState(m_ds);
+	graphBuilder.UnbindShaderParam<ShaderDebugCommandBufferParams>();
 
 	const lib::SharedRef<rdr::Buffer> debugCommandsBuffer       = ExtractData(graphBuilder, lib::Ref(m_debugCommandsBuffer));
 	const lib::SharedRef<rdr::Buffer> debugCommandsBufferOffset = ExtractData(graphBuilder, lib::Ref(m_debugCommandsBufferOffset));
@@ -65,7 +70,6 @@ void ShaderDebugUtils::BindCommandsExecutor(lib::SharedPtr<ShaderDebugCommandsEx
 }
 
 ShaderDebugUtils::ShaderDebugUtils()
-	: m_ds(rdr::ResourcesManager::CreateDescriptorSetState<ShaderDebugCommandBufferDS>(RENDERER_RESOURCE_NAME("ShaderDebugCommandBufferDS")))
 {
 	const Uint32 bufferSize = 1024 * 1024 * 4;
 
@@ -78,9 +82,6 @@ ShaderDebugUtils::ShaderDebugUtils()
 	debugCommandsBufferOffsetDefinition.size  = sizeof(Uint32);
 	debugCommandsBufferOffsetDefinition.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferSrc, rhi::EBufferUsage::TransferDst);
 	m_debugCommandsBufferOffset = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("ShaderDebugCommandBufferOffset"), debugCommandsBufferOffsetDefinition, rhi::EMemoryUsage::GPUOnly);
-
-	m_ds->u_debugCommandsBuffer       = m_debugCommandsBuffer->GetFullView();
-	m_ds->u_debugCommandsBufferOffset = m_debugCommandsBufferOffset->GetFullView();
 
 	InitializeDefaultExecutors();
 
@@ -113,21 +114,6 @@ void ShaderDebugUtils::CleanupResources()
 
 	m_dynamicDebugRenderer.reset();
 	m_persistentDebugRenderer.reset();
-
-	m_ds.Reset();
-}
-
-void ShaderDebugUtils::SetDebugParameters(const ShaderDebugParameters& debugParameters)
-{
-	SPT_CHECK(m_ds.IsValid());
-
-	ShaderDebugCommandBufferParams gpuParams;
-	gpuParams.mouseUV                     = debugParameters.mouseUV;
-	gpuParams.bufferSize                  = static_cast<Uint32>(m_debugCommandsBuffer->GetSize());
-	gpuParams.dynamicDebugRendererData    = m_dynamicDebugRenderer->GetGPUDebugRendererData();
-	gpuParams.persistentDebugRendererData = m_persistentDebugRenderer->GetGPUDebugRendererData();
-
-	m_ds->u_debugCommandsBufferParams = gpuParams;
 }
 
 void ShaderDebugUtils::PrepareBuffers(rg::RenderGraphBuilder& graphBuilder)
@@ -154,9 +140,6 @@ void ShaderDebugUtils::PrepareDebugOutputTexture(rg::RenderGraphBuilder& graphBu
 
 		debugOutputTextureDefinition.format = rhi::EFragmentFormat::RGBA8_UN_Float;
 		m_debugOnScreenOutputTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Shader Debug On Screen Output Texture"), debugOutputTextureDefinition, rhi::EMemoryUsage::GPUOnly);
-
-		m_ds->u_debugOutputTexture         = m_debugOutputTexture;
-		m_ds->u_debugOnScreenOutputTexture = m_debugOnScreenOutputTexture;
 	}
 
 	const rg::RGTextureViewHandle debugOutputTextureView = graphBuilder.AcquireExternalTextureView(m_debugOutputTexture);

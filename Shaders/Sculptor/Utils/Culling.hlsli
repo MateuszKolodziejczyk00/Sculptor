@@ -55,7 +55,7 @@ bool IsConeVisible(float3 center, float radius, float3 coneAxis, float coneCutof
 }
 
 
-bool IsSphereCenterBehindHiZ(Texture2D<float> hiZ, SamplerState hiZSampler, float2 hiZResolution, float3 sphereCenterVS, float sphereRadius, float near, float p01, float p12, out float4 aabb)
+bool IsSphereCenterBehindHiZ(SRVTexture2D<float> hiZ, SamplerState hiZSampler, float2 hiZResolution, float3 sphereCenterVS, float sphereRadius, float near, float p01, float p12, out float4 aabb)
 {
     if(sphereCenterVS.x - sphereRadius - near <= 0.001f)
     {
@@ -88,7 +88,7 @@ bool IsSphereCenterBehindHiZ(Texture2D<float> hiZ, SamplerState hiZSampler, floa
 }
 
 
-bool IsSphereBehindHiZ(Texture2D<float> hiZ, SamplerState hiZSampler, float2 hiZResolution, float3 sphereCenterVS, float sphereRadius, float near, float p01, float p12, out float4 aabb)
+bool IsSphereBehindHiZ(SRVTexture2D<float> hiZ, float2 hiZResolution, float3 sphereCenterVS, float sphereRadius, float near, float p01, float p12, out float4 aabb)
 {
     if(sphereCenterVS.x - sphereRadius - near <= 0.001f)
     {
@@ -104,7 +104,7 @@ bool IsSphereBehindHiZ(Texture2D<float> hiZ, SamplerState hiZSampler, float2 hiZ
         const float level = ceil(log2(max(width, height)));
 
         const float2 uv = float2((aabb.x + aabb.z) * 0.5f, (aabb.y + aabb.w) * 0.5f);
-        const float sceneMinDepth = hiZ.SampleLevel(hiZSampler, uv, level).x;
+        const float sceneMinDepth = hiZ.SampleLevel(BindlessSamplers::LinearMinClampEdge(), uv, level).x;
 
         const float sphereMaxDepth = near / (sphereCenterVS.x - sphereRadius);
         // Use "<" because we use inverse depth
@@ -121,21 +121,20 @@ bool IsSphereBehindHiZ(Texture2D<float> hiZ, SamplerState hiZSampler, float2 hiZ
 }
 
 
-bool IsSphereBehindHiZ(Texture2D<float> hiZ, SamplerState hiZSampler, float2 hiZResolution, float3 sphereCenterVS, float sphereRadius, float near, float p01, float p12)
+bool IsSphereBehindHiZ(SRVTexture2D<float> hiZ, float2 hiZResolution, float3 sphereCenterVS, float sphereRadius, float near, float p01, float p12)
 {
     float4 aabb;
-    return IsSphereBehindHiZ(hiZ, hiZSampler, hiZResolution, sphereCenterVS, sphereRadius, near, p01, p12, aabb);
+    return IsSphereBehindHiZ(hiZ, hiZResolution, sphereCenterVS, sphereRadius, near, p01, p12, aabb);
 }
 
 
-class HiZCullingProcessor
+struct HiZCullingProcessor
 {
-	static HiZCullingProcessor Create(in Texture2D<float> inHiZ, in float2 inRes, in SamplerState inSampler, in SceneViewData inView)
+	static HiZCullingProcessor Create(in SRVTexture2D<float> inHiZ, in float2 inRes, in SceneViewData inView)
 	{
 		HiZCullingProcessor processor;
 		processor.hiZTexture = inHiZ;
 		processor.hiZRes     = inRes;
-		processor.hiZSampler = inSampler;
 		processor.nearPlane  = GetNearPlane(inView);
 		processor.p01        = inView.projectionMatrix[0][1];
 		processor.p12        = inView.projectionMatrix[1][2];
@@ -146,11 +145,10 @@ class HiZCullingProcessor
 	bool DoCulling(in Sphere sphere)
 	{
 		sphere.center = mul(viewMatrix, float4(sphere.center, 1.f)).xyz;
-		return !IsSphereBehindHiZ(hiZTexture, hiZSampler, hiZRes, sphere.center, sphere.radius, nearPlane, p01, p12);
+		return !IsSphereBehindHiZ(hiZTexture, hiZRes, sphere.center, sphere.radius, nearPlane, p01, p12);
 	}
 
-	Texture2D<float> hiZTexture;
-	SamplerState     hiZSampler;
+	SRVTexture2D<float> hiZTexture;
 
 	float2 hiZRes;
 

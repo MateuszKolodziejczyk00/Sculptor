@@ -4,8 +4,6 @@
 #include "SculptorCoreTypes.h"
 #include "Types/Buffer.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
 #include "Bindless/BindlessTypes.h"
 #include "StaticMeshes/StaticMeshGeometry.h"
 #include "RenderSceneRegistry.h"

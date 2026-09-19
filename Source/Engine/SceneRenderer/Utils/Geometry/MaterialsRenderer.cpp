@@ -1,5 +1,4 @@
 #include "MaterialsRenderer.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
 #include "RenderGraphBuilder.h"
 #include "Utils/ViewRenderingSpec.h"
 #include "SceneRenderSystems/Terrain/Grass/GrassRenderer.h"
@@ -20,17 +19,12 @@ static constexpr rhi::EFragmentFormat materialDepthFormat = rhi::EFragmentFormat
 } // constants
 
 BEGIN_SHADER_STRUCT(MaterialDepthParams)
-	SHADER_STRUCT_FIELD(math::Vector2f, screenResolution)
-	SHADER_STRUCT_FIELD(Uint16,         terrainMaterialBatchIdx)
-	SHADER_STRUCT_FIELD(Uint16,         grassMaterialBatchIdx)
+	SHADER_STRUCT_FIELD(math::Vector2f,                         screenResolution)
+	SHADER_STRUCT_FIELD(Uint16,                                 terrainMaterialBatchIdx)
+	SHADER_STRUCT_FIELD(Uint16,                                 grassMaterialBatchIdx)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Uint32>,           visibilityTexture)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<GPUVisibleMeshlet>, visibleMeshlets)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(CreateMaterialDepthDS, rg::RGDescriptorSetState<CreateMaterialDepthDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                u_visibilityTexture)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<GPUVisibleMeshlet>), u_visibleMeshlets)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<MaterialDepthParams>), u_materialDepthParams)
-DS_END();
 
 
 static rdr::PipelineStateID CompileMaterialDepthPipeline()
@@ -78,11 +72,8 @@ void RenderMaterialDepth(rg::RenderGraphBuilder& graphBuilder, const MaterialsPa
 	materialDepthParams.screenResolution        = resolution.cast<Real32>();
 	materialDepthParams.terrainMaterialBatchIdx = renderCommands.terrainMaterialBatchIdx;
 	materialDepthParams.grassMaterialBatchIdx   = renderCommands.grassMaterialBatchIdx;
-
-	lib::MTHandle<CreateMaterialDepthDS> materialDepthDS = graphBuilder.CreateDescriptorSet<CreateMaterialDepthDS>(RENDERER_RESOURCE_NAME("Create Material Depth DS"));
-	materialDepthDS->u_visibilityTexture   = passDef.visibilityTexture;
-	materialDepthDS->u_visibleMeshlets     = passDef.visibleMeshlets;
-	materialDepthDS->u_materialDepthParams = materialDepthParams;
+	materialDepthParams.visibilityTexture       = passDef.visibilityTexture;
+	materialDepthParams.visibleMeshlets         = passDef.visibleMeshlets;
 
 	rg::RGRenderTargetDef depthRTDef;
 	depthRTDef.textureView    = materialDepth;
@@ -95,7 +86,7 @@ void RenderMaterialDepth(rg::RenderGraphBuilder& graphBuilder, const MaterialsPa
 
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Render Material Depth"),
 							renderPassDef,
-							rg::BindDescriptorSets(std::move(materialDepthDS)),
+							rg::ShaderParams(materialDepthParams),
 							[resolution, pipeline = createMaterialDepthPipeline](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
 								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), resolution.cast<Real32>()), 0.f, 1.f);
@@ -119,15 +110,10 @@ static constexpr Uint32 materialDepthTileSize = 64u;
 } // constants
 
 BEGIN_SHADER_STRUCT(MaterialDepthTilesShaderParams)
-	SHADER_STRUCT_FIELD(math::Vector2u, materialDepthResolution)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    materialDepthResolution)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         materialDepthTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2u>, materialDepthTilesTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(CreateMaterialDepthTilesDS, rg::RGDescriptorSetState<CreateMaterialDepthTilesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                           u_materialDepthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2u>),                    u_materialDepthTilesTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<MaterialDepthTilesShaderParams>), u_params)
-DS_END();
 
 
 static rdr::PipelineStateID CompileMaterialDepthTilesPipeline()
@@ -157,19 +143,16 @@ void RenderMaterialDepthTiles(rg::RenderGraphBuilder& graphBuilder, rg::RGTextur
 	SPT_CHECK(materialDepthTiles.IsValid());
 
 	MaterialDepthTilesShaderParams params;
-	params.materialDepthResolution = materialDepth->GetResolution2D();
-
-	lib::MTHandle<CreateMaterialDepthTilesDS> materialDepthTilesDS = graphBuilder.CreateDescriptorSet<CreateMaterialDepthTilesDS>(RENDERER_RESOURCE_NAME("Create Material Depth Tiles DS"));
-	materialDepthTilesDS->u_materialDepthTexture      = materialDepth;
-	materialDepthTilesDS->u_materialDepthTilesTexture = materialDepthTiles;
-	materialDepthTilesDS->u_params                    = params;
+	params.materialDepthResolution   = materialDepth->GetResolution2D();
+	params.materialDepthTexture      = materialDepth;
+	params.materialDepthTilesTexture = materialDepthTiles;
 
 	static const rdr::PipelineStateID createMaterialDepthTilesPipeline = CompileMaterialDepthTilesPipeline();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Material Depth Tiles"),
 						  createMaterialDepthTilesPipeline,
 						  materialDepthTiles->GetResolution2D(),
-						  rg::BindDescriptorSets(std::move(materialDepthTilesDS)));
+						  rg::ShaderParams(params));
 }
 
 } // material_depth_tiles_renderer
@@ -177,32 +160,21 @@ void RenderMaterialDepthTiles(rg::RenderGraphBuilder& graphBuilder, rg::RGTextur
 using GrassBladeDefsLODs = lib::StaticArray<gfx::TypedBuffer<GrassBladeDef>, 2u>;
 
 BEGIN_SHADER_STRUCT(EmitGBufferConstants)
-	SHADER_STRUCT_FIELD(math::Vector2f,      tileSizeNDC)
-	SHADER_STRUCT_FIELD(math::Vector2f,      screenResolution)
-	SHADER_STRUCT_FIELD(math::Vector2f,      invScreenResolution)
-	SHADER_STRUCT_FIELD(Uint32,              groupsPerRow)
-	SHADER_STRUCT_FIELD(GrassBladeDefsLODs , grassBladeDefsLODs)
+	SHADER_STRUCT_FIELD(math::Vector2f,                      tileSizeNDC)
+	SHADER_STRUCT_FIELD(math::Vector2f,                      screenResolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,                      invScreenResolution)
+	SHADER_STRUCT_FIELD(Uint32,                              groupsPerRow)
+	SHADER_STRUCT_FIELD(GrassBladeDefsLODs ,                 grassBladeDefsLODs)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2u>,   materialDepthTilesTexture)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<GPUVisibleMeshlet>, visibleMeshlets)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,           depthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Uint32>,           visibilityTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(EmitGBufferDS, rg::RGDescriptorSetState<EmitGBufferDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<EmitGBufferConstants>),    u_emitGBufferConstants)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2u>),            u_materialDepthTilesTexture)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<GPUVisibleMeshlet>),     u_visibleMeshlets)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                    u_visibilityTexture)
-DS_END();
-
 
 BEGIN_SHADER_STRUCT(MaterialBatchConstants)
 	SHADER_STRUCT_FIELD(Real32, materialBatchDepth)
 	SHADER_STRUCT_FIELD(Uint32, materialBatchIdx)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(MaterialBatchDS, rg::RGDescriptorSetState<MaterialBatchDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<MaterialBatchConstants>), u_materialBatchConstants)
-DS_END();
 
 
 BEGIN_SHADER_STRUCT(EmitGBufferPermutation)
@@ -308,7 +280,7 @@ rdr::PipelineStateID CreateMaterialPipeline(const MaterialsPassDefinition& passD
 }
 
 
-lib::MTHandle<MaterialBatchDS> CreateMaterialBatchDS(rg::RenderGraphBuilder& graphBuilder, Uint32 materialBatchIdx)
+rdr::GPUPtr<MaterialBatchConstants> CreateMaterialBatchParams(rg::RenderGraphBuilder& graphBuilder, Uint32 materialBatchIdx)
 {
 	SPT_CHECK(materialBatchIdx < std::numeric_limits<Uint16>::max());
 
@@ -321,10 +293,7 @@ lib::MTHandle<MaterialBatchDS> CreateMaterialBatchDS(rg::RenderGraphBuilder& gra
 	materialBatchConstants.materialBatchDepth = materialBatchDepth;
 	materialBatchConstants.materialBatchIdx   = static_cast<Uint32>(materialBatchIdx);
 
-	lib::MTHandle<MaterialBatchDS> materialBatchDS = graphBuilder.CreateDescriptorSet<MaterialBatchDS>(RENDERER_RESOURCE_NAME("Material Batch DS"));
-	materialBatchDS->u_materialBatchConstants = materialBatchConstants;
-
-	return materialBatchDS;
+	return graphBuilder.CreateGPUData(materialBatchConstants);
 }
 
 
@@ -342,11 +311,11 @@ void AppendGeometryMaterialsRenderCommands(rg::RenderGraphBuilder& graphBuilder,
 
 	for (SizeType materialBatchIdx = 0u; materialBatchIdx < materialBatches.size(); ++materialBatchIdx)
 	{
-		const lib::MTHandle<MaterialBatchDS> materialBatchDS = CreateMaterialBatchDS(graphBuilder, static_cast<Uint32>(materialBatchIdx));
+		const rdr::GPUPtr<MaterialBatchConstants> materialBatchParams = CreateMaterialBatchParams(graphBuilder, static_cast<Uint32>(materialBatchIdx));
 
 		MaterialRenderCommand& renderCommand = renderCommands.commands.emplace_back();
-		renderCommand.pipelineState   = CreateMaterialPipeline<EmitGBufferPSO>(passDef, materialBatches[materialBatchIdx].permutation);
-		renderCommand.materialBatchDS = std::move(materialBatchDS);
+		renderCommand.pipelineState       = CreateMaterialPipeline<EmitGBufferPSO>(passDef, materialBatches[materialBatchIdx].permutation);
+		renderCommand.materialBatchParams = std::move(materialBatchParams);
 	}
 }
 
@@ -359,11 +328,11 @@ void AppendTerrainMaterialsRenderCommand(rg::RenderGraphBuilder& graphBuilder, c
 
 	const Uint32 batchIdx = static_cast<Uint32>(renderCommands.commands.size());
 
-	const lib::MTHandle<MaterialBatchDS> materialBatchDS = CreateMaterialBatchDS(graphBuilder, batchIdx);
+	const rdr::GPUPtr<MaterialBatchConstants> materialBatchParams = CreateMaterialBatchParams(graphBuilder, batchIdx);
 
 	MaterialRenderCommand& renderCommand = renderCommands.commands.emplace_back();
-	renderCommand.pipelineState   = CreateMaterialPipeline<EmitTerrainGBufferPSO>(passDef, materialPermutation);
-	renderCommand.materialBatchDS = std::move(materialBatchDS);
+	renderCommand.pipelineState       = CreateMaterialPipeline<EmitTerrainGBufferPSO>(passDef, materialPermutation);
+	renderCommand.materialBatchParams = std::move(materialBatchParams);
 }
 
 
@@ -375,11 +344,11 @@ void AppendGrassMaterialsRenderCommand(rg::RenderGraphBuilder& graphBuilder, con
 
 	const Uint32 batchIdx = static_cast<Uint32>(renderCommands.commands.size());
 
-	const lib::MTHandle<MaterialBatchDS> materialBatchDS = CreateMaterialBatchDS(graphBuilder, batchIdx);
+	const rdr::GPUPtr<MaterialBatchConstants> materialBatchParams = CreateMaterialBatchParams(graphBuilder, batchIdx);
 
 	MaterialRenderCommand& renderCommand = renderCommands.commands.emplace_back();
-	renderCommand.pipelineState   = CreateMaterialPipeline<EmitGrassGBufferPSO>(passDef, MaterialBatchNonePermutation{});
-	renderCommand.materialBatchDS = std::move(materialBatchDS);
+	renderCommand.pipelineState       = CreateMaterialPipeline<EmitGrassGBufferPSO>(passDef, MaterialBatchNonePermutation{});
+	renderCommand.materialBatchParams = std::move(materialBatchParams);
 }
 
 
@@ -391,11 +360,11 @@ void RecordMaterialRenderCommands(const lib::SharedRef<rdr::RenderContext>& rend
 	{
 		recorder.BindGraphicsPipeline(renderCommand.pipelineState);
 
-		recorder.BindDescriptorSetState(renderCommand.materialBatchDS);
+		recorder.BindShaderParams(MaterialBatchConstants::GetStructName(), renderCommand.materialBatchParams.GetDeviceAddress());
 
 		recorder.DrawMeshTasks(math::Vector3u(groupsPerMaterial, 1u, 1u));
 
-		recorder.UnbindDescriptorSetState(renderCommand.materialBatchDS);
+		recorder.UnbindShaderParams(MaterialBatchConstants::GetStructName());
 	}
 }
 
@@ -465,24 +434,21 @@ void RenderMaterials(rg::RenderGraphBuilder& graphBuilder, const MaterialsPassDe
 	}
 
 	EmitGBufferConstants emitGBufferConstants;
-	emitGBufferConstants.tileSizeNDC         = 2.f * math::Vector2f::Constant(static_cast<Real32>(matDepthTileSize)).cwiseQuotient(resolution.cast<Real32>());
-	emitGBufferConstants.screenResolution    = resolution.cast<Real32>();
-	emitGBufferConstants.invScreenResolution = math::Vector2f::Ones().cwiseQuotient(emitGBufferConstants.screenResolution);
-	emitGBufferConstants.groupsPerRow        = groupsPerMaterial2D.x();
-	emitGBufferConstants.grassBladeDefsLODs  = grassBladeDefsLODs;
-
-	lib::MTHandle<EmitGBufferDS> emitGBufferDS = graphBuilder.CreateDescriptorSet<EmitGBufferDS>(RENDERER_RESOURCE_NAME("Emit GBuffer DS"));
-	emitGBufferDS->u_emitGBufferConstants      = emitGBufferConstants;
-	emitGBufferDS->u_materialDepthTilesTexture = materialTiles;
-	emitGBufferDS->u_visibleMeshlets           = passDef.visibleMeshlets;
-	emitGBufferDS->u_depthTexture              = passDef.depthTexture;
-	emitGBufferDS->u_visibilityTexture         = passDef.visibilityTexture;
+	emitGBufferConstants.tileSizeNDC              = 2.f * math::Vector2f::Constant(static_cast<Real32>(matDepthTileSize)).cwiseQuotient(resolution.cast<Real32>());
+	emitGBufferConstants.screenResolution         = resolution.cast<Real32>();
+	emitGBufferConstants.invScreenResolution      = math::Vector2f::Ones().cwiseQuotient(emitGBufferConstants.screenResolution);
+	emitGBufferConstants.groupsPerRow             = groupsPerMaterial2D.x();
+	emitGBufferConstants.grassBladeDefsLODs       = grassBladeDefsLODs;
+	emitGBufferConstants.materialDepthTilesTexture = materialTiles;
+	emitGBufferConstants.visibleMeshlets           = passDef.visibleMeshlets;
+	emitGBufferConstants.depthTexture              = passDef.depthTexture;
+	emitGBufferConstants.visibilityTexture         = passDef.visibilityTexture;
 
 	rg::RGRenderPassDefinition renderPassDef = CreateEmitGBufferRenderPassDef(viewSpec, passDef, materialDepth);
 
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Materials Pass"),
 							renderPassDef,
-							rg::BindDescriptorSets(emitGBufferDS),
+							rg::ShaderParams(emitGBufferConstants),
 							[resolution, groupsPerMaterial, commands = std::move(renderCommands)](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
 								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), resolution.cast<Real32>()), 0.f, 1.f);

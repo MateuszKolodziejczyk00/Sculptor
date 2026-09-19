@@ -1,6 +1,6 @@
 #ifndef GPU_SCENE_HLSLI
 #define GPU_SCENE_HLSLI
-#ifdef DS_RenderSceneDS
+#ifdef PARAM_RenderSceneConstants
 
 #include "RayTracing/RTScene.hlsli"
 #include "SceneRendering/UGB.hlsli"
@@ -8,7 +8,7 @@
 [[shader_struct(GPUSceneData)]]
 
 
-struct GPUSceneInterface : GPUSceneData
+extension GPUSceneData
 {
 	GPUPtr<RenderEntityGPUData> GetInstancePtr(uint instanceIdx)
 	{
@@ -21,10 +21,15 @@ struct GPUSceneInterface : GPUSceneData
 	}
 };
 
+
+typealias GPUSceneInterface = GPUSceneData;
+
 GPUSceneInterface GPUScene()
 {
-	return GPUSceneInterface(u_renderSceneConstants.gpuScene);
+	return SCENE->gpuScene;
 }
-#endif // DS_RenderSceneDS
+
+SPT_NAMED_DESCRIPTOR(RenderEntitiesArray, SCENE->gpuScene.renderEntitiesArray.GetIndex())
+#endif // PARAM_RenderSceneConstants
 
 #endif // GPU_SCENE_HLSLI

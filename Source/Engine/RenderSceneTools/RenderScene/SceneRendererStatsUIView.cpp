@@ -33,7 +33,10 @@ void SceneRendererStatsUIView::DrawUI()
 	ImGui::Begin(m_statsPanelName.GetData());
 
 	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
-	sceneRendererAPI->DrawRendererStatsUI(context.GetUIContext().GetHandle());
+	if (sceneRendererAPI)
+	{
+		sceneRendererAPI->DrawRendererStatsUI(context.GetUIContext().GetHandle());
+	}
 
 	ImGui::End();
 }

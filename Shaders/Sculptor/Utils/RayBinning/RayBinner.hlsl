@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RayBinningDS, 0)]]
+[[shader_params(RayBinningConstants, PARAMS_RAY_BINNING)]]
 
 #include "Utils/RayBinning/RayBinning.hlsli"
 
@@ -44,9 +44,9 @@ void RayBinningCS(CS_INPUT input)
 
 	GroupMemoryBarrierWithGroupSync();
 
-	if(all(input.globalID.xy < u_constants.resolution))
+	if(all(input.globalID.xy < PARAMS_RAY_BINNING->resolution))
 	{
-		const float2 rayDir = u_rayDirections.Load(input.globalID);
+		const float2 rayDir = PARAMS_RAY_BINNING->rayDirections.Load(input.globalID);
 
 		binIdx = ComputeBinIdxForRay(rayDir);
 		InterlockedAdd(gs_bins[binIdx], 1, OUT idxInBin);
@@ -69,7 +69,7 @@ void RayBinningCS(CS_INPUT input)
 
 	if(idxInBin >= 0)
 	{
-		const uint tileSizeX = min(u_constants.resolution.x - input.groupID.x * RAY_BINNING_TILE_SIZE, RAY_BINNING_TILE_SIZE);
+		const uint tileSizeX = min(PARAMS_RAY_BINNING->resolution.x - input.groupID.x * RAY_BINNING_TILE_SIZE, RAY_BINNING_TILE_SIZE);
 
 		const uint outputPixelIdx     = gs_bins[binIdx] + idxInBin;
 
@@ -84,6 +84,6 @@ void RayBinningCS(CS_INPUT input)
 
 		const uint2 outputPixel = input.groupID.xy * RAY_BINNING_TILE_SIZE + outputPixelInTile;
 
-		u_rwReorderingsTexture[outputPixel] = packedReorderedIdx;
+		PARAMS_RAY_BINNING->rwReorderingsTexture[outputPixel] = packedReorderedIdx;
 	}
 }

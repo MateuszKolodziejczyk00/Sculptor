@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[shader_params(InitIndirectDispatchMeshCommand, u_constants)]]
+[[shader_params(InitIndirectDispatchMeshCommand, PARAMS_INIT_INDIRECT_DISPATCH_MESH_COMMAND)]]
 
 
 struct CS_INPUT
@@ -13,10 +13,10 @@ struct CS_INPUT
 void InitIndirectDispatchMeshCommandCS(CS_INPUT input)
 {
 	IndirectDispatchCommand dispatchCommand;
-	dispatchCommand.threadGroupsX = (u_constants.instancesCountBuffer.Load(0u) + u_constants.instancesPerGroup - 1u) / u_constants.instancesPerGroup;
+	dispatchCommand.threadGroupsX = (PARAMS_INIT_INDIRECT_DISPATCH_MESH_COMMAND->instancesCountBuffer.Load(0u) + PARAMS_INIT_INDIRECT_DISPATCH_MESH_COMMAND->instancesPerGroup - 1u) / PARAMS_INIT_INDIRECT_DISPATCH_MESH_COMMAND->instancesPerGroup;
 	dispatchCommand.threadGroupsY = 1u;
 	dispatchCommand.threadGroupsZ = 1u;
 	dispatchCommand.padding       = 0u;
 
-	u_constants.outDrawCommand.Store(0u, dispatchCommand);
+	PARAMS_INIT_INDIRECT_DISPATCH_MESH_COMMAND->outDrawCommand.Store(0u, dispatchCommand);
 }

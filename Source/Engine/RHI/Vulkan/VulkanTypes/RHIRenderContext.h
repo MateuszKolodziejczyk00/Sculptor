@@ -5,7 +5,6 @@
 #include "RHICore/RHIRenderContextTypes.h"
 #include "RHICore/RHIDescriptorTypes.h"
 #include "Vulkan/Debug/DebugUtils.h"
-#include "RHIDescriptorSetLayout.h"
 
 
 namespace spt::rhi

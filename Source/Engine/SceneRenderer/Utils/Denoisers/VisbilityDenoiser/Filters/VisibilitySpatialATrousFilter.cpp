@@ -1,10 +1,5 @@
 #include "VisibilitySpatialATrousFilter.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "RGDescriptorSetState.h"
 #include "ResourcesManager.h"
 #include "RenderGraphBuilder.h"
 #include "View/RenderView.h"
@@ -14,18 +9,13 @@ namespace spt::rsc::visibility_denoiser::spatial
 {
 
 BEGIN_SHADER_STRUCT(SpatialATrousFilteringParams)
-	SHADER_STRUCT_FIELD(Int32, samplesOffset)
+	SHADER_STRUCT_FIELD(Int32,                             samplesOffset)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         inputTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         outputTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         varianceTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         depthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, normalsTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(SpatialATrousFilterDS, rg::RGDescriptorSetState<SpatialATrousFilterDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                         u_inputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),                  u_outputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),                  u_varianceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                         u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                 u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SpatialATrousFilteringParams>), u_params)
-DS_END();
 
 
 static rdr::PipelineStateID CreateSpatialATrousFilterPipeline()
@@ -44,20 +34,17 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SpatialATrous
 	static const rdr::PipelineStateID pipeline = CreateSpatialATrousFilterPipeline();
 
 	SpatialATrousFilteringParams dispatchParams;
-	dispatchParams.samplesOffset = static_cast<Int32>(1u << iterationIdx);
-
-	lib::MTHandle<SpatialATrousFilterDS> ds = graphBuilder.CreateDescriptorSet<SpatialATrousFilterDS>(RENDERER_RESOURCE_NAME("Spatial A-Trous Filter DS"));
-	ds->u_inputTexture    = input;
-	ds->u_outputTexture   = output;
-	ds->u_varianceTexture = params.varianceTexture;
-	ds->u_depthTexture    = params.depthTexture;
-	ds->u_normalsTexture  = params.normalsTexture;
-	ds->u_params          = dispatchParams;
+	dispatchParams.samplesOffset   = static_cast<Int32>(1u << iterationIdx);
+	dispatchParams.inputTexture    = input;
+	dispatchParams.outputTexture   = output;
+	dispatchParams.varianceTexture = params.varianceTexture;
+	dispatchParams.depthTexture    = params.depthTexture;
+	dispatchParams.normalsTexture  = params.normalsTexture;
 	
 	graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("{}: Denoise Spatial A-Trous Filter (Iteration {})", params.name.Get().ToString(), iterationIdx)),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector3u(8u, 8u, 1u)),
-						  rg::BindDescriptorSets(std::move(ds)));
+						  rg::ShaderParams(dispatchParams));
 }
 
 } // spt::rsc::visibility_denoiser::spatial

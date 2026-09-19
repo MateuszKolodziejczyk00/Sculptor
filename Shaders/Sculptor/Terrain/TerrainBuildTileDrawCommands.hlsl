@@ -1,10 +1,11 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderSceneDS)]]
-[[descriptor_set(RenderViewDS)]]
-[[shader_params(TerrainBuildTileDrawCommandsConstants, u_constants)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(TerrainBuildTileDrawCommandsConstants, CONSTS)]]
 
 #include "Terrain/SceneTerrain.hlsli"
+#include "SceneRendering/GPUScene.hlsli"
 #include "Utils/Culling.hlsli"
 
 
@@ -31,13 +32,13 @@ void BuildTerrainTileDrawCommandsCS(CS_INPUT input)
 	const float3 AABBMin = float3(tile.tileCoordX * terrain.tileSizeMeters, tile.tileCoordY * terrain.tileSizeMeters, tileHeightMinMax.x);
 	const float3 AABBMax = float3(AABBMin.x + terrain.tileSizeMeters, AABBMin.y + terrain.tileSizeMeters, tileHeightMinMax.y);
 
-	const bool isTileVisible = IsAABBInFrustum(u_cullingData.cullingPlanes, AABBMin, AABBMax);
+	const bool isTileVisible = IsAABBInFrustum(VIEW->cullingData.cullingPlanes, AABBMin, AABBMax);
 
 	if (isTileVisible)
 	{
-		const uint outputIdx = u_constants.rwDrawCommandsCount.AtomicAdd(0u, 1u);
+		const uint outputIdx = CONSTS->rwDrawCommandsCount.AtomicAdd(0u, 1u);
 
-		const uint tileLOD = clamp(terrain.GetTileLOD(tileIdx) + u_constants.lodBias, 0, TERRAIN_TILE_MAX_LOD);;
+		const uint tileLOD = clamp(terrain.GetTileLOD(tileIdx) + CONSTS->lodBias, 0, TERRAIN_TILE_MAX_LOD);;
 		const uint meshletsRes = tileLOD != IDX_NONE_8 ? (TERRAIN_MESHLETS_PER_TILE << (TERRAIN_TILE_MAX_LOD - tileLOD)) : 0u;
 
 		TerrainDrawMeshTaskCommand drawCommand;
@@ -46,6 +47,6 @@ void BuildTerrainTileDrawCommandsCS(CS_INPUT input)
 		drawCommand.dispatchGroupsZ = 1u;
 		drawCommand.drawCommand     = PackTileDrawCommand(tileIdx, tileLOD);
 
-		u_constants.rwDrawCommands.Store(outputIdx, drawCommand);
+		CONSTS->rwDrawCommands.Store(outputIdx, drawCommand);
 	}
 }

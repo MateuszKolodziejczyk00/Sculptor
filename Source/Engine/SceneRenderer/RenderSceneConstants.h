@@ -9,7 +9,6 @@
 #include "SceneRenderSystems/WorldShadowCache/WorldShadowCacheTypes.h"
 #include "SceneRenderSystems/Atmosphere/AtmosphereTypes.h"
 #include "SceneRenderSystems/Terrain/TerrainTypes.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 
 
 namespace spt::rsc
@@ -44,10 +43,5 @@ BEGIN_SHADER_STRUCT(RenderSceneConstants)
 	SHADER_STRUCT_FIELD(SceneAtmosphereData, atmosphere)
 	SHADER_STRUCT_FIELD(TerrainSceneData,    terrain)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(RenderSceneDS, rg::RGDescriptorSetState<RenderSceneDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<RenderSceneConstants>), u_renderSceneConstants)
-DS_END();
 
 } // spt::rsc

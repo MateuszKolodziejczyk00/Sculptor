@@ -1,10 +1,6 @@
 #include "DownsampleGeometryTexturesRenderStage.h"
 #include "RenderGraphBuilder.h"
-#include "RGDescriptorSetState.h"
 #include "Pipelines/PipelineState.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
 #include "ResourcesManager.h"
 #include "SceneRenderer/Utils/LinearizeDepth.h"
 
@@ -16,29 +12,23 @@ REGISTER_RENDER_STAGE(ERenderStage::DownsampleGeometryTextures, DownsampleGeomet
 
 
 BEGIN_SHADER_STRUCT(DownsampleGeometryTexturesConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, inputRes)
-	SHADER_STRUCT_FIELD(math::Vector2f, inputPixelSize)
-	SHADER_STRUCT_FIELD(math::Vector2u, outputRes)
-	SHADER_STRUCT_FIELD(math::Vector2f, outputPixelSize)
-	SHADER_STRUCT_FIELD(Bool,           downsampleRoughness)
-	SHADER_STRUCT_FIELD(Bool,           downsampleBaseColor)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    inputRes)
+	SHADER_STRUCT_FIELD(math::Vector2f,                    inputPixelSize)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    outputRes)
+	SHADER_STRUCT_FIELD(math::Vector2f,                    outputPixelSize)
+	SHADER_STRUCT_FIELD(Bool,                              downsampleRoughness)
+	SHADER_STRUCT_FIELD(Bool,                              downsampleBaseColor)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         depthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, motionTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, tangentFrameTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, baseColorMetallicTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         roughnessTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         depthTextureHalfRes)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>, motionTextureHalfRes)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>, normalsTextureHalfRes)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, baseColorTextureHalfRes)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         roughnessTextureHalfRes)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(DownsampleGeometryTexturesDS, rg::RGDescriptorSetState<DownsampleGeometryTexturesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_motionTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_tangentFrameTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_baseColorMetallicTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_depthTextureHalfRes)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_motionTextureHalfRes)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_normalsTextureHalfRes)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),                     u_baseColorTextureHalfRes)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),                             u_roughnessTextureHalfRes)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DownsampleGeometryTexturesConstants>),     u_constants)
-DS_END();
 
 
 static rdr::PipelineStateID CompileDownsampleGeometryTexturesPipeline()
@@ -106,26 +96,23 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 	shaderConstants.outputPixelSize     = halfRes.cast<Real32>().cwiseInverse();
 	shaderConstants.downsampleRoughness = resourcesUsageInfo.useHalfResRoughnessWithHistory;
 	shaderConstants.downsampleBaseColor = resourcesUsageInfo.useHalfResBaseColorWithHistory;
-
-	lib::MTHandle<DownsampleGeometryTexturesDS> ds = graphBuilder.CreateDescriptorSet<DownsampleGeometryTexturesDS>(RENDERER_RESOURCE_NAME("Downsample Geometry Textures DS"));
-	ds->u_depthTexture                = viewContext.depth;
-	ds->u_motionTexture               = viewContext.motion;
-	ds->u_tangentFrameTexture         = viewContext.gBuffer[GBuffer::Texture::TangentFrame];
-	ds->u_roughnessTexture            = viewContext.gBuffer[GBuffer::Texture::Roughness];
-	ds->u_baseColorMetallicTexture    = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
-	ds->u_depthTextureHalfRes         = viewContext.depthHalfRes;
-	ds->u_motionTextureHalfRes        = viewContext.motionHalfRes;
-	ds->u_normalsTextureHalfRes       = viewContext.normalsHalfRes;
-	ds->u_constants                   = shaderConstants;
+	shaderConstants.depthTexture                = viewContext.depth;
+	shaderConstants.motionTexture               = viewContext.motion;
+	shaderConstants.tangentFrameTexture         = viewContext.gBuffer[GBuffer::Texture::TangentFrame];
+	shaderConstants.roughnessTexture            = viewContext.gBuffer[GBuffer::Texture::Roughness];
+	shaderConstants.baseColorMetallicTexture    = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
+	shaderConstants.depthTextureHalfRes         = viewContext.depthHalfRes;
+	shaderConstants.motionTextureHalfRes        = viewContext.motionHalfRes;
+	shaderConstants.normalsTextureHalfRes       = viewContext.normalsHalfRes;
 
 	if (resourcesUsageInfo.useHalfResRoughnessWithHistory)
 	{
-		ds->u_roughnessTextureHalfRes = viewContext.roughnessHalfRes;
+		shaderConstants.roughnessTextureHalfRes = viewContext.roughnessHalfRes;
 	}
 
 	if (resourcesUsageInfo.useHalfResBaseColorWithHistory)
 	{
-		ds->u_baseColorTextureHalfRes = viewContext.baseColorHalfRes;
+		shaderConstants.baseColorTextureHalfRes = viewContext.baseColorHalfRes;
 	}
 
 	static const rdr::PipelineStateID pipeline = CompileDownsampleGeometryTexturesPipeline();
@@ -133,7 +120,7 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Downsample Geometry Textures"),
 						  pipeline,
 						  math::Utils::DivideCeil(halfRes, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds)));
+						  rg::ShaderParams(shaderConstants));
 
 	if (resourcesUsageInfo.useLinearDepthHalfRes)
 	{

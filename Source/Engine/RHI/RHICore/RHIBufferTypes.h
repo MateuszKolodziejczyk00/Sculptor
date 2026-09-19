@@ -22,12 +22,10 @@ enum class EBufferUsage : Flags32
 	AccelerationStructureStorage	= BIT(10),
 	ASBuildInputReadOnly			= BIT(11),
 	ShaderBindingTable				= BIT(12),
-	SamplerDescriptorBuffer			= BIT(13),
-	ResourceDescriptorBuffer		= BIT(14),
+	SamplerDescriptorHeap			= BIT(13),
+	ResourceDescriptorHeap			= BIT(14),
 
 	LAST,
-
-	DescriptorBuffer = SamplerDescriptorBuffer | ResourceDescriptorBuffer,
 };
 
 

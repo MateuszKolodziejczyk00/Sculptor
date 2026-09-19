@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(BRDFIntegrationLUTGenerationDS, 0)]]
+[[shader_params(BRDFIntegrationLUTGenerationConstants, PARAMS_B_R_D_F_INTEGRATION_L_U_T_GENERATION)]]
 
 #include "Shading/Shading.hlsli"
 
@@ -59,13 +59,12 @@ void GenerateBRDFIntegrationLUTCS(CS_INPUT input)
 {
     const uint2 pixel = input.globalID.xy;
     
-    uint2 outputRes;
-    u_lut.GetDimensions(outputRes.x, outputRes.y);
+    uint2 outputRes = PARAMS_B_R_D_F_INTEGRATION_L_U_T_GENERATION->lut.GetResolution();
 
     if(pixel.x < outputRes.x && pixel.y < outputRes.y)
     {
         const float2 uv = (pixel + 0.5f) / outputRes;
 
-        u_lut[pixel] = IntegrateBRDF(uv.x, uv.y);
+        PARAMS_B_R_D_F_INTEGRATION_L_U_T_GENERATION->lut[pixel] = IntegrateBRDF(uv.x, uv.y);
     }
 }

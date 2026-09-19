@@ -26,8 +26,7 @@ uint2 ReorderWaveToQuads(in uint threadIdx)
 }
 
 
-template<typename TDataType>
-TDataType QuadSwizzle(in TDataType value, in uint swizzleQuadBaseID, in uint quadLocalID, in uint4 swizzle)
+TDataType QuadSwizzle<TDataType : __BuiltinType>(in TDataType value, in uint swizzleQuadBaseID, in uint quadLocalID, in uint4 swizzle)
 {
 	return WaveReadLaneAt(value, swizzleQuadBaseID + swizzle[quadLocalID]);
 }

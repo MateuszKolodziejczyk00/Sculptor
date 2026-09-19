@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(FilterMSMDS, 0)]]
+[[shader_params(FilterMSMParams, PARAMS_FILTER_M_S_M)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 
@@ -58,8 +58,7 @@ float4 GetOptimizedMoments(in float depth)
 [numthreads(GROUP_SIZE_X, GROUP_SIZE_Y, 1)]
 void FilterMSMShadowMapCS(CS_INPUT input)
 {
-    int2 outputRes;
-    u_output.GetDimensions(outputRes.x, outputRes.y);
+    int2 outputRes = PARAMS_FILTER_M_S_M->output.GetResolution();
 
     const float2 pixelSize = rcp(float2(outputRes));
 
@@ -78,21 +77,21 @@ void FilterMSMShadowMapCS(CS_INPUT input)
 
  #if IS_HORIZONTAL
 
-        float depth = u_input.SampleLevel(u_inputSampler, uv, 0).x;
+        float depth = PARAMS_FILTER_M_S_M->input.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0).x;
 
-        if(u_params.linearizeDepth)
+        if(PARAMS_FILTER_M_S_M->linearizeDepth)
         {
             float p20, p23;
-            ComputeShadowProjectionParams(u_params.nearPlane, u_params.farPlane, p20, p23);
+            ComputeShadowProjectionParams(PARAMS_FILTER_M_S_M->nearPlane, PARAMS_FILTER_M_S_M->farPlane, p20, p23);
 
-            depth = ComputeShadowLinearDepth(depth, p20, p23) / u_params.farPlane;
+            depth = ComputeShadowLinearDepth(depth, p20, p23) / PARAMS_FILTER_M_S_M->farPlane;
         }
 
         g_grupInput[i] = GetOptimizedMoments(depth);
 
 #else // IS_HORIZONTAL
 
-        g_grupInput[i] = u_input.SampleLevel(u_inputSampler, uv, 0);
+        g_grupInput[i] = PARAMS_FILTER_M_S_M->input.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0);
 
 #endif // IS_HORIZONTAL
     }
@@ -110,6 +109,6 @@ void FilterMSMShadowMapCS(CS_INPUT input)
             blurredMoments += g_grupInput[localIdx + i] * kernel[i];
         }
 
-        u_output[pixel] = blurredMoments;
+        PARAMS_FILTER_M_S_M->output[pixel] = blurredMoments;
     }
 }

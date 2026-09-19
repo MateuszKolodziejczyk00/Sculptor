@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(LuminanceHistogramDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
+[[shader_params(LuminanceHistogramConstants, PARAMS_LUMINANCE_HISTOGRAM)]]
+[[shader_params(GPURenderView, VIEW)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 
@@ -46,12 +46,12 @@ void LuminanceHistogramCS(CS_INPUT input)
     
     const uint2 pixel = input.globalID.xy * 2u;
 
-    if(pixel.x < u_exposureSettings.textureSize.x && pixel.y < u_exposureSettings.textureSize.y)
+    if(pixel.x < PARAMS_LUMINANCE_HISTOGRAM->exposureSettings->textureSize.x && pixel.y < PARAMS_LUMINANCE_HISTOGRAM->exposureSettings->textureSize.y)
     {
-        const float2 uv = pixel * u_exposureSettings.inputPixelSize + u_exposureSettings.inputPixelSize;
-        const float4 rChannel4 = u_linearColorTexture.GatherRed(u_sampler, uv, 0);
-        const float4 gChannel4 = u_linearColorTexture.GatherGreen(u_sampler, uv, 0);
-        const float4 bChannel4 = u_linearColorTexture.GatherBlue(u_sampler, uv, 0);
+        const float2 uv = pixel * PARAMS_LUMINANCE_HISTOGRAM->exposureSettings->inputPixelSize + PARAMS_LUMINANCE_HISTOGRAM->exposureSettings->inputPixelSize;
+        const float4 rChannel4 = PARAMS_LUMINANCE_HISTOGRAM->linearColorTexture.GatherRed(BindlessSamplers::NearestClampEdge(), uv);
+        const float4 gChannel4 = PARAMS_LUMINANCE_HISTOGRAM->linearColorTexture.GatherGreen(BindlessSamplers::NearestClampEdge(), uv);
+        const float4 bChannel4 = PARAMS_LUMINANCE_HISTOGRAM->linearColorTexture.GatherBlue(BindlessSamplers::NearestClampEdge(), uv);
 
         const float rcpExposure = rcp(GetViewExposure());
 
@@ -60,10 +60,10 @@ void LuminanceHistogramCS(CS_INPUT input)
         const float lum2 = Luminance(float3(rChannel4.z, gChannel4.z, bChannel4.z)) * rcpExposure;
         const float lum3 = Luminance(float3(rChannel4.w, gChannel4.w, bChannel4.w)) * rcpExposure;
 
-        const uint binIdx0 = LuminanceToBinIdx(lum0, u_exposureSettings.minLogLuminance, u_exposureSettings.inverseLogLuminanceRange);
-        const uint binIdx1 = LuminanceToBinIdx(lum1, u_exposureSettings.minLogLuminance, u_exposureSettings.inverseLogLuminanceRange);
-        const uint binIdx2 = LuminanceToBinIdx(lum2, u_exposureSettings.minLogLuminance, u_exposureSettings.inverseLogLuminanceRange);
-        const uint binIdx3 = LuminanceToBinIdx(lum3, u_exposureSettings.minLogLuminance, u_exposureSettings.inverseLogLuminanceRange);
+        const uint binIdx0 = LuminanceToBinIdx(lum0, PARAMS_LUMINANCE_HISTOGRAM->exposureSettings->minLogLuminance, PARAMS_LUMINANCE_HISTOGRAM->exposureSettings->inverseLogLuminanceRange);
+        const uint binIdx1 = LuminanceToBinIdx(lum1, PARAMS_LUMINANCE_HISTOGRAM->exposureSettings->minLogLuminance, PARAMS_LUMINANCE_HISTOGRAM->exposureSettings->inverseLogLuminanceRange);
+        const uint binIdx2 = LuminanceToBinIdx(lum2, PARAMS_LUMINANCE_HISTOGRAM->exposureSettings->minLogLuminance, PARAMS_LUMINANCE_HISTOGRAM->exposureSettings->inverseLogLuminanceRange);
+        const uint binIdx3 = LuminanceToBinIdx(lum3, PARAMS_LUMINANCE_HISTOGRAM->exposureSettings->minLogLuminance, PARAMS_LUMINANCE_HISTOGRAM->exposureSettings->inverseLogLuminanceRange);
 
         InterlockedAdd(groupHistogramBins[binIdx0], 1);
         InterlockedAdd(groupHistogramBins[binIdx1], 1);
@@ -74,5 +74,5 @@ void LuminanceHistogramCS(CS_INPUT input)
 
     GroupMemoryBarrierWithGroupSync();
 
-    InterlockedAdd(u_luminanceHistogram[histogramLocalBinIdx], groupHistogramBins[histogramLocalBinIdx]);
+	PARAMS_LUMINANCE_HISTOGRAM->luminanceHistogram.AtomicAdd(histogramLocalBinIdx, groupHistogramBins[histogramLocalBinIdx]);
 }

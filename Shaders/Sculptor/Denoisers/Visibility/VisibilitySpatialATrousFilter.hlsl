@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(SpatialATrousFilterDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
+[[shader_params(SpatialATrousFilteringParams, PARAMS_SPATIAL_A_TROUS_FILTER)]]
+[[shader_params(GPURenderView, VIEW)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
@@ -43,8 +43,7 @@ void CacheLocalSamples(in uint2 groupID, in uint2 localID)
 {
 	const int2 groupBasePixel = groupID * 8 - int2(8, 8);
 
-	uint2 outputRes;
-	u_inputTexture.GetDimensions(outputRes.x, outputRes.y);
+	uint2 outputRes = PARAMS_SPATIAL_A_TROUS_FILTER->inputTexture.GetResolution();
 
 	for(int i = 0; i <= 9; ++i)
 	{
@@ -56,9 +55,9 @@ void CacheLocalSamples(in uint2 groupID, in uint2 localID)
 		const int3 samplePixel = int3(clamp(groupBasePixel + localPixel, 0, outputRes - 1), 0);
 
 		CachedSample sample;
-		sample.depth  = u_depthTexture.Load(samplePixel).x;
-		sample.normal = half3(OctahedronDecodeNormal(u_normalsTexture.Load(samplePixel)));
-		sample.value  = half(u_inputTexture.Load(samplePixel));
+		sample.depth  = PARAMS_SPATIAL_A_TROUS_FILTER->depthTexture.Load(samplePixel).x;
+		sample.normal = half3(OctahedronDecodeNormal(PARAMS_SPATIAL_A_TROUS_FILTER->normalsTexture.Load(samplePixel)));
+		sample.value  = half(PARAMS_SPATIAL_A_TROUS_FILTER->inputTexture.Load(samplePixel));
 
 		cachedSamples[localPixel.x][localPixel.y] = sample;
 	}
@@ -68,8 +67,7 @@ void CacheLocalSamples(in uint2 groupID, in uint2 localID)
 [numthreads(8, 8, 1)]
 void SpatialATrousFilterCS(CS_INPUT input)
 {
-	uint2 outputRes;
-	u_inputTexture.GetDimensions(outputRes.x, outputRes.y);
+	uint2 outputRes = PARAMS_SPATIAL_A_TROUS_FILTER->inputTexture.GetResolution();
 
 	const uint2 pixel = min(input.globalID.xy, outputRes - 1);
 	
@@ -77,7 +75,7 @@ void SpatialATrousFilterCS(CS_INPUT input)
 
 	GroupMemoryBarrierWithGroupSync();
 
-	const float variance = u_varianceTexture[pixel];
+	const float variance = PARAMS_SPATIAL_A_TROUS_FILTER->varianceTexture[pixel];
 	const float stdDev = sqrt(variance);
 
 	const bool needsProcessing = stdDev > 0.001f;
@@ -91,11 +89,11 @@ void SpatialATrousFilterCS(CS_INPUT input)
 		CacheLocalSamples(input.groupID.xy, input.localID.xy);
 	}
 
-	const float visibilityCenter = u_inputTexture[pixel];
+	const float visibilityCenter = PARAMS_SPATIAL_A_TROUS_FILTER->inputTexture[pixel];
 
 	if(!needsProcessing)
 	{
-		u_outputTexture[pixel] = visibilityCenter;
+		PARAMS_SPATIAL_A_TROUS_FILTER->outputTexture[pixel] = visibilityCenter;
 		return;
 	}
 
@@ -107,7 +105,7 @@ void SpatialATrousFilterCS(CS_INPUT input)
 	const CachedSample centerSample = cachedSamples[8 + input.localID.x][8 + input.localID.y];
 
 	const float3 ndc = float3(uv * 2.f - 1.f, centerSample.depth);
-	const float3 centerWS = NDCToWorldSpaceNoJitter(ndc, u_sceneView);
+	const float3 centerWS = NDCToWorldSpaceNoJitter(ndc, VIEW->sceneView);
 
 	const float kernel[3] = { 3.f / 8.f, 1.f / 4.f, 1.f / 16.f };
 
@@ -122,7 +120,7 @@ void SpatialATrousFilterCS(CS_INPUT input)
 			const int k = max(abs(x), abs(y));
 			float w = kernel[k];
 
-			const int2 offset = int2(x, y) * u_params.samplesOffset;
+			const int2 offset = int2(x, y) * PARAMS_SPATIAL_A_TROUS_FILTER->samplesOffset;
 
 			const int2 localSampleID = input.localID.xy + offset + 8;
 			const bool isValidSample = all(localSampleID >= 0) && all(localSampleID < 24);
@@ -132,7 +130,7 @@ void SpatialATrousFilterCS(CS_INPUT input)
 			const float2 sampleUV = saturate(uv + offset * pixelSize);
 
 			const float3 sampleNDC = float3(sampleUV * 2.f - 1.f, sample.depth);
-			const float3 sampleWS = NDCToWorldSpaceNoJitter(sampleNDC, u_sceneView);
+			const float3 sampleWS = NDCToWorldSpaceNoJitter(sampleNDC, VIEW->sceneView);
 
 			const float wn = NormalWeight(centerSample.normal, sample.normal);
 			const float wl = WorldLocationWeight(centerWS, centerSample.normal, sampleWS);
@@ -152,8 +150,8 @@ void SpatialATrousFilterCS(CS_INPUT input)
 	weightSum += 0.001f;
 
 	const float mean = valueSum / weightSum;
-	u_outputTexture[pixel] = mean;
+	PARAMS_SPATIAL_A_TROUS_FILTER->outputTexture[pixel] = mean;
 		
 	const float newVariance = abs(valueSqSum / weightSum - Pow2(mean));
-	u_varianceTexture[pixel] = newVariance;
+	PARAMS_SPATIAL_A_TROUS_FILTER->varianceTexture[pixel] = newVariance;
 }

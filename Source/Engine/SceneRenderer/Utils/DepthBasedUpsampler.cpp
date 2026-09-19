@@ -1,11 +1,6 @@
 #include "DepthBasedUpsampler.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "RGDescriptorSetState.h"
 #include "ResourcesManager.h"
 #include "RenderGraphBuilder.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
 #include "MathUtils.h"
 #include "View/RenderView.h"
 
@@ -17,19 +12,13 @@ namespace upsampler
 {
 
 BEGIN_SHADER_STRUCT(DepthBasedUpsampleConstants)
-	SHADER_STRUCT_FIELD(Uint32, fireflyFilteringEnabled)
+	SHADER_STRUCT_FIELD(Uint32,                            fireflyFilteringEnabled)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         depthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         depthTextureHalfRes)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, normalsTextureHalfRes)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, inputTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, outputTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(DepthBasedUpsampleDS, rg::RGDescriptorSetState<DepthBasedUpsampleDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTextureHalfRes)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_normalsTextureHalfRes)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_inputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_outputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DepthBasedUpsampleConstants>),             u_constants)
-DS_END()
 
 
 static rdr::PipelineStateID CompileDepthBasedUpsamplePipeline()
@@ -46,7 +35,6 @@ rg::RGTextureViewHandle DepthBasedUpsample(rg::RenderGraphBuilder& graphBuilder,
 	SPT_CHECK(params.depth.IsValid());
 	SPT_CHECK(params.depthHalfRes.IsValid());
 	SPT_CHECK(params.normalsHalfRes.IsValid());
-	SPT_CHECK(params.renderViewDS.IsValid());
 	SPT_CHECK(texture.IsValid());
 
 	const math::Vector2u inputResolution = params.depthHalfRes->GetResolution2D();
@@ -61,21 +49,18 @@ rg::RGTextureViewHandle DepthBasedUpsample(rg::RenderGraphBuilder& graphBuilder,
 
 	DepthBasedUpsampleConstants constants;
 	constants.fireflyFilteringEnabled = params.fireflyFilteringEnabled ? 1u : 0u;
-
-	lib::MTHandle<DepthBasedUpsampleDS> descriptorSet = graphBuilder.CreateDescriptorSet<DepthBasedUpsampleDS>(RENDERER_RESOURCE_NAME("DepthBasedUpsampleDS"));
-	descriptorSet->u_depthTexture          = params.depth;
-	descriptorSet->u_depthTextureHalfRes   = params.depthHalfRes;
-	descriptorSet->u_normalsTextureHalfRes = params.normalsHalfRes;
-	descriptorSet->u_inputTexture          = texture;
-	descriptorSet->u_outputTexture         = outputTexture;
-	descriptorSet->u_constants             = constants;
+	constants.depthTexture            = params.depth;
+	constants.depthTextureHalfRes     = params.depthHalfRes;
+	constants.normalsTextureHalfRes   = params.normalsHalfRes;
+	constants.inputTexture            = texture;
+	constants.outputTexture           = outputTexture;
 
 	static const rdr::PipelineStateID pipeline = CompileDepthBasedUpsamplePipeline();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("Depth Based Upsample: {}", params.debugName.AsString())),
 						  pipeline,
 						  math::Utils::DivideCeil(outputResolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(descriptorSet), params.renderViewDS));
+						  rg::ShaderParams(constants));
 	
 	return outputTexture;
 }

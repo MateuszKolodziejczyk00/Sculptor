@@ -1,10 +1,10 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderVolumetricFogDS)]]
-[[descriptor_set(RenderViewDS)]]
-[[descriptor_set(RenderSceneDS)]]
-[[descriptor_set(ViewShadingInputDS)]]
-[[descriptor_set(ComputeDirectionalLightShadowTermDS)]]
+[[shader_params(VolumetricFogConstants, PARAMS_RENDER_VOLUMETRIC_FOG)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
+[[shader_params(ViewShadingParams, PARAMS_VIEW_SHADING_INPUT)]]
+[[shader_params(VolumetricFogShadowTermConstants, PARAMS_COMPUTE_DIRECTIONAL_LIGHT_SHADOW_TERM)]]
 
 
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
@@ -22,18 +22,18 @@ float ComputeShadowTerm(in float3 worldLocation, in float3 toView, in float3 fro
 {
 	// Directional Lights
 
-	SPT_CHECK_MSG(u_lightsData.directionalLightsNum <= 1u, L"Volumetric Fog supports shadow term only for 1 directional light!");
+	SPT_CHECK_MSG(PARAMS_VIEW_SHADING_INPUT->lightsData->directionalLightsNum <= 1u, L"Volumetric Fog supports shadow term only for 1 directional light!");
 
-	if(u_lightsData.directionalLightsNum == 0u)
+	if(PARAMS_VIEW_SHADING_INPUT->lightsData->directionalLightsNum == 0u)
 	{
 		return 0.f;
 	}
 
-	const DirectionalLightGPUData directionalLight = u_directionalLights[0];
+	const DirectionalLightGPUData directionalLight = PARAMS_VIEW_SHADING_INPUT->directionalLights[0];
 
-	float visibility = visibility = WSC().SampleShadows(worldLocation);
+	float visibility = WSC().SampleShadows(worldLocation);
 
-	const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(u_lightsData.heightFog, worldLocation, worldLocation - directionalLight.direction * 1500.f);
+	const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(PARAMS_VIEW_SHADING_INPUT->lightsData->heightFog, worldLocation, worldLocation - directionalLight.direction * 1500.f);
 	visibility *= fogTransmittance;
 
 	return visibility;
@@ -43,62 +43,62 @@ float ComputeShadowTerm(in float3 worldLocation, in float3 toView, in float3 fro
 [numthreads(4, 4, 4)]
 void ComputeDirectionalLightShadowTermCS(CS_INPUT input)
 {
-	if (all(input.globalID < u_fogConstants.fogGridRes))
+	if (all(input.globalID < PARAMS_RENDER_VOLUMETRIC_FOG->fogGridRes))
 	{
-		const float projectionNearPlane = GetNearPlane(u_sceneView);
+		const float projectionNearPlane = GetNearPlane(VIEW->sceneView);
 
-		const float fogNearPlane = u_fogConstants.fogNearPlane;
-		const float fogFarPlane = u_fogConstants.fogFarPlane;
+		const float fogNearPlane = PARAMS_RENDER_VOLUMETRIC_FOG->fogNearPlane;
+		const float fogFarPlane = PARAMS_RENDER_VOLUMETRIC_FOG->fogFarPlane;
 
-		const float3 fogFroxelUVW = ComputeFogGridSampleUVW(u_fogConstants, u_sceneView, input.globalID.xyz, u_fogConstants.fogGridRes, u_depthTexture, u_depthSampler);
+		const float3 fogFroxelUVW = ComputeFogGridSampleUVW(*PARAMS_RENDER_VOLUMETRIC_FOG, VIEW->sceneView, input.globalID.xyz, PARAMS_RENDER_VOLUMETRIC_FOG->fogGridRes, PARAMS_RENDER_VOLUMETRIC_FOG->depthTexture, BindlessSamplers::LinearMinClampEdge());
  
 		const float fogFroxelLinearDepth = ComputeFogFroxelLinearDepth(fogFroxelUVW.z, fogNearPlane, fogFarPlane);
 
 		const float3 fogFroxelNDC = FogFroxelToNDC(fogFroxelUVW.xy, fogFroxelLinearDepth, projectionNearPlane);
-		const float3 fogFroxelWorldLocation = NDCToWorldSpaceNoJitter(fogFroxelNDC, u_sceneView);
+		const float3 fogFroxelWorldLocation = NDCToWorldSpaceNoJitter(fogFroxelNDC, VIEW->sceneView);
 		
-		const float froxelWDelta = u_fogConstants.fogGridInvRes.z;
+		const float froxelWDelta = PARAMS_RENDER_VOLUMETRIC_FOG->fogGridInvRes.z;
 		const float prevFogFroxelLinearDepth = ComputeFogFroxelLinearDepth(max(fogFroxelUVW.z - froxelWDelta, 0.f), fogNearPlane, fogFarPlane);
 
-		const float3 toViewNormal = normalize(u_sceneView.viewLocation - fogFroxelWorldLocation);
+		const float3 toViewNormal = normalize(VIEW->sceneView.viewLocation - fogFroxelWorldLocation);
 		const float froxelDepthRange = fogFroxelLinearDepth - prevFogFroxelLinearDepth;
 
 		float shadowTerm = ComputeShadowTerm(fogFroxelWorldLocation, toViewNormal, froxelDepthRange);
 
-		if(u_constants.hasCloudsTransmittanceMap)
+		if(PARAMS_COMPUTE_DIRECTIONAL_LIGHT_SHADOW_TERM->hasCloudsTransmittanceMap)
 		{
-			const float4 ctmCS = mul(u_constants.cloudsTransmittanceMapViewProj, float4(fogFroxelWorldLocation, 1.f));
+			const float4 ctmCS = mul(PARAMS_COMPUTE_DIRECTIONAL_LIGHT_SHADOW_TERM->cloudsTransmittanceMapViewProj, float4(fogFroxelWorldLocation, 1.f));
 			if(all(ctmCS.xy <= ctmCS.w) && all(ctmCS.xy >= -ctmCS.w))
 			{
 				const float2 ctmUV = (ctmCS.xy / ctmCS.w) *	0.5f + 0.5f;
 
-				shadowTerm *= u_cloudsTransmittanceMap.SampleLevel(u_linearSampler, ctmUV, 0.f);
+				shadowTerm *= PARAMS_COMPUTE_DIRECTIONAL_LIGHT_SHADOW_TERM->cloudsTransmittanceMap.SampleLevel(BindlessSamplers::LinearClampEdge(), ctmUV, 0.f);
 			}
 		}
 
-		if (u_constants.hasValidHistory)
+		if (PARAMS_COMPUTE_DIRECTIONAL_LIGHT_SHADOW_TERM->hasValidHistory)
 		{
 			const float fogFroxelDepthNoJitter = fogFroxelUVW.z;
 			const float fogFroxelLinearDepthNoJitter = ComputeFogFroxelLinearDepth(fogFroxelDepthNoJitter, fogNearPlane, fogFarPlane);
 
 			const float3 fogFroxelNDCNoJitter = FogFroxelToNDC(fogFroxelUVW.xy, fogFroxelLinearDepthNoJitter, projectionNearPlane);
-			const float3 fogFroxelWorldLocationNoJitter = NDCToWorldSpaceNoJitter(fogFroxelNDCNoJitter, u_sceneView);
+			const float3 fogFroxelWorldLocationNoJitter = NDCToWorldSpaceNoJitter(fogFroxelNDCNoJitter, VIEW->sceneView);
 
-			float4 prevFrameClipSpace = mul(u_prevFrameSceneView.viewProjectionMatrixNoJitter, float4(fogFroxelWorldLocationNoJitter, 1.0f));
+			float4 prevFrameClipSpace = mul(VIEW->prevFrameSceneView.viewProjectionMatrixNoJitter, float4(fogFroxelWorldLocationNoJitter, 1.0f));
 			
 			if (all(prevFrameClipSpace.xy >= -prevFrameClipSpace.w) && all(prevFrameClipSpace.xyz <= prevFrameClipSpace.w) && prevFrameClipSpace.z >= 0.f)
 			{
 				prevFrameClipSpace.xyz /= prevFrameClipSpace.w;
-				const float prevFrameLinearDepth = ComputeLinearDepth(prevFrameClipSpace.z, u_prevFrameSceneView);
+				const float prevFrameLinearDepth = ComputeLinearDepth(prevFrameClipSpace.z, VIEW->prevFrameSceneView);
 
 				const float3 prevFrameFogFroxelUVW = ComputeFogFroxelUVW(prevFrameClipSpace.xy * 0.5f + 0.5f, prevFrameLinearDepth, fogNearPlane, fogFarPlane);
 
-				const float historyShadowTerm = u_historyDirLightShadowTerm.SampleLevel(u_linearSampler, prevFrameFogFroxelUVW, 0);
+				const float historyShadowTerm = PARAMS_COMPUTE_DIRECTIONAL_LIGHT_SHADOW_TERM->historyDirLightShadowTerm.SampleLevel(BindlessSamplers::LinearClampEdge(), prevFrameFogFroxelUVW, 0);
 
-				shadowTerm = lerp(historyShadowTerm, shadowTerm, u_constants.accumulationCurrentFrameWeight);
+				shadowTerm = lerp(historyShadowTerm, shadowTerm, PARAMS_COMPUTE_DIRECTIONAL_LIGHT_SHADOW_TERM->accumulationCurrentFrameWeight);
 			}
 		}
 
-		u_rwDirLightShadowTerm[input.globalID] = shadowTerm;
+		PARAMS_COMPUTE_DIRECTIONAL_LIGHT_SHADOW_TERM->rwDirLightShadowTerm[input.globalID] = shadowTerm;
 	}
 }

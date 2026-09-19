@@ -4,7 +4,7 @@
 [[shader_struct(SceneGeometryData)]]
 
 
-struct UGBInterface : SceneGeometryData
+extension SceneGeometryData
 {
 	uint LoadVertexIndex(in uint ugbOffset, in uint idx)
 	{
@@ -56,13 +56,19 @@ struct UGBInterface : SceneGeometryData
 };
 
 
-#ifdef DS_RenderSceneDS
+typealias UGBInterface = SceneGeometryData;
+
+
+#ifdef PARAM_RenderSceneConstants
 
 UGBInterface UGB()
 {
-	return UGBInterface(u_renderSceneConstants.geometry);
+	return SCENE->geometry;
 }
 
-#endif // DS_RenderSceneDS
+SPT_NAMED_DESCRIPTOR(SubmeshesArray, SCENE->geometry.staticMeshGeometryBuffers.submeshesArray.GetIndex());
+SPT_NAMED_DESCRIPTOR(MeshletsArray,  SCENE->geometry.staticMeshGeometryBuffers.meshletsArray.GetIndex());
+
+#endif // PARAM_RenderSceneConstants
 
 #endif // UGB_HLSLI

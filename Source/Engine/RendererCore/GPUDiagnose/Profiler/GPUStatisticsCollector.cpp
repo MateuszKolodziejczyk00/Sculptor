@@ -9,10 +9,18 @@ namespace spt::rdr
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // GPUStatisticsCollector ========================================================================
 
+namespace consts
+{
+// Skip mesh shader on purpose, from some reason it tanks performance on my GPU (RTX 4080, driver 616.92)
+static constexpr rhi::EQueryStatisticsType queryFlags = lib::Flags(rhi::EQueryStatisticsType::TSInvocations, rhi::EQueryStatisticsType::FSInvocations, rhi::EQueryStatisticsType::CSInvocations);
+constexpr Uint32 statisticsNum = 3u;
+} // namespace consts
+
+
 GPUStatisticsCollector::GPUStatisticsCollector()
 	: m_timestampsQueryPool(CreateQueryPool(rhi::EQueryType::Timestamp, 16384u))
 	, m_timestampsQueryPoolIndex(0)
-	, m_pipelineStatsQueryPool(CreateQueryPool(rhi::EQueryType::Statistics, 16384u, rhi::EQueryStatisticsType::All))
+	, m_pipelineStatsQueryPool(CreateQueryPool(rhi::EQueryType::Statistics, 16384u, consts::queryFlags))
 	, m_pipelineStatsQueryPoolIndex(0)
 
 {
@@ -32,24 +40,20 @@ void GPUStatisticsCollector::BeginScope(CommandRecorder& recoder, const lib::Has
 
 	if (queryFlags != EQueryFlags::None)
 	{
-		constexpr Uint32 statisticsNum = 5;
-		
-		const Uint32 statisticsBeginIndex = m_pipelineStatsQueryPoolIndex * statisticsNum;
+		const Uint32 statisticsBeginIndex = m_pipelineStatsQueryPoolIndex * consts::statisticsNum;
 		recoder.BeginQuery(m_pipelineStatsQueryPool, m_pipelineStatsQueryPoolIndex);
 
 		newScope.pipelineStatisticsQueryIdx = m_pipelineStatsQueryPoolIndex++;
 
 		if (lib::HasAnyFlag(queryFlags, EQueryFlags::Rasterization))
 		{
-			newScope.inputAsseblyVerticesIdx		= statisticsBeginIndex;
-			newScope.inputAsseblyPrimitivesIdx		= statisticsBeginIndex + 1;
-			newScope.vertexShaderInvocationsIdx		= statisticsBeginIndex + 2;
-			newScope.fragmentShaderInvocationsIdx	= statisticsBeginIndex + 3;
+			newScope.taskShaderInvocationsIdx		= statisticsBeginIndex + 0u;
+			newScope.fragmentShaderInvocationsIdx	= statisticsBeginIndex + 1u;
 		}
 
 		if (lib::HasAnyFlag(queryFlags, EQueryFlags::Compute))
 		{
-			newScope.computeShaderInvocationsIdx = statisticsBeginIndex + 4;
+			newScope.computeShaderInvocationsIdx = statisticsBeginIndex + 2u;
 		}
 	}
 

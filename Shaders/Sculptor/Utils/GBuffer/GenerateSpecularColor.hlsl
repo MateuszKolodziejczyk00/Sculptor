@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(GenerateSpecularColorDS, 0)]]
+[[shader_params(GenerateSpecularColorConstants, PARAMS_GENERATE_SPECULAR_COLOR)]]
 
 #include "Shading/Shading.hlsli"
 
@@ -18,14 +18,14 @@ struct CS_INPUT
 [numthreads(GROUP_SIZE_X, GROUP_SIZE_Y, 1)]
 void GenerateSpecularColorCS(CS_INPUT input)
 {
-	const uint2 coords = min(input.globalID.xy, u_constants.resolution - 1u);
+	const uint2 coords = min(input.globalID.xy, PARAMS_GENERATE_SPECULAR_COLOR->resolution - 1u);
 
-	const float4 baseColorMetallic = u_baseColorMetallic.Load(uint3(coords, 0u));
+	const float4 baseColorMetallic = PARAMS_GENERATE_SPECULAR_COLOR->baseColorMetallic.Load(uint3(coords, 0u));
 
 	float3 specularColor = 0.f;
 	float3 diffuseColor = 0.f;
 
 	ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.a, OUT diffuseColor, OUT specularColor);
 
-	u_rwSpecularColor[coords] = specularColor;
+	PARAMS_GENERATE_SPECULAR_COLOR->rwSpecularColor[coords] = specularColor;
 }

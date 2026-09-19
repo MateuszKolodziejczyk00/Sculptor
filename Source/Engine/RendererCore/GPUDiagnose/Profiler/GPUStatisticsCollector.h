@@ -55,10 +55,8 @@ struct GPUStatisticsScopeData
 	GPUTimestampNs beginTimestamp = 0u;
 	GPUTimestampNs endTimestamp   = 0u;
 
-	std::optional<Uint32> inputAsseblyVertices;
-	std::optional<Uint32> inputAsseblyPrimitives;
-	
-	std::optional<Uint32> vertexShaderInvocations;
+	std::optional<Uint32> taskShaderInvocations;
+	std::optional<Uint32> meshShaderInvocations;
 	std::optional<Uint32> fragmentShaderInvocations;
 	std::optional<Uint32> computeShaderInvocations;
 
@@ -97,11 +95,9 @@ struct GPUStatisticsScopeDefinition
 	Uint32 endTimestampIndex;
 
 	std::optional<Uint32> pipelineStatisticsQueryIdx;
-
-	std::optional<Uint32> inputAsseblyVerticesIdx;
-	std::optional<Uint32> inputAsseblyPrimitivesIdx;
 	
-	std::optional<Uint32> vertexShaderInvocationsIdx;
+	std::optional<Uint32> taskShaderInvocationsIdx;
+	std::optional<Uint32> meshShaderInvocationsIdx;
 	std::optional<Uint32> fragmentShaderInvocationsIdx;
 	std::optional<Uint32> computeShaderInvocationsIdx;
 
@@ -121,17 +117,13 @@ private:
 		result.beginTimestamp = beginTimestamp;
 		result.endTimestamp   = endTimestamp;
 
-		if (inputAsseblyVerticesIdx.has_value())
+		if (taskShaderInvocationsIdx.has_value())
 		{
-			result.inputAsseblyVertices = static_cast<Uint32>(context.pipelineStatistics[inputAsseblyVerticesIdx.value()]);
+			result.taskShaderInvocations = static_cast<Uint32>(context.pipelineStatistics[taskShaderInvocationsIdx.value()]);
 		}
-		if (inputAsseblyPrimitivesIdx.has_value())
+		if (meshShaderInvocationsIdx.has_value())
 		{
-			result.inputAsseblyPrimitives = static_cast<Uint32>(context.pipelineStatistics[inputAsseblyPrimitivesIdx.value()]);
-		}
-		if (vertexShaderInvocationsIdx.has_value())
-		{
-			result.vertexShaderInvocations = static_cast<Uint32>(context.pipelineStatistics[vertexShaderInvocationsIdx.value()]);
+			result.meshShaderInvocations = static_cast<Uint32>(context.pipelineStatistics[meshShaderInvocationsIdx.value()]);
 		}
 		if (fragmentShaderInvocationsIdx.has_value())
 		{

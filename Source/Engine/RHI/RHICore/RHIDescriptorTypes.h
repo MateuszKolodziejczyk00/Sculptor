@@ -23,7 +23,10 @@ enum class EDescriptorType
 	StorageBufferDynamicOffset,
 	AccelerationStructure,
 	CBV_SRV_UAV,
-	Num
+	Num,
+
+	ResourceBegin = CombinedTextureSampler,
+	ResourceEnd   = Num,
 };
 
 
@@ -40,38 +43,35 @@ enum class EDescriptorSetFlags
 };
 
 
-struct WriteDescriptorDefinition
-{
-	WriteDescriptorDefinition()
-		: bindingIdx(idxNone<Uint32>)
-		, arrayElement(idxNone<Uint32>)
-		, descriptorType(EDescriptorType::None)
-	{ }
-
-	Uint32			bindingIdx;
-	Uint32			arrayElement;
-	EDescriptorType	descriptorType;
-};
-
-
 struct DescriptorProps
 {
-	static constexpr Uint32 s_descriptorTypesNum = static_cast<Uint32>(EDescriptorType::Num);
+	Uint32 resourceDescriptorSize = 0u;
+	Uint32 samplerDescriptorSize  = 0u;
 
-	Uint32 SizeOf(EDescriptorType type) const
-	{
-		return sizes[static_cast<Uint32>(type)];
-	}
+	Uint32 bufferDescriptorIdxFactor = 1u;
+	Uint32 textureDescriptorIdxFactor = 1u;
 
-	lib::StaticArray<Uint32, s_descriptorTypesNum> sizes = {};
+	Uint32 reservedResourceHeapSize = 0u;
+	Uint32 reservedSamplerHeapSize  = 0u;
+
+	Uint32 maxResourceHeapSize = 0u;
+	Uint32 maxSamplerHeapSize  = 0u;
 
 	Uint32 descriptorsAlignment = 0u;
 };
 
 
+enum class EDescriptorHeapType
+{
+	Resource,
+	Sampler,
+};
+
+
 struct DescriptorHeapDefinition
 {
-	Uint64 size = 0u;
+	Uint64              size = 0u;
+	EDescriptorHeapType type = EDescriptorHeapType::Resource;
 };
 
 

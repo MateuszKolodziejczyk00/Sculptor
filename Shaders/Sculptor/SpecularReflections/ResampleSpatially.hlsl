@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(SRSpatialResamplingDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
+[[shader_params(SpatialResamplingPassConstants, PARAMS_S_R_SPATIAL_RESAMPLING)]]
+[[shader_params(GPURenderView, VIEW)]]
 
 #include "SpecularReflections/SRReservoir.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
@@ -63,7 +63,7 @@ float3 ClipTargetLinDepthNDC(in float3 sourceLinDepthNDC, in float3 targetLinDep
 
 bool CoarseTestVisibility(in uint2 pixel, in float3 sourceWS, in float3 sourceNDC, in float3 targetWorldLocation)
 {
-	const float3 targetNDC = WorldSpaceToNDC(targetWorldLocation, u_sceneView);
+	const float3 targetNDC = WorldSpaceToNDC(targetWorldLocation, VIEW->sceneView);
 	if(targetNDC.z >= 1.f || targetNDC.z <= 0.f) // target behind camera
 	{
 		return true;
@@ -74,8 +74,8 @@ bool CoarseTestVisibility(in uint2 pixel, in float3 sourceWS, in float3 sourceND
 
 	targetLinDepthNDC = ClipTargetLinDepthNDC(sourceLinDepthNDC, targetLinDepthNDC);
 
-	const int2 sourceCoords = (sourceLinDepthNDC.xy * 0.5f + 0.5f) * u_resamplingConstants.resolution;
-	const int2 targetCoords = (targetLinDepthNDC.xy * 0.5f + 0.5f) * u_resamplingConstants.resolution;
+	const int2 sourceCoords = (sourceLinDepthNDC.xy * 0.5f + 0.5f) * PARAMS_S_R_SPATIAL_RESAMPLING->resamplingConstants->resolution;
+	const int2 targetCoords = (targetLinDepthNDC.xy * 0.5f + 0.5f) * PARAMS_S_R_SPATIAL_RESAMPLING->resamplingConstants->resolution;
 	const uint dist1d = MaxComponent(abs(targetCoords - sourceCoords));
 	if(dist1d < 10u)
 	{
@@ -96,7 +96,7 @@ bool CoarseTestVisibility(in uint2 pixel, in float3 sourceWS, in float3 sourceND
 
 	const float3 step = (targetLinDepthNDC - sourceLinDepthNDC) / (stepsNum - 1u);
 
-	const float rayDepthStep = abs(step.z) * GetNearPlane(u_sceneView);
+	const float rayDepthStep = abs(step.z) * GetNearPlane(VIEW->sceneView);
 	const float rayThickness = min(rayDepthStep, 0.1f) / rayDepthStep;
 
 	float3 rayPos = sourceLinDepthNDC;
@@ -104,7 +104,7 @@ bool CoarseTestVisibility(in uint2 pixel, in float3 sourceWS, in float3 sourceND
 	for(uint i = 0u; i < stepsNum; ++i)
 	{
 		const float2 currentUV = rayPos.xy * 0.5f + 0.5f;
-		const float sceneDepth = u_depthTexture.SampleLevel(u_nearestSampler, currentUV, 0.f);
+		const float sceneDepth = PARAMS_S_R_SPATIAL_RESAMPLING->depthTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), currentUV, 0.f);
 		const float sceneInvDepth = rcp(sceneDepth);
 
 		const float rayMax = rayPos.z;
@@ -124,7 +124,7 @@ bool CoarseTestVisibility(in uint2 pixel, in float3 sourceWS, in float3 sourceND
 
 float ComputeResamplingRange(in const SRReservoir reservoir, in float roughness)
 {
-	const float stepSize = u_resamplingConstants.resamplingRangeStep;
+	const float stepSize = PARAMS_S_R_SPATIAL_RESAMPLING->resamplingConstants->resamplingRangeStep;
 	return max(reservoir.spatialResamplingRangeID * stepSize, 26.f);
 }
 
@@ -138,33 +138,33 @@ void ResampleSpatiallyCS(CS_INPUT input)
 	uint2 pixel = input.groupID.xy * uint2(8u, 8u) + localID;
 
 	bool isHelperLane = false;
-	if(any(pixel >= u_resamplingConstants.resolution))
+	if(any(pixel >= PARAMS_S_R_SPATIAL_RESAMPLING->resamplingConstants->resolution))
 	{
 		isHelperLane = true;
-		pixel = min(pixel, u_resamplingConstants.resolution - 1u);
+		pixel = min(pixel, PARAMS_S_R_SPATIAL_RESAMPLING->resamplingConstants->resolution - 1u);
 	}
 	
-	const float depth = u_depthTexture.Load(uint3(pixel, 0)).x;
-	const float3 centerNDC = float3((pixel + 0.5f) / u_resamplingConstants.resolution * 2.f - 1.f, depth);
+	const float depth = PARAMS_S_R_SPATIAL_RESAMPLING->depthTexture.Load(uint3(pixel, 0)).x;
+	const float3 centerNDC = float3((pixel + 0.5f) / PARAMS_S_R_SPATIAL_RESAMPLING->resamplingConstants->resolution * 2.f - 1.f, depth);
 
 	if(depth <= 0.f)
 	{
 		return;
 	}
 
-	const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_resamplingConstants.reservoirsResolution);
+	const uint reservoirIdx = GetScreenReservoirIdx(pixel, PARAMS_S_R_SPATIAL_RESAMPLING->resamplingConstants->reservoirsResolution);
 
 	float selectedP_hat = 0.f;
 
 	MinimalGBuffer gBuffer;
-	gBuffer.depthTexture             = u_depthTexture;
-	gBuffer.normalsTexture           = u_normalsTexture;
-	gBuffer.baseColorMetallicTexture = u_baseColorTexture;
-	gBuffer.roughnessTexture         = u_roughnessTexture;
+	gBuffer.depthTexture             = PARAMS_S_R_SPATIAL_RESAMPLING->depthTexture;
+	gBuffer.normalsTexture           = PARAMS_S_R_SPATIAL_RESAMPLING->normalsTexture;
+	gBuffer.baseColorMetallicTexture = PARAMS_S_R_SPATIAL_RESAMPLING->baseColorTexture;
+	gBuffer.roughnessTexture         = PARAMS_S_R_SPATIAL_RESAMPLING->roughnessTexture;
 
-	const MinimalSurfaceInfo centerPixelSurface = GetMinimalSurfaceInfo(gBuffer, pixel, u_sceneView);
+	const MinimalSurfaceInfo centerPixelSurface = GetMinimalSurfaceInfo(gBuffer, pixel, PARAMS_S_R_SPATIAL_RESAMPLING->resamplingConstants->pixelSize, VIEW->sceneView);
 
-	const SRPackedReservoir packedReservoir = u_inReservoirsBuffer[reservoirIdx];
+	const SRPackedReservoir packedReservoir = PARAMS_S_R_SPATIAL_RESAMPLING->inReservoirsBuffer[reservoirIdx];
 
 	const SRReservoir reservoir = UnpackReservoir(packedReservoir);
 
@@ -175,7 +175,7 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 	if(centerPixelSurface.roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
 	{
-		u_outReservoirsBuffer[reservoirIdx] = packedReservoir;
+		PARAMS_S_R_SPATIAL_RESAMPLING->outReservoirsBuffer[reservoirIdx] = packedReservoir;
 		return;
 	}
 
@@ -192,7 +192,7 @@ void ResampleSpatiallyCS(CS_INPUT input)
 		selectedP_hat = p_hat;
 	}
 
-	RngState rng = RngState::Create(uint2(pixel.x, pixel.y), u_passConstants.seed);
+	RngState rng = RngState::Create(uint2(pixel.x, pixel.y), PARAMS_S_R_SPATIAL_RESAMPLING->seed);
 
 	int selectedSampleIdx = -1;
 	int2 sampleCoords[SPATIAL_RESAMPLING_SAMPLES_NUM];
@@ -204,94 +204,96 @@ void ResampleSpatiallyCS(CS_INPUT input)
 	initialAngle = WaveReadLaneFirst(initialAngle);
 #endif // WAVE_COHERENT_SPATIAL_RESAMPLING
 
-	for(uint sampleIdx = 0; sampleIdx < SPATIAL_RESAMPLING_SAMPLES_NUM; ++sampleIdx)
 	{
-		const float sampleAngle = initialAngle + sampleIdx * (2 * PI / SPATIAL_RESAMPLING_SAMPLES_NUM);
-
-		const float resamplingRange = u_passConstants.resamplingRangeMultiplier * ComputeResamplingRange(newReservoir, centerPixelSurface.roughness);
-
-		const float cosAngle = cos(sampleAngle);
-		const float sinAngle = sin(sampleAngle);
-
-		float rangeMul = sqrt(rng.Next());
-
-#if WAVE_COHERENT_SPATIAL_RESAMPLING
-		rangeMul = WaveReadLaneFirst(rangeMul);
-#endif // WAVE_COHERENT_SPATIAL_RESAMPLING
-
-		const float distance = 1.5f + resamplingRange * rangeMul;
-		float2 offset = float2(cosAngle, sinAngle) * distance;
-
-		const int2 offsetInPixels = round(offset);
-
-		int2 samplePixel = pixel + offsetInPixels;
-		samplePixel = clamp(samplePixel, int2(0, 0), int2(u_resamplingConstants.resolution - 1));
-
-		if (u_passConstants.resampleOnlyFromTracedPixels)
+		for(uint sampleIdx = 0; sampleIdx < SPATIAL_RESAMPLING_SAMPLES_NUM; ++sampleIdx)
 		{
-			samplePixel = GetVariableTraceCoords(u_variableRateBlocksTexture, samplePixel);
-		}
-
-		sampleCoords[sampleIdx] = samplePixel;
-
-		const MinimalSurfaceInfo reuseSurface = GetMinimalSurfaceInfo(gBuffer, samplePixel, u_sceneView);
-
-		if(!SurfacesAllowResampling(centerPixelSurface, reuseSurface)
-			|| !MaterialsAllowResampling(centerPixelSurface, reuseSurface))
-		{
-			newReservoir.OnSpatialResamplingFailed();
-			continue;
-		}
-
-		const uint reuseReservoirIdx = GetScreenReservoirIdx(samplePixel, u_resamplingConstants.reservoirsResolution);
-		SRReservoir reuseReservoir = UnpackReservoir(u_inReservoirsBuffer[reuseReservoirIdx]);
-
-		if(!newReservoir.CanCombine(reuseReservoir))
-		{
-			newReservoir.OnSpatialResamplingFailed();
-			continue;
-		}
-
-		if(!IsReservoirValidForSurface(reuseReservoir, centerPixelSurface))
-		{
-			newReservoir.OnSpatialResamplingFailed();
-			continue;
-		}
-
-#if SPATIAL_RESAMPLING_ENABLE_SS_VISIBILITY
-		if(!CoarseTestVisibility(pixel, centerPixelSurface.location, centerNDC, reuseReservoir.hitLocation))
-		{
-			newReservoir.OnSpatialResamplingFailed();
-			continue;
-		}
-#endif // SPATIAL_RESAMPLING_ENABLE_SS_VISIBILITY
-
-		const float jacobian = EvaluateJacobian(centerPixelSurface.location, reuseSurface.location, reuseReservoir);
-
-		if(jacobian < 0.f)
-		{
-			newReservoir.OnSpatialResamplingFailed();
-			continue;
-		}
-
-		const float p_hat = EvaluateTargetFunction(centerPixelSurface, reuseReservoir.hitLocation, reuseReservoir.luminance);
-		const float p_hatInOutputDomain = p_hat * jacobian;
-
-		if(isnan(p_hatInOutputDomain) || isinf(p_hatInOutputDomain) || IsNearlyZero(p_hatInOutputDomain))
-		{
-			newReservoir.OnSpatialResamplingFailed();
-			continue;
-		}
-
-		newReservoir.OnSpatialResamplingSucceeded();
-
-		validSamplesMask |= 1u << sampleIdx;
-
-		if(newReservoir.Update(reuseReservoir, rng.Next(), p_hatInOutputDomain))
-		{
-			selectedP_hat = p_hat;
-			newReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_VALIDATED);
-			selectedSampleIdx = sampleIdx;
+			const float sampleAngle = initialAngle + sampleIdx * (2 * PI / SPATIAL_RESAMPLING_SAMPLES_NUM);
+	
+			const float resamplingRange = PARAMS_S_R_SPATIAL_RESAMPLING->resamplingRangeMultiplier * ComputeResamplingRange(newReservoir, centerPixelSurface.roughness);
+	
+			const float cosAngle = cos(sampleAngle);
+			const float sinAngle = sin(sampleAngle);
+	
+			float rangeMul = sqrt(rng.Next());
+	
+	#if WAVE_COHERENT_SPATIAL_RESAMPLING
+			rangeMul = WaveReadLaneFirst(rangeMul);
+	#endif // WAVE_COHERENT_SPATIAL_RESAMPLING
+	
+			const float distance = 1.5f + resamplingRange * rangeMul;
+			float2 offset = float2(cosAngle, sinAngle) * distance;
+	
+			const int2 offsetInPixels = round(offset);
+	
+			int2 samplePixel = pixel + offsetInPixels;
+			samplePixel = clamp(samplePixel, int2(0, 0), int2(PARAMS_S_R_SPATIAL_RESAMPLING->resamplingConstants->resolution - 1));
+	
+			if (PARAMS_S_R_SPATIAL_RESAMPLING->resampleOnlyFromTracedPixels)
+			{
+				samplePixel = GetVariableTraceCoords(PARAMS_S_R_SPATIAL_RESAMPLING->variableRateBlocksTexture, samplePixel);
+			}
+	
+			sampleCoords[sampleIdx] = samplePixel;
+	
+			const MinimalSurfaceInfo reuseSurface = GetMinimalSurfaceInfo(gBuffer, samplePixel, PARAMS_S_R_SPATIAL_RESAMPLING->resamplingConstants->pixelSize, VIEW->sceneView);
+	
+			if(!SurfacesAllowResampling(centerPixelSurface, reuseSurface)
+				|| !MaterialsAllowResampling(centerPixelSurface, reuseSurface))
+			{
+				newReservoir.OnSpatialResamplingFailed();
+				continue;
+			}
+	
+			const uint reuseReservoirIdx = GetScreenReservoirIdx(samplePixel, PARAMS_S_R_SPATIAL_RESAMPLING->resamplingConstants->reservoirsResolution);
+			SRReservoir reuseReservoir = UnpackReservoir(PARAMS_S_R_SPATIAL_RESAMPLING->inReservoirsBuffer[reuseReservoirIdx]);
+	
+			if(!newReservoir.CanCombine(reuseReservoir))
+			{
+				newReservoir.OnSpatialResamplingFailed();
+				continue;
+			}
+	
+			if(!IsReservoirValidForSurface(reuseReservoir, centerPixelSurface))
+			{
+				newReservoir.OnSpatialResamplingFailed();
+				continue;
+			}
+	
+	#if SPATIAL_RESAMPLING_ENABLE_SS_VISIBILITY
+			if(!CoarseTestVisibility(pixel, centerPixelSurface.location, centerNDC, reuseReservoir.hitLocation))
+			{
+				newReservoir.OnSpatialResamplingFailed();
+				continue;
+			}
+	#endif // SPATIAL_RESAMPLING_ENABLE_SS_VISIBILITY
+	
+			const float jacobian = EvaluateJacobian(centerPixelSurface.location, reuseSurface.location, reuseReservoir);
+	
+			if(jacobian < 0.f)
+			{
+				newReservoir.OnSpatialResamplingFailed();
+				continue;
+			}
+	
+			const float p_hat = EvaluateTargetFunction(centerPixelSurface, reuseReservoir.hitLocation, reuseReservoir.luminance);
+			const float p_hatInOutputDomain = p_hat * jacobian;
+	
+			if(isnan(p_hatInOutputDomain) || isinf(p_hatInOutputDomain) || IsNearlyZero(p_hatInOutputDomain))
+			{
+				newReservoir.OnSpatialResamplingFailed();
+				continue;
+			}
+	
+			newReservoir.OnSpatialResamplingSucceeded();
+	
+			validSamplesMask |= 1u << sampleIdx;
+	
+			if(newReservoir.Update(reuseReservoir, rng.Next(), p_hatInOutputDomain))
+			{
+				selectedP_hat = p_hat;
+				newReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_VALIDATED);
+				selectedSampleIdx = sampleIdx;
+			}
 		}
 	}
 
@@ -312,10 +314,10 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 		const int2 samplePixel = sampleCoords[sampleIdx];
 
-		const MinimalSurfaceInfo reusedSurface = GetMinimalSurfaceInfo(gBuffer, samplePixel, u_sceneView);
+		const MinimalSurfaceInfo reusedSurface = GetMinimalSurfaceInfo(gBuffer, samplePixel, PARAMS_S_R_SPATIAL_RESAMPLING->resamplingConstants->pixelSize, VIEW->sceneView);
 
-		const uint reuseReservoirIdx = GetScreenReservoirIdx(samplePixel, u_resamplingConstants.reservoirsResolution);
-		SRReservoir reuseReservoir = UnpackReservoir(u_inReservoirsBuffer[reuseReservoirIdx]);
+		const uint reuseReservoirIdx = GetScreenReservoirIdx(samplePixel, PARAMS_S_R_SPATIAL_RESAMPLING->resamplingConstants->reservoirsResolution);
+		SRReservoir reuseReservoir = UnpackReservoir(PARAMS_S_R_SPATIAL_RESAMPLING->inReservoirsBuffer[reuseReservoirIdx]);
 
 		// p_j in input domain Omega_j
 		const float p_j = EvaluateTargetFunction(reusedSurface, newReservoir.hitLocation, newReservoir.luminance);
@@ -332,6 +334,6 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 	if(!isHelperLane)
 	{
-		u_outReservoirsBuffer[reservoirIdx] = PackReservoir(newReservoir);
+		PARAMS_S_R_SPATIAL_RESAMPLING->outReservoirsBuffer[reservoirIdx] = PackReservoir(newReservoir);
 	}
 }

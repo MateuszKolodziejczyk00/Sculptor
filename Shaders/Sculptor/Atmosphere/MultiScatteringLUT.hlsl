@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderMultiScatteringLUTDS, 0)]]
+[[shader_params(RenderMultiScatteringLUTConstants, PARAMS_RENDER_MULTI_SCATTERING_LUT)]]
 
 #include "Atmosphere/Atmosphere.hlsli"
 #include "Utils/Shapes.hlsli"
@@ -34,8 +34,8 @@ MultiScatteringResult ComputeMultiScatteringValues(in float3 location, in float3
 
 	const float rcpMultiScatteringSteps = rcp(multiScatteringSteps);
 
-	const Sphere groundSphere    = Sphere::Create(ZERO_VECTOR, u_atmosphereParams.groundRadiusMM);
-	const Sphere atmophereSphere = Sphere::Create(ZERO_VECTOR, u_atmosphereParams.atmosphereRadiusMM);
+	const Sphere groundSphere    = Sphere::Create(ZERO_VECTOR, PARAMS_RENDER_MULTI_SCATTERING_LUT->atmosphereParams->groundRadiusMM);
+	const Sphere atmophereSphere = Sphere::Create(ZERO_VECTOR, PARAMS_RENDER_MULTI_SCATTERING_LUT->atmosphereParams->atmosphereRadiusMM);
 
 	for (int i = 0; i < sqrtDirectionsNum; ++i)
 	{
@@ -74,7 +74,7 @@ MultiScatteringResult ComputeMultiScatteringValues(in float3 location, in float3
 
 				const float3 sampleLocation = ray.origin + ray.direction * newT;
 
-				const ScatteringValues scatteringValues = ComputeScatteringValues(u_atmosphereParams, sampleLocation);
+				const ScatteringValues scatteringValues = ComputeScatteringValues(*PARAMS_RENDER_MULTI_SCATTERING_LUT->atmosphereParams, sampleLocation);
 
 				const float3 sampleTransmittance = exp(-dt * scatteringValues.extinction);
 
@@ -82,7 +82,7 @@ MultiScatteringResult ComputeMultiScatteringValues(in float3 location, in float3
 				const float3 scatteringFactor = (scatteringNoPhase / scatteringValues.extinction) * (1.f - sampleTransmittance);
 				scatteringLuminanceFactor += transmittance * scatteringFactor;
 
-				const float3 sunTransmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, sampleLocation, sunDirection);
+				const float3 sunTransmittance = GetTransmittanceFromLUT(*PARAMS_RENDER_MULTI_SCATTERING_LUT->atmosphereParams, PARAMS_RENDER_MULTI_SCATTERING_LUT->transmittanceLUT, BindlessSamplers::LinearClampEdge(), sampleLocation, sunDirection);
 
 				const float3 rayleighScattering = scatteringValues.rayleighScattering * rayleightPhaseValue;
 				const float3 mieScattering = scatteringValues.mieScattering * miePhaseValue;
@@ -99,9 +99,9 @@ MultiScatteringResult ComputeMultiScatteringValues(in float3 location, in float3
 				float3 hitLocation = ray.origin + ray.direction * groundDist;
 				if(dot(hitLocation, sunDirection) > 0.f)
 				{
-					hitLocation = normalize(hitLocation) * u_atmosphereParams.groundRadiusMM;
-					const float3 sunTransmittanceToGround = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, hitLocation, sunDirection);
-					luminance += transmittance * u_atmosphereParams.groundAlbedo * sunTransmittanceToGround;
+					hitLocation = normalize(hitLocation) * PARAMS_RENDER_MULTI_SCATTERING_LUT->atmosphereParams->groundRadiusMM;
+					const float3 sunTransmittanceToGround = GetTransmittanceFromLUT(*PARAMS_RENDER_MULTI_SCATTERING_LUT->atmosphereParams, PARAMS_RENDER_MULTI_SCATTERING_LUT->transmittanceLUT, BindlessSamplers::LinearClampEdge(), hitLocation, sunDirection);
+					luminance += transmittance * PARAMS_RENDER_MULTI_SCATTERING_LUT->atmosphereParams->groundAlbedo * sunTransmittanceToGround;
 				}
 			}
 
@@ -119,8 +119,7 @@ void RenderMultiScatteringLUTCS(CS_INPUT input)
 {
 	const uint2 pixel = input.globalID.xy;
 	
-	uint2 outputRes;
-	u_multiScatteringLUT.GetDimensions(outputRes.x, outputRes.y);
+	uint2 outputRes = PARAMS_RENDER_MULTI_SCATTERING_LUT->rwMultiScatteringLUT.GetResolution();
 
 	if(pixel.x < outputRes.x && pixel.y < outputRes.y)
 	{
@@ -129,7 +128,7 @@ void RenderMultiScatteringLUTCS(CS_INPUT input)
 		const float cosSunTheta = uv.x * 2.f - 1.f;
 		const float sunTheta = acos(cosSunTheta);
 		
-		const float heightMM = lerp(u_atmosphereParams.groundRadiusMM, u_atmosphereParams.atmosphereRadiusMM, uv.y);
+		const float heightMM = lerp(PARAMS_RENDER_MULTI_SCATTERING_LUT->atmosphereParams->groundRadiusMM, PARAMS_RENDER_MULTI_SCATTERING_LUT->atmosphereParams->atmosphereRadiusMM, uv.y);
 
 		const float3 location = float3(0.f, 0.f, heightMM);
 
@@ -140,6 +139,6 @@ void RenderMultiScatteringLUTCS(CS_INPUT input)
 		const float3 infiniteScatteringFactor = rcp(1.f - multiScattering.multiScatteringLuminanceFactor);
 		const float3 psi = multiScattering.secondOrderInScatteringLuminance * infiniteScatteringFactor;
 
-		u_multiScatteringLUT[pixel] = psi;
+		PARAMS_RENDER_MULTI_SCATTERING_LUT->rwMultiScatteringLUT[pixel] = psi;
 	}
 }

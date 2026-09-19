@@ -5,6 +5,7 @@
 #include "RenderScene.h"
 #include "EngineFrame.h"
 #include "SceneRenderer.h"
+#include "ResourcesManager.h"
 
 
 namespace spt::rsc::wsc

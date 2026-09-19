@@ -3,12 +3,6 @@
 #include "RenderGraphBuilder.h"
 #include "RenderSceneConstants.h"
 #include "ResourcesManager.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/ConstantBufferRefBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
 #include "Lights/LightTypes.h"
 #include "ViewRenderSystems/ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 
@@ -22,10 +16,10 @@ SPT_REGISTER_SCENE_RENDER_SYSTEM(AtmosphereRenderSystem);
 namespace transmittance_lut
 {
 
-DS_BEGIN(RenderTransmittanceLUTDS, rg::RGDescriptorSetState<RenderTransmittanceLUTDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),			u_transmittanceLUT)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),	u_atmosphereParams)
-DS_END();
+BEGIN_SHADER_STRUCT(RenderTransmittanceLUTConstants)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector3f>, rwTransmittanceLUT)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<AtmosphereParams>,     atmosphereParams)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CompileRenderTransmittanceLUTPipeline()
@@ -41,14 +35,14 @@ static void RenderTransmittanceLUT(rg::RenderGraphBuilder& graphBuilder, const R
 
 	static const rdr::PipelineStateID pipeline = CompileRenderTransmittanceLUTPipeline();
 	
-	lib::MTHandle<RenderTransmittanceLUTDS> ds = graphBuilder.CreateDescriptorSet<RenderTransmittanceLUTDS>(RENDERER_RESOURCE_NAME("Render Transmittance LUT DS"));
-	ds->u_transmittanceLUT = transmittanceLUT;
-	ds->u_atmosphereParams = context.atmosphereParamsBuffer->GetFullView();
+	RenderTransmittanceLUTConstants shaderConstants;
+	shaderConstants.rwTransmittanceLUT = transmittanceLUT;
+	shaderConstants.atmosphereParams   = context.atmosphereParams;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Atmosphere Transmittance LUT"),
 						  pipeline,
 						  math::Utils::DivideCeil(transmittanceLUT->GetResolution2D(), math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds)));
+						  rg::ShaderParams(shaderConstants));
 }
 
 } // transmittance_lut
@@ -56,12 +50,11 @@ static void RenderTransmittanceLUT(rg::RenderGraphBuilder& graphBuilder, const R
 namespace multi_scattering_lut
 {
 
-DS_BEGIN(RenderMultiScatteringLUTDS, rg::RGDescriptorSetState<RenderMultiScatteringLUTDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),						u_atmosphereParams)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_transmittanceLUT)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_multiScatteringLUT)
-DS_END();
+BEGIN_SHADER_STRUCT(RenderMultiScatteringLUTConstants)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector3f>, rwMultiScatteringLUT)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<AtmosphereParams>,     atmosphereParams)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, transmittanceLUT)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CompileRenderMultiScatteringLUTPipeline()
@@ -77,15 +70,15 @@ static void RenderMultiScatteringLUT(rg::RenderGraphBuilder& graphBuilder, const
 
 	static const rdr::PipelineStateID pipeline = CompileRenderMultiScatteringLUTPipeline();
 
-	lib::MTHandle<RenderMultiScatteringLUTDS> ds = graphBuilder.CreateDescriptorSet<RenderMultiScatteringLUTDS>(RENDERER_RESOURCE_NAME("Render Multi Scattering LUT DS"));
-	ds->u_atmosphereParams		= context.atmosphereParamsBuffer->GetFullView();
-	ds->u_transmittanceLUT		= transmittancleLUT;
-	ds->u_multiScatteringLUT	= multiScatteringLUT;
+	RenderMultiScatteringLUTConstants shaderConstants;
+	shaderConstants.rwMultiScatteringLUT = multiScatteringLUT;
+	shaderConstants.atmosphereParams     = context.atmosphereParams;
+	shaderConstants.transmittanceLUT     = transmittancleLUT;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Atmosphere Multi Scattering LUT"),
 						  pipeline,
 						  math::Utils::DivideCeil(multiScatteringLUT->GetResolution2D(), math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds)));
+						  rg::ShaderParams(shaderConstants));
 }
 
 } // multi_scattering_lut
@@ -101,14 +94,14 @@ struct SkyViewParams
 };
 
 
-DS_BEGIN(RenderSkyViewLUTDS, rg::RGDescriptorSetState<RenderSkyViewLUTDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),						u_atmosphereParams)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<DirectionalLightGPUData>),					u_directionalLights)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_transmittanceLUT)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_multiScatteringLUT)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_skyViewLUT)
-DS_END();
+BEGIN_SHADER_STRUCT(SkyViewConstants)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<AtmosphereParams>,                atmosphereParams)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<DirectionalLightGPUData>, directionalLights)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<DirectionalLightGPUData>, directionalLightsPtr)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector3f>,         transmittanceLUT)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector3f>,         multiScatteringLUT)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector3f>,         skyViewLUT)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CompileRenderSkyViewLUTPipeline()
@@ -128,17 +121,18 @@ static rg::RGTextureViewHandle RenderSkyViewLUT(rg::RenderGraphBuilder& graphBui
 
 	static const rdr::PipelineStateID pipeline = CompileRenderSkyViewLUTPipeline();
 
-	lib::MTHandle<RenderSkyViewLUTDS> ds = graphBuilder.CreateDescriptorSet<RenderSkyViewLUTDS>(RENDERER_RESOURCE_NAME("Render Sky View LUT DS"));
-	ds->u_atmosphereParams		= context.atmosphereParamsBuffer->GetFullView();
-	ds->u_directionalLights		= context.directionalLightsBuffer->GetFullView();
-	ds->u_transmittanceLUT		= skyViewParams.transmittanceLUT;
-	ds->u_multiScatteringLUT	= skyViewParams.multiScatteringLUT;
-	ds->u_skyViewLUT			= skyViewLUT;
+	SkyViewConstants shaderConstants;
+	shaderConstants.atmosphereParams     = context.atmosphereParams;
+	shaderConstants.directionalLights    = context.directionalLightsBuffer->GetFullView();
+	shaderConstants.directionalLightsPtr.Set(context.directionalLightsBuffer->GetFullView());
+	shaderConstants.transmittanceLUT     = skyViewParams.transmittanceLUT;
+	shaderConstants.multiScatteringLUT   = skyViewParams.multiScatteringLUT;
+	shaderConstants.skyViewLUT           = skyViewLUT;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Atmosphere Sky View LUT"),
 						  pipeline,
 						  math::Utils::DivideCeil(skyViewLUTResolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds)));
+						  rg::ShaderParams(shaderConstants));
 
 	return skyViewLUT;
 }
@@ -149,12 +143,11 @@ static rg::RGTextureViewHandle RenderSkyViewLUT(rg::RenderGraphBuilder& graphBui
 namespace render_sky_probe
 {
 
-DS_BEGIN(RenderSkyProbeDS, rg::RGDescriptorSetState<RenderSkyProbeDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),                    u_atmosphereParams)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_skyViewLUT)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                            u_rwProbe)
-DS_END();
+BEGIN_SHADER_STRUCT(RenderSkyProbeConstants)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, skyViewLUT)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector3f>, rwProbe)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<AtmosphereParams>,     atmosphereParams)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CompileRenderSkyProbePipeline()
@@ -174,15 +167,15 @@ static rg::RGTextureViewHandle RenderSkyProbe(rg::RenderGraphBuilder& graphBuild
 
 	static const rdr::PipelineStateID pipeline = CompileRenderSkyProbePipeline();
 
-	lib::MTHandle<RenderSkyProbeDS> ds = graphBuilder.CreateDescriptorSet<RenderSkyProbeDS>(RENDERER_RESOURCE_NAME("RenderSkyProbeDS"));
-	ds->u_atmosphereParams = atmosphere.atmosphereParamsBuffer->GetFullView();
-	ds->u_skyViewLUT       = skyViewLUT;
-	ds->u_rwProbe          = skyProbe;
+	RenderSkyProbeConstants shaderConstants;
+	shaderConstants.skyViewLUT       = skyViewLUT;
+	shaderConstants.rwProbe          = skyProbe;
+	shaderConstants.atmosphereParams = atmosphere.atmosphereParams;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Sky Probe"),
 						  pipeline,
 						  math::Vector2u(1u, 1u),
-						  rg::BindDescriptorSets(std::move(ds)));
+						  rg::ShaderParams(shaderConstants));
 												
 
 	return skyProbe;
@@ -195,21 +188,15 @@ namespace aerial_perspective
 {
 
 BEGIN_SHADER_STRUCT(RenderAerialPerspectiveConstants)
-	SHADER_STRUCT_FIELD(Real32, participatingMediaNear)
-	SHADER_STRUCT_FIELD(Real32, participatingMediaFar)
+	SHADER_STRUCT_FIELD(Real32,                                    participatingMediaNear)
+	SHADER_STRUCT_FIELD(Real32,                                    participatingMediaFar)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<AtmosphereParams>,             atmosphereParams)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<DirectionalLightGPUData>, directionalLights)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>,         transmittanceLUT)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<Real32>,                 dirLightShadowTerm)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector3f>,         indirectInScatteringTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture3D<math::Vector4f>,         rwAerialPerspective)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(RenderAerialPerspectiveDS, rg::RGDescriptorSetState<RenderAerialPerspectiveDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),                    u_atmosphereParams)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<RenderAerialPerspectiveConstants>),       u_renderAPConstants)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<DirectionalLightGPUData>),              u_directionalLights)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_transmittanceLUT)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<Real32>),                           u_dirLightShadowTerm)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<math::Vector3f>),                   u_indirectInScatteringTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>),                            u_rwAerialPerspective)
-DS_END();
 
 
 static rdr::PipelineStateID CompileRenderAerialPerspectivePipeline()
@@ -235,20 +222,17 @@ static rg::RGTextureViewHandle RenderAerialPerspective(rg::RenderGraphBuilder& g
 	RenderAerialPerspectiveConstants shaderConstants;
 	shaderConstants.participatingMediaNear = apData.fogParams->nearPlane;
 	shaderConstants.participatingMediaFar  = apData.fogParams->farPlane;
-
-	lib::MTHandle<RenderAerialPerspectiveDS> ds = graphBuilder.CreateDescriptorSet<RenderAerialPerspectiveDS>(RENDERER_RESOURCE_NAME("RenderAerialPerspectiveDS"));
-	ds->u_atmosphereParams            = atmosphere.atmosphereParamsBuffer->GetFullView();
-	ds->u_renderAPConstants           = shaderConstants;
-	ds->u_directionalLights           = atmosphere.directionalLightsBuffer->GetFullView();
-	ds->u_transmittanceLUT            = atmosphere.transmittanceLUT;
-	ds->u_dirLightShadowTerm          = apData.fogParams->directionalLightShadowTerm;
-	ds->u_indirectInScatteringTexture = apData.fogParams->indirectInScatteringTextureView;
-	ds->u_rwAerialPerspective         = aerialPerspective;
+	shaderConstants.atmosphereParams            = atmosphere.atmosphereParams;
+	shaderConstants.directionalLights           = atmosphere.directionalLightsBuffer->GetFullView();
+	shaderConstants.transmittanceLUT            = atmosphere.transmittanceLUT;
+	shaderConstants.dirLightShadowTerm          = apData.fogParams->directionalLightShadowTerm;
+	shaderConstants.indirectInScatteringTexture = apData.fogParams->indirectInScatteringTextureView;
+	shaderConstants.rwAerialPerspective         = aerialPerspective;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Aerial Perspective"),
 						  pipeline,
 						  math::Vector2u(apRes.x(), apRes.y()),
-						  rg::BindDescriptorSets(std::move(ds)));
+						  rg::ShaderParams(shaderConstants));
 
 	return aerialPerspective;
 }
@@ -258,7 +242,6 @@ static rg::RGTextureViewHandle RenderAerialPerspective(rg::RenderGraphBuilder& g
 
 AtmosphereRenderSystem::AtmosphereRenderSystem(lib::MemoryArena& arena, RenderScene& owningScene)
 	: Super(arena, owningScene)
-	//, m_isAtmosphereContextDirty(true)
 	, m_isAtmosphereTextureDirty(false)
 	, m_shouldUpdateTransmittanceLUT(true)
 {
@@ -346,7 +329,7 @@ void AtmosphereRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder
 	{
 		SPT_CHECK(!!viewSpec);
 
-		const rg::BindDescriptorSetsScope viewDSScope(graphBuilder, rg::BindDescriptorSets(viewSpec->GetRenderViewDS()));
+		const rg::BindShaderParamsScope viewParamsScope(graphBuilder, rg::ShaderParams(viewSpec->GetViewShaderParams()));
 
 		RenderPerView(graphBuilder, renderScene, *viewSpec);
 	}
@@ -393,7 +376,8 @@ void AtmosphereRenderSystem::RenderAerialPerspective(rg::RenderGraphBuilder& gra
 
 void AtmosphereRenderSystem::InitializeResources()
 {
-	m_atmosphereContext.atmosphereParamsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Atmosphere Params Buffer"), rhi::BufferDefinition(rdr::shader_translator::HLSLSizeOf<AtmosphereParams>(), rhi::EBufferUsage::Uniform), rhi::EMemoryUsage::CPUToGPU);
+	lib::SharedRef<rdr::Buffer> atmosphereParamsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Atmosphere Params Buffer"), rhi::BufferDefinition(rdr::shader_translator::HLSLSizeOf<AtmosphereParams>(), rhi::EBufferUsage::Uniform), rhi::EMemoryUsage::CPUToGPU);
+	m_atmosphereContext.atmosphereParams.Set(atmosphereParamsBuffer->GetFullView(), 0u);
 
 	const auto createLUT = [](const rdr::RendererResourceName& name, math::Vector2u resolution, rhi::EFragmentFormat format)
 	{
@@ -427,8 +411,7 @@ void AtmosphereRenderSystem::UpdateAtmosphereContext()
 
 	m_atmosphereParams.directionalLightsNum = 1u;
 
-	rhi::RHIMappedBuffer<rdr::HLSLStorage<AtmosphereParams>> atmosphereParamsGPUData(m_atmosphereContext.atmosphereParamsBuffer->GetRHI());
-	atmosphereParamsGPUData[0] = m_atmosphereParams;
+	m_atmosphereContext.atmosphereParams.SetData(m_atmosphereParams);
 }
 
 void AtmosphereRenderSystem::UpdateDirectionalLightIlluminance(const DirectionalLightData& dirLight)

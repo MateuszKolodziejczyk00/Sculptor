@@ -160,7 +160,7 @@ RayDirectionInfo GenerateReflectionRayDir(in float4 baseColorMetallic, in float3
 	return GenerateReflectionRayDir(diffuseColor, specularColor, normal, roughness, toView, rng);
 }
 
-#ifdef DS_RenderSceneDS
+#ifdef PARAM_RenderSceneConstants
 RayHitResult RTGITraceRay(in float3 rayOrigin, in float3 rayDirection)
 {
 	const float maxHitDistance = 800.f;
@@ -198,6 +198,6 @@ RayHitResult RTGITraceRay(in float3 rayOrigin, in float3 rayDirection)
 
 	return hitResult;
 }
-#endif // DS_RenderSceneDS
+#endif // PARAM_RenderSceneConstants
 
 #endif // RTGI_RAYS_GENERATION_HLSLI

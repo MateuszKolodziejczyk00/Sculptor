@@ -1,8 +1,6 @@
 #include "DebugRenderer.h"
 #include "ResourcesManager.h"
 #include "RenderGraphBuilder.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "RGDescriptorSetState.h"
 #include "Pipelines/PSOsLibraryTypes.h"
 #include "Utils/TransfersManager.h"
 #include "Utils/IndirectUtils.h"
@@ -25,11 +23,6 @@ BEGIN_SHADER_STRUCT(DebugGeometryPassConstants)
 	SHADER_STRUCT_FIELD(TypedBufferRef<DebugSphereDefinition>, spheres)
 	SHADER_STRUCT_FIELD(ConstTypedBufferRef<math::Vector3f>,   sphereVertices)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(DebugGeometryPassDS, rg::RGDescriptorSetState<DebugGeometryPassDS>)
-	DS_BINDING(BINDING_TYPE(ConstantBufferBinding<DebugGeometryPassConstants>), u_passConstants)
-DS_END();
 
 
 GRAPHICS_PSO(DebugGeometryPSO)
@@ -239,30 +232,27 @@ void DebugRenderer::RenderDebugGeometry(rg::RenderGraphBuilder& graphBuilder, co
 	passConstants.spheres              = m_spheresData.geometries->GetFullView();
 	passConstants.sphereVertices       = m_sphereVerticesBuffer->GetFullView();
 
-	lib::MTHandle<DebugGeometryPassDS> ds = graphBuilder.CreateDescriptorSet<DebugGeometryPassDS>(RENDERER_RESOURCE_NAME("Debug Geometry Pass DS"));
-	ds->u_passConstants = passConstants;
-
 	graphBuilder.RenderPass(RG_DEBUG_NAME_FORMATTED("Render Debug Geometry: {}", m_name.GetData()),
 							renderPassDef,
-							rg::BindDescriptorSets(std::move(ds)),
+							rg::ShaderParams(passConstants),
 							std::tie(indirectParams),
 							[resolution, indirectParams](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
-								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), resolution.cast<Real32>()), 0.f, 1.f);
-								recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), resolution));
+								//recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), resolution.cast<Real32>()), 0.f, 1.f);
+								//recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), resolution));
 
-								const rdr::BufferView& linesDrawCall   = indirectParams.linesDrawCall->GetResourceRef();
-								const rdr::BufferView& markersDrawCall = indirectParams.markersDrawCall->GetResourceRef();
-								const rdr::BufferView& spheresDrawCall = indirectParams.spheresDrawCall->GetResourceRef();
+								//const rdr::BufferView& linesDrawCall   = indirectParams.linesDrawCall->GetResourceRef();
+								//const rdr::BufferView& markersDrawCall = indirectParams.markersDrawCall->GetResourceRef();
+								//const rdr::BufferView& spheresDrawCall = indirectParams.spheresDrawCall->GetResourceRef();
 
-								recorder.BindGraphicsPipeline(DebugGeometryPSO::lines);
-								recorder.DrawIndirect(linesDrawCall, 0u, sizeof(rdr::HLSLStorage<IndirectDrawCommand>), 1u);
+								//recorder.BindGraphicsPipeline(DebugGeometryPSO::lines);
+								//recorder.DrawIndirect(linesDrawCall, 0u, sizeof(rdr::HLSLStorage<IndirectDrawCommand>), 1u);
 
-								recorder.BindGraphicsPipeline(DebugGeometryPSO::markers);
-								recorder.DrawIndirect(markersDrawCall, 0u, sizeof(rdr::HLSLStorage<IndirectDrawCommand>), 1u);
+								//recorder.BindGraphicsPipeline(DebugGeometryPSO::markers);
+								//recorder.DrawIndirect(markersDrawCall, 0u, sizeof(rdr::HLSLStorage<IndirectDrawCommand>), 1u);
 
-								recorder.BindGraphicsPipeline(DebugGeometryPSO::spheres);
-								recorder.DrawIndirect(spheresDrawCall, 0u, sizeof(rdr::HLSLStorage<IndirectDrawCommand>), 1u);
+								//recorder.BindGraphicsPipeline(DebugGeometryPSO::spheres);
+								//recorder.DrawIndirect(spheresDrawCall, 0u, sizeof(rdr::HLSLStorage<IndirectDrawCommand>), 1u);
 							});
 }
 

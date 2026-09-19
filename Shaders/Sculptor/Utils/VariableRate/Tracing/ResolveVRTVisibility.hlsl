@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(VRTVisibilityResolveDS, 0)]]
+[[shader_params(VRTVisibilityResolveConstants, PARAMS_V_R_T_VISIBILITY_RESOLVE)]]
 
 #include "Utils/VariableRate/VariableRate.hlsli"
 
@@ -13,7 +13,7 @@ struct CS_INPUT
 
 float LoadTraceVRBlockVisibility(in uint2 blockCoords)
 {
-	const uint vrBlockInfo = u_vrBlocksTexture.Load(uint3(blockCoords, 0)).x;
+	const uint vrBlockInfo = PARAMS_V_R_T_VISIBILITY_RESOLVE->vrBlocksTexture.Load(uint3(blockCoords, 0)).x;
 
 	uint2 localTraceOffset = 0;
 	uint vrMask = 0;
@@ -22,11 +22,11 @@ float LoadTraceVRBlockVisibility(in uint2 blockCoords)
 	blockCoords &= ~(GetVariableRateTileSize(vrMask) - 1);
 	const uint2 traceCoods = blockCoords + localTraceOffset;
 
-	return u_inputTexture.Load(uint3(traceCoods, 0)).x;
+	return PARAMS_V_R_T_VISIBILITY_RESOLVE->inputTexture.Load(uint3(traceCoods, 0)).x;
 }
 
 
-class VariableRateSolver
+struct VariableRateSolver
 {
 	static VariableRateSolver Create(in float visibilitySample)
 	{
@@ -36,6 +36,7 @@ class VariableRateSolver
 		return solver;
 	}
 
+	[mutating]
 	void AccumulateBlock(in float visibilitySample)
 	{
 		m_sampleVisibility += visibilitySample;
@@ -59,11 +60,11 @@ class VariableRateSolver
 [numthreads(8, 4, 1)]
 void ResolveVRTVisibilityCS(CS_INPUT input)
 {
-	if(all(input.globalID.xy < u_constants.resolution))
+	if(all(input.globalID.xy < PARAMS_V_R_T_VISIBILITY_RESOLVE->resolution))
 	{
 		const uint2 pixelCoords = input.globalID.xy;
 
-		const uint vrBlockInfo = u_vrBlocksTexture.Load(uint3(pixelCoords, 0)).x;
+		const uint vrBlockInfo = PARAMS_V_R_T_VISIBILITY_RESOLVE->vrBlocksTexture.Load(uint3(pixelCoords, 0)).x;
 
 		uint2 localTraceOffset = 0;
 		uint vrMask = 0;
@@ -73,7 +74,7 @@ void ResolveVRTVisibilityCS(CS_INPUT input)
 
 		const uint2 traceCoords = blockCoords + localTraceOffset;
 
-		const float traceVisibility = u_inputTexture.Load(uint3(traceCoords, 0)).x;
+		const float traceVisibility = PARAMS_V_R_T_VISIBILITY_RESOLVE->inputTexture.Load(uint3(traceCoords, 0)).x;
 
 		VariableRateSolver vrSolver = VariableRateSolver::Create(traceVisibility);
 
@@ -97,6 +98,6 @@ void ResolveVRTVisibilityCS(CS_INPUT input)
 			vrSolver.AccumulateBlock(LoadTraceVRBlockVisibility(uint2(otherBlockXCoord, otherBlockYCoord)));
 		}
 
-		u_outputTexture[pixelCoords] = vrSolver.GetVisibility();
+		PARAMS_V_R_T_VISIBILITY_RESOLVE->outputTexture[pixelCoords] = vrSolver.GetVisibility();
 	}
 }

@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[shader_params(InitIndirectInstancedDrawCommandConstants, u_constants)]]
+[[shader_params(InitIndirectInstancedDrawCommandConstants, PARAMS_INIT_INDIRECT_INSTANCED_DRAW_COMMAND_CONSTANTS)]]
 
 [[shader_struct(IndirectDrawCommand)]]
 
@@ -15,10 +15,10 @@ struct CS_INPUT
 void InitIndirectInstancedDrawCommandCS(CS_INPUT input)
 {
 	IndirectDrawCommand drawCommand;
-	drawCommand.vertexCount   = u_constants.vertexCountPerInstance;
-	drawCommand.instanceCount = u_constants.instancesCountBuffer.Load(0u);
-	drawCommand.firstVertex   = u_constants.startVertexLocation;
-	drawCommand.firstInstance = u_constants.startInstanceLocation;
+	drawCommand.vertexCount   = PARAMS_INIT_INDIRECT_INSTANCED_DRAW_COMMAND_CONSTANTS->vertexCountPerInstance;
+	drawCommand.instanceCount = PARAMS_INIT_INDIRECT_INSTANCED_DRAW_COMMAND_CONSTANTS->instancesCountBuffer.Load(0u);
+	drawCommand.firstVertex   = PARAMS_INIT_INDIRECT_INSTANCED_DRAW_COMMAND_CONSTANTS->startVertexLocation;
+	drawCommand.firstInstance = PARAMS_INIT_INDIRECT_INSTANCED_DRAW_COMMAND_CONSTANTS->startInstanceLocation;
 
-	u_constants.outDrawCommand.Store(0u, drawCommand);
+	PARAMS_INIT_INDIRECT_INSTANCED_DRAW_COMMAND_CONSTANTS->outDrawCommand.Store(0u, drawCommand);
 }

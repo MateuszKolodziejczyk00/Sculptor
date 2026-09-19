@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(DOFGenerateCoCDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
+[[shader_params(DOFShaderParameters, PARAMS_D_O_F_GENERATE_CO_C)]]
+[[shader_params(GPURenderView, VIEW)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 
@@ -17,19 +17,18 @@ void DOFGenerateCoCCS(CS_INPUT input)
 {
     const uint2 pixel = input.globalID.xy;
     
-    uint2 outputRes;
-    u_cocTexture.GetDimensions(outputRes.x, outputRes.y);
+    uint2 outputRes = PARAMS_D_O_F_GENERATE_CO_C->cocTexture.GetResolution();
 
     if(pixel.x < outputRes.x && pixel.y < outputRes.y)
     {
         const float2 uv = (pixel + 0.5f) / float2(outputRes);
         
-        const float ndcDepth = u_depthTexture.SampleLevel(u_nearestSampler, uv, 0.f);
-        const float linearDepth = ComputeLinearDepth(ndcDepth, u_sceneView);
+        const float ndcDepth = PARAMS_D_O_F_GENERATE_CO_C->depthTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0.f);
+        const float linearDepth = ComputeLinearDepth(ndcDepth, VIEW->sceneView);
 
-        const float nearFieldCoC = linearDepth < u_params.nearFieldEnd ? 1.f - smoothstep(u_params.nearFieldBegin, u_params.nearFieldEnd, linearDepth) : 0.f;
-        const float farFieldCoC = linearDepth > u_params.farFieldBegin ? smoothstep(u_params.farFieldBegin, u_params.farFieldEnd, linearDepth) : 0.f;
+        const float nearFieldCoC = linearDepth < PARAMS_D_O_F_GENERATE_CO_C->nearFieldEnd ? 1.f - smoothstep(PARAMS_D_O_F_GENERATE_CO_C->nearFieldBegin, PARAMS_D_O_F_GENERATE_CO_C->nearFieldEnd, linearDepth) : 0.f;
+        const float farFieldCoC = linearDepth > PARAMS_D_O_F_GENERATE_CO_C->farFieldBegin ? smoothstep(PARAMS_D_O_F_GENERATE_CO_C->farFieldBegin, PARAMS_D_O_F_GENERATE_CO_C->farFieldEnd, linearDepth) : 0.f;
         
-        u_cocTexture[pixel] = float2(nearFieldCoC, farFieldCoC);
+        PARAMS_D_O_F_GENERATE_CO_C->cocTexture[pixel] = float2(nearFieldCoC, farFieldCoC);
     }
 }

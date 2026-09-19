@@ -4,10 +4,6 @@
 #include "CloudsNoiseTexturesGenerator.h"
 #include "RenderScene.h"
 #include "RenderGraphBuilder.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
 #include "Paths.h"
 #include "GlobalResources/GlobalResources.h"
 #include "GlobalResources/GlobalResourcesRegistry.h"
@@ -15,10 +11,10 @@
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include <SceneRenderSystems/Atmosphere/Clouds/CloudscapeEditorRenderer.h>
 #include "Pipelines/PSOsLibraryTypes.h"
+#include "ResourcesManager.h"
 
 
 SPT_DEFINE_LOG_CATEGORY(VolumetricCloudsRenderer, true);
-#pragma optimize("", off)
 
 namespace spt::rsc::clouds
 {
@@ -159,8 +155,7 @@ static void UpdateCloudsShadowsCache(rg::RenderGraphBuilder& graphBuilder, const
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Update Clouds Shadow Cache"),
 						  UpdateCloudsShadowsCachePSO::pso,
 						  math::Vector3u(math::Utils::DivideCeil(params.updateSize.x(), 8u), math::Utils::DivideCeil(params.updateSize.y(), 8u), 16u),
-						  rg::BindDescriptorSets(params.cloudscape.cloudscapeDS),
-						  shaderConstants);
+						  rg::ShaderParams(shaderConstants, params.cloudscape.gpuCloudscapeConstants));
 }
 
 } // shadows_cache
@@ -190,25 +185,18 @@ struct AccumulateCloudsParams
 
 
 BEGIN_SHADER_STRUCT(VolumetricCloudsAccumulateConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
-	SHADER_STRUCT_FIELD(math::Vector2f, rcpResolution)
-	SHADER_STRUCT_FIELD(math::Vector2u, tracedPixel2x2)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,                    rcpResolution)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    tracedPixel2x2)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, tracedClouds)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, accumulatedCloudsHistory)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwAccumulatedClouds)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         tracedCloudsDepth)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         accumulatedCloudsDepthHistory)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         rwAccumulatedCloudsDepth)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Uint32>,         accumulatedCloudsAge)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Uint32>,         rwCloudsAge)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(AccumulateVolumetricCloudsDS, rg::RGDescriptorSetState<AccumulateVolumetricCloudsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VolumetricCloudsAccumulateConstants>),       u_passConstants)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),    u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>), u_depthSampler)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                              u_tracedClouds)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                              u_accumulatedCloudsHistory)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                               u_rwAccumulatedClouds)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                      u_tracedCloudsDepth)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                      u_accumulatedCloudsDepthHistory)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                       u_rwAccumulatedCloudsDepth)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                                      u_accumulatedCloudsAge)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                                       u_rwCloudsAge)
-DS_END();
 
 
 static rdr::PipelineStateID CompileAccumulateVolumetricCloudsPipeline()
@@ -227,25 +215,22 @@ static void AccumulateClouds(rg::RenderGraphBuilder& graphBuilder, const Accumul
 	static const rdr::PipelineStateID pipeline = CompileAccumulateVolumetricCloudsPipeline();
 
 	VolumetricCloudsAccumulateConstants shaderConstants;
-	shaderConstants.resolution     = cloudsResolution;
-	shaderConstants.rcpResolution  = cloudsResolution.cast<Real32>().cwiseInverse();
-	shaderConstants.tracedPixel2x2 = params.tracedPixel2x2;
-
-	lib::MTHandle<AccumulateVolumetricCloudsDS> ds = graphBuilder.CreateDescriptorSet<AccumulateVolumetricCloudsDS>(RENDERER_RESOURCE_NAME("AccumulateVolumetricCloudsDS"));
-	ds->u_passConstants                 = shaderConstants;
-	ds->u_tracedClouds                  = params.tracedClouds;
-	ds->u_accumulatedCloudsHistory      = params.accumulatedCloudsHistory;
-	ds->u_rwAccumulatedClouds           = params.outAccumulatedClouds;
-	ds->u_tracedCloudsDepth             = params.tracedCloudsDepth;
-	ds->u_accumulatedCloudsDepthHistory = params.accumulatedCloudsDepthHistory;
-	ds->u_rwAccumulatedCloudsDepth      = params.outAccumulatedCloudsDepth;
-	ds->u_accumulatedCloudsAge          = params.accumulatedAge;
-	ds->u_rwCloudsAge                   = params.outAge;
+	shaderConstants.resolution                    = cloudsResolution;
+	shaderConstants.rcpResolution                 = cloudsResolution.cast<Real32>().cwiseInverse();
+	shaderConstants.tracedPixel2x2                = params.tracedPixel2x2;
+	shaderConstants.tracedClouds                  = params.tracedClouds;
+	shaderConstants.accumulatedCloudsHistory      = params.accumulatedCloudsHistory;
+	shaderConstants.rwAccumulatedClouds           = params.outAccumulatedClouds;
+	shaderConstants.tracedCloudsDepth             = params.tracedCloudsDepth;
+	shaderConstants.accumulatedCloudsDepthHistory = params.accumulatedCloudsDepthHistory;
+	shaderConstants.rwAccumulatedCloudsDepth      = params.outAccumulatedCloudsDepth;
+	shaderConstants.accumulatedCloudsAge          = params.accumulatedAge;
+	shaderConstants.rwCloudsAge                   = params.outAge;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Accumulate Volumetric Clouds"),
 						  pipeline,
 						  math::Utils::DivideCeil(cloudsResolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds)));
+						  rg::ShaderParams(shaderConstants));
 }
 
 } // accumulate
@@ -265,22 +250,15 @@ struct UpsampleCloudsParams
 };
 
 BEGIN_SHADER_STRUCT(VolumetricCloudsUpsampleConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
-	SHADER_STRUCT_FIELD(math::Vector2f, rcpResolution)
-	SHADER_STRUCT_FIELD(Uint32,         frameIdx)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,                    rcpResolution)
+	SHADER_STRUCT_FIELD(Uint32,                            frameIdx)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         blueNoise256)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, cloudsHalfRes)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         cloudsDepthHalfRes)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwClouds)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         rwCloudsDepth)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(UpsampleVolumetricCloudsDS, rg::RGDescriptorSetState<UpsampleVolumetricCloudsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VolumetricCloudsUpsampleConstants>),       u_passConstants)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_blueNoise256)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_cloudsHalfRes)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_cloudsDepthHalfRes)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_rwClouds)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_rwCloudsDepth)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),  u_linearSampler)
-DS_END();
 
 
 static rdr::PipelineStateID CompileUpsampleVolumetricCloudsPipeline()
@@ -299,22 +277,19 @@ static void UpsampleClouds(rg::RenderGraphBuilder& graphBuilder, const UpsampleC
 	static const rdr::PipelineStateID pipeline = CompileUpsampleVolumetricCloudsPipeline();
 
 	VolumetricCloudsUpsampleConstants shaderConstants;
-	shaderConstants.resolution    = cloudsResolution;
-	shaderConstants.rcpResolution = cloudsResolution.cast<Real32>().cwiseInverse();
-	shaderConstants.frameIdx      = params.frameIdx;
-
-	lib::MTHandle<UpsampleVolumetricCloudsDS> ds = graphBuilder.CreateDescriptorSet<UpsampleVolumetricCloudsDS>(RENDERER_RESOURCE_NAME("UpsampleVolumetricCloudsDS"));
-	ds->u_passConstants      = shaderConstants;
-	ds->u_blueNoise256       = gfx::global::Resources::Get().blueNoise256.GetView();
-	ds->u_cloudsHalfRes      = params.cloudsHalfRes;
-	ds->u_cloudsDepthHalfRes = params.cloudsDepthHalfRes;
-	ds->u_rwClouds           = params.clouds;
-	ds->u_rwCloudsDepth      = params.cloudsDepth;
+	shaderConstants.resolution         = cloudsResolution;
+	shaderConstants.rcpResolution      = cloudsResolution.cast<Real32>().cwiseInverse();
+	shaderConstants.frameIdx           = params.frameIdx;
+	shaderConstants.blueNoise256       = gfx::global::Resources::Get().blueNoise256.GetView();
+	shaderConstants.cloudsHalfRes      = params.cloudsHalfRes;
+	shaderConstants.cloudsDepthHalfRes = params.cloudsDepthHalfRes;
+	shaderConstants.rwClouds           = params.clouds;
+	shaderConstants.rwCloudsDepth      = params.cloudsDepth;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Upsample Volumetric Clouds"),
 						  pipeline,
 						  math::Utils::DivideCeil(cloudsResolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds)));
+						  rg::ShaderParams(shaderConstants));
 }
 
 } // upsample
@@ -333,22 +308,17 @@ struct VolumetricCloudsParams
 
 
 BEGIN_SHADER_STRUCT(VolumetricCloudsMainViewConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
-	SHADER_STRUCT_FIELD(math::Vector2f, rcpResolution)
-	SHADER_STRUCT_FIELD(Uint32,         frameIdx)
-	SHADER_STRUCT_FIELD(Bool,           fullResTrace)
-	SHADER_STRUCT_FIELD(math::Vector2u, tracedPixel2x2)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,                    rcpResolution)
+	SHADER_STRUCT_FIELD(Uint32,                            frameIdx)
+	SHADER_STRUCT_FIELD(Bool,                              fullResTrace)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    tracedPixel2x2)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         blueNoise256)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         furthestDepth)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, skyProbe)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         rwCloudsDepth)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwClouds)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(RenderVolumetricCloudsMainViewDS, rg::RGDescriptorSetState<RenderVolumetricCloudsMainViewDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VolumetricCloudsMainViewConstants>), u_passConstants)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                              u_blueNoise256)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                              u_furthestDepth)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                      u_skyProbe)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                               u_rwCloudsDepth)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                       u_rwClouds)
-DS_END();
 
 
 static rdr::PipelineStateID CompileRenderVolumetricCloudsMainViewPipeline()
@@ -376,31 +346,27 @@ static void RenderVolumetricCloudsMainView(rg::RenderGraphBuilder& graphBuilder,
 
 	const rg::RGTextureViewHandle furthestDepth = graphBuilder.CreateTextureMipView(shadingViewContext.hiZ, 4u);
 
+	const rg::RGTextureViewHandle cloudsTexture      = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Clouds"), rg::TextureDef(cloudsResolution, rhi::EFragmentFormat::RGBA16_S_Float));
+	const rg::RGTextureViewHandle cloudsDepthTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Clouds Depth"), rg::TextureDef(cloudsResolution, rhi::EFragmentFormat::R32_S_Float));
+
 	VolumetricCloudsMainViewConstants shaderConstants;
 	shaderConstants.resolution      = cloudsResolution;
 	shaderConstants.rcpResolution   = cloudsResolution.cast<Real32>().cwiseInverse();
 	shaderConstants.frameIdx        = renderedFrameIdx;
 	shaderConstants.fullResTrace    = renderer_params::fullResClouds;
 	shaderConstants.tracedPixel2x2  = tracedPixel2x2;
-
-	const rg::RGTextureViewHandle cloudsTexture      = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Clouds"), rg::TextureDef(cloudsResolution, rhi::EFragmentFormat::RGBA16_S_Float));
-	const rg::RGTextureViewHandle cloudsDepthTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Clouds Depth"), rg::TextureDef(cloudsResolution, rhi::EFragmentFormat::R32_S_Float));
+	shaderConstants.blueNoise256  = gfx::global::Resources::Get().blueNoise256.GetView();
+	shaderConstants.furthestDepth = furthestDepth;
+	shaderConstants.skyProbe      = shadingViewContext.skyProbe;
+	shaderConstants.rwCloudsDepth = cloudsDepthTexture;
+	shaderConstants.rwClouds      = cloudsTexture;
 
 	static const rdr::PipelineStateID pipeline = CompileRenderVolumetricCloudsMainViewPipeline();
-
-	lib::MTHandle<RenderVolumetricCloudsMainViewDS> ds = graphBuilder.CreateDescriptorSet<RenderVolumetricCloudsMainViewDS>(RENDERER_RESOURCE_NAME("RenderVolumetricCloudsMainViewDS"));
-	ds->u_passConstants = shaderConstants;
-	ds->u_blueNoise256  = gfx::global::Resources::Get().blueNoise256.GetView();
-	ds->u_furthestDepth = furthestDepth;
-	ds->u_skyProbe      = shadingViewContext.skyProbe;
-	ds->u_rwCloudsDepth = cloudsDepthTexture;
-	ds->u_rwClouds      = cloudsTexture;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Volumetric Clouds Main View"),
 						  pipeline,
 						  math::Utils::DivideCeil(cloudsResolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds),
-												 params.cloudscape->cloudscapeDS));
+						  rg::ShaderParams(shaderConstants, params.cloudscape->gpuCloudscapeConstants));
 
 	if (renderer_params::fullResClouds)
 	{
@@ -503,8 +469,7 @@ static rg::RGTextureViewHandle RenderCirrusClouds(rg::RenderGraphBuilder& graphB
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Cirrus Clouds"),
 						  RenderCirrusCloudsPSO::pso,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(context.cloudscapeDS),
-						  shaderConstants);
+						  rg::ShaderParams(shaderConstants, context.gpuCloudscapeConstants));
 
 	return cirrusCloudsTexture;
 }
@@ -526,19 +491,14 @@ struct CloudsTransmittanceMapParams
 
 
 BEGIN_SHADER_STRUCT(RenderCloudsTransmittanceMapConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
-	SHADER_STRUCT_FIELD(math::Vector2u, updateOffset)
-	SHADER_STRUCT_FIELD(math::Vector2f, rcpResolution)
-	SHADER_STRUCT_FIELD(math::Matrix4f, viewProjectionMatrix)
-	SHADER_STRUCT_FIELD(math::Matrix4f, invViewProjectionMatrix)
-	SHADER_STRUCT_FIELD(math::Vector3f, direction)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    resolution)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    updateOffset)
+	SHADER_STRUCT_FIELD(math::Vector2f,                    rcpResolution)
+	SHADER_STRUCT_FIELD(math::Matrix4f,                    viewProjectionMatrix)
+	SHADER_STRUCT_FIELD(math::Matrix4f,                    invViewProjectionMatrix)
+	SHADER_STRUCT_FIELD(math::Vector3f,                    direction)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector3f>, rwTransmittanceMap)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(RenderCloudsTransmittanceMapDS, rg::RGDescriptorSetState<RenderCloudsTransmittanceMapDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<RenderCloudsTransmittanceMapConstants>), u_constants)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                           u_rwTransmittanceMap)
-DS_END();
 
 
 static rdr::PipelineStateID CompileRenderCloudsTransmittanceMapPipeline()
@@ -560,10 +520,11 @@ static CloudsTransmittanceMap RenderCloudsTransmittanceMap(rg::RenderGraphBuilde
 	const CloudscapeConstants& cloudscapeConstants = params.cloudscape->cloudscapeConstants;
 
 	RenderCloudsTransmittanceMapConstants shaderConstants;
-	shaderConstants.resolution    = resolution;
-	shaderConstants.updateOffset  = params.updateOffset;
-	shaderConstants.rcpResolution = resolution.cast<Real32>().cwiseInverse();
-	shaderConstants.direction     = -mainDirLight.direction;
+	shaderConstants.resolution         = resolution;
+	shaderConstants.updateOffset       = params.updateOffset;
+	shaderConstants.rcpResolution      = resolution.cast<Real32>().cwiseInverse();
+	shaderConstants.direction          = -mainDirLight.direction;
+	shaderConstants.rwTransmittanceMap = params.cloudsTransmittanceTexture;
 
 	math::Vector3f center = params.cloudscape->cloudscapeConstants.cloudsAtmosphereCenter;
 	center.z() = 0.f;
@@ -571,14 +532,10 @@ static CloudsTransmittanceMap RenderCloudsTransmittanceMap(rg::RenderGraphBuilde
 	BuildCloudsTransmittanceMapMatrices(center, mainDirLight.direction, cloudscapeConstants.cloudscapeRange, cloudscapeConstants.cloudscapeOuterHeight, OUT shaderConstants.viewProjectionMatrix);
 	shaderConstants.invViewProjectionMatrix = shaderConstants.viewProjectionMatrix.inverse();
 
-	lib::MTHandle<RenderCloudsTransmittanceMapDS> ds = graphBuilder.CreateDescriptorSet<RenderCloudsTransmittanceMapDS>(RENDERER_RESOURCE_NAME("RenderCloudsTransmittanceMapDS"));
-	ds->u_rwTransmittanceMap = params.cloudsTransmittanceTexture;
-	ds->u_constants          = shaderConstants;
-
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Clouds Sun Transmittance Map"),
 						  pipeline,
 						  math::Utils::DivideCeil(params.updateSize, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(ds, params.cloudscape->cloudscapeDS));
+						  rg::ShaderParams(shaderConstants, params.cloudscape->gpuCloudscapeConstants));
 
 	CloudsTransmittanceMap cloudsTransmittanceMap
 	{
@@ -623,11 +580,11 @@ END_SHADER_STRUCT();
 namespace trace
 {
 
-DS_BEGIN(TraceCloudscapeProbesDS, rg::RGDescriptorSetState<TraceCloudscapeProbesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<UpdateCloudscapeProbesConstants>), u_constants)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                    u_skyViewProbe)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                     u_rwTraceResult)
-DS_END();
+BEGIN_SHADER_STRUCT(TraceCloudscapeProbesConsts)
+	SHADER_STRUCT_FIELD(UpdateCloudscapeProbesConstants,   constants)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, skyViewProbe)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwTraceResult)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CompileTraceCloudscapeProbesPipeline(Bool fullUpdate)
@@ -658,16 +615,15 @@ rg::RGTextureViewHandle TraceCloudscapeProbes(rg::RenderGraphBuilder& graphBuild
 	shaderConstants.compressedProbeDataRes = params.cloudscape->cloudscapeConstants.pixelsPerProbe;
 	shaderConstants.probesToUpdate         = params.probeCoords;
 
-	lib::MTHandle<TraceCloudscapeProbesDS> ds = graphBuilder.CreateDescriptorSet<TraceCloudscapeProbesDS>(RENDERER_RESOURCE_NAME("TraceCloudscapeProbesDS"));
-	ds->u_rwTraceResult = traceResult;
-	ds->u_skyViewProbe  = params.skyProbe;
-	ds->u_constants     = shaderConstants;
+	TraceCloudscapeProbesConsts traceConstants;
+	traceConstants.rwTraceResult = traceResult;
+	traceConstants.skyViewProbe  = params.skyProbe;
+	traceConstants.constants     = shaderConstants;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Trace Cloudscape Probes"),
 						  pipeline,
 						  traceResultRes,
-						  rg::BindDescriptorSets(std::move(ds),
-												 params.cloudscape->cloudscapeDS));
+						  rg::ShaderParams(traceConstants, params.cloudscape->gpuCloudscapeConstants));
 
 	return traceResult;
 }
@@ -677,11 +633,11 @@ rg::RGTextureViewHandle TraceCloudscapeProbes(rg::RenderGraphBuilder& graphBuild
 namespace compress
 {
 
-DS_BEGIN(CompressCloudscapeProbesDS, rg::RGDescriptorSetState<CompressCloudscapeProbesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<UpdateCloudscapeProbesConstants>), u_constants)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                    u_traceResult)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                     u_rwCompressedProbes)
-DS_END();
+BEGIN_SHADER_STRUCT(CompressCloudscapeProbesConsts)
+	SHADER_STRUCT_FIELD(UpdateCloudscapeProbesConstants,   constants)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, traceResult)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwCompressedProbes)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CompileCompressCloudscapeProbesPipeline(Bool fullUpdate)
@@ -708,16 +664,15 @@ void CompressCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const Probes
 	shaderConstants.compressedProbeDataRes = params.cloudscape->cloudscapeConstants.pixelsPerProbe;
 	shaderConstants.probesToUpdate         = params.probeCoords;
 
-	lib::MTHandle<CompressCloudscapeProbesDS> ds = graphBuilder.CreateDescriptorSet<CompressCloudscapeProbesDS>(RENDERER_RESOURCE_NAME("CompressCloudscapeProbesDS"));
-	ds->u_rwCompressedProbes       = params.cloduscapeProbesTexture;
-	ds->u_traceResult              = traceResult;
-	ds->u_constants                = shaderConstants;
+	CompressCloudscapeProbesConsts compressConstants;
+	compressConstants.rwCompressedProbes       = params.cloduscapeProbesTexture;
+	compressConstants.traceResult              = traceResult;
+	compressConstants.constants                = shaderConstants;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Compress Cloudscape Probes"),
 						  pipeline,
 						  math::Vector2u(1u, updatedProbesNum),
-						  rg::BindDescriptorSets(std::move(ds),
-												 params.cloudscape->cloudscapeDS));
+						  rg::ShaderParams(compressConstants, params.cloudscape->gpuCloudscapeConstants));
 }
 
 } // compress
@@ -739,18 +694,13 @@ namespace high_res
 {
 
 BEGIN_SHADER_STRUCT(UpdateCloudscapeHighResProbeConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, updateOffset)
-	SHADER_STRUCT_FIELD(Uint32,         updateLoopIdx)
-	SHADER_STRUCT_FIELD(Real32,         blendFactor)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    updateOffset)
+	SHADER_STRUCT_FIELD(Uint32,                            updateLoopIdx)
+	SHADER_STRUCT_FIELD(Real32,                            blendFactor)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, skyViewProbe)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         blueNoise256)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwProbe)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(UpdateCloudscapeHighResProbeDS, rg::RGDescriptorSetState<UpdateCloudscapeHighResProbeDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<UpdateCloudscapeHighResProbeConstants>), u_constants)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                          u_skyViewProbe)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                  u_blueNoise256)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                           u_rwProbe)
-DS_END();
 
 
 static rdr::PipelineStateID CompileUpdateCloudscapeHighResProbePipeline()
@@ -787,18 +737,14 @@ void UpdateCloudscapeHighResProbe(rg::RenderGraphBuilder& graphBuilder, ViewRend
 	shaderConstants.updateOffset  = params.updateOffset;
 	shaderConstants.updateLoopIdx = params.updateLoopIdx;
 	shaderConstants.blendFactor   = params.blendFactor;
-
-	lib::MTHandle<UpdateCloudscapeHighResProbeDS> ds = graphBuilder.CreateDescriptorSet<UpdateCloudscapeHighResProbeDS>(RENDERER_RESOURCE_NAME("UpdateCloudscapeHighResProbeDS"));
-	ds->u_constants    = shaderConstants;
-	ds->u_skyViewProbe = params.skyProbe;
-	ds->u_blueNoise256 = gfx::global::Resources::Get().blueNoise256.GetView();
-	ds->u_rwProbe      = params.cloudscapeProbe;
+	shaderConstants.skyViewProbe  = params.skyProbe;
+	shaderConstants.blueNoise256  = gfx::global::Resources::Get().blueNoise256.GetView();
+	shaderConstants.rwProbe       = params.cloudscapeProbe;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Update High Res Probe"),
 						  pipeline,
 						  params.updateSize,
-						  rg::BindDescriptorSets(std::move(ds),
-												 params.cloudscape->cloudscapeDS));
+						  rg::ShaderParams(shaderConstants, params.cloudscape->gpuCloudscapeConstants));
 }
 
 } // high_res
@@ -905,7 +851,7 @@ void VolumetricCloudsRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBuild
 		for (ViewRenderingSpec* viewSpec : viewSpecs)
 		{
 			SPT_CHECK(!!viewSpec);
-			const rg::BindDescriptorSetsScope viewDSScope(graphBuilder, rg::BindDescriptorSets(viewSpec->GetRenderViewDS()));
+			const rg::BindShaderParamsScope viewParamsScope(graphBuilder, rg::ShaderParams(viewSpec->GetViewShaderParams()));
 			RenderPerView(graphBuilder, renderScene, *viewSpec, cloudscapeContext);
 		}
 
@@ -917,18 +863,18 @@ void VolumetricCloudsRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBuild
 
 		if (rendererInterface.rendererSettings.editorRendering.cloudscape.influenceGizmo)
 		{
-			mainView->GetRenderViewEntry(ERenderViewEntry::DebugRenderAndEditor).AddLambda([cloudscapeDS = cloudscapeContext.cloudscapeDS, paintingData](rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const ViewRenderingSpec& view, const RenderViewEntryContext& context)
+			mainView->GetRenderViewEntry(ERenderViewEntry::DebugRenderAndEditor).AddLambda([cloudscapeConsts = cloudscapeContext.gpuCloudscapeConstants, paintingData](rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const ViewRenderingSpec& view, const RenderViewEntryContext& context)
 			{
-				rg::BindDescriptorSetsScope cloudscapeDSScope(graphBuilder, rg::BindDescriptorSets(cloudscapeDS));
+				rg::BindShaderParamsScope cloudscapeParamsScope(graphBuilder, rg::ShaderParams(cloudscapeConsts));
 				editor::RenderCloudscapeInfluenceGizmo(graphBuilder, rendererInterface, renderScene, view, paintingData, context.Get<RenderViewEntryDelegates::DebugRenderAndEditorData>(), rendererInterface.rendererSettings.editorRendering);
 			});
 		}
 
 		if (rendererInterface.rendererSettings.editorRendering.cloudscape.weatherMapPaintCommand)
 		{
-			mainView->GetRenderViewEntry(ERenderViewEntry::DebugRenderAndEditor).AddLambda([cloudscapeDS = cloudscapeContext.cloudscapeDS, paintingData](rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const ViewRenderingSpec& view, const RenderViewEntryContext& context)
+			mainView->GetRenderViewEntry(ERenderViewEntry::DebugRenderAndEditor).AddLambda([cloudscapeConsts = cloudscapeContext.gpuCloudscapeConstants, paintingData](rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const ViewRenderingSpec& view, const RenderViewEntryContext& context)
 			{
-				rg::BindDescriptorSetsScope cloudscapeDSScope(graphBuilder, rg::BindDescriptorSets(cloudscapeDS));
+				rg::BindShaderParamsScope cloudscapeParamsScope(graphBuilder, rg::ShaderParams(cloudscapeConsts));
 				editor::ExecuteWeatherMapPaintCommand(graphBuilder, rendererInterface, renderScene, view, paintingData, rendererInterface.rendererSettings.editorRendering);
 			});
 		}
@@ -985,12 +931,12 @@ void VolumetricCloudsRenderer::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 
 	ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
 
-	lib::MTHandle<CloudscapeProbesDS> cloudscapeFullDS = graphBuilder.CreateDescriptorSet<CloudscapeProbesDS>(RENDERER_RESOURCE_NAME("CloudscapeProbesDS"));
-	cloudscapeFullDS->u_cloudscapeConstants    = cloudscapeContext.cloudscapeConstants;
-	cloudscapeFullDS->u_cloudscapeProbes       = cloudscapeProbes;
-	cloudscapeFullDS->u_cloudscapeHighResProbe = cloudscapeHighResProbe;
+	CloudscapeProbesParams cloudscapeProbesParams;
+	cloudscapeProbesParams.cloudscapeConstants    = cloudscapeContext.gpuCloudscapeConstants;
+	cloudscapeProbesParams.cloudscapeProbes       = cloudscapeProbes;
+	cloudscapeProbesParams.cloudscapeHighResProbe = cloudscapeHighResProbe;
 
-	shadingViewContext.cloudscapeProbesDS = std::move(cloudscapeFullDS);
+	shadingViewContext.cloudscapeProbesParams = graphBuilder.CreateGPUData(cloudscapeProbesParams);
 }
 
 void VolumetricCloudsRenderer::RenderVolumetricClouds(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterface& rendererInterface, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context, const CloudscapeContext cloudscapeContext)
@@ -1060,22 +1006,19 @@ CloudscapeContext VolumetricCloudsRenderer::CreateFrameCloudscapeContext(rg::Ren
 	m_cloudscapeConstants.globalCloudsHeightMultiplier = renderer_params::cloudsHeightMultiplier;
 	m_cloudscapeConstants.time                         = renderScene.GetCurrentFrameRef().GetTime();
 	m_cloudscapeConstants.mainDirectionalLight         = *atmosphereContext.mainDirectionalLight;
-
-	lib::MTHandle<CloudscapeDS> ds = graphBuilder.CreateDescriptorSet<CloudscapeDS>(RENDERER_RESOURCE_NAME("CloudscapeDS"));
-	ds->u_cloudscapeConstants = m_cloudscapeConstants;
-	ds->u_atmosphereConstants = atmosphereContext.atmosphereParamsBuffer->GetFullView();
-	ds->u_transmittanceLUT    = atmosphereContext.transmittanceLUT;
-	ds->u_baseShapeNoise      = graphBuilder.AcquireExternalTextureView(m_baseShapeNoiseTexture);
-	ds->u_detailShapeNoise    = graphBuilder.AcquireExternalTextureView(m_detailShapeNoiseTexture);
-	ds->u_curlNoise           = graphBuilder.AcquireExternalTextureView(m_curlNoise);
-	ds->u_weatherMap          = weatherMap;
-	ds->u_densityLUT          = graphBuilder.AcquireExternalTextureView(m_densityLUT);
-	ds->u_cirrusCloudsMask    = graphBuilder.AcquireExternalTextureView(m_cirrusCloudsMask);
-	ds->u_shadowsCache        = graphBuilder.AcquireExternalTextureView(m_cloudscapeShadowCache.GetCurrent());
+	m_cloudscapeConstants.atmosphereConstants          = atmosphereContext.atmosphereParams;
+	m_cloudscapeConstants.transmittanceLUT             = atmosphereContext.transmittanceLUT;
+	m_cloudscapeConstants.baseShapeNoise               = graphBuilder.AcquireExternalTextureView(m_baseShapeNoiseTexture);
+	m_cloudscapeConstants.detailShapeNoise             = graphBuilder.AcquireExternalTextureView(m_detailShapeNoiseTexture);
+	m_cloudscapeConstants.curlNoise                    = graphBuilder.AcquireExternalTextureView(m_curlNoise);
+	m_cloudscapeConstants.weatherMap                   = weatherMap;
+	m_cloudscapeConstants.densityLUT                   = graphBuilder.AcquireExternalTextureView(m_densityLUT);
+	m_cloudscapeConstants.cirrusCloudsMask             = graphBuilder.AcquireExternalTextureView(m_cirrusCloudsMask);
+	m_cloudscapeConstants.shadowsCache                 = graphBuilder.AcquireExternalTextureView(m_cloudscapeShadowCache.GetCurrent());
 
 	const Bool resetAccumulation = settings.resetAccumulation;
 
-	CloudscapeContext context{ atmosphereContext, m_cloudscapeConstants, ds };
+	CloudscapeContext context{ atmosphereContext, m_cloudscapeConstants, graphBuilder.CreateGPUData(m_cloudscapeConstants) };
 	context.resetAccumulation = resetAccumulation;
 	context.frameIdx          = mainView->GetFrameIdx();
 

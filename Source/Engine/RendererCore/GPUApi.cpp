@@ -1,5 +1,4 @@
 #include "GPUApi.h"
-#include "Common/DescriptorSetCompilation/DescriptorSetCompilationDefsRegistry.h"
 #include "RendererSettings.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/Semaphore.h"
@@ -7,11 +6,10 @@
 #include "Types/Window.h"
 #include "Shaders/ShadersManager.h"
 #include "Pipelines/PipelinesCache.h"
-#include "Samplers/SamplersCache.h"
 #include "RHICore/RHIInitialization.h"
 #include "JobSystem.h"
 #include "ResourcesManager.h"
-#include "Types/DescriptorSetState/DescriptorManager.h"
+#include "Descriptors/DescriptorManager.h"
 #include "Pipelines/PSOsLibrary.h"
 #include "Utils/TransfersManager.h"
 
@@ -24,8 +22,6 @@ struct GPUApiData
 	ShadersManager shadersManager;
 	
 	PipelinesCache pipelinesCache;
-	
-	SamplersCache samplersCache;
 
 	TransfersManager* transfersManager;
 	
@@ -34,14 +30,11 @@ struct GPUApiData
 	DeviceQueuesManager deviceQueuesManager;
 	
 	GPUReleaseQueue releasesQueue;
-
-	DescriptorSetStateLayoutsRegistry dsLayoutsRegistry;
 	
-	lib::SharedPtr<DescriptorHeap> descriptorHeap;
+	lib::SharedPtr<DescriptorHeap> resourceDescriptorHeap;
+	lib::SharedPtr<DescriptorHeap> samplerDescriptorHeap;
 	
 	lib::UniquePtr<DescriptorManager> descriptorsManager;
-	
-	lib::SharedPtr<DescriptorSetLayout> shaderParamsDSLayout;
 	
 	lib::Lock releaseQueueLock;
 	lib::DynamicArray<GPUReleaseQueue::ReadyQueue> readyReleases;
@@ -51,8 +44,6 @@ struct GPUApiData
 	StructsRegistryData* shaderStructsRegistryData = nullptr;
 
 	GPUApiFactoryData* gpuApiFactoryData = nullptr;
-
-	sc::DSCompilationDefRegistryData* dsCompilationDefRegistryData = nullptr;
 };
 
 static GPUApiData* g_GPUApiData = nullptr;
@@ -84,25 +75,10 @@ static void InitializeSamplerDescriptors()
 		materialLinearSampler
 	};
 
-
 	for (Uint32 i = 0; i < SPT_ARRAY_SIZE(samplerStates); ++i)
 	{
-		const lib::SharedRef<rdr::Sampler> sampler = rdr::ResourcesManager::CreateSampler(samplerStates[i]);
-		g_GPUApiData->descriptorsManager->UploadSamplerDescriptor(i, *sampler);
+		g_GPUApiData->descriptorsManager->UploadSamplerDescriptor(i, samplerStates[i]);
 	}
-}
-
-static void InitializeShaderParamsDSLayout()
-{
-	rhi::DescriptorSetBindingDefinition bindingDef;
-	bindingDef.bindingIdx      = 0u;
-	bindingDef.descriptorType  = rhi::EDescriptorType::UniformBuffer;
-	bindingDef.descriptorCount = 1u;
-	bindingDef.shaderStages    = rhi::EShaderStageFlags::All;
-
-	rhi::DescriptorSetDefinition layoutDef;
-	layoutDef.bindings.emplace_back(bindingDef);
-	g_GPUApiData->shaderParamsDSLayout = rdr::ResourcesManager::CreateDescriptorSetLayout(RENDERER_RESOURCE_NAME("Shader Params Layout"), layoutDef);
 }
 
 } // utils
@@ -121,21 +97,20 @@ void GPUApi::Initialize()
 
 	rhi::RHI::Initialize(rhi::RHIInitializationInfo{});
 
-	const Uint64 descriptorsBufferSize = 1024u * 1024u * 32u;
-	g_GPUApiData->descriptorHeap = ResourcesManager::CreateDescriptorHeap(RENDERER_RESOURCE_NAME("GPUApi Descriptor Heap"),
-																		 rhi::DescriptorHeapDefinition{ .size = descriptorsBufferSize });
+	const rhi::DescriptorProps& descriptorProps = rhi::RHI::GetDescriptorProps();
 
-	g_GPUApiData->descriptorsManager = std::make_unique<DescriptorManager>(*g_GPUApiData->descriptorHeap);
+	g_GPUApiData->resourceDescriptorHeap = ResourcesManager::CreateDescriptorHeap(RENDERER_RESOURCE_NAME("GPUApi Resource Descriptor Heap"),
+																		 rhi::DescriptorHeapDefinition{ .size = descriptorProps.maxResourceHeapSize, .type = rhi::EDescriptorHeapType::Resource });
+
+	g_GPUApiData->samplerDescriptorHeap = ResourcesManager::CreateDescriptorHeap(RENDERER_RESOURCE_NAME("GPUApi Sampler Descriptor Heap"),
+																		 rhi::DescriptorHeapDefinition{ .size = descriptorProps.maxSamplerHeapSize, .type = rhi::EDescriptorHeapType::Sampler });
+
+
+	g_GPUApiData->descriptorsManager = std::make_unique<DescriptorManager>(*g_GPUApiData->resourceDescriptorHeap, *g_GPUApiData->samplerDescriptorHeap);
 
 	GetShadersManager().Initialize();
 
-	GetSamplersCache().Initialize();
-
 	GetDeviceQueuesManager().Initialize();
-
-	DescriptorSetStateLayoutsFactory::Get().CreateRegisteredLayouts(g_GPUApiData->dsLayoutsRegistry);
-
-	utils::InitializeShaderParamsDSLayout();
 
 	utils::InitializeSamplerDescriptors();
 
@@ -143,7 +118,6 @@ void GPUApi::Initialize()
 
 	g_GPUApiData->rhiModuleData = rhi::RHI::GetModuleData();
 	g_GPUApiData->shaderStructsRegistryData = ShaderStructsRegistry::GetRegistryData();
-	g_GPUApiData->dsCompilationDefRegistryData = sc::DescriptorSetCompilationDefsRegistry::GetRegistryData();
 }
 
 void GPUApi::Uninitialize()
@@ -152,17 +126,11 @@ void GPUApi::Uninitialize()
 
 	WaitIdle();
 
-	g_GPUApiData->shaderParamsDSLayout.reset();
-
-	g_GPUApiData->dsLayoutsRegistry.ReleaseRegisteredLayouts();
-
 	ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags::Immediate);
 
 	GetOnRendererCleanupDelegate().Broadcast();
 
 	GetDeviceQueuesManager().Uninitialize();
-
-	GetSamplersCache().Uninitialize();
 
 	GetPipelinesCache().ClearCachedPipelines();
 
@@ -172,7 +140,9 @@ void GPUApi::Uninitialize()
 
 	g_GPUApiData->descriptorsManager.reset();
 
-	g_GPUApiData->descriptorHeap.reset();
+	g_GPUApiData->samplerDescriptorHeap.reset();
+
+	g_GPUApiData->resourceDescriptorHeap.reset();
 
 	ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags::Immediate);
 
@@ -201,9 +171,6 @@ void GPUApi::InitializeModule(GPUApiData& data)
 	g_GPUApiData->shadersManager.InitializeModule();
 
 	ShaderStructsRegistry::InitializeModule(g_GPUApiData->shaderStructsRegistryData);
-	sc::DescriptorSetCompilationDefsRegistry::InitializeModule(g_GPUApiData->dsCompilationDefRegistryData);
-
-	DescriptorSetStateLayoutsFactory::Get().CreateRegisteredLayouts(g_GPUApiData->dsLayoutsRegistry);
 
 	PSOPrecacheParams precacheParams{};
 	PSOsLibrary::GetInstance().PrecachePSOs(precacheParams);
@@ -214,10 +181,6 @@ void GPUApi::InitializeModule(GPUApiData& data)
 void GPUApi::FlushCaches()
 {
 	SPT_PROFILER_FUNCTION();
-	
-	rhi::RHI::FlushCaches();
-
-	GetSamplersCache().FlushPendingSamplers();
 	
 	GetPipelinesCache().FlushCreatedPipelines();
 }
@@ -232,19 +195,19 @@ PipelinesCache& GPUApi::GetPipelinesCache()
 	return g_GPUApiData->pipelinesCache;
 }
 
-SamplersCache& GPUApi::GetSamplersCache()
-{
-	return g_GPUApiData->samplersCache;
-}
-
 DeviceQueuesManager& GPUApi::GetDeviceQueuesManager()
 {
 	return g_GPUApiData->deviceQueuesManager;
 }
 
-DescriptorHeap& GPUApi::GetDescriptorHeap()
+DescriptorHeap& GPUApi::GetResourceDescriptorHeap()
 {
-	return *g_GPUApiData->descriptorHeap;
+	return *g_GPUApiData->resourceDescriptorHeap;
+}
+
+DescriptorHeap& GPUApi::GetSamplerDescriptorHeap()
+{
+	return *g_GPUApiData->samplerDescriptorHeap;
 }
 
 DescriptorManager& GPUApi::GetDescriptorManager()
@@ -257,16 +220,6 @@ DescriptorManager& GPUApi::GetDescriptorManager()
 TransfersManager& GPUApi::GetTransfersManager()
 {
 	return *g_GPUApiData->transfersManager;
-}
-
-DescriptorSetStateLayoutsRegistry& GPUApi::GetDSLayoutsRegistry()
-{
-	return g_GPUApiData->dsLayoutsRegistry;
-}
-
-const lib::SharedPtr<DescriptorSetLayout>& GPUApi::GetShaderParamsDSLayout()
-{
-	return g_GPUApiData->shaderParamsDSLayout;
 }
 
 void GPUApi::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry entry)

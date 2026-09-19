@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderCloudsTransmittanceMapDS, 0)]]
-[[descriptor_set(CloudscapeDS, 1)]]
+[[shader_params(RenderCloudsTransmittanceMapConstants, PARAMS_RENDER_CLOUDS_TRANSMITTANCE_MAP)]]
+[[shader_params(CloudscapeConstants, PARAMS_CLOUDSCAPE)]]
 
 #include "Atmosphere/VolumetricClouds/CloudscapeRaymarcher.hlsli"
 
@@ -14,22 +14,22 @@ struct CS_INPUT
 [numthreads(8, 8, 1)]
 void RenderCloudsTransmittanceMapCS(CS_INPUT input)
 {
-    const uint2 coords = u_constants.updateOffset + input.globalID.xy;
+    const uint2 coords = PARAMS_RENDER_CLOUDS_TRANSMITTANCE_MAP->updateOffset + input.globalID.xy;
 
     const float2 uv = (coords + 0.5f) / 2048.f;
 
-    const float4 ws = mul(u_constants.invViewProjectionMatrix, float4(2.f * uv - 1.f, 0.5f, 1.f));
+    const float4 ws = mul(PARAMS_RENDER_CLOUDS_TRANSMITTANCE_MAP->invViewProjectionMatrix, float4(2.f * uv - 1.f, 0.5f, 1.f));
 
     const float3 worldLocation = ws.xyz / ws.w;
 
-    const CloudscapeConstants cloudscape = u_cloudscapeConstants;
+    const CloudscapeConstants cloudscape = *PARAMS_CLOUDSCAPE;
 
     const Sphere cloudsAtmosphereInnerSphere = Sphere::Create(cloudscape.cloudsAtmosphereCenter, cloudscape.cloudsAtmosphereInnerRadius);
     const Sphere cloudsAtmosphereOuterSphere = Sphere::Create(cloudscape.cloudsAtmosphereCenter, cloudscape.cloudsAtmosphereOuterRadius);
 
     float transmittance = 1.f;
 
-    const float3 rayDir = -u_constants.direction;
+    const float3 rayDir = -PARAMS_RENDER_CLOUDS_TRANSMITTANCE_MAP->direction;
     float3 rayOrigin = worldLocation;
     
     if(!IsNearlyZero(rayDir.z))
@@ -52,8 +52,6 @@ void RenderCloudsTransmittanceMapCS(CS_INPUT input)
 
 	float2 segment;
 	bool test = ComputeRaymarchSegment(ray, raymarchParams.maxVisibleDepth, segment);
-		debug::WriteDebugPixel(coords, td);
-    
-    u_rwTransmittanceMap[coords] = transmittance;
+
+    PARAMS_RENDER_CLOUDS_TRANSMITTANCE_MAP->rwTransmittanceMap[coords] = transmittance;
 }
-[[meta(debug_features)]]

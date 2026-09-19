@@ -2,9 +2,9 @@
 
 #define RT_MATERIAL_TRACING
 
-[[descriptor_set(RenderSceneDS)]]
-[[descriptor_set(RenderViewDS)]]
-[[descriptor_set(SpecularReflectionsTraceDS)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(SpecularReflectionsTraceConstants, PARAMS_SPECULAR_REFLECTIONS_TRACE)]]
 
 #include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/RTGBuffer.hlsli"
@@ -27,23 +27,23 @@ void GenerateRTGIRaysRTG()
 
 	if(traceCommandIndex == 0u)
 	{
-		u_shadingIndirectArgs[0].hitDispatchSize.yz    = 1u;
-		u_shadingIndirectArgs[0].missDispatchGroups.yz = 1u;
+		PARAMS_SPECULAR_REFLECTIONS_TRACE->shadingIndirectArgs[0].hitDispatchSize.yz    = 1u;
+		PARAMS_SPECULAR_REFLECTIONS_TRACE->shadingIndirectArgs[0].missDispatchGroups.yz = 1u;
 	}
 
-	const EncodedRayTraceCommand encodedTraceCommand = u_traceCommands[traceCommandIndex];
+	const EncodedRayTraceCommand encodedTraceCommand = PARAMS_SPECULAR_REFLECTIONS_TRACE->traceCommands[traceCommandIndex];
 	const RayTraceCommand traceCommand = DecodeTraceCommand(encodedTraceCommand);
 
 	const uint2 pixel = traceCommand.blockCoords + traceCommand.localOffset;
 
-	const float depth = u_constants.gpuGBuffer.depth.Load(uint3(pixel, 0));
+	const float depth = PARAMS_SPECULAR_REFLECTIONS_TRACE->gpuGBuffer.depth.Load(uint3(pixel, 0));
 	if (depth > 0.f)
 	{
-		const float2 uv = (pixel + 0.5f) * u_constants.invResolution;
+		const float2 uv = (pixel + 0.5f) * PARAMS_SPECULAR_REFLECTIONS_TRACE->invResolution;
 		const float3 ndc = float3(uv * 2.f - 1.f, depth);
-		float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
+		float3 worldLocation = NDCToWorldSpace(ndc, VIEW->sceneView);
 
-		const uint encodedRayDirection = u_rayDirections[traceCommandIndex];
+		const uint encodedRayDirection = PARAMS_SPECULAR_REFLECTIONS_TRACE->rayDirections[traceCommandIndex];
 
 		const float3 rayDirection = OctahedronDecodeNormal(UnpackHalf2x16Norm(encodedRayDirection));
 
@@ -52,14 +52,14 @@ void GenerateRTGIRaysRTG()
 		RayHitResult hitResult;
 		bool isRayFinished = false;
 
-		const float traceLength = u_constants.ssrTraceLength;
-		const SSTraceResultExtended ssResult = TraceScreenSpaceRay(u_constants.ssrTracer, u_sceneView, uv, depth, rayDirection, traceLength, rng.Next());
+		const float traceLength = PARAMS_SPECULAR_REFLECTIONS_TRACE->ssrTraceLength;
+		const SSTraceResultExtended ssResult = TraceScreenSpaceRay(PARAMS_SPECULAR_REFLECTIONS_TRACE->ssrTracer, VIEW->sceneView, uv, depth, rayDirection, traceLength, rng.Next());
 
 		float3 traceOrigin = worldLocation;
 
 		if (ssResult.isHit)
 		{
-			const GBufferInterface gbuffer = GBufferInterface(u_constants.gpuGBuffer);
+			const GBufferInterface gbuffer = GBufferInterface(PARAMS_SPECULAR_REFLECTIONS_TRACE->gpuGBuffer);
 
 			const SurfaceInfo hitSurfaceInfo = gbuffer.GetSurfaceInfo(ssResult.hitUV);
 			hitResult.normal      = hitSurfaceInfo.normal;
@@ -97,9 +97,9 @@ void GenerateRTGIRaysRTG()
 			uint validHitsOffset = 0;
 			if(WaveIsFirstLane())
 			{
-				InterlockedAdd(u_raysShadingCounts[0].hitRaysNum, validHitCount, OUT validHitsOffset);
+				validHitsOffset = PARAMS_SPECULAR_REFLECTIONS_TRACE->raysShadingCounts.Cast<uint>().AtomicAdd(0u, validHitCount);
 
-				InterlockedMax(u_shadingIndirectArgs[0].hitDispatchSize.x, validHitsOffset + validHitCount);
+				PARAMS_SPECULAR_REFLECTIONS_TRACE->shadingIndirectArgs.Cast<uint>().AtomicMax(0u, validHitsOffset + validHitCount);
 			}
 			const uint validHitIndex = WaveReadLaneFirst(validHitsOffset) + GetCompactedIndex(validHitMask, WaveGetLaneIndex());
 			hitResultIdx = validHitIndex;
@@ -113,20 +113,19 @@ void GenerateRTGIRaysRTG()
 			uint missOffset = 0;
 			if (WaveIsFirstLane())
 			{
-				InterlockedAdd(u_raysShadingCounts[0].missRaysNum, missCount, OUT missOffset);
+				missOffset = PARAMS_SPECULAR_REFLECTIONS_TRACE->raysShadingCounts.Cast<uint>().AtomicAdd(1u, missCount);
 
-				InterlockedMax(u_shadingIndirectArgs[0].missDispatchGroups.x, (missOffset + missCount + 63) / 64);
+				PARAMS_SPECULAR_REFLECTIONS_TRACE->shadingIndirectArgs.Cast<uint>().AtomicMax(4u, (missOffset + missCount + 63) / 64);
 			}
 			const uint compactedIdx = GetCompactedIndex(missMask, WaveGetLaneIndex());
-			const uint missIndex = u_constants.rayCommandsBufferSize - WaveReadLaneFirst(missOffset) - missCount + compactedIdx;
+			const uint missIndex = PARAMS_SPECULAR_REFLECTIONS_TRACE->rayCommandsBufferSize - WaveReadLaneFirst(missOffset) - missCount + compactedIdx;
 			hitResultIdx = missIndex;
 		}
 
 		if(hitResultIdx != IDX_NONE_32)
 		{
-			u_sortedRays[hitResultIdx] = traceCommandIndex;
-			u_hitMaterialInfos[traceCommandIndex] = PackRTGBuffer(hitResult);
+			PARAMS_SPECULAR_REFLECTIONS_TRACE->sortedRays[hitResultIdx] = traceCommandIndex;
+			PARAMS_SPECULAR_REFLECTIONS_TRACE->hitMaterialInfos[traceCommandIndex] = PackRTGBuffer(hitResult);
 		}
 	}
 }
-[[meta(debug_features)]]

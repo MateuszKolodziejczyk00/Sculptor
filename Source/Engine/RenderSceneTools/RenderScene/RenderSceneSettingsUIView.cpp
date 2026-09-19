@@ -45,7 +45,10 @@ void RenderSceneSettingsUIView::DrawUIForScene(RenderScene& scene)
 	const scui::Context& context = scui::ApplicationUI::GetCurrentContext();
 
 	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
-	sceneRendererAPI->DrawParametersUI(context.GetUIContext().GetHandle());
+	if (sceneRendererAPI)
+	{
+		sceneRendererAPI->DrawParametersUI(context.GetUIContext().GetHandle());
+	}
 }
 
 } // spt::rsc

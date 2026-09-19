@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(DDGIUpdateProbesAverageLuminanceDS, 0)]]
+[[shader_params(DDGIUpdateProbesAverageLuminanceConsts, PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE)]]
 
 #include "DDGI/DDGITypes.hlsli"
 
@@ -16,16 +16,16 @@ void DDGIUpdateProbesAverageLuminanceCS(CS_INPUT input)
 {
 	const uint updatedProbeIdx = input.groupID.x;
 
-	const uint3 updatedProbeCoords = ComputeUpdatedProbeCoords(updatedProbeIdx, u_relitParams.probesToUpdateCoords, u_relitParams.probesToUpdateCount);
-	const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(u_volumeParams, updatedProbeCoords);
+	const uint3 updatedProbeCoords = ComputeUpdatedProbeCoords(updatedProbeIdx, PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->relitParams->probesToUpdateCoords, PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->relitParams->probesToUpdateCount);
+	const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(*PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->volumeParams, updatedProbeCoords);
 
 	// add 1 because of the border
-	const DDGIProbeDataCoords probeDataCoords = ComputeProbeIlluminanceDataOffset(u_volumeParams, probeWrappedCoords);
+	const DDGIProbeDataCoords probeDataCoords = ComputeProbeIlluminanceDataOffset(*PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->volumeParams, probeWrappedCoords);
 
-	Texture2D<float3> probeIlluminanceTexture = u_volumeIlluminanceTextures[probeDataCoords.textureIdx];
+	SRVTexture2D<float3> probeIlluminanceTexture = PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->volumeIlluminanceTextures[probeDataCoords.textureIdx];
 	const uint2 probeDataOffset = probeDataCoords.textureLocalCoords + 1;
 
-	const uint samplesNum = u_volumeParams.probeIlluminanceDataRes.x * u_volumeParams.probeIlluminanceDataRes.y;
+	const uint samplesNum = PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->volumeParams->probeIlluminanceDataRes.x * PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->volumeParams->probeIlluminanceDataRes.y;
 
 	float3 averageLuminance = 0.f;
 	for (uint waveSampleIdx = 0; waveSampleIdx < samplesNum; waveSampleIdx += WaveGetLaneCount())
@@ -36,8 +36,8 @@ void DDGIUpdateProbesAverageLuminanceCS(CS_INPUT input)
 		if(sampleIdx < samplesNum)
 		{
 			uint2 sampleOffset;
-			sampleOffset.y = sampleIdx / u_volumeParams.probeIlluminanceDataRes.x;
-			sampleOffset.x = sampleIdx - sampleOffset.y * u_volumeParams.probeIlluminanceDataRes.x;
+			sampleOffset.y = sampleIdx / PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->volumeParams->probeIlluminanceDataRes.x;
+			sampleOffset.x = sampleIdx - sampleOffset.y * PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->volumeParams->probeIlluminanceDataRes.x;
 			sampleLuminance = probeIlluminanceTexture.Load(int3(probeDataOffset + sampleOffset, 0)).xyz;
 		}
 
@@ -49,6 +49,6 @@ void DDGIUpdateProbesAverageLuminanceCS(CS_INPUT input)
 
 	if(WaveIsFirstLane())
 	{
-		u_probesAverageLuminanceTexture[probeWrappedCoords] = averageLuminance;
+		PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->probesAverageLuminanceTexture[probeWrappedCoords] = averageLuminance;
 	}
 }

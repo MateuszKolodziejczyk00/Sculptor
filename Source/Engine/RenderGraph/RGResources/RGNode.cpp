@@ -43,7 +43,7 @@ RGNode::RGNode(RenderGraphBuilder& owningGraphBuilder, const RenderGraphDebugNam
 	, m_buffersToAcquire(owningGraphBuilder.GetMemoryArena())
 	, m_buffersToRelease(owningGraphBuilder.GetMemoryArena())
 	, m_textureViewsToAcquire(owningGraphBuilder.GetMemoryArena())
-	, m_dsStates(owningGraphBuilder.GetMemoryArena())
+	, m_boundShaderParams(owningGraphBuilder.GetMemoryArena())
 	, m_executed(false)
 { }
 
@@ -141,14 +141,12 @@ void RGNode::AddPreExecutionBarrier(rhi::EPipelineStage sourceStage, rhi::EAcces
 	m_preExecuteDependency.StageBarrier(sourceStage, sourceAccess, destStage, destAccess);
 }
 
-void RGNode::AddDescriptorSetState(lib::MTHandle<rdr::DescriptorSetState> dsState)
+void RGNode::AddShaderParam(lib::HashedString type, rhi::DeviceAddress deviceAddress)
 {
-	m_dsStates.EmplaceBack(std::move(dsState));
-}
+	SPT_CHECK(deviceAddress != 0u);
+	SPT_CHECK(type.IsValid());
 
-void RGNode::SetShaderParamsDescriptors(const rhi::RHIDescriptorRange& range)
-{
-	m_shaderParamsDescriptorHeapOffset = range.heapOffset;
+	m_boundShaderParams.EmplaceBack(RGBoundShaderParam{ type, deviceAddress });
 }
 
 void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context)
@@ -167,10 +165,9 @@ void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rd
 
 	PreExecuteBarrier(recorder);
 
-	BindDescriptorSetStates(recorder);
 	BindShaderParams(recorder);
 	OnExecute(renderContext, recorder, context);
-	UnbindDescriptorSetStates(recorder);
+	UnbindShaderParams(recorder);
 
 	ReleaseResources();
 
@@ -202,22 +199,20 @@ void RGNode::ReleaseResources()
 	ReleaseBuffers();
 }
 
-void RGNode::BindDescriptorSetStates(rdr::CommandRecorder& recorder)
-{
-	recorder.BindDescriptorSetStates(m_dsStates);
-}
-
 void RGNode::BindShaderParams(rdr::CommandRecorder& recorder)
 {
-	if (m_shaderParamsDescriptorHeapOffset != idxNone<Uint32>)
+	for (const RGBoundShaderParam& param : m_boundShaderParams)
 	{
-		recorder.BindShaderParams(m_shaderParamsDescriptorHeapOffset);
+		recorder.BindShaderParams(param.type, param.deviceAddress);
 	}
 }
 
-void RGNode::UnbindDescriptorSetStates(rdr::CommandRecorder& recorder)
+void RGNode::UnbindShaderParams(rdr::CommandRecorder& recorder)
 {
-	recorder.UnbindDescriptorSetStates(m_dsStates);
+	for (const RGBoundShaderParam& param : m_boundShaderParams)
+	{
+		recorder.UnbindShaderParams(param.type);
+	}
 }
 
 void RGNode::AcquireTextures()
@@ -277,7 +272,7 @@ void RGNode::ReleaseBuffers()
 // RGSubpass =====================================================================================
 
 RGSubpass::RGSubpass(lib::MemoryArena& memoryArena, const RenderGraphDebugName& name)
-	: m_dsStatesToBind(memoryArena)
+	: m_boundShaderParams(memoryArena)
 	, m_name(name)
 { }
 
@@ -291,9 +286,12 @@ const lib::HashedString& RGSubpass::GetName() const
 #endif // DEBUG_RENDER_GRAPH
 }
 
-void RGSubpass::AddDescriptorSetState(lib::MTHandle<rdr::DescriptorSetState> dsState)
+void RGSubpass::AddShaderParam(lib::HashedString type, rhi::DeviceAddress deviceAddress)
 {
-	m_dsStatesToBind.EmplaceBack(std::move(dsState));
+	SPT_CHECK(deviceAddress != 0u);
+	SPT_CHECK(type.IsValid());
+
+	m_boundShaderParams.EmplaceBack(RGBoundShaderParam{ type, deviceAddress });
 }
 
 void RGSubpass::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context)
@@ -303,16 +301,16 @@ void RGSubpass::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext,
 	SPT_GPU_DEBUG_REGION(recorder, GetName().GetData(), lib::Color::Blue);
 	SPT_GPU_STATISTICS_SCOPE(recorder, context.statisticsCollector, GetName().GetData());
 
-	for(const lib::MTHandle<rdr::DescriptorSetState>& ds : m_dsStatesToBind)
+	for (const RGBoundShaderParam& param : m_boundShaderParams)
 	{
-		recorder.BindDescriptorSetState(ds);
+		recorder.BindShaderParams(param.type, param.deviceAddress);
 	}
 
 	DoExecute(renderContext, recorder);
 
-	for(const lib::MTHandle<rdr::DescriptorSetState>& ds : m_dsStatesToBind)
+	for (const RGBoundShaderParam& param : m_boundShaderParams)
 	{
-		recorder.UnbindDescriptorSetState(ds);
+		recorder.UnbindShaderParams(param.type);
 	}
 }
 

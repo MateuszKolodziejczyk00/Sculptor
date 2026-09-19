@@ -9,10 +9,11 @@ namespace spt::rsc
 namespace vis_pass
 {
 
-DS_BEGIN(VisBufferRenderingDS, rg::RGDescriptorSetState<VisBufferRenderingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<GPUVisibleMeshlet>), u_visibleMeshlets)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),            u_visibleMeshletsCount)
-DS_END();
+BEGIN_SHADER_STRUCT(VisBufferRenderingParams)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<GPUVisibleMeshlet>, visibleMeshlets)
+	SHADER_STRUCT_FIELD(Uint64,                                hackVisibleMeshletsAddress)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,            visibleMeshletsCount)
+END_SHADER_STRUCT();
 
 
 GRAPHICS_PSO(GeometryVisBufferPSO)
@@ -76,10 +77,12 @@ gp::RenderPassDefinition VisibilityBufferRenderingPipeline::CreateRenderPassDefi
 		passDef.AddColorRenderTarget(visibilityRTDef);
 	}
 
-	lib::MTHandle<VisBufferRenderingDS> perPassDS = graphBuilder.CreateDescriptorSet<VisBufferRenderingDS>(RENDERER_RESOURCE_NAME("VisBufferRenderingDS"));
-	perPassDS->u_visibleMeshlets      = m_visibleMeshlets;
-	perPassDS->u_visibleMeshletsCount = m_visibleMeshletsCount;
-	passDef.perPassDS = perPassDS;
+	VisBufferRenderingParams passParams;
+	passParams.visibleMeshlets      = m_visibleMeshlets;
+	passParams.visibleMeshletsCount = m_visibleMeshletsCount;
+	passParams.hackVisibleMeshletsAddress = m_visibleMeshlets->GetResource()->GetBuffer()->GetRHI().GetDeviceAddress();
+
+	passDef.perPassParams = graphBuilder.CreateGPUData(passParams);
 
 	return passDef;
 }
@@ -133,7 +136,7 @@ VisPassRenderer::VisPassRenderer()
 	m_visibleMeshletsCount = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Visible Meshlets Count"), countBufferDef, rhi::EMemoryUsage::GPUOnly);
 
 	// TODO handle resizing, use smaller default size
-	const Uint64 defaultSize = sizeof(GPUVisibleMeshlet) * 1024 * 128;
+	const Uint64 defaultSize = sizeof(GPUVisibleMeshlet) * 1024 * 128u * 128u;
 	
 	rhi::BufferDefinition meshletsBufferDef;
 	meshletsBufferDef.size  = defaultSize;

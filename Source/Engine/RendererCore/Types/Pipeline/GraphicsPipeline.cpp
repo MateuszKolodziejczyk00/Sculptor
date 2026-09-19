@@ -37,9 +37,7 @@ GraphicsPipeline::GraphicsPipeline(const RendererResourceName& name, const Graph
 	shaderStagesDef.fragmentShader = shaders.fragmentShader->GetRHI();
 	AppendToPipelineMetaData(shaders.fragmentShader->GetMetaData());
 
-	const rhi::PipelineLayoutDefinition pipelineLayoutDef = CreateLayoutDefinition();
-
-	GetRHI().InitializeRHI(shaderStagesDef, pipelineDef, pipelineLayoutDef);
+	GetRHI().InitializeRHI(shaderStagesDef, pipelineDef);
 	GetRHI().SetName(name.Get());
 }
 

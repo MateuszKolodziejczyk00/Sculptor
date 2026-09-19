@@ -1,7 +1,6 @@
 #include "UIBackend.h"
 #include "Window.h"
 #include "Texture.h"
-#include "Sampler.h"
 #include "ResourcesManager.h"
 
 namespace spt::rdr
@@ -36,20 +35,11 @@ void UIBackend::DestroyFontsTemporaryObjects()
 	GetRHI().DestroyFontsTemporaryObjects();
 }
 
-ui::TextureID UIBackend::GetUITextureID(const lib::SharedRef<TextureView>& texture, const lib::SharedRef<Sampler>& sampler)
+ui::TextureID UIBackend::GetUITextureID(const lib::SharedRef<TextureView>& texture, rhi::ESamplerFilterType filterType /*= rhi::ESamplerFilterType::Linear*/)
 {
 	SPT_PROFILER_FUNCTION();
 
-	return GetRHI().GetUITexture(texture->GetRHI(), sampler->GetRHI());
-}
-
-ui::TextureID UIBackend::GetUITextureID(const lib::SharedRef<TextureView>& texture, rhi::ESamplerFilterType filterType /*= rhi::ESamplerFilterType::Linear*/, rhi::EMipMapAddressingMode mipMapAddressing /*= rhi::EMipMapAddressingMode::Nearest*/, rhi::EAxisAddressingMode axisAddressing /*= rhi::EAxisAddressingMode::Repeat*/)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const rhi::SamplerDefinition samplerDef(filterType, mipMapAddressing, axisAddressing);
-	const lib::SharedRef<rdr::Sampler> sampler = rdr::ResourcesManager::CreateSampler(samplerDef);
-	return GetRHI().GetUITexture(texture->GetRHI(), sampler->GetRHI());
+	return GetRHI().GetUITexture(texture->GetRHI(), filterType);
 }
 
 rhi::RHIUIBackend& UIBackend::GetRHI()

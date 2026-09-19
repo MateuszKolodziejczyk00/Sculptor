@@ -4,7 +4,7 @@
 #include "RHIBridge/RHIAccelerationStructureImpl.h"
 #include "RendererResource.h"
 #include "RendererUtils.h"
-#include "DescriptorSetState/DescriptorTypes.h"
+#include "Descriptors/DescriptorTypes.h"
 
 
 namespace spt::rdr
@@ -42,9 +42,9 @@ public:
 	TopLevelAS(const RendererResourceName& name, const rhi::TLASDefinition& definition);
 	~TopLevelAS();
 
-	const lib::SharedPtr<Buffer>& GetTLASDataBuffer() const           { return m_accelerationStructureBuffer; }
+	const lib::SharedPtr<Buffer>& GetTLASDataBuffer() const { return m_accelerationStructureBuffer; }
 
-	ResourceDescriptorIdx GetSRVDescriptor() const { return m_srvDescriptor; }
+	ResourceDescriptorIdx GetSRVDescriptor() const;
 
 private:
 

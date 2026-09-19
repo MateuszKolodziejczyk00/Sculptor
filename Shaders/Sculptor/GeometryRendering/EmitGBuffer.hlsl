@@ -1,12 +1,12 @@
 #include "SculptorShader.hlsli"
 #include "GeometryRendering/GeometryDefines.hlsli"
 
-[[descriptor_set(RenderSceneDS)]]
-[[descriptor_set(RenderViewDS)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
+[[shader_params(GPURenderView, VIEW)]]
 
-[[descriptor_set(EmitGBufferDS)]]
+[[shader_params(EmitGBufferConstants, PARAMS_EMIT_G_BUFFER)]]
 
-[[descriptor_set(MaterialBatchDS)]]
+[[shader_params(MaterialBatchConstants, PARAMS_MATERIAL_BATCH)]]
 
 #define SPT_MATERIAL_SAMPLE_CUSTOM_DERIVATIVES 1
 
@@ -59,11 +59,11 @@ void EmitGBuffer_MS(
 	out indices uint3 outTriangles[MAX_NUM_PRIMS]
 	)
 {
-	const uint2 groupLocationOnGrid = uint2(groupID.x % u_emitGBufferConstants.groupsPerRow, groupID.x / u_emitGBufferConstants.groupsPerRow);
+	const uint2 groupLocationOnGrid = uint2(groupID.x % PARAMS_EMIT_G_BUFFER->groupsPerRow, groupID.x / PARAMS_EMIT_G_BUFFER->groupsPerRow);
 	const uint2 globalTileID = groupLocationOnGrid * uint2(MS_GROUP_SIZE_X, MS_GROUP_SIZE_Y) + uint2(localID.x % MS_GROUP_SIZE_X, localID.x / MS_GROUP_SIZE_X);
 
-	const uint2 materialDepthTile = u_materialDepthTilesTexture.Load(uint3(globalTileID, 0u)).xy;
-	const uint materialBatchIdx = u_materialBatchConstants.materialBatchIdx;
+	const uint2 materialDepthTile = PARAMS_EMIT_G_BUFFER->materialDepthTilesTexture.Load(uint3(globalTileID, 0u)).xy;
+	const uint materialBatchIdx = PARAMS_MATERIAL_BATCH->materialBatchIdx;
 
 	const bool tileContainsMaterial = materialDepthTile.x <= materialBatchIdx && materialBatchIdx <= materialDepthTile.y;
 
@@ -76,13 +76,13 @@ void EmitGBuffer_MS(
 
 	SetMeshOutputCounts(MAX_NUM_VERTS, trianglesNum);
 
-	const float2 groupNDCLocation = -1.f + groupLocationOnGrid * float2(MS_GROUP_SIZE_X, MS_GROUP_SIZE_Y) * u_emitGBufferConstants.tileSizeNDC;
+	const float2 groupNDCLocation = -1.f + groupLocationOnGrid * float2(MS_GROUP_SIZE_X, MS_GROUP_SIZE_Y) * PARAMS_EMIT_G_BUFFER->tileSizeNDC;
 
 	for (uint vertexIdx = localID.x; vertexIdx < MAX_NUM_VERTS; vertexIdx += MS_GROUP_SIZE)
 	{
 		const uint2 vertexLocation = IndexToLocalVertexLocation(vertexIdx);
 
-		const float3 vertexPositionNDC = float3(groupNDCLocation + vertexLocation * u_emitGBufferConstants.tileSizeNDC, u_materialBatchConstants.materialBatchDepth);
+		const float3 vertexPositionNDC = float3(groupNDCLocation + vertexLocation * PARAMS_EMIT_G_BUFFER->tileSizeNDC, PARAMS_MATERIAL_BATCH->materialBatchDepth);
 		OutputVertex vertex;
 		vertex.locationCS = float4(vertexPositionNDC, 1.0f);
 		vertex.screenUV   = (vertexPositionNDC.xy + 1.f) * 0.5f;
@@ -125,7 +125,7 @@ VertexData ProcessVertex(in RenderEntityGPUData entityData, in const SubmeshGPUD
 	const uint globalVertexIdx    = UGB().LoadVertexIndex(meshletGlobalVertexIndicesOffset, vertexIdx);
 	const float3 vertexLocation   = UGB().LoadLocation(submesh.locationsOffset, globalVertexIdx);
 	const float3 vertexLocationWS = mul(entityData.transform, float4(vertexLocation, 1.f)).xyz;
-	const float4 vertexCS = mul(u_sceneView.viewProjectionMatrix, float4(vertexLocationWS, 1.f));
+	const float4 vertexCS = mul(VIEW->sceneView.viewProjectionMatrix, float4(vertexLocationWS, 1.f));
 
 	VertexData vertexData;
 	vertexData.clipSpace = vertexCS;
@@ -205,7 +205,7 @@ InterpolatedVertexData ProcessTriangle(in const GPUVisibleMeshlet visibleMeshlet
 		vertexData[triangleVertexIdx] = ProcessVertex(entityData, submesh, meshlet, vertexIndices[triangleVertexIdx], INOUT hasTangent);
 	}
 
-	const Barycentrics barycentrics = ComputeTriangleBarycentrics(screenPositionClip, vertexData[0].clipSpace, vertexData[1].clipSpace, vertexData[2].clipSpace, u_emitGBufferConstants.invScreenResolution);
+	const Barycentrics barycentrics = ComputeTriangleBarycentrics(screenPositionClip, vertexData[0].clipSpace, vertexData[1].clipSpace, vertexData[2].clipSpace, PARAMS_EMIT_G_BUFFER->invScreenResolution);
 
 	InterpolatedVertexData interpolatedData = Interpolate(vertexData, barycentrics, hasTangent);
 
@@ -304,14 +304,13 @@ struct FS_Output
 #endif // PASS_ENABLE_POM
 };
 
-
 FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 {
 	FS_Output output = (FS_Output )0;
 
-	const uint2 pixelCoord = u_emitGBufferConstants.screenResolution * vertexInput.screenUV;
+	const uint2 pixelCoord = PARAMS_EMIT_G_BUFFER->screenResolution * vertexInput.screenUV;
 	
-	const uint packedVisibilityInfo = u_visibilityTexture.Load(uint3(pixelCoord, 0u));
+	const uint packedVisibilityInfo = PARAMS_EMIT_G_BUFFER->visibilityTexture.Load(uint3(pixelCoord, 0u));
 
 	uint visibleMeshletIdx = 0;
 	uint visibleTriangleIdx = 0;
@@ -319,7 +318,7 @@ FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 
 	if (isValidGeometry)
 	{
-		const GPUVisibleMeshlet visibleMeshlet = u_visibleMeshlets[visibleMeshletIdx];
+		const GPUVisibleMeshlet visibleMeshlet = PARAMS_EMIT_G_BUFFER->visibleMeshlets[visibleMeshletIdx];
 		
 		const float2 screenPositionClip = vertexInput.screenUV * 2.f - 1.f;
 		const InterpolatedVertexData vertexData = ProcessTriangle(visibleMeshlet, visibleTriangleIdx, screenPositionClip);
@@ -328,6 +327,9 @@ FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 
 		const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(visibleMeshlet.materialDataHandle);
 
+		//debug::WriteDebugPixel(pixelCoord, float2(visibleMeshletIdx, visibleMeshlet.submeshPtr.dataIdx == 47u ? 1.f : 0.f));
+		debug::WriteDebugPixel(pixelCoord, float2(visibleMeshletIdx, visibleMeshlet.submeshPtr.dataIdx));
+
 #if PASS_ENABLE_POM
 		float pomDepth = 0.f;
 #if defined(MATERIAL_DEPTH_DATA_ACCESSOR) && MATERIAL_ENABLE_POM
@@ -335,11 +337,11 @@ FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 		if (materialDepthData.depthTexture.IsValid())
 		{
 			const float3x3 tbn = float3x3(vertexData.tangent, -vertexData.bitangent, vertexData.normal);
-			const float3 toViewWS = normalize(u_sceneView.viewLocation - vertexData.worldLocation);
+			const float3 toViewWS = normalize(VIEW->sceneView.viewLocation - vertexData.worldLocation);
 			const float3 toViewTS = normalize(mul(tbn, toViewWS));
 			pomDepth = ApplyParallax(materialEvalParams, materialDepthData, BindlessSamplers::MaterialAniso(), toViewTS, vertexData.uvScale);
 			pomDepth *=  100.f / POM_MAX_DEPTH_OFFSET_CM;
-			pomDepth *= abs(dot(u_sceneView.viewForward, toViewWS));
+			pomDepth *= abs(dot(VIEW->sceneView.viewForward, toViewWS));
 		}
 #endif //  defined(MATERIAL_DEPTH_DATA_ACCESSOR) && MATERIAL_ENABLE_POM
 #endif // PASS_ENABLE_POM
@@ -378,11 +380,11 @@ FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 
 FS_Output EmitTerrainGBuffer_FS(in OutputVertex vertexInput)
 {
-	const uint2  pixelCoord = u_emitGBufferConstants.screenResolution * vertexInput.screenUV;
-	const float  depth      = u_depthTexture.Load(uint3(pixelCoord, 0u)).x;
+	const uint2  pixelCoord = PARAMS_EMIT_G_BUFFER->screenResolution * vertexInput.screenUV;
+	const float  depth      = PARAMS_EMIT_G_BUFFER->depthTexture.Load(uint3(pixelCoord, 0u)).x;
 	const float3 ndc        = float3(vertexInput.screenUV * 2.f - 1.f, depth);
 
-	const float3 locationWS = NDCToWorldSpace(ndc, u_sceneView);
+	const float3 locationWS = NDCToWorldSpace(ndc, VIEW->sceneView);
 
 	const TerrainInterface terrain = SceneTerrain();
 
@@ -408,7 +410,7 @@ FS_Output EmitTerrainGBuffer_FS(in OutputVertex vertexInput)
 	if (terrainPOM.matDepth.depthTexture.IsValid())
 	{
 		const float3x3 tbn = float3x3(terrainTangent, -terrainBitangent, terrainNormal);
-		const float3 toViewWS = normalize(u_sceneView.viewLocation - locationWS);
+		const float3 toViewWS = normalize(VIEW->sceneView.viewLocation - locationWS);
 		const float3 toViewTS = normalize(mul(tbn, toViewWS));
 
 		pomDepth = ApplyParallax(terrainPOM.uv, terrainPOM.matDepth, BindlessSamplers::LinearRepeat(), toViewTS, terrainPOM.uvScale);
@@ -417,7 +419,7 @@ FS_Output EmitTerrainGBuffer_FS(in OutputVertex vertexInput)
 		materialEvalParams.worldLocation -= toViewWS * pomDepth;
 
 		pomDepth *=  100.f / POM_MAX_DEPTH_OFFSET_CM;
-		pomDepth *= abs(dot(u_sceneView.viewForward, toViewWS));
+		pomDepth *= abs(dot(VIEW->sceneView.viewForward, toViewWS));
 	}
 #endif // defined(TERRAIN_MATERIAL) && MATERIAL_ENABLE_POM
 #endif // PASS_ENABLE_POM
@@ -452,27 +454,27 @@ FS_Output EmitTerrainGBuffer_FS(in OutputVertex vertexInput)
 
 FS_Output EmitGrassGBuffer_FS(in OutputVertex vertexInput)
 {
-	const uint2 pixelCoord = u_emitGBufferConstants.screenResolution * vertexInput.screenUV;
+	const uint2 pixelCoord = PARAMS_EMIT_G_BUFFER->screenResolution * vertexInput.screenUV;
 	
-	const uint packedVisibilityInfo = u_visibilityTexture.Load(uint3(pixelCoord, 0u));
+	const uint packedVisibilityInfo = PARAMS_EMIT_G_BUFFER->visibilityTexture.Load(uint3(pixelCoord, 0u));
 
 	uint grassBladeIdx = 0;
 	uint triangleIdx = 0;
 	uint lodIdx = 0;
 	UnpackGrassVisibilityInfo(packedVisibilityInfo, OUT grassBladeIdx, OUT triangleIdx, OUT lodIdx);
 
-	const GrassBladeDef bladeDef = u_emitGBufferConstants.grassBladeDefsLODs[lodIdx].Load(grassBladeIdx);
+	const GrassBladeDef bladeDef = PARAMS_EMIT_G_BUFFER->grassBladeDefsLODs[lodIdx].Load(grassBladeIdx);
 
 	GrassVertexProcessor grassProcessor = GrassVertexProcessor::Create(bladeDef);
 
 	GrassBladeVertex triangleVertex[3];
 	ProcessGrassBladeTriangleVertices(grassProcessor, triangleIdx, OUT triangleVertex[0], OUT triangleVertex[1], OUT triangleVertex[2]);
 
-	const float4 triangleVertexCS0 = mul(u_sceneView.viewProjectionMatrix, float4(triangleVertex[0].location, 1.f));
-	const float4 triangleVertexCS1 = mul(u_sceneView.viewProjectionMatrix, float4(triangleVertex[1].location, 1.f));
-	const float4 triangleVertexCS2 = mul(u_sceneView.viewProjectionMatrix, float4(triangleVertex[2].location, 1.f));
+	const float4 triangleVertexCS0 = mul(VIEW->sceneView.viewProjectionMatrix, float4(triangleVertex[0].location, 1.f));
+	const float4 triangleVertexCS1 = mul(VIEW->sceneView.viewProjectionMatrix, float4(triangleVertex[1].location, 1.f));
+	const float4 triangleVertexCS2 = mul(VIEW->sceneView.viewProjectionMatrix, float4(triangleVertex[2].location, 1.f));
 	const float2 screenPositionClip = vertexInput.screenUV * 2.f - 1.f;
-	const Barycentrics barycentrics = ComputeTriangleBarycentrics(screenPositionClip, triangleVertexCS0, triangleVertexCS1, triangleVertexCS2, u_emitGBufferConstants.invScreenResolution);
+	const Barycentrics barycentrics = ComputeTriangleBarycentrics(screenPositionClip, triangleVertexCS0, triangleVertexCS1, triangleVertexCS2, PARAMS_EMIT_G_BUFFER->invScreenResolution);
 
 	const float3 locationWS = InterpolateAttribute<float3>(triangleVertex[0].location, triangleVertex[1].location, triangleVertex[2].location, barycentrics);
 	float3 triangleNormal = normalize(InterpolateAttribute<float3>(triangleVertex[0].normal, triangleVertex[1].normal, triangleVertex[2].normal, barycentrics));
@@ -480,7 +482,7 @@ FS_Output EmitGrassGBuffer_FS(in OutputVertex vertexInput)
 	triangleTangent = normalize(triangleTangent - triangleNormal * dot(triangleTangent, triangleNormal));
 	float3 triangleBitangent = normalize(cross(triangleNormal, triangleTangent));
 
-	const float3 toViewWS = normalize(u_sceneView.viewLocation - locationWS);
+	const float3 toViewWS = normalize(VIEW->sceneView.viewLocation - locationWS);
 	if (dot(triangleNormal, toViewWS) < 0.f)
 	{
 		triangleNormal    = -triangleNormal;
@@ -515,3 +517,4 @@ FS_Output EmitGrassGBuffer_FS(in OutputVertex vertexInput)
 
 	return output;
 }
+[[meta(debug_features)]]

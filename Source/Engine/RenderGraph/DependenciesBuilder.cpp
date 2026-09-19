@@ -1,5 +1,6 @@
 #include "DependenciesBuilder.h"
 #include "RenderGraphBuilder.h"
+#include "RenderGraphResourcesPool.h"
 #include "Types/Texture.h"
 
 
@@ -122,6 +123,24 @@ void RGDependenciesBuilder::AddBufferAccess(rdr::ResourceDescriptorIdx bufferDes
 
 		AddBufferAccess(rgBufferView, access, dependencyStages);
 	}
+}
+
+const Byte* RGDependenciesBuilder::TryResolveDeviceAddress(rhi::DeviceAddress deviceAddress) const
+{
+	const rdr::ConstantsAllocator& constantsAllocator = m_graphBuilder.GetResourcesPool().GetConstantsAllocator();
+
+	const lib::SharedPtr<rdr::Buffer>& buffer = constantsAllocator.GetBuffer();
+
+	const Uint64 bufferSize = buffer->GetRHI().GetSize();
+	const rhi::DeviceAddress bufferAddress = buffer->GetRHI().GetDeviceAddress();
+
+	if (deviceAddress >= bufferAddress && deviceAddress < bufferAddress + bufferSize)
+	{
+		const Byte* bufferBasePtr = buffer->GetRHI().GetPersistentlyMappedPtr();
+		return bufferBasePtr + (deviceAddress - bufferAddress);
+	}
+
+	return nullptr;
 }
 
 } // spt::rg

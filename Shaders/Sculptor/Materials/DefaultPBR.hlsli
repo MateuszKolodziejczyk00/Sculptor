@@ -9,8 +9,7 @@
 #define MATERIAL_DISPLACEMENT_DATA_ACCESSOR displacementData
 
 
-template<typename TSampler>
-CustomOpacityOutput EvaluateCustomOpacity(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
+CustomOpacityOutput EvaluateCustomOpacity<TSampler : IMaterialSampler>(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
 {
     CustomOpacityOutput output;
 
@@ -29,8 +28,7 @@ CustomOpacityOutput EvaluateCustomOpacity(TSampler sampler, MaterialEvaluationPa
 }
 
 
-template<typename TSampler>
-MaterialEvaluationOutput EvaluateMaterial(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
+MaterialEvaluationOutput EvaluateMaterial<TSampler : IMaterialSampler>(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
 {
     float3 baseColor = 1.f;
     

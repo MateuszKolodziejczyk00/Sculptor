@@ -1,8 +1,8 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderSceneDS)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
 
-[[shader_params(UpdateMaterialCacheConstants, u_constants)]]
+[[shader_params(UpdateMaterialCacheConstants, PARAMS_UPDATE_MATERIAL_CACHE_CONSTANTS)]]
 
 #define SPT_MATERIAL_DATA_TYPE    MaterialPBRData
 #define SPT_MATERIAL_SHADER_PATH "Sculptor/Materials/DefaultPBR.hlsli"
@@ -39,11 +39,11 @@ PS_OUTPUT RenderTerrainMaterialCacheFS(VS_OUTPUT input)
 {
 	TerrainInterface terrainInterface = SceneTerrain();
 
-	const float2 lodMinUV = u_constants.minBounds / u_constants.range;
+	const float2 lodMinUV = PARAMS_UPDATE_MATERIAL_CACHE_CONSTANTS->minBounds / PARAMS_UPDATE_MATERIAL_CACHE_CONSTANTS->range;
 	const float2 lodUV = frac(input.uv - lodMinUV);
 
 	float3 worldLocation;
-	worldLocation.xy = u_constants.minBounds + lodUV * u_constants.range;
+	worldLocation.xy = PARAMS_UPDATE_MATERIAL_CACHE_CONSTANTS->minBounds + lodUV * PARAMS_UPDATE_MATERIAL_CACHE_CONSTANTS->range;
 	worldLocation.z  = terrainInterface.GetHeight(worldLocation.xy);
 
 	const float3 normal = terrainInterface.GetNormal(worldLocation.xy);
@@ -63,7 +63,7 @@ PS_OUTPUT RenderTerrainMaterialCacheFS(VS_OUTPUT input)
 	TerrainMaterialsFactors materialFactors = terrainInterface.GetMaterialsFactors(worldLocation.xy);
 	ApplyHeightBasedWeighting(materialFactors, worldLocation.xy);
 
-	const TerrainMaterialEvaluationOutput materialEvalOutput = EvaluateTerrainMaterial(evalParams, u_constants.terrainMaterial, materialFactors);
+	const TerrainMaterialEvaluationOutput materialEvalOutput = EvaluateTerrainMaterial(evalParams, PARAMS_UPDATE_MATERIAL_CACHE_CONSTANTS->terrainMaterial, materialFactors);
 
 	const float2 encodedNormal = OctahedronEncodeNormal(materialEvalOutput.material.shadingNormal);
 
@@ -81,4 +81,3 @@ PS_OUTPUT RenderTerrainMaterialCacheFS(VS_OUTPUT input)
 
 	return output;
 }
-[[meta(debug_features)]]

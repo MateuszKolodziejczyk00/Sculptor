@@ -1,7 +1,7 @@
 include "Source/SculptorBuildCommon"
 
 SetRHI(ERHI.Vulkan)
-SetShaderCompiler(EShaderCompiler.DXC)
+SetShaderCompiler(EShaderCompiler.Slang)
 
 workspace "Sculptor"
     

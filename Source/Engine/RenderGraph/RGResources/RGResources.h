@@ -14,7 +14,7 @@
 #include "Utility/Templates/TypeStorage.h"
 #include "RGResourceTypes.h"
 #include "GPUApi.h"
-#include "Types/DescriptorSetState/DescriptorManager.h"
+#include "Descriptors/DescriptorManager.h"
 
 
 namespace spt::rg
@@ -111,6 +111,12 @@ struct TextureDef
 	TextureDef& SetMipLevelsNum(Uint32 inMipLevels)
 	{
 		mipLevels = inMipLevels;
+		return *this;
+	}
+
+	TextureDef& SetType(rhi::ETextureType inType)
+	{
+		type = inType;
 		return *this;
 	}
 
@@ -491,12 +497,12 @@ public:
 
 	rdr::ResourceDescriptorIdx GetUAVDescriptor() const
 	{
-		return IsExternal() ? m_textureView->GetUAVDescriptor() : m_textureViewDescriptors.uavDescriptor;
+		return IsExternal() ? m_textureView->GetUAVDescriptor() : rdr::ResourceDescriptorIdx(m_textureViewDescriptors.uavDescriptor.Get() * rhi::RHI::GetDescriptorProps().textureDescriptorIdxFactor);
 	}
 
 	rdr::ResourceDescriptorIdx GetSRVDescriptor() const
 	{
-		return IsExternal() ? m_textureView->GetSRVDescriptor() : m_textureViewDescriptors.srvDescriptor;
+		return IsExternal() ? m_textureView->GetSRVDescriptor() : rdr::ResourceDescriptorIdx(m_textureViewDescriptors.srvDescriptor.Get() * rhi::RHI::GetDescriptorProps().textureDescriptorIdxFactor);
 	}
 
 	rdr::ResourceDescriptorIdx GetUAVDescriptorChecked() const
@@ -653,7 +659,7 @@ public:
 
 	rdr::ResourceDescriptorIdx GetUAVDescriptor() const
 	{
-		return IsExternal() || IsAcquired() ? m_bufferInstance->GetFullView()->GetUAVDescriptor() : m_descriptorsAllocation.uavDescriptor;
+		return IsExternal() || IsAcquired() ? m_bufferInstance->GetFullView()->GetUAVDescriptor() : rdr::ResourceDescriptorIdx(m_descriptorsAllocation.uavDescriptor.Get() * rhi::RHI::GetDescriptorProps().bufferDescriptorIdxFactor);
 	}
 
 	rdr::ResourceDescriptorIdx GetUAVDescriptorChecked() const

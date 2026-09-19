@@ -60,7 +60,6 @@ void Execute(rg::RenderGraphBuilder& graphBuilder, const BakeFarLODConstants& co
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Bake Far LOD"),
 						  BakeFarLODPSO::pso,
 						  math::Utils::DivideCeil(constants.resolution, math::Vector2u(16u, 16u)),
-						  rg::EmptyDescriptorSets(),
 						  constants);
 }
 
@@ -92,7 +91,6 @@ rg::RGTextureViewHandle Execute(rg::RenderGraphBuilder& graphBuilder, rg::RGText
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Compile Height Map"),
 						  CompileHeightMapPSO::pso,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(16u, 16u)),
-						  rg::EmptyDescriptorSets(),
 						  constants);
 
 	return compiledHeightMap;
@@ -134,7 +132,6 @@ rg::RGTextureViewHandle Execute(rg::RenderGraphBuilder& graphBuilder, rg::RGText
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Compile Terrain Tile Height Min Max Map"),
 						  CompileTileHeightMinMaxMapPSO::pso,
 						  math::Utils::DivideCeil(tileResolution, math::Vector2u(8u, 8u)),
-						  rg::EmptyDescriptorSets(),
 						  constants);
 
 	return tileHeightMinMaxMap;

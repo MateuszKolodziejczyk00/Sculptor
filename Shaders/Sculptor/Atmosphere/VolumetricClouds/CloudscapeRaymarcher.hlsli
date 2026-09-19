@@ -25,7 +25,7 @@ static const float cirrusCloudsLayerHeightAboveAtmosphere = 400.f;
 
 float2 GetShadowsCacheMinMaxHeightAtLocation(in float2 location)
 {
-	const CloudscapeConstants cloudscape = u_cloudscapeConstants;
+	const CloudscapeConstants cloudscape = *PARAM_CloudscapeConstants;
 
 	const float distFromCenter2 = dot(location, location);
 
@@ -39,7 +39,7 @@ float2 GetShadowsCacheMinMaxHeightAtLocation(in float2 location)
 
 float3 GetShadowCacheUVW(in float3 worldLocation)
 {
-	const CloudscapeConstants cloudscape = u_cloudscapeConstants;
+	const CloudscapeConstants cloudscape = *PARAM_CloudscapeConstants;
 
 	const float2 uv = (worldLocation.xy - cloudscape.shadowsCacheOrigin) * cloudscape.shadowsCacheRcpSize;
 
@@ -122,9 +122,9 @@ float CloudPhaseFunction(in float cosTheta, in float phaseMultiplier)
 float3 SampleSunTransmittanceAtLocation(in float3 location, in float3 lightDirection)
 {
     const float3 bias = float3(0.f, 0.f, 200.f);
-    const float3 sampleLocationInAtmosphere = GetLocationInAtmosphere(u_atmosphereConstants, location * float3(7.f, 7.f, 1.f) + bias);
+    const float3 sampleLocationInAtmosphere = GetLocationInAtmosphere(*PARAM_CloudscapeConstants->atmosphereConstants, location * float3(7.f, 7.f, 1.f) + bias);
 
-    const float3 sunTransmittance = GetTransmittanceFromLUT(u_atmosphereConstants, u_transmittanceLUT, u_cloadsLinearClampSampler, sampleLocationInAtmosphere, -lightDirection);
+    const float3 sunTransmittance = GetTransmittanceFromLUT(*PARAM_CloudscapeConstants->atmosphereConstants, PARAM_CloudscapeConstants->transmittanceLUT, BindlessSamplers::LinearClampEdge(), sampleLocationInAtmosphere, -lightDirection);
 
     return sunTransmittance;
 }
@@ -141,7 +141,7 @@ float ComputeCirrusLocalVisibilityTerm(in CloudsSampler cs, in float3 origin, in
 
     float currT = 0.f;
 
-	const float cirrusCloudsLayerRadius = u_cloudscapeConstants.cloudsAtmosphereOuterRadius + cirrusCloudsLayerHeightAboveAtmosphere;
+	const float cirrusCloudsLayerRadius = PARAM_CloudscapeConstants->cloudsAtmosphereOuterRadius + cirrusCloudsLayerHeightAboveAtmosphere;
 
     for(uint sampleIdx = 0.0; sampleIdx < samplesNum; ++sampleIdx)
     {
@@ -151,7 +151,7 @@ float ComputeCirrusLocalVisibilityTerm(in CloudsSampler cs, in float3 origin, in
 
         const float3 sampleLocation = origin + direction * newT;
 
-		const float distFromCenter2 = dot(sampleLocation - u_cloudscapeConstants.cloudsAtmosphereCenter, sampleLocation - u_cloudscapeConstants.cloudsAtmosphereCenter);
+		const float distFromCenter2 = dot(sampleLocation - PARAM_CloudscapeConstants->cloudsAtmosphereCenter, sampleLocation - PARAM_CloudscapeConstants->cloudsAtmosphereCenter);
 
 		if (distFromCenter2 < Pow2(cirrusCloudsLayerRadius) || distFromCenter2 > Pow2(cirrusCloudsLayerRadius + cirrusCloudsLayerHeight))
 		{
@@ -172,7 +172,7 @@ float ComputeCirrusLocalVisibilityTerm(in CloudsSampler cs, in float3 origin, in
     }
 
 	const Ray ray = Ray::Create(origin, direction);
-	const Sphere outerSphere = Sphere::Create(u_cloudscapeConstants.cloudsAtmosphereCenter, u_cloudscapeConstants.cloudsAtmosphereOuterRadius);
+	const Sphere outerSphere = Sphere::Create(PARAM_CloudscapeConstants->cloudsAtmosphereCenter, PARAM_CloudscapeConstants->cloudsAtmosphereOuterRadius);
 
 	const IntersectionResult intersection = ray.IntersectSphere(outerSphere);
 	if (intersection.IsValid())
@@ -180,7 +180,7 @@ float ComputeCirrusLocalVisibilityTerm(in CloudsSampler cs, in float3 origin, in
 		const float3 rayEnd = origin + direction * intersection.GetTime();
 		const float3 shadowCacheUVW = GetShadowCacheUVW(rayEnd);
 
-		const float shadowCacheTransmittance = u_shadowsCache.SampleLevel(u_cloadsLinearClampSampler, shadowCacheUVW, 0.f);
+		const float shadowCacheTransmittance = PARAM_CloudscapeConstants->shadowsCache.SampleLevel(BindlessSamplers::LinearClampEdge(), shadowCacheUVW, 0.f);
 
 		transmittance *= shadowCacheTransmittance;
 	}
@@ -226,7 +226,7 @@ float ComputeLocalVisibilityTerm(in CloudsSampler cs, in float3 origin, in float
 
 	if (all(saturate(shadowCacheUVW) == shadowCacheUVW))
 	{
-		const float shadowCacheTransmittance = u_shadowsCache.SampleLevel(u_cloadsLinearClampSampler, shadowCacheUVW, 0.f);
+		const float shadowCacheTransmittance = PARAM_CloudscapeConstants->shadowsCache.SampleLevel(BindlessSamplers::LinearClampEdge(), shadowCacheUVW, 0.f);
 
 		transmittance *= shadowCacheTransmittance;
 	}
@@ -237,9 +237,9 @@ float ComputeLocalVisibilityTerm(in CloudsSampler cs, in float3 origin, in float
 
 float ComputeGroundIntersectionDist(in Ray viewRay)
 {
-    viewRay.origin = GetLocationInAtmosphere(u_atmosphereConstants, viewRay.origin);
+    viewRay.origin = GetLocationInAtmosphere(*PARAM_CloudscapeConstants->atmosphereConstants, viewRay.origin);
 
-	const Sphere groundSphere = Sphere::Create(ZERO_VECTOR, u_atmosphereConstants.groundRadiusMM);
+	const Sphere groundSphere = Sphere::Create(ZERO_VECTOR, PARAM_CloudscapeConstants->atmosphereConstants->groundRadiusMM);
 
     const IntersectionResult intersection = viewRay.IntersectSphere(groundSphere);
 
@@ -253,7 +253,7 @@ float3 ComputeGroundLuminance()
 
     const float3 groundNormal = UP_VECTOR;
 
-    const DirectionalLightGPUData directionalLight = u_cloudscapeConstants.mainDirectionalLight;
+    const DirectionalLightGPUData directionalLight = PARAM_CloudscapeConstants->mainDirectionalLight;
 
     const float NoL = dot(groundNormal, -directionalLight.direction);
 
@@ -263,7 +263,7 @@ float3 ComputeGroundLuminance()
 
 bool ComputeRaymarchSegment(in Ray viewRay, in float maxVisibibleDepth, out float2 segment)
 {
-    const CloudscapeConstants cloudscape = u_cloudscapeConstants;
+    const CloudscapeConstants cloudscape = *PARAM_CloudscapeConstants;
 
     const Sphere cloudsAtmosphereInnerSphere = Sphere::Create(cloudscape.cloudsAtmosphereCenter, cloudscape.cloudsAtmosphereInnerRadius);
     const Sphere cloudsAtmosphereOuterSphere = Sphere::Create(cloudscape.cloudsAtmosphereCenter, cloudscape.cloudsAtmosphereOuterRadius);
@@ -314,7 +314,7 @@ bool ComputeRaymarchSegment(in Ray viewRay, in float maxVisibibleDepth, out floa
 
 float RaymarchCloudscapeTransmittance(in CloudscapeRaymarchParams params, out float traceDistance)
 {
-    const CloudscapeConstants cloudscape = u_cloudscapeConstants;
+    const CloudscapeConstants cloudscape = *PARAM_CloudscapeConstants;
 
     const Ray ray = params.ray;
 
@@ -379,12 +379,11 @@ float RaymarchCloudscapeTransmittance(in CloudscapeRaymarchParams params)
 }
 
 
-template<uint octavesNum>
-CloudscapeRaymarchResult RaymarchCloudscape(in CloudscapeRaymarchParams params)
+CloudscapeRaymarchResult RaymarchCloudscape<let octavesNum : uint>(in CloudscapeRaymarchParams params)
 {
     CloudscapeRaymarchResult result = CloudscapeRaymarchResult::Create();
 
-    const CloudscapeConstants cloudscape = u_cloudscapeConstants;
+    const CloudscapeConstants cloudscape = *PARAM_CloudscapeConstants;
 
     const Ray ray = params.ray;
 
@@ -410,20 +409,24 @@ CloudscapeRaymarchResult RaymarchCloudscape(in CloudscapeRaymarchParams params)
     float phaseFunctions[octavesNum];
     float currentPhaseMultiplier = 1.f;
     
-    for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
-    {
-        phaseFunctions[octaveIdx] = CloudPhaseFunction(cosTheta, currentPhaseMultiplier);
-        currentPhaseMultiplier *= CLOUD_OCTAVE_MUL;
-    }
+	{
+		for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
+    	{
+    	    phaseFunctions[octaveIdx] = CloudPhaseFunction(cosTheta, currentPhaseMultiplier);
+    	    currentPhaseMultiplier *= CLOUD_OCTAVE_MUL;
+    	}
+	}
 
     float transmittance[octavesNum];
 
     float3 inScattering = 0.f;
 
-    for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
-    {
-        transmittance[octaveIdx] = 1.f;
-    }
+	{
+		for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
+    	{
+    	    transmittance[octaveIdx] = 1.f;
+    	}
+	}
 
     float cloudDepth = 0.f;
     float cloudDepthWeightSum = 0.f;
@@ -518,7 +521,7 @@ CloudscapeRaymarchResult RaymarchCloudscape(in CloudscapeRaymarchParams params)
 
 float4 SampleCirrusClouds(in Ray ray, in float noise, in float3 ambient)
 {
-    const CloudscapeConstants cloudscape = u_cloudscapeConstants;
+    const CloudscapeConstants cloudscape = *PARAM_CloudscapeConstants;
 
     const Sphere cloudsAtmosphereOuterSphere = Sphere::Create(cloudscape.cloudsAtmosphereCenter, cloudscape.cloudsAtmosphereOuterRadius + cirrusCloudsLayerHeightAboveAtmosphere);
 
@@ -545,20 +548,24 @@ float4 SampleCirrusClouds(in Ray ray, in float noise, in float3 ambient)
     float phaseFunctions[octavesNum];
     float currentPhaseMultiplier = 1.f;
     
-    for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
-    {
-        phaseFunctions[octaveIdx] = CloudPhaseFunction(cosTheta, currentPhaseMultiplier);
-        currentPhaseMultiplier *= CLOUD_OCTAVE_MUL;
-    }
+	{
+		for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
+    	{
+    	    phaseFunctions[octaveIdx] = CloudPhaseFunction(cosTheta, currentPhaseMultiplier);
+    	    currentPhaseMultiplier *= CLOUD_OCTAVE_MUL;
+    	}
+	}
 
     float transmittance[octavesNum];
 
     float3 inScattering = 0.f;
 
-    for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
-    {
-        transmittance[octaveIdx] = 1.f;
-    }
+	{
+		for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
+    	{
+    	    transmittance[octaveIdx] = 1.f;
+    	}
+	}
 
 	const float LdotN = cosTheta;
 
@@ -622,12 +629,11 @@ groupshared float gs_cachedSamplesT[MAX_CLOUDSCAPE_SAMPLES];
 groupshared half2 gs_cachedSamplesCloud[MAX_CLOUDSCAPE_SAMPLES];
 
 
-template<uint octavesNum>
-CloudscapeRaymarchResult WaveRaymarchCloudscape(in CloudscapeRaymarchParams params)
+CloudscapeRaymarchResult WaveRaymarchCloudscape<let octavesNum : uint>(in CloudscapeRaymarchParams params)
 {
     CloudscapeRaymarchResult result = CloudscapeRaymarchResult::Create();
 
-    const CloudscapeConstants cloudscape = u_cloudscapeConstants;
+    const CloudscapeConstants cloudscape = *PARAM_CloudscapeConstants;
 
     const Ray ray = params.ray;
 
@@ -646,30 +652,33 @@ CloudscapeRaymarchResult WaveRaymarchCloudscape(in CloudscapeRaymarchParams para
     float dt = (raymarchSegment.y - raymarchSegment.x) / params.samplesNum;
 
     uint validSamplesNum = 0u;
-    for (uint sampleIdx = WaveGetLaneIndex(); sampleIdx < params.samplesNum; sampleIdx += WaveGetLaneCount())
-    {
-        const float sampleT = float(sampleIdx) + params.noise;
 
-        const float rayT = raymarchSegment.x + sampleT * dt;
-        const float3 sampleLocation = ray.origin + ray.direction * rayT;
+	{
+		for (uint sampleIdx = WaveGetLaneIndex(); sampleIdx < params.samplesNum; sampleIdx += WaveGetLaneCount())
+    	{
+    	    const float sampleT = float(sampleIdx) + params.noise;
 
-        const float2 sampledCloud = cs.SampleDensity(sampleLocation, params.detailLevel).xy;
-        const float cloudDensity = sampledCloud.x;
+    	    const float rayT = raymarchSegment.x + sampleT * dt;
+    	    const float3 sampleLocation = ray.origin + ray.direction * rayT;
 
-        const bool isSampleValid = cloudDensity > 0.f;
+    	    const float2 sampledCloud = cs.SampleDensity(sampleLocation, params.detailLevel).xy;
+    	    const float cloudDensity = sampledCloud.x;
 
-        const uint2 meshletsVisibleBallot = WaveActiveBallot(isSampleValid).xy;
+    	    const bool isSampleValid = cloudDensity > 0.f;
 
-        if(isSampleValid)
-        {
-            const uint sampleIdx = validSamplesNum + GetCompactedIndex(meshletsVisibleBallot, WaveGetLaneIndex());
+    	    const uint2 meshletsVisibleBallot = WaveActiveBallot(isSampleValid).xy;
 
-            gs_cachedSamplesT[sampleIdx] = rayT;
-            gs_cachedSamplesCloud[sampleIdx] = half2(sampledCloud);
-        }
+    	    if(isSampleValid)
+    	    {
+    	        const uint cachedSampleIdx = validSamplesNum + GetCompactedIndex(meshletsVisibleBallot, WaveGetLaneIndex());
 
-        validSamplesNum += countbits(meshletsVisibleBallot.x) + countbits(meshletsVisibleBallot.y);
-    }
+    	        gs_cachedSamplesT[cachedSampleIdx] = rayT;
+    	        gs_cachedSamplesCloud[cachedSampleIdx] = half2(sampledCloud);
+    	    }
+
+    	    validSamplesNum += countbits(meshletsVisibleBallot.x) + countbits(meshletsVisibleBallot.y);
+    	}
+	}
 
     if(validSamplesNum == 0u)
     {
@@ -681,19 +690,23 @@ CloudscapeRaymarchResult WaveRaymarchCloudscape(in CloudscapeRaymarchParams para
 
     float phaseFunctions[octavesNum];
     float currentPhaseMultiplier = 1.f;
-    for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
-    {
-        phaseFunctions[octaveIdx] = CloudPhaseFunction(cosTheta, currentPhaseMultiplier);
-        currentPhaseMultiplier *= CLOUD_OCTAVE_MUL;
-    }
+	{
+		for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
+    	{
+    	    phaseFunctions[octaveIdx] = CloudPhaseFunction(cosTheta, currentPhaseMultiplier);
+    	    currentPhaseMultiplier *= CLOUD_OCTAVE_MUL;
+    	}
+	}
 
     float transmittance[octavesNum];
     float3 inScattering = 0.f;
 
-    for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
-    {
-        transmittance[octaveIdx] = 1.f;
-    }
+	{
+		for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
+    	{
+    	    transmittance[octaveIdx] = 1.f;
+    	}
+	}
 
     const float3 ambient = params.ambient / octavesNum;
 

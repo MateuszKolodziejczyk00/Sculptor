@@ -1,10 +1,6 @@
 #include "VisibilityMomentsPass.h"
 #include "RenderGraphBuilder.h"
 #include "MathUtils.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
 #include "ResourcesManager.h"
 
 
@@ -14,11 +10,10 @@ namespace spt::rsc::visibility_denoiser::moments
 namespace compression
 {
 
-DS_BEGIN(VisibilityDataCompressionDS, rg::RGDescriptorSetState<VisibilityDataCompressionDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),										u_compressedDataTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_inputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
-DS_END();
+BEGIN_SHADER_STRUCT(VisibilityDataCompressionParams)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Uint32>,  compressedDataTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,  inputTexture)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CreateCompressionPipeline()
@@ -40,14 +35,14 @@ rg::RGTextureViewHandle CompressTexture(rg::RenderGraphBuilder& graphBuilder, co
 
 	static const rdr::PipelineStateID pipeline = CreateCompressionPipeline();
 
-	lib::MTHandle<VisibilityDataCompressionDS> descriptorSet = graphBuilder.CreateDescriptorSet<VisibilityDataCompressionDS>(RENDERER_RESOURCE_NAME("VisibilityDataCompressionDS"));
-	descriptorSet->u_compressedDataTexture	= compressedTexture;
-	descriptorSet->u_inputTexture			= params.dataTexture;
+	VisibilityDataCompressionParams shaderConstants;
+	shaderConstants.compressedDataTexture = compressedTexture;
+	shaderConstants.inputTexture          = params.dataTexture;
 	
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{}: Compress Data", params.debugName.AsString()),
 						  pipeline,
 						  compressedResolution,
-						  rg::BindDescriptorSets(std::move(descriptorSet)));
+						  rg::ShaderParams(shaderConstants));
 
 	return compressedTexture;
 
@@ -58,11 +53,10 @@ rg::RGTextureViewHandle CompressTexture(rg::RenderGraphBuilder& graphBuilder, co
 namespace computation
 {
 
-DS_BEGIN(VisibilityMomentsComputationDS, rg::RGDescriptorSetState<VisibilityMomentsComputationDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),										u_compressedDataTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),										u_momentsTexture)
-DS_END();
+BEGIN_SHADER_STRUCT(VisibilityMomentsComputationParams)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Uint32>, compressedDataTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>, momentsTexture)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CreateComputationPipeline()
@@ -82,14 +76,14 @@ rg::RGTextureViewHandle ComputeMoments(rg::RenderGraphBuilder& graphBuilder, con
 
 	static const rdr::PipelineStateID pipeline = CreateComputationPipeline();
 
-	lib::MTHandle<VisibilityMomentsComputationDS> descriptorSet = graphBuilder.CreateDescriptorSet<VisibilityMomentsComputationDS>(RENDERER_RESOURCE_NAME("VisibilityMomentsComputationDS"));
-	descriptorSet->u_compressedDataTexture	= compressedData;
-	descriptorSet->u_momentsTexture			= momentsTexture;
+	VisibilityMomentsComputationParams shaderConstants;
+	shaderConstants.compressedDataTexture = compressedData;
+	shaderConstants.momentsTexture        = momentsTexture;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{}: Compute Moments", params.debugName.AsString()),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(descriptorSet)));
+						  rg::ShaderParams(shaderConstants));
 
 	return momentsTexture;
 }

@@ -34,6 +34,7 @@ TerrainMaterialEvaluationOutput EvaluateTerrainMaterial(in MaterialUnifiedData m
 			evalParams.uv = uv * materialEntry.uvScale;
 
 			TerrainDetilingSampler sampler = TerrainDetilingSampler::Initialize(evalParams.uv);
+			//DefaultMaterialSampler sampler = DefaultMaterialSampler::Initialize(evalParams);
 			const MaterialEvaluationOutput materialEvalOutput = EvaluateMaterial(sampler, evalParams, materialData);
 
 			output.material.baseColor      += materialEvalOutput.baseColor * weight;
@@ -79,11 +80,11 @@ TerrainMaterialEvaluationOutput EvaluateTerrainMaterial(in MaterialUnifiedData m
 }
 
 
-#ifdef DS_RenderSceneDS
+#ifdef PARAM_RenderSceneConstants
 TerrainMaterialEvaluationOutput EvaluateTerrainMaterial(in MaterialEvaluationParameters evalParams, in TerrainMaterialData terrainMaterials, in TerrainMaterialsFactors materialsFactors)
 {
 	return EvaluateTerrainMaterial(GPUMaterials().data, evalParams, terrainMaterials, materialsFactors);
 }
-#endif // DS_RenderSceneDS
+#endif // PARAM_RenderSceneConstants
 
 #endif // TERRAIN_MATERIAL_HLSLI

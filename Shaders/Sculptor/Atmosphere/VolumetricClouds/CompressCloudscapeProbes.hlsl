@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(CompressCloudscapeProbesDS, 0)]]
-[[descriptor_set(CloudscapeDS, 1)]]
+[[shader_params(CompressCloudscapeProbesConsts, PARAMS_COMPRESS_CLOUDSCAPE_PROBES)]]
+[[shader_params(CloudscapeConstants, PARAMS_CLOUDSCAPE)]]
 
 #include "Utils/Packing.hlsli"
 #include "Atmosphere/VolumetricClouds/Cloudscape.hlsli"
@@ -27,11 +27,11 @@ void CompressCloudscapeProbesCS(CS_INPUT input)
     float4 traceResSumNoWeight = 0.f;
     float4 weightSum = 0.f;
 
-    for(uint rayIdxOffset = 0u; rayIdxOffset < u_constants.raysPerProbe; rayIdxOffset += WaveGetLaneCount())
+    for(uint rayIdxOffset = 0u; rayIdxOffset < PARAMS_COMPRESS_CLOUDSCAPE_PROBES->constants.raysPerProbe; rayIdxOffset += WaveGetLaneCount())
     {
         const uint localRayIdx = rayIdxOffset + WaveGetLaneIndex();
-	    const float3 rayDir = ComputeCloudscapeProbeRayDirection(localRayIdx, u_constants.raysPerProbe);
-        const float4 traceResult = u_traceResult.Load(uint3(localRayIdx, updatedProbeIdx, 0u));
+	    const float3 rayDir = ComputeCloudscapeProbeRayDirection(localRayIdx, PARAMS_COMPRESS_CLOUDSCAPE_PROBES->constants.raysPerProbe);
+        const float4 traceResult = PARAMS_COMPRESS_CLOUDSCAPE_PROBES->traceResult.Load(uint3(localRayIdx, updatedProbeIdx, 0u));
 
         [unroll]
         for(uint localIdx = 0u; localIdx < WaveGetLaneCount(); ++localIdx)
@@ -48,16 +48,16 @@ void CompressCloudscapeProbesCS(CS_INPUT input)
 
     const float4 traceRes = traceResSum / weightSum;
 
-    const uint2 probesNum = u_cloudscapeConstants.probesNum;
+    const uint2 probesNum = PARAMS_CLOUDSCAPE->probesNum;
 
 #if FULL_UPDATE
     const uint2 probeCoords = uint2(updatedProbeIdx % probesNum.x, updatedProbeIdx / probesNum.x);
 #else
-    const uint2 probeCoords = u_constants.probesToUpdate[updatedProbeIdx].xy;
+    const uint2 probeCoords = PARAMS_COMPRESS_CLOUDSCAPE_PROBES->constants.probesToUpdate[updatedProbeIdx].xy;
 #endif // FULL_UPDATE
 
 
-    const uint2 probeDataCoords = probeCoords * u_constants.compressedProbeDataRes;
+    const uint2 probeDataCoords = probeCoords * PARAMS_COMPRESS_CLOUDSCAPE_PROBES->constants.compressedProbeDataRes;
 
-    u_rwCompressedProbes[probeDataCoords + coords] = traceRes;
+    PARAMS_COMPRESS_CLOUDSCAPE_PROBES->rwCompressedProbes[probeDataCoords + coords] = traceRes;
 }

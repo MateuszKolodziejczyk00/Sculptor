@@ -91,10 +91,8 @@ public:
 	void									TraceRaysIndirect(const lib::SharedRef<Buffer>& indirectArgsBuffer, Uint64 indirectArgsOffset);
 	void									TraceRaysIndirect(const BufferView& indirectArgsBufferView, Uint64 indirectArgsOffset);
 
-	void									BindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state);
-	void									UnbindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state);
-
-	void									BindShaderParams(Uint32 heapOffset);
+	void									BindShaderParams(lib::HashedString type, rhi::DeviceAddress address);
+	void									UnbindShaderParams(lib::HashedString type);
 
 	template<typename TDescriptorSetStatesRange>
 	void									BindDescriptorSetStates(TDescriptorSetStatesRange&& states);

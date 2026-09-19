@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(FilterVSMDS, 0)]]
+[[shader_params(FilterVSMParams, PARAMS_FILTER_V_S_M)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 
@@ -46,8 +46,7 @@ groupshared float2 g_grupInput[SHARED_DATA_ELEMENTS_NUM];
 [numthreads(GROUP_SIZE_X, GROUP_SIZE_Y, 1)]
 void FilterVSMShadowMapCS(CS_INPUT input)
 {
-    int2 outputRes;
-    u_output.GetDimensions(outputRes.x, outputRes.y);
+    int2 outputRes = PARAMS_FILTER_V_S_M->output.GetResolution();
 
     const int2 pixelsDirection = IS_HORIZONTAL ? int2(1, 0) : int2(0, 1);
 
@@ -62,13 +61,13 @@ void FilterVSMShadowMapCS(CS_INPUT input)
 
  #if FILTER_DEPTH
 
-        const float depth = u_depth.Load(uint3(coords, 0));
+        const float depth = PARAMS_FILTER_V_S_M->depth.Load(uint3(coords, 0));
 
         g_grupInput[i] = float2(depth, depth * depth);
 
 #else // FILTER_DEPTH
 
-        g_grupInput[i] = u_moments.Load(uint3(coords, 0));
+        g_grupInput[i] = PARAMS_FILTER_V_S_M->moments.Load(uint3(coords, 0));
 
 #endif // IS_HORIZONTAL
     }
@@ -86,6 +85,6 @@ void FilterVSMShadowMapCS(CS_INPUT input)
             blurredMoments += g_grupInput[localIdx + i] * kernel[i];
         }
 
-        u_output[pixel] = blurredMoments;
+        PARAMS_FILTER_V_S_M->output[pixel] = blurredMoments;
     }
 }

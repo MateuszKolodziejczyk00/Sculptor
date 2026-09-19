@@ -2,16 +2,15 @@
 #define BINDLESS_TYPES_HLSLI
 
 
-template<typename TDataType>
-struct GPUPtr
+struct GPUPtr<TDataType>
 {
 	uint descriptorIdx;
 	uint dataIdx;
 
 	TDataType Load()
 	{
-		StructuredBuffer<TDataType> buffer = ResourceDescriptorHeap[descriptorIdx];
-		return buffer[dataIdx];
+		ByteAddressBuffer buffer = ResourceDescriptorHeap[descriptorIdx];
+		return buffer.Load<TDataType>(dataIdx * sizeof(TDataType));
 	}
 
 	bool IsValid()
@@ -26,8 +25,13 @@ struct GPUPtr
 };
 
 
-template<typename T>
-struct NamedBufferDescriptor
+interface INamedBuffer
+{
+	static uint Get();
+};
+
+
+struct NamedBufferDescriptor<T>
 {
 	uint idx;
 
@@ -46,15 +50,15 @@ struct NamedBufferDescriptor
 };
 
 
-template<typename T>
-struct SRVTexture3D
+struct SRVTexture3D<T : ITexelElement>
 {
 	uint descriptorIdx;
 	uint metaData;
 
 	Texture3D<T> GetResource()
 	{
-		return ResourceDescriptorHeap[descriptorIdx];
+		Texture3D<T> texture = ResourceDescriptorHeap[descriptorIdx];
+		return texture;
 	}
 
 	T Load(in int3 coords)
@@ -71,22 +75,29 @@ struct SRVTexture3D
 	T SampleLevel(in SamplerState s, in float3 uvw, in float level = 0.f)
 	{
 		const Texture3D<T> texture = GetResource();
-		return texture.Sample(s, uvw, level);
+		return texture.SampleLevel(s, uvw, level);
 	}
 
 	bool IsValid()
 	{
 		return descriptorIdx != IDX_NONE_32;
 	}
+
+	__subscript(int3 idx) -> T
+	{
+		get
+		{
+			return Load(idx);
+		}
+	}
 };
 
 
-template<typename T>
-struct SRVTexture2D
+struct SRVTexture2D<T : ITexelElement>
 {
-	static SRVTexture2D Invalid()
+	static SRVTexture2D<T> Invalid()
 	{
-		SRVTexture2D invalid;
+		SRVTexture2D<T> invalid;
 		invalid.descriptorIdx = IDX_NONE_32;
 		return invalid;
 	}
@@ -96,7 +107,13 @@ struct SRVTexture2D
 
 	Texture2D<T> GetResource()
 	{
-		return ResourceDescriptorHeap[descriptorIdx];
+		Texture2D<T> texture = ResourceDescriptorHeap[descriptorIdx];
+		return texture;
+	}
+
+	T Load(in int coords)
+	{
+		return Load(int3(coords, 0, 0));
 	}
 
 	T Load(in int2 coords)
@@ -128,17 +145,34 @@ struct SRVTexture2D
 		return texture.Sample(s, uv);
 	}
 
-	float SampleCmp(in SamplerComparisonState s, in float2 uv, in T cmp)
+	float SampleCmp(in SamplerComparisonState s, in float2 uv, in float cmp)
 	{
 		const Texture2D<T> texture = GetResource();
 		return texture.SampleCmp(s, uv, cmp);
 	}
 
-	template<typename TReturn>
-	TReturn Gather(in SamplerState s, in float2 uv)
+	vector<T.Element, 4> GatherRed(in SamplerState s, in float2 uv)
 	{
 		const Texture2D<T> texture = GetResource();
-		return TReturn(texture.Gather(s, uv));
+		return texture.GatherRed(s, uv);
+	}
+
+	vector<T.Element, 4> GatherGreen(in SamplerState s, in float2 uv)
+	{
+		const Texture2D<T> texture = GetResource();
+		return texture.GatherGreen(s, uv);
+	}
+
+	vector<T.Element, 4> GatherBlue(in SamplerState s, in float2 uv)
+	{
+		const Texture2D<T> texture = GetResource();
+		return texture.GatherBlue(s, uv);
+	}
+
+	vector<T.Element, 4> Gather(in SamplerState s, in float2 uv)
+	{
+		const Texture2D<T> texture = GetResource();
+		return texture.Gather(s, uv);
 	}
 
 	uint2 GetResolution()
@@ -153,18 +187,26 @@ struct SRVTexture2D
 	{
 		return descriptorIdx != IDX_NONE_32;
 	}
+
+	__subscript(int2 idx) -> T
+	{
+		get
+		{
+			return Load(idx);
+		}
+	}
 };
 
 
-template<typename T>
-struct UAVTexture2D
+struct UAVTexture2D<T : ITexelElement>
 {
 	uint descriptorIdx;
 	uint metaData;
 
 	RWTexture2D<T> GetResource()
 	{
-		return ResourceDescriptorHeap[descriptorIdx];
+		RWTexture2D<T> texture = ResourceDescriptorHeap[descriptorIdx];
+		return texture;
 	}
 
 	T Load(in int2 coords)
@@ -191,18 +233,31 @@ struct UAVTexture2D
 		texture.GetDimensions(resolution.x, resolution.y);
 		return resolution;
 	}
+
+	__subscript(int2 idx) -> T
+	{
+		get
+		{
+			return Load(idx);
+		}
+
+		set
+		{
+			Store(idx, newValue);
+		}
+	}
 };
 
 
-template<typename T>
-struct UAVTexture3D
+struct UAVTexture3D<T : ITexelElement>
 {
 	uint descriptorIdx;
 	uint metaData;
 
 	RWTexture3D<T> GetResource()
 	{
-		return ResourceDescriptorHeap[descriptorIdx];
+		RWTexture3D<T> texture = ResourceDescriptorHeap[descriptorIdx];
+		return texture;
 	}
 
 	T Load(in int3 coords)
@@ -221,33 +276,64 @@ struct UAVTexture3D
 	{
 		return descriptorIdx != IDX_NONE_32;
 	}
+
+	__subscript(int3 idx) -> T
+	{
+		get
+		{
+			return Load(idx);
+		}
+
+		set
+		{
+			Store(idx, newValue);
+		}
+	}
 };
 
 
-template<typename T>
-struct RWTypedBuffer
+struct RWTypedBuffer<T>
 {
 	uint descriptorIdx;
 	uint metaData;
 
-	T Load(in uint idx)
+	RWStructuredBuffer<T> GetResource()
 	{
 		RWStructuredBuffer<T> buffer = ResourceDescriptorHeap[descriptorIdx];
-		return buffer[idx];
+		return buffer;
+	}
+
+	T Load(in uint idx)
+	{
+		RWByteAddressBuffer buffer = ResourceDescriptorHeap[descriptorIdx];
+		return buffer.Load<T>(idx * sizeof(T));
 	}
 
 	void Store(in uint idx, in T data)
 	{
-		RWStructuredBuffer<T> buffer = ResourceDescriptorHeap[descriptorIdx];
-		buffer[idx] = data;
+		RWByteAddressBuffer buffer = ResourceDescriptorHeap[descriptorIdx];
+		buffer.Store<T>(idx * sizeof(T), data);
 	}
 
-	T AtomicAdd(in uint idx, in T value)
+	RWTypedBuffer<U> Cast<U>()
 	{
-		RWStructuredBuffer<T> buffer = ResourceDescriptorHeap[descriptorIdx];
-		T original;
-		InterlockedAdd(buffer[idx], value, OUT original);
-		return original;
+		RWTypedBuffer<U> buffer;
+		buffer.descriptorIdx = descriptorIdx;
+		buffer.metaData      = metaData;
+		return buffer;
+	}
+
+	__subscript(uint idx) -> T
+	{
+		get
+		{
+			return Load(idx);
+		}
+
+		set
+		{
+			Store(idx, newValue);
+		}
 	}
 
 	bool IsValid()
@@ -257,16 +343,84 @@ struct RWTypedBuffer
 };
 
 
-template<typename T>
-struct TypedBuffer
+extension RWTypedBuffer<uint>
+{
+	uint AtomicAdd(in uint idx, in uint value)
+	{
+		RWByteAddressBuffer buffer = ResourceDescriptorHeap[descriptorIdx];
+		uint original;
+		buffer.InterlockedAdd(idx * sizeof(uint), value, original);
+		return original;
+	}
+
+	uint AtomicMin(in uint idx, in uint value)
+	{
+		RWByteAddressBuffer buffer = ResourceDescriptorHeap[descriptorIdx];
+		uint original;
+		buffer.InterlockedMin(idx * sizeof(uint), value, original);
+		return original;
+	}
+
+	uint AtomicMax(in uint idx, in uint value)
+	{
+		RWByteAddressBuffer buffer = ResourceDescriptorHeap[descriptorIdx];
+		uint original;
+		buffer.InterlockedMax(idx * sizeof(uint), value, original);
+		return original;
+	}
+
+	uint AtomicAnd(in uint idx, in uint value)
+	{
+		RWByteAddressBuffer buffer = ResourceDescriptorHeap[descriptorIdx];
+		uint original;
+		buffer.InterlockedAnd(idx * sizeof(uint), value, original);
+		return original;
+	}
+
+	uint AtomicOr(in uint idx, in uint value)
+	{
+		RWByteAddressBuffer buffer = ResourceDescriptorHeap[descriptorIdx];
+		uint original;
+		buffer.InterlockedOr(idx * sizeof(uint), value, original);
+		return original;
+	}
+
+	uint InterlockedCompareExchange(in uint idx, in uint compareValue, in uint value)
+	{
+		RWByteAddressBuffer buffer = ResourceDescriptorHeap[descriptorIdx];
+		uint original;
+		buffer.InterlockedCompareExchange(idx * sizeof(uint), compareValue, value, original);
+		return original;
+	}
+};
+
+extension RWTypedBuffer<uint64_t>
+{
+	uint64_t InterlockedCompareExchange(in uint idx, in uint64_t compareValue, in uint64_t value)
+	{
+		RWByteAddressBuffer buffer = ResourceDescriptorHeap[descriptorIdx];
+		uint64_t original;
+		buffer.InterlockedCompareExchange64(idx * sizeof(uint64_t), compareValue, value, original);
+		return original;
+	}
+};
+
+
+struct TypedBuffer<T>
 {
 	uint descriptorIdx;
 	uint metaData;
 
-	T Load(in uint idx)
+	StructuredBuffer<T> GetResource()
 	{
 		StructuredBuffer<T> buffer = ResourceDescriptorHeap[descriptorIdx];
-		return buffer[idx];
+		return buffer;
+	}
+
+	T Load(in uint idx)
+	{
+		RWByteAddressBuffer buffer = ResourceDescriptorHeap[descriptorIdx];
+		return buffer.Load<T>(idx * sizeof(T));
 	}
 
 	GPUPtr<T> PtrAt(in uint idx)
@@ -275,6 +429,14 @@ struct TypedBuffer
 		ptr.descriptorIdx = descriptorIdx;
 		ptr.dataIdx       = idx;
 		return ptr;
+	}
+
+	__subscript(uint idx) -> T
+	{
+		get
+		{
+			return Load(idx);
+		}
 	}
 
 	bool IsValid()
@@ -289,18 +451,22 @@ struct RWByteBuffer
 	uint descriptorIdx;
 	uint metaData;
 
-	template<typename T>
-	T Load(in uint offset)
+	RWByteAddressBuffer GetResource()
 	{
 		RWByteAddressBuffer buffer = ResourceDescriptorHeap[descriptorIdx];
-		return buffer.Load < T > (offset);
+		return buffer;
 	}
 
-	template<typename T>
-	void Store(in uint offset, in T data)
+	T Load<T>(in uint offset)
 	{
-		RWByteAddressBuffer buffer = ResourceDescriptorHeap[descriptorIdx];
-		buffer.Store < T > (offset, data);
+		RWByteAddressBuffer buffer = GetResource();
+		return buffer.Load<T>(offset);
+	}
+
+	void Store<T>(in uint offset, in T data)
+	{
+		RWByteAddressBuffer buffer = GetResource();
+		buffer.Store<T>(offset, data);
 	}
 
 	bool IsValid()
@@ -315,11 +481,10 @@ struct ByteBuffer
 	uint descriptorIdx;
 	uint metaData;
 
-	template<typename T>
-	T Load(in uint offset)
+	T Load<T>(in uint offset)
 	{
 		ByteAddressBuffer buffer = ResourceDescriptorHeap[descriptorIdx];
-		return buffer.Load < T > (offset);
+		return buffer.Load<T>(offset);
 	}
 
 	bool IsValid()
@@ -331,36 +496,38 @@ struct ByteBuffer
 
 struct TLAS
 {
-	uint descriptorIdx;
-	uint metaData;
+	uint64_t address;
 
 	RaytracingAccelerationStructure GetResource()
 	{
-		return ResourceDescriptorHeap[descriptorIdx];
+		RaytracingAccelerationStructure as = {address};
+		return as;
 	}
 
 	bool IsValid()
 	{
-		return descriptorIdx != IDX_NONE_32;
+		return address != 0u;
 	}
 };
 
 
-template<typename TNamedBuffer, typename TDataType>
-struct GPUNamedElemPtr
+struct GPUNamedElemPtr<TNamedBuffer : INamedBuffer, TDataType>
 {
 	uint dataIdx;
 
 	TDataType Load(in uint offset = 0u)
 	{
-		const uint descriptorIdx = TNamedBuffer::Get();
-		StructuredBuffer<TDataType> buffer = ResourceDescriptorHeap[descriptorIdx];
-		return buffer[dataIdx + offset];
+		const uint descriptorIdx = TNamedBuffer.Get();
+		ByteAddressBuffer buffer = ResourceDescriptorHeap[descriptorIdx];
+		return buffer.Load<TDataType>((dataIdx + offset) * sizeof(TDataType));
 	}
 
-	TDataType operator[](in uint idx)
+	__subscript(uint idx) -> TDataType
 	{
-		return Load(idx);
+		get
+		{
+			return Load(idx);
+		}
 	}
 
 	bool IsValid()
@@ -375,7 +542,7 @@ struct GPUNamedElemPtr
 
 	GPUPtr<TDataType> AsGenericPtr()
 	{
-		const uint descriptorIdx = TNamedBuffer::Get();
+		const uint descriptorIdx = TNamedBuffer.Get();
 		GPUPtr<TDataType> ptr;
 		ptr.descriptorIdx = descriptorIdx;
 		ptr.dataIdx       = dataIdx;
@@ -384,18 +551,19 @@ struct GPUNamedElemPtr
 };
 
 
-template<typename TNamedBuffer, typename TDataType>
-struct GPUNamedElemsSpan
+struct GPUNamedElemsSpan<TNamedBuffer : INamedBuffer, TDataType>
 {
 	GPUNamedElemPtr<TNamedBuffer, TDataType> begin;
 	uint size;
 
-	TDataType operator[](in uint idx)
+	__subscript(uint idx) -> TDataType
 	{
-		return begin.Load(idx);
+		get
+		{
+			return begin.Load(idx);
+		}
 	}
 
-	
 	GPUNamedElemPtr<TNamedBuffer, TDataType> GetElemPtr(in uint idx)
 	{
 		GPUNamedElemPtr<TNamedBuffer, TDataType> ptr = begin;
@@ -424,42 +592,50 @@ struct BindlessSamplers
 {
 	static SamplerState LinearClampEdge()
 	{
-		return SamplerDescriptorHeap[SPT_LINEAR_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX];
+		SamplerState handle = SamplerDescriptorHeap[SPT_LINEAR_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX];
+		return handle;
 	}
 	
 	static SamplerState NearestClampEdge()
 	{
-		return SamplerDescriptorHeap[SPT_NEAREST_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX];
+		SamplerState handle = SamplerDescriptorHeap[SPT_NEAREST_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX];
+		return handle;
 	}
 	
 	static SamplerState LinearRepeat()
 	{
-		return SamplerDescriptorHeap[SPT_LINEAR_REPEAT_SAMPLER_DESCRIPTOR_IDX];
+		SamplerState handle = SamplerDescriptorHeap[SPT_LINEAR_REPEAT_SAMPLER_DESCRIPTOR_IDX];
+		return handle;
 	}
 	
 	static SamplerState NearestRepeat()
 	{
-		return SamplerDescriptorHeap[SPT_NEAREST_REPEAT_SAMPLER_DESCRIPTOR_IDX];
+		SamplerState handle = SamplerDescriptorHeap[SPT_NEAREST_REPEAT_SAMPLER_DESCRIPTOR_IDX];
+		return handle;
 	}
 	
 	static SamplerState LinearMinClampEdge()
 	{
-		return SamplerDescriptorHeap[SPT_LINEAR_MIN_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX];
+		SamplerState handle = SamplerDescriptorHeap[SPT_LINEAR_MIN_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX];
+		return handle;
 	}
 	
 	static SamplerState LinearMaxClampEdge()
 	{
-		return SamplerDescriptorHeap[SPT_LINEAR_MAX_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX];
+		SamplerState handle = SamplerDescriptorHeap[SPT_LINEAR_MAX_CLAMP_EDGE_SAMPLER_DESCRIPTOR_IDX];
+		return handle;
 	}
 
 	static SamplerState MaterialAniso()
 	{
-		return SamplerDescriptorHeap[SPT_MATERIAL_ANISO_SAMPLER_DESCRIPTOR_IDX];
+		SamplerState handle = SamplerDescriptorHeap[SPT_MATERIAL_ANISO_SAMPLER_DESCRIPTOR_IDX];
+		return handle;
 	}
 
 	static SamplerState MaterialLinear()
 	{
-		return SamplerDescriptorHeap[SPT_MATERIAL_LINEAR_SAMPLER_DESCRIPTOR_IDX];
+		SamplerState handle = SamplerDescriptorHeap[SPT_MATERIAL_LINEAR_SAMPLER_DESCRIPTOR_IDX];
+		return handle;
 	}
 };
 

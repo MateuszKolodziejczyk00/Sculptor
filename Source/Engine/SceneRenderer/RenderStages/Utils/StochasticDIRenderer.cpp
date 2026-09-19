@@ -14,6 +14,7 @@
 #include "Utils/SceneRenderingTypes.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 #include "Utils/ViewRenderingSpec.h"
+#include "ResourcesManager.h"
 
 
 namespace spt::rsc::stochastic_di
@@ -298,8 +299,7 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterfa
 		graphBuilder.TraceRays(RG_DEBUG_NAME("DI Initial Sampling"),
 							   DIInitialSamplingPSO::pso,
 							   resolution,
-							   rg::EmptyDescriptorSets(),
-							   shaderConstants);
+							   rg::ShaderParams(shaderConstants));
 	}
 
 	const rg::RGTextureViewHandle specularHitDist = graphBuilder.CreateTextureView(RG_DEBUG_NAME("DI Specular Hit Dist"), rg::TextureDef(resolution, rhi::EFragmentFormat::RGBA16_S_Float));
@@ -329,8 +329,7 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterfa
 		graphBuilder.TraceRays(RG_DEBUG_NAME("DI Spatial Resampling"),
 							   DISpatialResamplingPSO::GetPermutation(permutation),
 							   resolution,
-							   rg::EmptyDescriptorSets(),
-							   shaderConstants);
+							   rg::ShaderParams(shaderConstants));
 	}
 
 	sr_denoiser::Denoiser::Params denoiserParams(viewSpec);
@@ -362,7 +361,6 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterfa
 		graphBuilder.Dispatch(RG_DEBUG_NAME("Resolve Stochastic DI"),
 							  ResolveStochasticDIPSO::pso,
 							  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
-							  rg::EmptyDescriptorSets(),
 							  shaderConstants);
 	}
 }

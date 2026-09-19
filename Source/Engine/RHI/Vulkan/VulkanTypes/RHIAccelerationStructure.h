@@ -43,7 +43,7 @@ public:
 
 	DeviceAddress GetDeviceAddress() const;
 
-	void CopySRVDescriptor(Byte* dst) const;
+	void CopySRVDescriptor(lib::Span<Byte> dst) const;
 
 protected:
 

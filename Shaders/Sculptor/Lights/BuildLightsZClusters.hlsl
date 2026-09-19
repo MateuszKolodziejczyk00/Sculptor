@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
 
-[[descriptor_set(BuildLightZClustersDS, 0)]]
+[[shader_params(BuildLightZClustersConstants, CONSTS)]]
 
 
 struct CS_INPUT
@@ -17,16 +17,16 @@ void BuildLightsZClustersCS(CS_INPUT input)
 {
 	const uint clusterIdx = input.localID.x;
 
-	if (clusterIdx < u_lightsData.zClustersNum)
+	if (clusterIdx < CONSTS->lightsData->zClustersNum)
 	{
-		const float clusterRangeMin = clusterIdx * u_lightsData.zClusterLength;
-		const float clusterRangeMax = (clusterIdx + 1) * u_lightsData.zClusterLength;
+		const float clusterRangeMin = clusterIdx * CONSTS->lightsData->zClusterLength;
+		const float clusterRangeMax = (clusterIdx + 1) * CONSTS->lightsData->zClusterLength;
 
 		uint lightMinIdx = 0xffffffff;
 
-		for (uint lightIdx = 0; lightIdx < u_lightsData.localLightsNum; lightIdx += 1)
+		for (uint lightIdx = 0; lightIdx < CONSTS->lightsData->localLightsNum; lightIdx += 1)
 		{
-			const float2 lightRange = u_localLightsZRanges[lightIdx];
+			const float2 lightRange = CONSTS->localLightsZRanges[lightIdx];
 			const bool isInRange = lightRange.x < clusterRangeMax && lightRange.y > clusterRangeMin;
 			if (isInRange)
 			{
@@ -39,10 +39,10 @@ void BuildLightsZClustersCS(CS_INPUT input)
 
 		if (lightMinIdx != 0xffffffff)
 		{
-			for (uint idx = 0; idx < u_lightsData.localLightsNum; idx += 1)
+			for (uint idx = 0; idx < CONSTS->lightsData->localLightsNum; idx += 1)
 			{
-				const uint lightIdx = u_lightsData.localLightsNum - idx - 1;
-				const float2 lightRange = u_localLightsZRanges[lightIdx];
+				const uint lightIdx = CONSTS->lightsData->localLightsNum - idx - 1;
+				const float2 lightRange = CONSTS->localLightsZRanges[lightIdx];
 				const bool isInRange = lightRange.x < clusterRangeMax && lightRange.y > clusterRangeMin;
 				if (isInRange)
 				{
@@ -57,6 +57,6 @@ void BuildLightsZClustersCS(CS_INPUT input)
 			lightMaxIdx = 0;
 		}
 
-		u_constants.rwClusterRanges.Store(clusterIdx, uint2(lightMinIdx, lightMaxIdx));
+		CONSTS->rwClusterRanges.Store(clusterIdx, uint2(lightMinIdx, lightMaxIdx));
 	}
 }

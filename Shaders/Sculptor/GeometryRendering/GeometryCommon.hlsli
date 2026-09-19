@@ -10,9 +10,9 @@
 
 uint PackGeometryVisibilityInfo(in uint visibleMeshletIdx, in uint triangleIdx)
 {
-	SPT_CHECK_MSG(triangleIdx < (1 << 7), L"Invalid triangle index - {}", triangleIdx);
-	SPT_CHECK_MSG(((visibleMeshletIdx << 7) >> 7) == visibleMeshletIdx, L"Invalid meshlet index - {}", visibleMeshletIdx);
-	SPT_CHECK_MSG((visibleMeshletIdx << 7) == ((visibleMeshletIdx << 8) >> 1), L"Invalid meshlet index - {} (last bit reserved for grass)", visibleMeshletIdx);
+	//SPT_CHECK_MSG(triangleIdx < (1 << 7), L"Invalid triangle index - {}", triangleIdx);
+	//SPT_CHECK_MSG(((visibleMeshletIdx << 7) >> 7) == visibleMeshletIdx, L"Invalid meshlet index - {}", visibleMeshletIdx);
+	//SPT_CHECK_MSG((visibleMeshletIdx << 7) == ((visibleMeshletIdx << 8) >> 1), L"Invalid meshlet index - {} (last bit reserved for grass)", visibleMeshletIdx);
 	return (visibleMeshletIdx << 7) | triangleIdx;
 }
 
@@ -23,12 +23,12 @@ uint PackTerrainVisibilityInfo()
 }
 
 
-uint PackGrassVisibilityInfo(in uint grassBladeIdx, in uint triangleIdx, in uint lod)
+uint PackGrassVisibilityInfo(in uint grassBladeIdx, in uint triangleIdx, in uint lodIdx)
 {
 	SPT_CHECK_MSG(triangleIdx < 16u, L"Invalid triangle index - {}", triangleIdx);
 	SPT_CHECK_MSG(grassBladeIdx < (1 << 26), L"Invalid grass blade index - {}", grassBladeIdx);
 	SPT_CHECK_MSG(lodIdx < 2u, L"Invalid LOD index - {}", lodIdx);
-	return ((grassBladeIdx << 5) | (triangleIdx << 1u) | lod) | (1u << 31);
+	return ((grassBladeIdx << 5) | (triangleIdx << 1u) | lodIdx) | (1u << 31);
 }
 
 
@@ -210,14 +210,13 @@ float2 ComputeUVScale(in float3 ws0, in float3 ws1, in float3 ws2, in float2 uv0
 }
 
 
-template<typename TDataType>
-TDataType InterpolateAttribute(in TDataType a0, in TDataType a1, in TDataType a2, in Barycentrics barycentrics)
+TDataType InterpolateAttribute<TDataType : IFloat>(in TDataType a0, in TDataType a1, in TDataType a2, in Barycentrics barycentrics)
 {
-	return a0 * barycentrics.uvw[0] + a1 * barycentrics.uvw[1] + a2 * barycentrics.uvw[2];
+	return a0 * TDataType(barycentrics.uvw[0]) + a1 * TDataType(barycentrics.uvw[1]) + a2 * TDataType(barycentrics.uvw[2]);
 }
 
 
-#ifdef DS_RenderSceneDS
+#ifdef PARAM_RenderSceneConstants
 uint3 LoadTriangleVertexIndices(uint meshletPrimitivesOffset, uint meshletTriangleIdx)
 {
 	const uint triangleStride = 3;
@@ -254,6 +253,6 @@ uint3 LoadTriangleVertexIndices(uint meshletPrimitivesOffset, uint meshletTriang
 
 	return traingleIndices;
 }
-#endif // DS_RenderSceneDS
+#endif // PARAM_RenderSceneConstants
 
 #endif // GEOMETRY_COMMON_H

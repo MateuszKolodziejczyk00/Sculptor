@@ -1,8 +1,8 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderSceneDS)]]
-[[descriptor_set(RenderViewDS)]]
-[[descriptor_set(TerrainVisibilityDS)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(TerrainRenderConstants, CONSTS)]]
 
 #include "Terrain/SceneTerrain.hlsli"
 #include "GeometryRendering/GeometryCommon.hlsli"
@@ -25,9 +25,9 @@ struct MeshVertex
 
 struct MeshShaderInput
 {
-	uint3 meshletID : SV_GroupID;
-	uint localID    : SV_GroupIndex;
-	[[vk::builtin("DrawIndex")]] uint drawCommandIndex : DRAW_INDEX;
+	uint3 meshletID       : SV_GroupID;
+	uint localID          : SV_GroupIndex;
+	uint drawCommandIndex : SV_DrawIndex;
 };
 
 
@@ -76,6 +76,7 @@ uint ApplyLODChangeMask(in uint vertexIdx, in uint changeMask, in uint2 meshletI
 }
 
 
+[shader("mesh")]
 [outputtopology("triangle")]
 [numthreads(TERRAIN_VISIBILITY_MS_GROUP_SIZE, 1, 1)]
 void Terrain_MS(in MeshShaderInput input,
@@ -88,16 +89,16 @@ void Terrain_MS(in MeshShaderInput input,
 
 	const TerrainInterface terrain = SceneTerrain();
 
-	const TerrainDrawMeshTaskCommand drawCommand = u_constants.drawCommands.Load(input.drawCommandIndex);
+	const TerrainDrawMeshTaskCommand drawCommand = CONSTS->drawCommands.Load(input.drawCommandIndex);
 
 	uint tileIdx, tileLOD;
-	UnpackTileDrawCommand(drawCommand.drawCommand     , OUT tileIdx, OUT tileLOD);
+	UnpackTileDrawCommand(drawCommand.drawCommand, OUT tileIdx, OUT tileLOD);
 
 	const TerrainClipmapTileGPU tile = terrain.GetTile(tileIdx);
 	uint tileLODChangeMask;
 	terrain.GetTileLODAndLODChangeMask(tileIdx, OUT tileLODChangeMask);
 
-	const float tileSizeMeters = u_renderSceneConstants.terrain.tileSizeMeters;
+	const float tileSizeMeters = SCENE->terrain.tileSizeMeters;
 	const float2 tileOffset = float2(tile.tileCoordX, tile.tileCoordY);
 
 	const uint meshletsRes = TERRAIN_MESHLETS_PER_TILE << (TERRAIN_TILE_MAX_LOD - tileLOD);
@@ -116,7 +117,7 @@ void Terrain_MS(in MeshShaderInput input,
 
 		const float3 worldPos = float3(locationXY, height) + terrain.GetDisplacement(locationXY) * normal;
 
-		outVertices[it].clipSpace = mul(u_sceneView.viewProjectionMatrix, float4(worldPos, 1.f));
+		outVertices[it].clipSpace = mul(VIEW->sceneView.viewProjectionMatrix, float4(worldPos, 1.f));
 	}
 
 	for (uint triangleIdx = input.localID; triangleIdx < trianglesNum; triangleIdx += TERRAIN_VISIBILITY_MS_GROUP_SIZE)
@@ -143,6 +144,7 @@ FS_VIS_OUTPUT TerrainVisibility_FS()
 }
 
 
+[shader("fragment")]
 void TerrainDepth_FS()
 {
 }

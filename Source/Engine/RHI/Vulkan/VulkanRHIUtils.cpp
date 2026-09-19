@@ -283,26 +283,6 @@ VkDescriptorType RHIToVulkan::GetDescriptorType(rhi::EDescriptorType descriptorT
 	}
 }
 
-VkDescriptorBindingFlags RHIToVulkan::GetBindingFlags(rhi::EDescriptorSetBindingFlags bindingFlags)
-{
-	VkDescriptorBindingFlags vulkanFlags = 0;
-
-	if (lib::HasAnyFlag(bindingFlags, rhi::EDescriptorSetBindingFlags::PartiallyBound))
-	{
-		lib::AddFlag(vulkanFlags, VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
-	}
-
-	return vulkanFlags;
-}
-
-VkDescriptorSetLayoutCreateFlags RHIToVulkan::GetDescriptorSetFlags(rhi::EDescriptorSetFlags dsFlags)
-{
-	VkDescriptorSetLayoutCreateFlags vulkanFlags = 0;
-
-
-	return vulkanFlags;
-}
-
 VkShaderStageFlagBits RHIToVulkan::GetShaderStage(rhi::EShaderStage stage)
 {
 	switch (stage)
@@ -649,6 +629,14 @@ VkQueryPipelineStatisticFlags RHIToVulkan::GetPipelineStatistic(rhi::EQueryStati
 	if (lib::HasAnyFlag(statisticsType, rhi::EQueryStatisticsType::CSInvocations))
 	{
 		lib::AddFlag(flags, VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT);
+	}
+	if (lib::HasAnyFlag(statisticsType, rhi::EQueryStatisticsType::TSInvocations))
+	{
+		lib::AddFlag(flags, VK_QUERY_PIPELINE_STATISTIC_TASK_SHADER_INVOCATIONS_BIT_EXT);
+	}
+	if (lib::HasAnyFlag(statisticsType, rhi::EQueryStatisticsType::MSInvocations))
+	{
+		lib::AddFlag(flags, VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT);
 	}
 
 	return flags;

@@ -186,7 +186,6 @@ TerrainIndirectDrawParams BuildTerrainDrawTilesCommandsBuffers(rg::RenderGraphBu
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Build Terrain Tile Draw Commands"),
 						  TerrainBuildTileDrawCommandsPSO::pso,
 						  math::Vector3u(math::Utils::DivideCeil(tilesNum, 64u), 1u, 1u),
-						  rg::EmptyDescriptorSets(),
 						  shaderConstants);
 
 	return buffers;
@@ -196,11 +195,6 @@ TerrainIndirectDrawParams BuildTerrainDrawTilesCommandsBuffers(rg::RenderGraphBu
 BEGIN_SHADER_STRUCT(TerrainRenderConstants)
 	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<TerrainDrawMeshTaskCommand>, drawCommands)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(TerrainVisibilityDS, rg::RGDescriptorSetState<TerrainVisibilityDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TerrainRenderConstants>), u_constants)
-DS_END()
 
 
 GRAPHICS_PSO(TerrainVisibilityPSO)
@@ -270,12 +264,9 @@ void RenderVisibilityBuffer(rg::RenderGraphBuilder& graphBuilder, const TerrainV
 	renderPassDef.SetDepthRenderTarget(depthRTDef);
 	renderPassDef.AddColorRenderTarget(visibilityRTDef);
 
-	lib::MTHandle<TerrainVisibilityDS> ds = graphBuilder.CreateDescriptorSet<TerrainVisibilityDS>(RENDERER_RESOURCE_NAME("Terrain Visibility DS"));
-	ds->u_constants = constants;
-
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Terrain Visibility Buffer"),
 							renderPassDef,
-							rg::BindDescriptorSets(ds),
+							rg::ShaderParams(constants),
 							std::tie(indirectDrawParams),
 							[resolution, indirectDrawParams, maxDrawsCount](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
@@ -312,12 +303,9 @@ void RenderShadowMap(rg::RenderGraphBuilder& graphBuilder, const TerrainShadowMa
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i::Zero(), resolution);
 	renderPassDef.SetDepthRenderTarget(depthRTDef);
 
-	lib::MTHandle<TerrainVisibilityDS> ds = graphBuilder.CreateDescriptorSet<TerrainVisibilityDS>(RENDERER_RESOURCE_NAME("Terrain Visibility DS"));
-	ds->u_constants = constants;
-
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Terrain Shadow Map"),
 							renderPassDef,
-							rg::BindDescriptorSets(ds),
+							rg::ShaderParams(constants),
 							std::tie(indirectDrawParams),
 							[resolution, indirectDrawParams, maxDrawsCount](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
@@ -465,8 +453,7 @@ void RenderCacheDepthTexture(rg::RenderGraphBuilder& graphBuilder, const SceneRe
 	graphBuilder.FullScreenPass(RG_DEBUG_NAME("Render Terrain Material Cache Depth"),
 								renderPassDef,
 								RenderCacheDepthTexturePSO::pso,
-								rg::EmptyDescriptorSets(),
-								shaderConstants);
+								rg::ShaderParams(shaderConstants));
 }
 
 
@@ -655,8 +642,7 @@ void UpdateMaterialCache(rg::RenderGraphBuilder& graphBuilder, const SceneRender
 	graphBuilder.FullScreenPass(RG_DEBUG_NAME("Update Terrain Material Cache"),
 								renderPass,
 								RenderTerrainMaterialCachePSO::pso[hasPomDepth ? 1 : 0][hasDisplacement ? 1 : 0],
-								rg::EmptyDescriptorSets(),
-								shaderConstants);
+								rg::ShaderParams(shaderConstants));
 }
 
 } // material_cache
@@ -994,7 +980,6 @@ void BuildTileVertexBuffer(rg::RenderGraphBuilder& graphBuilder, Uint32 tileIdx,
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Build Terrain Runtime Vertices"),
 						  TerrainBuildTileVertexBufferPSO::pso,
 						  math::Utils::DivideCeil(lod.verticesNum, 64u),
-						  rg::EmptyDescriptorSets(),
 						  shaderConstants);
 }
 

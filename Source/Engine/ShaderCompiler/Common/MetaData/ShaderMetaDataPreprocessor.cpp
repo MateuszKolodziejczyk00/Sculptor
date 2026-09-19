@@ -1,8 +1,4 @@
 #include "ShaderMetaDataPreprocessor.h"
-#include "Common/ShaderCompilationInput.h"
-#include "Tokenizer.h"
-#include "ArgumentsTokenizer.h"
-#include "Common/DescriptorSetCompilation/DescriptorSetCompilationDefsRegistry.h"
 #include "ShaderStructsRegistry.h"
 #include "FileSystem/File.h"
 #include "Utility/String/StringUtils.h"
@@ -21,237 +17,6 @@ namespace spt::sc
 
 namespace helper
 {
-
-enum class EDSIteratorFuncResult
-{
-	Continue,
-	Break,
-	ContinueFromStart
-};
-
-
-Uint32 ComputeDescriptorSetFirstImplicitIdx(const lib::String& sourceCode)
-{
-	SPT_PROFILER_FUNCTION();
-
-	static const std::regex descriptorSetRegex(R"~(\[\[descriptor_set\((\w+)\s*,\s*(\d+)\s*\)\]\])~");
-
-	auto descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), descriptorSetRegex);
-
-	Uint32 firstFreeIdx = 0u;
-
-	// iterate over all descriptor sets WITH explicit indices
-	while (descriptorSetIt != std::sregex_iterator())
-	{
-		const std::smatch& descriptorSetMatch = *descriptorSetIt;
-		SPT_CHECK(descriptorSetMatch.size() == 3); // whole match + dsNameMatch + dsIdxMatch
-
-		const lib::String dsIdxStr = descriptorSetMatch[2].str();
-		firstFreeIdx = std::max(firstFreeIdx, static_cast<Uint32>(std::stoi(dsIdxStr)) + 1u);
-
-		++descriptorSetIt;
-	}
-
-	return firstFreeIdx;
-}
-
-
-template<typename TFunctor>
-static void IterateDescriptorSets(TFunctor&& func, const lib::String& sourceCode)
-{
-	SPT_PROFILER_FUNCTION();
-
-	Uint32 implicitIdxCounter = ComputeDescriptorSetFirstImplicitIdx(sourceCode);
-
-	const Uint32 bindlessOffset = 1u;
-
-	static const std::regex descriptorSetRegex(R"~(\[\[descriptor_set\((\w+)\s*(,\s*(\d+)\s*)?\)\]\])~");
-
-	auto descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), descriptorSetRegex);
-
-	while (descriptorSetIt != std::sregex_iterator())
-	{
-		const std::smatch& descriptorSetMatch = *descriptorSetIt;
-		SPT_CHECK(descriptorSetMatch.size() == 4); // whole match + dsNameMatch + second arg + dsIdxMatch
-		const lib::String dsName   = descriptorSetMatch[1].str();
-		const lib::String dsIdxStr = descriptorSetMatch[3].str();
-
-		Uint32 dsIdx = idxNone<Uint32>;
-		if (descriptorSetMatch[2].matched)
-		{
-			dsIdx = static_cast<Uint32>(std::stoi(dsIdxStr));
-		}
-		else
-		{
-			dsIdx = implicitIdxCounter++;
-		}
-
-		SPT_CHECK(dsIdx != idxNone<Uint32>);
-		dsIdx += bindlessOffset;
-
-		const SizeType dsTokenPosition = descriptorSetIt->prefix().length();
-		const SizeType dsTokenLength   = descriptorSetMatch.length();
-
-		const EDSIteratorFuncResult res = func(dsName, dsIdx, dsTokenPosition, dsTokenLength);
-
-		if (res == EDSIteratorFuncResult::Break)
-		{
-			break;
-		}
-		else if (res == EDSIteratorFuncResult::Continue)
-		{
-			++descriptorSetIt;
-		}
-		else if (res == EDSIteratorFuncResult::ContinueFromStart)
-		{
-			descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), descriptorSetRegex);
-		}
-		else
-		{
-			SPT_CHECK_NO_ENTRY();
-		}
-	}
-}
-
-
-static TypeOverrideMap ParseTypeOverrides(lib::String& sourceCode)
-{
-	SPT_PROFILER_FUNCTION();
-
-	TypeOverrideMap overrides;
-
-	const lib::StringView overrideToken = "[[override]]";
-
-	SizeType currentPos = 0u;
-	while (true)
-	{
-		currentPos = sourceCode.find(overrideToken, currentPos);
-
-		if (currentPos != lib::String::npos)
-		{
-			sourceCode.replace(currentPos, overrideToken.length(), ""); // Remove [[override]] token for dxc compatibility
-
-			while (currentPos < sourceCode.length() && lib::StringUtils::IsWhiteChar(sourceCode[currentPos]))
-			{
-				++currentPos;
-			}
-
-			const SizeType structTokenPos = currentPos;
-
-			const lib::StringView structTokenView = "struct";
-			SPT_CHECK(sourceCode.compare(currentPos, structTokenView.length(), structTokenView) == 0);
-			currentPos += structTokenView.length();
-
-			while (currentPos < sourceCode.length() && lib::StringUtils::IsWhiteChar(sourceCode[currentPos]))
-			{
-				++currentPos;
-			}
-
-			SizeType structNameStartPos = currentPos;
-
-			while(currentPos < sourceCode.length() && !lib::StringUtils::IsWhiteChar(sourceCode[currentPos]) && sourceCode[currentPos] != '{' && sourceCode[currentPos] != ':')
-			{
-				++currentPos;
-			}
-
-			const lib::StringView overrideStructName = lib::StringView(&sourceCode[structNameStartPos], currentPos - structNameStartPos);
-
-			while (currentPos < sourceCode.length() && lib::StringUtils::IsWhiteChar(sourceCode[currentPos]))
-			{
-				++currentPos;
-			}
-
-			SPT_CHECK(sourceCode[currentPos] == ':');
-
-			while (currentPos < sourceCode.length() && (lib::StringUtils::IsWhiteChar(sourceCode[currentPos]) || sourceCode[currentPos] == ':'))
-			{
-				++currentPos;
-			}
-
-			SizeType originalStructNameStartPos = currentPos;
-
-			while (currentPos < sourceCode.length() && !lib::StringUtils::IsWhiteChar(sourceCode[currentPos]) && sourceCode[currentPos] != '{')
-			{
-				++currentPos;
-			}
-
-			const lib::StringView originalStructName = lib::StringView(&sourceCode[originalStructNameStartPos], currentPos - originalStructNameStartPos);
-
-			SizeType structEndPos = ++currentPos;
-			Uint32 braceDepth = 1u;
-			while (structEndPos != lib::String::npos && braceDepth > 0u)
-			{
-				++structEndPos;
-				if (sourceCode[structEndPos] == '{')
-				{
-					++braceDepth;
-				}
-				else if (sourceCode[structEndPos] == '}')
-				{
-					if (--braceDepth == 0u)
-					{
-						while (sourceCode[++structEndPos] != ';' && structEndPos < sourceCode.length());
-					}
-				}
-			}
-
-			SPT_CHECK(sourceCode[structEndPos] == ';');
-			++structEndPos;
-
-			lib::String structCode = sourceCode.substr(structTokenPos, structEndPos - structTokenPos);
-
-			overrides[originalStructName] = { overrideStructName, std::move(structCode) };
-
-			sourceCode.replace(structTokenPos, structEndPos - structTokenPos, ""); // Remove entire struct override definition from source code
-		}
-		else
-		{
-			break;
-		}
-	}
-
-	return overrides;
-}
-
-
-static void ApplyTypeOverrides(lib::String& structCode, SizeType startPos, const TypeOverrideMap& overrides)
-{
-	SPT_PROFILER_FUNCTION();
-
-	for (const auto& [originalType, overrideInfo] : overrides)
-	{
-		SizeType currentPos = startPos;
-
-		while (true)
-		{
-			SizeType typePos = structCode.find(originalType.GetView(), currentPos);
-			if (typePos != lib::String::npos)
-			{
-				const char charBefore = (typePos > 0u) ? structCode[typePos - 1u] : ' ';
-				const char charAfter = (typePos + originalType.GetView().length() < structCode.length()) ? structCode[typePos + originalType.GetView().length()] : ' ';
-
-				const auto isValidChar = [](char c) -> bool
-				{
-					return lib::StringUtils::IsWhiteChar(c) || c == ';' || c == '{' || c == '}' || c == '<' || c == '>';
-				};
-
-				if (isValidChar(charBefore) && isValidChar(charAfter))
-				{
-					structCode.replace(typePos, originalType.GetView().length(), overrideInfo.typeName.GetView());
-					currentPos = typePos + overrideInfo.typeName.GetView().length();
-				}
-				else
-				{
-					currentPos = typePos + originalType.GetView().length();
-				}
-			}
-			else
-			{
-				break;
-			}
-		}
-	}
-}
 
 static void PreprocessShaderMetaParameters(const lib::String& sourceCode, ShaderPreprocessingMetaData& outMetaData)
 {
@@ -304,13 +69,13 @@ static void RemoveMetaParameters(lib::String& sourceCode)
 	sourceCode = std::regex_replace(sourceCode, metaDataRegex, "");
 }
 
-static void PreprocessShaderStructs(lib::String& sourceCode, const ShaderPreprocessingState& preprocessingState, ShaderCompilationMetaData& outMetaData)
+static void PreprocessShaderStructs(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
 	static const std::regex shaderStructRegex(R"~(\[\[shader_struct\(\s*(\w*)\s*\)\]\])~");
 
-	lib::HashSet<lib::HashedString> m_definedStructs;
+	lib::HashSet<lib::HashedString> definedStructs;
 
 	auto shaderStructsIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), shaderStructRegex);
 
@@ -321,7 +86,7 @@ static void PreprocessShaderStructs(lib::String& sourceCode, const ShaderPreproc
 		const lib::String structName = shaderStructMatch[1].str();
 
 		lib::String structSourceCode;
-		if (!m_definedStructs.contains(structName))
+		if (!definedStructs.contains(structName))
 		{
 			const rdr::ShaderStructMetaData* structMetaData = rdr::ShaderStructsRegistry::GetStructMetaData(structName);
 			if (!structMetaData)
@@ -338,16 +103,7 @@ static void PreprocessShaderStructs(lib::String& sourceCode, const ShaderPreproc
 			outMetaData.shaderStructsVersionHashes[structName] = structMetaData ? structMetaData->GetVersionHash() : 0u;
 #endif // WITH_SHADERS_HOT_RELOAD
 
-			const SizeType overridesStartPos = structSourceCode.find('{');
-			helper::ApplyTypeOverrides(INOUT structSourceCode, overridesStartPos, preprocessingState.overrides);
-
-			if (preprocessingState.overrides.contains(structName))
-			{
-				const OverrideTypeInfo& overrideInfo = preprocessingState.overrides.at(structName);
-				structSourceCode += '\n' + overrideInfo.typeStr;
-			}
-
-			m_definedStructs.emplace(structName);
+			definedStructs.emplace(structName);
 		}
 
 		sourceCode.replace(shaderStructsIt->prefix().length(), shaderStructMatch.length(), structSourceCode);
@@ -357,44 +113,21 @@ static void PreprocessShaderStructs(lib::String& sourceCode, const ShaderPreproc
 	}
 }
 
-static void PreprocessShaderDescriptorSets(lib::String& sourceCode, const ShaderPreprocessingState& preprocessingState, ShaderCompilationMetaData& outMetaData)
-{
-	SPT_PROFILER_FUNCTION();
-
-	lib::String accessorsCode;
-	
-	helper::IterateDescriptorSets([&sourceCode, &outMetaData, &accessorsCode, &preprocessingState](const lib::String& dsName, Uint32 dsIdx, SizeType dsTokenPosition, SizeType dsTokenLength)
-								  {
-									  const DescriptorSetCompilationDef& dsCompilationDef = DescriptorSetCompilationDefsRegistry::GetDescriptorSetCompilationDef(dsName);
-
-									  lib::String dsSourceCode = dsCompilationDef.GetShaderCode(dsIdx);
-									  helper::ApplyTypeOverrides(INOUT dsSourceCode, 0u, preprocessingState.overrides);
-
-									  sourceCode.replace(dsTokenPosition, dsTokenLength, dsSourceCode);
-
-									  accessorsCode += dsCompilationDef.GetAccessorsCode();
-
-									  outMetaData.AddDescriptorSetMetaData(dsIdx, dsCompilationDef.GetMetaData());
-									  
-									  return helper::EDSIteratorFuncResult::ContinueFromStart;
-								  },
-								  sourceCode);
-
-	if (!accessorsCode.empty())
-	{
-		sourceCode.insert(sourceCode.begin(), accessorsCode.cbegin(), accessorsCode.cend());
-	}
-}
-
-static void PreprocessShaderParams(lib::String& sourceCode, const ShaderPreprocessingState& preprocessingState, ShaderCompilationMetaData& outMetaData)
+static void PreprocessShaderParams(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
 	static const std::regex pushConstantRegex(R"~(\[\[shader_params\(\s*(\w*)\s*\,\s*(\w*)\s*\)\]\])~");
 
-	lib::HashSet<lib::HashedString> m_definedStructs;
-
 	auto pushConstantIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), pushConstantRegex);
+
+	struct ShaderParamInfo
+	{
+		lib::HashedString structName;
+		lib::HashedString variableName;
+	};
+
+	lib::InlineDynamicArray<ShaderParamInfo, 16u> shaderParams;
 
 	while (pushConstantIt != std::sregex_iterator())
 	{
@@ -404,23 +137,50 @@ static void PreprocessShaderParams(lib::String& sourceCode, const ShaderPreproce
 		const lib::HashedString structName   = pushConstantMatch[1].str();
 		const lib::HashedString variableName = pushConstantMatch[2].str();
 
-		lib::String generatedCode;
+		shaderParams.EmplaceBack(ShaderParamInfo{ structName, variableName });
 
-		generatedCode += "[[shader_struct(";
-		generatedCode += structName.GetView();
-		generatedCode += ")]]\n";
-		generatedCode += "[[vk::binding(0, ";
-		generatedCode += std::to_string(std::max(static_cast<Uint32>(outMetaData.GetDescriptorSetsNum()), 1u)); // 0u is reserved for bindless
-		generatedCode += ")]] ConstantBuffer<";
-		generatedCode += structName.GetView();
-		generatedCode += "> ";
-		generatedCode += variableName.GetView();
-		generatedCode += ";\n";
-
-		outMetaData.SetShaderParamsTypeName(structName);
-
-		sourceCode.replace(pushConstantIt->prefix().length(), pushConstantMatch.length(), generatedCode);
 		++pushConstantIt;
+	}
+
+	if (!shaderParams.IsEmpty())
+	{
+		lib::String generatedCode;
+		for (const ShaderParamInfo& shaderParam : shaderParams)
+		{
+			generatedCode += "[[shader_struct(";
+			generatedCode += shaderParam.structName.GetView();
+			generatedCode += ")]]\n";
+		}
+
+		generatedCode += "struct GENERATED_SHADER_PARAMS\n{\n";
+		for (const ShaderParamInfo& shaderParam : shaderParams)
+		{
+			generatedCode += "    ";
+			generatedCode += shaderParam.structName.GetView();
+			generatedCode += "* _";
+			generatedCode += shaderParam.variableName.GetView();
+			generatedCode += ";\n";
+
+			outMetaData.AddShaderParam(shaderParam.structName);
+		}
+
+		generatedCode += "};\n";
+
+		generatedCode += "[[vk::push_constant]] GENERATED_SHADER_PARAMS __shaderParams;\n";
+
+		sourceCode += generatedCode;
+
+		lib::String accessorsCode;
+		for (const ShaderParamInfo& shaderParam : shaderParams)
+		{
+			accessorsCode += "#define ";
+			accessorsCode += shaderParam.variableName.GetView();
+			accessorsCode += " (__shaderParams._";
+			accessorsCode += shaderParam.variableName.GetView();
+			accessorsCode += ")\n";
+		}
+
+		sourceCode.insert(sourceCode.begin(), accessorsCode.cbegin(), accessorsCode.cend());
 	}
 }
 
@@ -504,15 +264,22 @@ ShaderPreprocessingMetaData ShaderMetaDataPrerpocessor::PreprocessAdditionalComp
 
 	ShaderPreprocessingMetaData metaData;
 
-	helper::IterateDescriptorSets([&metaData](const lib::String& dsName, Uint32 dsIdx, SizeType dsTokenPosition, SizeType dsTokenLength)
-								  {
-									  const DescriptorSetCompilationDef& dsCompilationDef = DescriptorSetCompilationDefsRegistry::GetDescriptorSetCompilationDef(dsName);
-									  std::copy(std::cbegin(dsCompilationDef.GetMetaData().additionalMacros),
-												std::cend(dsCompilationDef.GetMetaData().additionalMacros),
-												std::back_inserter(metaData.macroDefinitions));
-									  return helper::EDSIteratorFuncResult::Continue;
-								  },
-								  sourceCode);
+	static const std::regex pushConstantRegex(R"~(\[\[shader_params\(\s*(\w*)\s*\,\s*(\w*)\s*\)\]\])~");
+
+	auto pushConstantIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), pushConstantRegex);
+
+	while (pushConstantIt != std::sregex_iterator())
+	{
+		const std::smatch& pushConstantMatch = *pushConstantIt;
+		SPT_CHECK(pushConstantMatch.size() == 3); // [{whole math}, {struct type}, {name}]
+
+		const lib::HashedString structName   = pushConstantMatch[1].str();
+		const lib::HashedString variableName = pushConstantMatch[2].str();
+
+		metaData.macroDefinitions.emplace_back(lib::String("PARAM_") + structName.ToString() + "=(__shaderParams._" + variableName.ToString() + ")");
+
+		++pushConstantIt;
+	}
 
 	return metaData;
 }
@@ -523,12 +290,8 @@ ShaderCompilationMetaData ShaderMetaDataPrerpocessor::PreprocessShader(lib::Stri
 
 	ShaderCompilationMetaData metaData;
 
-	ShaderPreprocessingState preprocessingState;
-	preprocessingState.overrides = helper::ParseTypeOverrides(sourceCode);
-
-	helper::PreprocessShaderDescriptorSets(sourceCode, preprocessingState, OUT metaData);
-	helper::PreprocessShaderParams(sourceCode, preprocessingState, OUT metaData);
-	helper::PreprocessShaderStructs(sourceCode, preprocessingState, OUT metaData);
+	helper::PreprocessShaderParams(sourceCode, OUT metaData);
+	helper::PreprocessShaderStructs(sourceCode, OUT metaData);
 
 	helper::RemoveMetaParameters(sourceCode);
 

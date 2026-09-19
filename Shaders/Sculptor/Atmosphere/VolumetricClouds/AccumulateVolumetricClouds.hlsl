@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(AccumulateVolumetricCloudsDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
+[[shader_params(VolumetricCloudsAccumulateConstants, PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS)]]
+[[shader_params(GPURenderView, VIEW)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Sampling.hlsli"
@@ -17,21 +17,21 @@ void AccumulateVolumetricCloudsCS(CS_INPUT input)
 {
     const uint2 coords = input.globalID.xy;
 
-    const float tracedCloudDepth = u_tracedCloudsDepth.Load(uint3(coords >> 1u, 0u));
+    const float tracedCloudDepth = PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS->tracedCloudsDepth.Load(uint3(coords >> 1u, 0u));
 
     if(isnan(tracedCloudDepth))
     {
-        u_rwAccumulatedCloudsDepth[coords] = -1.f;
-        u_rwCloudsAge[coords] = 0u;
-		u_rwAccumulatedClouds[coords] = SPT_NAN;
+        PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS->rwAccumulatedCloudsDepth[coords] = -1.f;
+        PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS->rwCloudsAge[coords] = 0u;
+		PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS->rwAccumulatedClouds[coords] = SPT_NAN;
         return;
     }
 
-    const float2 uv = (coords + 0.5f) * u_passConstants.rcpResolution;
+    const float2 uv = (coords + 0.5f) * PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS->rcpResolution;
 
     const uint2 coordInTile = coords & 1u;
 
-    const bool wasSampleTraced = all(coordInTile == u_passConstants.tracedPixel2x2);
+    const bool wasSampleTraced = all(coordInTile == PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS->tracedPixel2x2);
 
     float reprojectionDepth = WaveActiveSum(tracedCloudDepth > 0.f ? tracedCloudDepth : 0.f) / WaveActiveCountBits(tracedCloudDepth > 0.f);
     if(isnan(reprojectionDepth))
@@ -39,15 +39,15 @@ void AccumulateVolumetricCloudsCS(CS_INPUT input)
         reprojectionDepth = 1500.f;
     }
 
-    const Ray viewRay = CreateViewRayWSNoJitter(u_sceneView, uv);
+    const Ray viewRay = CreateViewRayWSNoJitter(VIEW->sceneView, uv);
     const float3 reprjectedLocation = viewRay.GetTimeLocation(reprojectionDepth);
 
-    const float2 lastFrameUV = WorldSpaceToNDCNoJitter(reprjectedLocation, u_prevFrameSceneView).xy * 0.5f + 0.5f;
+    const float2 lastFrameUV = WorldSpaceToNDCNoJitter(reprjectedLocation, VIEW->prevFrameSceneView).xy * 0.5f + 0.5f;
 
     float4 outCloud = 0.f;
     float  outCloudDepth = 0.f;
 
-    float4 tracedCloud = u_tracedClouds.Load(uint3(coords >> 1u, 0u));
+    float4 tracedCloud = PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS->tracedClouds.Load(uint3(coords >> 1u, 0u));
     tracedCloud.xyz = ExposedLuminanceToLuminance(tracedCloud.xyz);
 
     uint historyAge = 0u;
@@ -57,16 +57,16 @@ void AccumulateVolumetricCloudsCS(CS_INPUT input)
         float4 historyCloud;
         // if(all(abs(lastFrameUV - uv) < 0.001f))
         // {
-            historyCloud = u_accumulatedCloudsHistory.SampleLevel(u_linearSampler, lastFrameUV, 0.f);
+            historyCloud = PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS->accumulatedCloudsHistory.SampleLevel(BindlessSamplers::LinearClampEdge(), lastFrameUV, 0.f);
         //}
         //else
         //{
-        //    historyCloud = SampleCatmullRom(u_accumulatedCloudsHistory, u_linearSampler, lastFrameUV, u_passConstants.resolution);
+        //    historyCloud = SampleCatmullRom(PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS->accumulatedCloudsHistory, BindlessSamplers::LinearClampEdge(), lastFrameUV, PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS->resolution);
         //}
 
         historyCloud.xyz = HistoryExposedLuminanceToLuminance(historyCloud.xyz);
 
-        const float2 lastFrameUVFrac = frac(lastFrameUV * u_passConstants.resolution);
+        const float2 lastFrameUVFrac = frac(lastFrameUV * PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS->resolution);
 
         float weight[4];
         weight[0] = (1.f - lastFrameUVFrac.x) * lastFrameUVFrac.y;
@@ -74,7 +74,7 @@ void AccumulateVolumetricCloudsCS(CS_INPUT input)
         weight[2] = lastFrameUVFrac.x * (1.f - lastFrameUVFrac.y);
         weight[3] = (1.f - lastFrameUVFrac.x) * (1.f - lastFrameUVFrac.y);
 
-        const float4 historyCloudDepth4 = u_accumulatedCloudsDepthHistory.GatherRed(u_linearSampler, lastFrameUV, 0);
+        const float4 historyCloudDepth4 = PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS->accumulatedCloudsDepthHistory.GatherRed(BindlessSamplers::LinearClampEdge(), lastFrameUV);
 
         // We take into account only valid depths here, others are ignored. This can "blur" depth into regions on screen without clouds but it shouldn't be a problem since it's not used there at all
         float historyCloudDepth = 0.f;
@@ -91,7 +91,7 @@ void AccumulateVolumetricCloudsCS(CS_INPUT input)
         historyCloudDepth = depthWeightSum > 0.f ? historyCloudDepth / depthWeightSum : -1.f;
 
         const uint maxAge = distance(uv, lastFrameUV) < 0.001f ? 25u : 5u;
-        historyAge = min(u_accumulatedCloudsAge.Load(uint3((lastFrameUV * u_passConstants.resolution), 0.f)), maxAge);
+        historyAge = min(PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS->accumulatedCloudsAge.Load(uint3((lastFrameUV * PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS->resolution), 0.f)), maxAge);
 
         if(historyAge > 0u)
         {
@@ -117,11 +117,11 @@ void AccumulateVolumetricCloudsCS(CS_INPUT input)
     }
 
     outCloud.xyz = LuminanceToExposedLuminance(outCloud.xyz);
-    u_rwAccumulatedClouds[coords]      = outCloud;
-    u_rwAccumulatedCloudsDepth[coords] = outCloudDepth;
+    PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS->rwAccumulatedClouds[coords]      = outCloud;
+    PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS->rwAccumulatedCloudsDepth[coords] = outCloudDepth;
 
     uint newAge;
     newAge = historyAge + (wasSampleTraced ? 1u : 0u);
     
-    u_rwCloudsAge[coords] = newAge;
+    PARAMS_ACCUMULATE_VOLUMETRIC_CLOUDS->rwCloudsAge[coords] = newAge;
 }

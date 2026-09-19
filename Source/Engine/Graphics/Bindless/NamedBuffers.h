@@ -126,7 +126,7 @@ struct ShaderStructReferencer<gfx::NamedBuffer<TType, name>>
 constexpr lib::String DeclareNamedBufferHLSLAccessor(const char* namedBufferName)
 {
 	lib::String code = lib::String("uint ___Get") + namedBufferName + "();\n";
-	code += "struct Accessor_" + lib::String(namedBufferName) + " {\nstatic uint Get() { return ___Get" + namedBufferName + "(); }\n};\n";
+	code += "struct Accessor_" + lib::String(namedBufferName) + " : INamedBuffer {\nstatic uint Get() { return ___Get" + namedBufferName + "(); }\n};\n";
 	return code;
 }
 
@@ -229,7 +229,7 @@ struct HLSLStructDependenciesBuider<gfx::NamedBuffer<TType, name>>
 			accessInfo.namedBuffer    = name.Get();
 #endif // DEBUG_RENDER_GRAPH
 
-			dependenciesBuilder.AddBufferAccess(descriptoridx, accessInfo);
+			dependenciesBuilder.AddBufferAccess(rdr::ResourceDescriptorIdx(hlslData[0] / rhi::RHI::GetDescriptorProps().bufferDescriptorIdxFactor), accessInfo);
 		}
 	}
 };

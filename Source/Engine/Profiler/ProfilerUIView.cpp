@@ -98,27 +98,19 @@ void ProfilerUIView::DrawGPUScopeStatistics(const rdr::GPUStatisticsScopeData& s
 		ImGui::Text("%fms", scopeStats.GetDurationInMs());
 		ImGui::NextColumn();
 
-		if (scopeStats.inputAsseblyVertices.has_value())
+		if (scopeStats.taskShaderInvocations.has_value())
 		{
-			ImGui::Text("IA Vertices");
+			ImGui::Text("TS Invocations");
 			ImGui::NextColumn();
-			ImGui::Text("%u", scopeStats.inputAsseblyVertices.value());
+			ImGui::Text("%u", scopeStats.taskShaderInvocations.value());
 			ImGui::NextColumn();
 		}
 
-		if (scopeStats.inputAsseblyPrimitives.has_value())
+		if (scopeStats.meshShaderInvocations.has_value())
 		{
-			ImGui::Text("IA Primitives");
+			ImGui::Text("MS Invocations");
 			ImGui::NextColumn();
-			ImGui::Text("%u", scopeStats.inputAsseblyPrimitives.value());
-			ImGui::NextColumn();
-		}
-
-		if (scopeStats.vertexShaderInvocations.has_value())
-		{
-			ImGui::Text("VS Invocations");
-			ImGui::NextColumn();
-			ImGui::Text("%u", scopeStats.vertexShaderInvocations.value());
+			ImGui::Text("%u", scopeStats.meshShaderInvocations.value());
 			ImGui::NextColumn();
 		}
 

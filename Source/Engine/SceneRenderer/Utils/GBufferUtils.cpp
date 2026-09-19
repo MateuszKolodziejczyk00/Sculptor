@@ -1,10 +1,6 @@
 #include "GBufferUtils.h"
 #include "RenderGraphBuilder.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
 
 
 namespace spt::rsc::gbuffer_utils
@@ -14,15 +10,10 @@ namespace oct_normals
 {
 
 BEGIN_SHADER_STRUCT(GenerateOctahedronNormalsConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    resolution)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, tangentFrame)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>, rwOctahedronNormals)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(GenerateOctahedronNormalsDS, rg::RGDescriptorSetState<GenerateOctahedronNormalsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                       u_tangentFrame)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                        u_rwOctahedronNormals)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<GenerateOctahedronNormalsConstants>), u_constants)
-DS_END();
 
 
 static rdr::PipelineStateID CreateOctahedronNormalsPipeline()
@@ -44,12 +35,9 @@ void GenerateOctahedronNormals(rg::RenderGraphBuilder& graphBuilder, const GBuff
 	const math::Vector2u resolution = tangentFrame->GetResolution2D();
 
 	GenerateOctahedronNormalsConstants shaderConstants;
-	shaderConstants.resolution = resolution;
-
-	lib::MTHandle<GenerateOctahedronNormalsDS> generateOctahedronNormalsDS = graphBuilder.CreateDescriptorSet<GenerateOctahedronNormalsDS>(RENDERER_RESOURCE_NAME("GenerateOctahedronNormalsDS"));
-	generateOctahedronNormalsDS->u_tangentFrame        = tangentFrame;
-	generateOctahedronNormalsDS->u_rwOctahedronNormals = outputTexture;
-	generateOctahedronNormalsDS->u_constants           = shaderConstants;
+	shaderConstants.resolution          = resolution;
+	shaderConstants.tangentFrame        = tangentFrame;
+	shaderConstants.rwOctahedronNormals = outputTexture;
 
 	static const rdr::PipelineStateID generateOctahedronNormalsPipeline = CreateOctahedronNormalsPipeline();
 
@@ -58,7 +46,7 @@ void GenerateOctahedronNormals(rg::RenderGraphBuilder& graphBuilder, const GBuff
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Generate Octahedron Normals"),
 						  generateOctahedronNormalsPipeline,
 						  math::Utils::DivideCeil(resolution, groupSize),
-						  rg::BindDescriptorSets(std::move(generateOctahedronNormalsDS)));
+						  rg::ShaderParams(shaderConstants));
 }
 
 } // oct_normals

@@ -150,16 +150,18 @@ void ViewRenderingSpec::BeginFrame(rg::RenderGraphBuilder& graphBuilder, const R
 	RenderViewData renderViewData;
 	renderViewData.renderingResolution = GetRenderingRes();
 
-	m_renderViewDS = graphBuilder.CreateDescriptorSet<RenderViewDS>(RENDERER_RESOURCE_NAME("RenderViewDS"));
-	m_renderViewDS->u_prevFrameSceneView  = m_renderView->GetPrevFrameRenderingData();
-	m_renderViewDS->u_sceneView           = m_renderView->GetViewRenderingData();
-	m_renderViewDS->u_cullingData         = m_renderView->GetCullingData();
-	m_renderViewDS->u_viewRenderingParams = renderViewData;
+	GPURenderView renderView;
+	renderView.prevFrameSceneView  = m_renderView->GetPrevFrameRenderingData();
+	renderView.sceneView           = m_renderView->GetViewRenderingData();
+	renderView.cullingData         = m_renderView->GetCullingData();
+	renderView.renderingResolution = GetRenderingRes();
 
 	if (m_renderView->viewExposureBuffer)
 	{
-		m_renderViewDS->u_viewExposure = m_renderView->viewExposureBuffer->GetFullView();
+		renderView.viewExposure.Set(m_renderView->viewExposureBuffer->GetFullView(), 0u);
 	}
+
+	m_gpuRenderView = graphBuilder.CreateGPUData(renderView);
 
 	for (Uint32 systemIdx = 0; systemIdx < m_renderView->renderSystems.size(); ++systemIdx)
 	{
@@ -210,11 +212,6 @@ void ViewRenderingSpec::SetJitter(const math::Vector2f& jitter)
 void ViewRenderingSpec::ResetJitter()
 {
 	m_renderView->ResetJitter();
-}
-
-lib::MTHandle<RenderViewDS> ViewRenderingSpec::GetRenderViewDS() const
-{
-	return m_renderViewDS;
 }
 
 RenderView& ViewRenderingSpec::GetRenderView() const

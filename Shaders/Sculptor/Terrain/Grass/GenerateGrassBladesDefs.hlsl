@@ -1,14 +1,15 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderSceneDS)]]
-[[descriptor_set(RenderViewDS)]]
-[[shader_params(GenerateGrassBladesDefsConstants, u_constants)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(GenerateGrassBladesDefsConstants, PARAMS_GENERATE_GRASS_BLADES_DEFS_CONSTANTS)]]
 
 #include "Terrain/SceneTerrain.hlsli"
 #include "Utils/Random.hlsli"
 #include "Terrain/Grass/GrassGeometry.hlsli"
 #include "Utils/Culling.hlsli"
 #include "Utils/Wave.hlsli"
+#include "SceneRendering/GPUScene.hlsli"
 #include "Terrain/TerrainMaterial.hlsli"
 #include "Terrain/TerrainHeightBasedBlending.hlsli"
 
@@ -112,11 +113,11 @@ void GenerateImpl(int2 coord, uint lod)
 	uint offset = 0u;
 	if (WaveIsFirstLane())
 	{
-		offset = u_constants.rwBladesNumLODs[lod].AtomicAdd(0u, outputBladesNum);
+		offset = PARAMS_GENERATE_GRASS_BLADES_DEFS_CONSTANTS->rwBladesNumLODs[lod].AtomicAdd(0u, outputBladesNum);
 	}
 	offset = WaveReadLaneFirst(offset) + GetCompactedIndex(activeBallot, WaveGetLaneIndex());
 
-	u_constants.rwBladeDefsLODs[lod].Store(offset, bladeDef);
+	PARAMS_GENERATE_GRASS_BLADES_DEFS_CONSTANTS->rwBladeDefsLODs[lod].Store(offset, bladeDef);
 }
 
 
@@ -124,7 +125,7 @@ bool IsLOD0(int2 tileCoord)
 {
 	const float2 tileCenter = (float2(tileCoord) + 0.5f) * GRASS_TILE_SIZE;
 
-	const float2 viewLocation = u_sceneView.viewLocation.xy;
+	const float2 viewLocation = VIEW->sceneView.viewLocation.xy;
 
 	const float distance = length(tileCenter - viewLocation);
 
@@ -135,7 +136,7 @@ bool IsLOD0(int2 tileCoord)
 [numthreads(16, 16, 1)]
 void GenerateGrassBladesDefsCS(CS_INPUT input)
 {
-	const int2 tileCoord = u_constants.originTile + input.groupID.xy;
+	const int2 tileCoord = PARAMS_GENERATE_GRASS_BLADES_DEFS_CONSTANTS->originTile + input.groupID.xy;
 
 	const float inflate = 2.f;
 
@@ -145,7 +146,7 @@ void GenerateGrassBladesDefsCS(CS_INPUT input)
 	const float2 tileMinMaxHeight = SceneTerrain().GetTileHeightMinMaxAtLocation(tileCenter);
 	const float averageZ = (tileMinMaxHeight.x + tileMinMaxHeight.y) * 0.5f;
 	const float radius = length(float3(GRASS_TILE_SIZE, GRASS_TILE_SIZE, (tileMinMaxHeight.y - tileMinMaxHeight.x) * 0.5f) + inflate);
-	const bool isTileVisible = IsSphereInFrustum(u_cullingData.cullingPlanes, float3(tileCenter, averageZ), radius);
+	const bool isTileVisible = IsSphereInFrustum(VIEW->cullingData.cullingPlanes, float3(tileCenter, averageZ), radius);
 
 	if (!isTileVisible)
 	{

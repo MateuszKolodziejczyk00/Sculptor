@@ -23,7 +23,7 @@
 #define SR_RESERVOIR_DEFAULT_SPATIAL_RANGE_ID (14u)
 
 
-class SRReservoir
+struct SRReservoir
 {
 	static SRReservoir CreateEmpty()
 	{
@@ -65,7 +65,7 @@ class SRReservoir
 		return !HasFlag(SR_RESERVOIR_FLAGS_INVALID_RESULT);
 	}
 
-	bool Update(in SRReservoir other, in float randomValue, in float p_hatInOutputDomain)
+	[mutating] bool Update(in SRReservoir other, in float randomValue, in float p_hatInOutputDomain)
 	{
 		const float w_i = other.M * p_hatInOutputDomain * other.weightSum;
 
@@ -90,7 +90,7 @@ class SRReservoir
 
 	// Default normalization function
 	// uses 1/M as mis weight (which leads to bias)
-	void Normalize(in float selectedPhat)
+	[mutating] void Normalize(in float selectedPhat)
 	{
 		// Equation (7) from Restir GI paper
 		// w = (1 / p_hat) * (1 / M) * sum(w_i) = sum(w_i) / (p_hat * M)
@@ -98,7 +98,7 @@ class SRReservoir
 		weightSum = denominator == 0.f ? 0.f : (weightSum / denominator);
 	}
 
-	void Normalize_BalancedHeuristic(in float selectedPhat, in float p_i, in float p_jSum)
+	[mutating] void Normalize_BalancedHeuristic(in float selectedPhat, in float p_i, in float p_jSum)
 	{
 		// Normalization equation:
 		// w = (1 / p_hat) * m_i(x) * sum(w_i)
@@ -109,7 +109,7 @@ class SRReservoir
 		weightSum = denominator == 0.f ? 0.f : (weightSum * p_i / denominator);
 	}
 
-	void AddFlag(in uint flag)
+	[mutating] void AddFlag(in uint flag)
 	{
 		flags |= uint16_t(flag);
 	}
@@ -119,17 +119,17 @@ class SRReservoir
 		return (flags & uint16_t(flag)) != 0;
 	}
 
-	void RemoveFlag(in uint flag)
+	[mutating] void RemoveFlag(in uint flag)
 	{
 		flags &= ~uint16_t(flag);
 	}
 
-	void OnSpatialResamplingFailed()
+	[mutating] void OnSpatialResamplingFailed()
 	{
 		spatialResamplingRangeID = uint16_t(max(spatialResamplingRangeID, 1u) - 1u);
 	}
 
-	void OnSpatialResamplingSucceeded()
+	[mutating] void OnSpatialResamplingSucceeded()
 	{
 		spatialResamplingRangeID = uint16_t(min(spatialResamplingRangeID + 1u, 15u));
 	}

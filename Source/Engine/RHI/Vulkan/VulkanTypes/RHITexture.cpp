@@ -734,6 +734,10 @@ void RHITextureView::InitializeRHI(const RHITexture& texture, const rhi::Texture
 	SPT_VK_CHECK(vkCreateImageView(VulkanRHI::GetDeviceHandle(), &viewInfo, VulkanRHI::GetAllocationCallbacks(), &m_viewHandle));
 
 	SPT_CHECK(IsValid());
+
+	m_viewType         = viewInfo.viewType;
+	m_viewFormat       = viewInfo.format;
+	m_componentMapping = viewInfo.components;
 }
 
 void RHITextureView::ReleaseRHI()
@@ -773,38 +777,71 @@ VkImageView RHITextureView::GetHandle() const
 	return m_viewHandle;
 }
 
-void RHITextureView::CopyUAVDescriptor(Byte* dst) const
+void RHITextureView::CopyUAVDescriptor(lib::Span<Byte> dst) const
 {
 	SPT_CHECK(IsValid());
 	SPT_CHECK(lib::HasAnyFlag(GetTexture()->GetDefinition().usage, rhi::ETextureUsage::StorageTexture));
 
-	VkDescriptorImageInfo imageInfo{};
-	imageInfo.imageView = GetHandle();
+	VkImageViewCreateInfo viewInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+	viewInfo.flags      = 0;
+	viewInfo.image      = m_texture->GetHandle();
+	viewInfo.viewType   = m_viewType;
+	viewInfo.format     = m_viewFormat;
+	viewInfo.components = m_componentMapping;
 
-	VkDescriptorGetInfoEXT info{ VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
-	info.type               = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	info.data.pStorageImage = &imageInfo;
+	viewInfo.subresourceRange.aspectMask        = priv::GetVulkanAspect(m_subresourceRange.aspect);
+	viewInfo.subresourceRange.baseMipLevel      = m_subresourceRange.baseMipLevel;
+	viewInfo.subresourceRange.levelCount        = m_subresourceRange.mipLevelsNum;
+	viewInfo.subresourceRange.baseArrayLayer    = m_subresourceRange.baseArrayLayer;
+	viewInfo.subresourceRange.layerCount        = m_subresourceRange.arrayLayersNum;
 
-	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
+	VkImageDescriptorInfoEXT imageDescriptorInfo{ VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT };
+    imageDescriptorInfo.pView  = &viewInfo;
+    imageDescriptorInfo.layout = VK_IMAGE_LAYOUT_GENERAL;
 
-	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().SizeOf(rhi::EDescriptorType::StorageTexture), dst);
+	VkResourceDescriptorInfoEXT descriptorInfo{ VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT };
+	descriptorInfo.type          = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	descriptorInfo.data.pImage = &imageDescriptorInfo;
+
+	VkHostAddressRangeEXT hostAddressRange;
+	hostAddressRange.address = dst.data();
+	hostAddressRange.size    = dst.size();
+
+	vkWriteResourceDescriptorsEXT(VulkanRHI::GetDeviceHandle(), 1u, &descriptorInfo, &hostAddressRange);
 }
 
-void RHITextureView::CopySRVDescriptor(Byte* dst) const
+void RHITextureView::CopySRVDescriptor(lib::Span<Byte> dst) const
 {
 	SPT_CHECK(IsValid());
 	SPT_CHECK(lib::HasAnyFlag(GetTexture()->GetDefinition().usage, rhi::ETextureUsage::SampledTexture));
 
-	VkDescriptorImageInfo imageInfo{};
-	imageInfo.imageView = GetHandle();
 
-	VkDescriptorGetInfoEXT info{ VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
-	info.type               = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	info.data.pStorageImage = &imageInfo;
+	VkImageViewCreateInfo viewInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+	viewInfo.flags      = 0;
+	viewInfo.image      = m_texture->GetHandle();
+	viewInfo.viewType   = m_viewType;
+	viewInfo.format     = m_viewFormat;
+	viewInfo.components = m_componentMapping;
 
-	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
+	viewInfo.subresourceRange.aspectMask        = priv::GetVulkanAspect(m_subresourceRange.aspect);
+	viewInfo.subresourceRange.baseMipLevel      = m_subresourceRange.baseMipLevel;
+	viewInfo.subresourceRange.levelCount        = m_subresourceRange.mipLevelsNum;
+	viewInfo.subresourceRange.baseArrayLayer    = m_subresourceRange.baseArrayLayer;
+	viewInfo.subresourceRange.layerCount        = m_subresourceRange.arrayLayersNum;
 
-	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().SizeOf(rhi::EDescriptorType::SampledTexture), dst);
+	VkImageDescriptorInfoEXT imageDescriptorInfo{ VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT };
+    imageDescriptorInfo.pView  = &viewInfo;
+    imageDescriptorInfo.layout = VK_IMAGE_LAYOUT_GENERAL;
+
+	VkResourceDescriptorInfoEXT descriptorInfo{ VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT };
+	descriptorInfo.type          = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	descriptorInfo.data.pImage = &imageDescriptorInfo;
+
+	VkHostAddressRangeEXT hostAddressRange;
+	hostAddressRange.address = dst.data();
+	hostAddressRange.size    = dst.size();
+
+	vkWriteResourceDescriptorsEXT(VulkanRHI::GetDeviceHandle(), 1u, &descriptorInfo, &hostAddressRange);
 }
 
 const RHITexture* RHITextureView::GetTexture() const

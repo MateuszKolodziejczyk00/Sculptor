@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderViewDS, 0)]]
-[[descriptor_set(RenderAerialPerspectiveDS, 1)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(RenderAerialPerspectiveConstants, PARAMS_RENDER_AERIAL_PERSPECTIVE)]]
 
 #include "Atmosphere/AerialPerspective.hlsli"
 #include "Atmosphere/Atmosphere.hlsli"
@@ -19,16 +19,16 @@ struct CS_INPUT
 [numthreads(1, 1, 32)]
 void RenderAerialPerspectiveCS(CS_INPUT input)
 {
-    const AtmosphereParams atmosphere = u_atmosphereParams;
+    const AtmosphereParams atmosphere = *PARAMS_RENDER_AERIAL_PERSPECTIVE->atmosphereParams;
     const AerialPerspectiveParams ap = atmosphere.aerialPerspectiveParams;
 
-    const DirectionalLightGPUData dirLight = u_directionalLights[0];
+    const DirectionalLightGPUData dirLight = PARAMS_RENDER_AERIAL_PERSPECTIVE->directionalLights[0];
 
     const float3 toLightDir = -dirLight.direction;
 
     const float2 uv = float2(input.globalID.xy + 0.5f) * ap.rcpResolution.xy;
 
-    const float3 viewDir = ComputeViewRayDirectionWS(u_sceneView, uv);
+    const float3 viewDir = ComputeViewRayDirectionWS(VIEW->sceneView, uv);
     const float cosTheta = dot(viewDir, toLightDir);
 
     const float miePhaseValue              = GetMiePhase(cosTheta);
@@ -45,7 +45,7 @@ void RenderAerialPerspectiveCS(CS_INPUT input)
 
         const float linearDepth = ComputeAPLinearDepth(ap, uvw.z);
 
-        const float3 worldLocation = APToWS(ap, u_sceneView, uvw.xy, linearDepth);
+        const float3 worldLocation = APToWS(ap, VIEW->sceneView, uvw.xy, linearDepth);
 
         const float dt = (linearDepth - ComputeAPLinearDepth(ap, max(uvw.z - ap.rcpResolution.z, 0.0f))) * 0.000001f; // must be in mega meters
 
@@ -55,13 +55,13 @@ void RenderAerialPerspectiveCS(CS_INPUT input)
 
         const float3 sampleTransmittance = exp(-dt * scatteringValues.extinction);
 
-        const float3 pmUVW = ComputeFogFroxelUVW(uv, linearDepth, u_renderAPConstants.participatingMediaNear, u_renderAPConstants.participatingMediaFar);
+        const float3 pmUVW = ComputeFogFroxelUVW(uv, linearDepth, PARAMS_RENDER_AERIAL_PERSPECTIVE->participatingMediaNear, PARAMS_RENDER_AERIAL_PERSPECTIVE->participatingMediaFar);
 
-        const float shadowTerm = u_dirLightShadowTerm.SampleLevel(u_linearSampler, pmUVW, 0.f);
-        const float3 lightTransmittance = GetTransmittanceFromLUT(atmosphere, u_transmittanceLUT, u_linearSampler, atmosphereLocation, toLightDir);
+        const float shadowTerm = PARAMS_RENDER_AERIAL_PERSPECTIVE->dirLightShadowTerm.SampleLevel(BindlessSamplers::LinearClampEdge(), pmUVW, 0.f);
+        const float3 lightTransmittance = GetTransmittanceFromLUT(atmosphere, PARAMS_RENDER_AERIAL_PERSPECTIVE->transmittanceLUT, BindlessSamplers::LinearClampEdge(), atmosphereLocation, toLightDir);
 
         const float3 directIlluminance = dirLight.outerSpaceIlluminance * lightTransmittance * shadowTerm;
-        const float3 indirectIlluminance = u_indirectInScatteringTexture.SampleLevel(u_linearSampler, pmUVW, 0.f);
+        const float3 indirectIlluminance = PARAMS_RENDER_AERIAL_PERSPECTIVE->indirectInScatteringTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), pmUVW, 0.f);
 
         const float3 rayleighScattering         = scatteringValues.rayleighScattering * rayleighPhaseValue;
         const float3 rayleighScatteringIndirect = scatteringValues.rayleighScattering * rayleighPhaseValueIndirect;
@@ -78,7 +78,7 @@ void RenderAerialPerspectiveCS(CS_INPUT input)
         const float3 deltaInScatteredLight = (scatteringIntegral * directIlluminance + indirectScatteringIntegral * indirectIlluminance) * previousTransmittance;
         const float3 integratedInScattering = accumulatedInScattering + WavePrefixSum(deltaInScatteredLight) + deltaInScatteredLight;
 
-        u_rwAerialPerspective[coords] = float4(LuminanceToExposedLuminance(integratedInScattering), dot(transmittance, 0.333f));
+        PARAMS_RENDER_AERIAL_PERSPECTIVE->rwAerialPerspective[coords] = float4(LuminanceToExposedLuminance(integratedInScattering), dot(transmittance, 0.333f));
 
         accumulatedTranmittance = WaveReadLaneAt(transmittance, WaveGetLaneCount() - 1u);
         accumulatedInScattering = WaveReadLaneAt(integratedInScattering, WaveGetLaneCount() - 1u);

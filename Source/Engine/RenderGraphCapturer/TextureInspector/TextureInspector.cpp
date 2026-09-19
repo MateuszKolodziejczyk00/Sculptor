@@ -417,7 +417,7 @@ ui::TextureID TextureInspector::RenderDisplayedTexture(const lib::SharedRef<rdr:
 				   .ExecuteBefore(currentFrame.GetStageFinishedEvent(engn::EFrameStage::ProcessViewsRendering)));
 
 	const rhi::ESamplerFilterType samplerFilter = m_zoom >= 1.f ? rhi::ESamplerFilterType::Nearest : rhi::ESamplerFilterType::Linear;
-	return rdr::UIBackend::GetUITextureID(lib::Ref(m_displayTexture), samplerFilter, rhi::EMipMapAddressingMode::Nearest, rhi::EAxisAddressingMode::ClampToBorder);
+	return rdr::UIBackend::GetUITextureID(lib::Ref(m_displayTexture), samplerFilter);
 }
 
 void TextureInspector::UpdateInspectedTextureView()
@@ -438,6 +438,7 @@ void TextureInspector::CreateDisplayedTexture(const math::Vector2u& resolution)
 	SPT_PROFILER_FUNCTION();
 
 	rhi::TextureDefinition textureDefinition;
+	textureDefinition.type       = rhi::ETextureType::Texture2D;
 	textureDefinition.resolution = resolution;
 	textureDefinition.usage      = lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferSource);
 	textureDefinition.format     = rhi::EFragmentFormat::RGBA8_UN_Float;

@@ -92,9 +92,6 @@ GeometryBatch GeometryBatchesBuilder::FinalizeBatchDefinition(const GeometryBatc
 {
 	SPT_CHECK(!batchBuildData.batchElements.empty());
 
-	GeometryGPUBatchData gpuBatchData;
-	gpuBatchData.elementsNum = static_cast<Uint32>(batchBuildData.batchElements.size());
-
 	rhi::BufferDefinition batchElementsBufferDef;
 	batchElementsBufferDef.size  = sizeof(rdr::HLSLStorage<GeometryBatchElement>) * batchBuildData.batchElements.size();
 	batchElementsBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
@@ -102,15 +99,15 @@ GeometryBatch GeometryBatchesBuilder::FinalizeBatchDefinition(const GeometryBatc
 
 	rdr::UploadDataToBuffer(batchElementsBuffer, 0, reinterpret_cast<const Byte*>(batchBuildData.batchElements.data()), batchElementsBufferDef.size);
 
-	lib::MTHandle<GeometryBatchDS> batchDS = rdr::ResourcesManager::CreateDescriptorSetState<GeometryBatchDS>(RENDERER_RESOURCE_NAME("GeometryBatchDS"));
-	batchDS->u_batchElements = batchElementsBuffer->GetFullView();
-	batchDS->u_batchData     = gpuBatchData;
+	GeometryGPUBatchData gpuBatchData;
+	gpuBatchData.elementsNum   = static_cast<Uint32>(batchBuildData.batchElements.size());
+	gpuBatchData.batchElements = batchElementsBuffer->GetFullView();
 
 	GeometryBatch newBatch;
 	newBatch.batchElementsNum = static_cast<Uint32>(batchBuildData.batchElements.size());
 	newBatch.batchMeshletsNum = batchBuildData.meshletsNum;
 	newBatch.permutation      = permutation;
-	newBatch.batchDS          = batchDS;
+	newBatch.batchData        = gpuBatchData;
 
 	return newBatch;
 }

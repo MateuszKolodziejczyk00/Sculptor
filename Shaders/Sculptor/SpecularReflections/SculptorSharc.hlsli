@@ -54,7 +54,7 @@ SharcParameters CreateSharcParameters(in SharcDef def)
     return params;
 }
 
-float3 ComputeMaterialDemodulation(Texture2D<float2> brdfIntegrationLUT, SamplerState lutSampler, float3 diffuseColor, float3 specularColor, float NdotV, float roughness)
+float3 ComputeMaterialDemodulation(in SRVTexture2D<float2> brdfIntegrationLUT, SamplerState lutSampler, float3 diffuseColor, float3 specularColor, float NdotV, float roughness)
 {
 	const float2 integratedBRDF = brdfIntegrationLUT.SampleLevel(lutSampler, float2(NdotV, roughness), 0);
     return max(diffuseColor, 0.02f) + max(specularColor * integratedBRDF.x + integratedBRDF.y, 0.02f);

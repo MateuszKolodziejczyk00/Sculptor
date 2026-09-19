@@ -1,7 +1,7 @@
 #ifndef VARIABLE_RATE_BUILDER_HLSLI
 #define VARIABLE_RATE_BUILDER_HLSLI
 
-[[descriptor_set(CreateVariableRateTextureDS, 0)]]
+[[shader_params(CreateVariableRateTextureConstants, PARAMS_CREATE_VARIABLE_RATE_TEXTURE)]]
 
 #include "Utils/VariableRate/VariableRate.hlsli"
 #include "Utils/MortonCode.hlsli"
@@ -21,12 +21,12 @@
 groupshared float gs_inputSamples[GS_SAMPLES_X][GS_SAMPLES_Y];
 
 
-void CacheInputSamples(in Texture2D<float> texture, in int2 tileCoords, in int threadIdx)
+void CacheInputSamples(in SRVTexture2D<float> texture, in int2 tileCoords, in int threadIdx)
 {
 	for(int i = threadIdx; i < (GS_SAMPLES_X * GS_SAMPLES_Y); i += WaveGetLaneCount())
 	{
 		const int2 sampleCoords = int2(i % GS_SAMPLES_X, i / GS_SAMPLES_X);
-		const int2 globalCoords = clamp(tileCoords + sampleCoords - int2(1, 1), int2(0, 0), u_constants.inputResolution);
+		const int2 globalCoords = clamp(tileCoords + sampleCoords - int2(1, 1), int2(0, 0), PARAMS_CREATE_VARIABLE_RATE_TEXTURE->inputResolution);
 
 		const float signal = texture.Load(uint3(globalCoords, 0));
 
@@ -67,9 +67,9 @@ float2 SobelFilter(in uint2 localID)
 #define FAST_VARIABLE_RATE 1
 
 
-void WriteCurrentFrameVariableRateData(in RWTexture2D<uint> vrTexture, in uint2 coords, in uint vrMask, in uint frameIdx)
+void WriteCurrentFrameVariableRateData(in UAVTexture2D<uint> vrTexture, in uint2 coords, in uint vrMask, in uint frameIdx)
 {
-	const uint logFramesPerSlot  = u_constants.logFramesNumPerSlot;
+	const uint logFramesPerSlot  = PARAMS_CREATE_VARIABLE_RATE_TEXTURE->logFramesNumPerSlot;
 	const uint curentFrameOffset = ((frameIdx >> logFramesPerSlot) & 3) * SPT_VARIABLE_RATE_BITS;
 	const uint currentFrameMask  = uint(SPT_VARIABLE_RATE_MASK) << curentFrameOffset;
 
@@ -98,7 +98,7 @@ struct VariableRateProcessor
 		processor.m_groupID        = groupID;
 		processor.m_localID        = DecodeMorton2D(localThreadIdx);
 		processor.m_localThreadIdx = localThreadIdx;
-		processor.m_globalCoords   = min(groupID * uint2(GROUP_SIZE_X, GROUP_SIZE_Y) + processor.m_localID, u_constants.inputResolution - 1);
+		processor.m_globalCoords   = min(groupID * uint2(GROUP_SIZE_X, GROUP_SIZE_Y) + processor.m_localID, PARAMS_CREATE_VARIABLE_RATE_TEXTURE->inputResolution - 1);
 #endif // VR_BUILDER_SINGLE_LANE_PER_QUAD
 		return processor;
 	}
@@ -109,10 +109,9 @@ struct VariableRateProcessor
 	}
 
 #if !VR_BUILDER_SINGLE_LANE_PER_QUAD
-	template<typename T>
-	T QuadMax(in T value)
+	float QuadMax(in float value)
 	{
-		T result = value;
+		float result = value;
 		const uint quadBaseThreadIdx = WaveGetLaneIndex() & ~3;
 		result = max(result, WaveReadLaneAt(value, quadBaseThreadIdx + 0));
 		result = max(result, WaveReadLaneAt(value, quadBaseThreadIdx + 1));
@@ -121,10 +120,20 @@ struct VariableRateProcessor
 		return result;
 	}
 
-	template<typename T>
-	T QuadMin(in T value)
+	float2 QuadMax(in float2 value)
 	{
-		T result = value;
+		float2 result = value;
+		const uint quadBaseThreadIdx = WaveGetLaneIndex() & ~3;
+		result = max(result, WaveReadLaneAt(value, quadBaseThreadIdx + 0));
+		result = max(result, WaveReadLaneAt(value, quadBaseThreadIdx + 1));
+		result = max(result, WaveReadLaneAt(value, quadBaseThreadIdx + 2));
+		result = max(result, WaveReadLaneAt(value, quadBaseThreadIdx + 3));
+		return result;
+	}
+
+	float QuadMin(in float value)
+	{
+		float result = value;
 		const uint quadBaseThreadIdx = WaveGetLaneIndex() & ~3;
 		result = min(result, WaveReadLaneAt(value, quadBaseThreadIdx + 0));
 		result = min(result, WaveReadLaneAt(value, quadBaseThreadIdx + 1));
@@ -133,8 +142,18 @@ struct VariableRateProcessor
 		return result;
 	}
 
-	template<typename T>
-	T DDX_QuadMax(in T value)
+	float2 QuadMin(in float2 value)
+	{
+		float2 result = value;
+		const uint quadBaseThreadIdx = WaveGetLaneIndex() & ~3;
+		result = min(result, WaveReadLaneAt(value, quadBaseThreadIdx + 0));
+		result = min(result, WaveReadLaneAt(value, quadBaseThreadIdx + 1));
+		result = min(result, WaveReadLaneAt(value, quadBaseThreadIdx + 2));
+		result = min(result, WaveReadLaneAt(value, quadBaseThreadIdx + 3));
+		return result;
+	}
+
+	float DDX_QuadMax(in float value)
 	{
 		const uint quadBaseThreadIdx = WaveGetLaneIndex() & ~3;
 		float ddx = WaveReadLaneAt(value, quadBaseThreadIdx + 1) - WaveReadLaneAt(value, quadBaseThreadIdx);
@@ -142,8 +161,7 @@ struct VariableRateProcessor
 		return ddx;
 	}
 
-	template<typename T>
-	T DDY_QuadMax(in T value)
+	float DDY_QuadMax(in float value)
 	{
 		const uint quadBaseThreadIdx = WaveGetLaneIndex() & ~3;
 		float ddy = WaveReadLaneAt(value, quadBaseThreadIdx + 2) - WaveReadLaneAt(value, quadBaseThreadIdx);
@@ -156,25 +174,25 @@ struct VariableRateProcessor
 		uint variableRate = SPT_VARIABLE_RATE_1X1;
 
 #if SPT_VARIABLE_RATE_MODE == SPT_VARIABLE_RATE_MODE_4X4
-		if(edgeFilter.x < u_constants.xThreshold4)
+		if(edgeFilter.x < PARAMS_CREATE_VARIABLE_RATE_TEXTURE->xThreshold4)
 		{
 			variableRate |= SPT_VARIABLE_RATE_4X;
 		}
 		else
 #endif // SPT_VARIABLE_RATE_MODE == SPT_VARIABLE_RATE_MODE_4X4
-		if(edgeFilter.x < u_constants.xThreshold2)
+		if(edgeFilter.x < PARAMS_CREATE_VARIABLE_RATE_TEXTURE->xThreshold2)
 		{
 			variableRate |= SPT_VARIABLE_RATE_2X;
 		}
 
 #if SPT_VARIABLE_RATE_MODE == SPT_VARIABLE_RATE_MODE_4X4
-		if(edgeFilter.y < u_constants.yThreshold4)
+		if(edgeFilter.y < PARAMS_CREATE_VARIABLE_RATE_TEXTURE->yThreshold4)
 		{
 			variableRate |= SPT_VARIABLE_RATE_4Y;
 		}
 		else
 #endif // SPT_VARIABLE_RATE_MODE == SPT_VARIABLE_RATE_MODE_4X4
-		if(edgeFilter.y < u_constants.yThreshold2)
+		if(edgeFilter.y < PARAMS_CREATE_VARIABLE_RATE_TEXTURE->yThreshold2)
 		{
 			variableRate |= SPT_VARIABLE_RATE_2Y;
 		}
@@ -182,7 +200,7 @@ struct VariableRateProcessor
 		return variableRate;
 	}
 
-	float2 ComputeEdgeFilter(in Texture2D<float> texture)
+	float2 ComputeEdgeFilter(in SRVTexture2D<float> texture)
 	{
 		const uint2 tileCoords = m_groupID * uint2(GROUP_SIZE_X, GROUP_SIZE_Y);
 		CacheInputSamples(texture, tileCoords, m_localThreadIdx);
@@ -206,20 +224,25 @@ struct VariableRateProcessor
 };
 
 
+interface IVariableRateBuilderCallback
+{
+	uint ComputeVariableRateMask(in VariableRateProcessor processor);
+};
+
+
 struct VariableRateBuilder
 {
-	template<typename TCallback>
-	static void BuildVariableRateTexture(in uint2 groupID, in int localThreadIdx)
+	static void BuildVariableRateTexture<TCallback : IVariableRateBuilderCallback>(in uint2 groupID, in int localThreadIdx, in TCallback callback)
 	{
 		VariableRateProcessor processor = VariableRateProcessor::Create(groupID, localThreadIdx);
 
-		const uint variableRate = TCallback::ComputeVariableRateMask(processor);
+		const uint variableRate = callback.ComputeVariableRateMask(processor);
 
 #if VR_BUILDER_SINGLE_LANE_PER_QUAD
 #if VR_USE_LARGE_TILE
 #error // not implemented
 #else
-		WriteCurrentFrameVariableRateData(u_rwVariableRateTexture, processor.GetCoords() / 2u, variableRate, u_constants.frameIdx);
+		WriteCurrentFrameVariableRateData(PARAMS_CREATE_VARIABLE_RATE_TEXTURE->rwVariableRateTexture, processor.GetCoords() / 2u, variableRate, PARAMS_CREATE_VARIABLE_RATE_TEXTURE->frameIdx);
 #endif // VR_USE_LARGE_TILE
 #else
 #if VR_USE_LARGE_TILE
@@ -227,15 +250,15 @@ struct VariableRateBuilder
 		// but in practice using any of these is ok as they are based on same noise thresholds
 		const uint largeTileVariableRate = WaveActiveMin(variableRate);
 		const uint2 outputCoords = groupID.xy;
-		if (localThreadIdx == 0u && all(outputCoords < u_constants.outputResolution))
+		if (localThreadIdx == 0u && all(outputCoords < PARAMS_CREATE_VARIABLE_RATE_TEXTURE->outputResolution))
 		{
-			WriteCurrentFrameVariableRateData(u_rwVariableRateTexture, outputCoords, largeTileVariableRate, u_constants.frameIdx);
+			WriteCurrentFrameVariableRateData(PARAMS_CREATE_VARIABLE_RATE_TEXTURE->rwVariableRateTexture, outputCoords, largeTileVariableRate, PARAMS_CREATE_VARIABLE_RATE_TEXTURE->frameIdx);
 		}
 #else
 		const uint2 outputCoords = groupID.xy * uint2(4, 4) + processor.m_localID / 2;
-		if ((localThreadIdx & 3) == 0 && all(outputCoords < u_constants.outputResolution))
+		if ((localThreadIdx & 3) == 0 && all(outputCoords < PARAMS_CREATE_VARIABLE_RATE_TEXTURE->outputResolution))
 		{
-			WriteCurrentFrameVariableRateData(u_rwVariableRateTexture, outputCoords, variableRate, u_constants.frameIdx);
+			WriteCurrentFrameVariableRateData(PARAMS_CREATE_VARIABLE_RATE_TEXTURE->rwVariableRateTexture, outputCoords, variableRate, PARAMS_CREATE_VARIABLE_RATE_TEXTURE->frameIdx);
 		}
 #endif
 #endif // VR_BUILDER_SINGLE_LANE_PER_QUAD
@@ -244,11 +267,11 @@ struct VariableRateBuilder
 
 
 #if !VR_BUILDER_SINGLE_LANE_PER_QUAD
-struct GenericVariableRateCallback
+struct GenericVariableRateCallback : IVariableRateBuilderCallback
 {
-	static uint ComputeVariableRateMask(in VariableRateProcessor processor)
+	uint ComputeVariableRateMask(in VariableRateProcessor processor)
 	{
-		const float2 edgeFilter = processor.ComputeEdgeFilter(u_inputTexture);
+		const float2 edgeFilter = processor.ComputeEdgeFilter(PARAMS_CREATE_VARIABLE_RATE_TEXTURE->inputTexture);
 		return processor.ComputeEdgeBasedVariableRateMask(edgeFilter);
 	}
 };

@@ -68,8 +68,6 @@ struct TemporalAccumulationParameters : public denoising::DenoiserBaseParams
 
 	rg::RGTextureViewHandle baseColorMetallic;
 
-	lib::MTHandle<SharcCacheDS> sharcCacheDS;
-
 	Bool enableStableHistoryBlend = true;
 };
 

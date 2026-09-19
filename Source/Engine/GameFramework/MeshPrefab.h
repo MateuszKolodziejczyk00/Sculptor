@@ -32,6 +32,7 @@ struct PrefabMeshEntityDefinition : public GamePrefabEntityDefinition
 };
 SPT_REGISTER_PREFAB_ENTITY_TYPE(PrefabMeshEntityDefinition);
 
+
 struct MeshEntity
 {
 	struct

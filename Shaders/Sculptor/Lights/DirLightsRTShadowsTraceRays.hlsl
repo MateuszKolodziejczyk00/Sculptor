@@ -1,9 +1,9 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderSceneDS)]]
-[[descriptor_set(TraceShadowRaysDS)]]
-[[descriptor_set(DirectionalLightShadowMaskDS)]]
-[[descriptor_set(RenderViewDS)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
+[[shader_params(TraceShadowRaysParams, PARAMS_TRACE_SHADOW_RAYS)]]
+[[shader_params(DirectionalLightShadowUpdateParams, PARAMS_DIRECTIONAL_LIGHT_SHADOW_MASK)]]
+[[shader_params(GPURenderView, VIEW)]]
 
 #include "Utils/BlueNoiseSamples.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
@@ -16,43 +16,43 @@
 
 float TraceShadowRay(in uint2 pixel)
 {
-	const float2 uv = (pixel + 0.5f) / float2(u_params.resolution);
-	const float depth = u_depthTexture.Load(uint3(pixel, 0)).r;
+	const float2 uv = (pixel + 0.5f) / float2(PARAMS_DIRECTIONAL_LIGHT_SHADOW_MASK->resolution);
+	const float depth = PARAMS_TRACE_SHADOW_RAYS->depthTexture.Load(uint3(pixel, 0)).r;
 
 	float result = 0.f;
 
 	if(depth > 0.f)
 	{
 		const float3 ndc = float3(uv * 2.f - 1.f, depth);
-		float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
+		float3 worldLocation = NDCToWorldSpace(ndc, VIEW->sceneView);
 
 #if !CONTINUE_RAYS
-		const float3 normal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(pixel, 0)));
+		const float3 normal = OctahedronDecodeNormal(PARAMS_TRACE_SHADOW_RAYS->normalsTexture.Load(uint3(pixel, 0)));
 
-		if(dot(normal, u_params.lightDirection) <= 0.015f)
+		if(dot(normal, PARAMS_DIRECTIONAL_LIGHT_SHADOW_MASK->lightDirection) <= 0.015f)
 #endif // !CONTINUE_RAYS
 		{
 #if !CONTINUE_RAYS
-			const float3 bias = normalize(u_sceneView.viewLocation - worldLocation) * u_params.shadowRayBias;
+			const float3 bias = normalize(VIEW->sceneView.viewLocation - worldLocation) * PARAMS_DIRECTIONAL_LIGHT_SHADOW_MASK->shadowRayBias;
 			worldLocation += bias;
 #endif // !CONTINUE_RAYS
 
-			const float maxConeAngle = u_params.shadowRayConeAngle;
+			const float maxConeAngle = PARAMS_DIRECTIONAL_LIGHT_SHADOW_MASK->shadowRayConeAngle;
 			
 			const uint sampleIdx = (((pixel.y & 15u) * 16u + (pixel.x & 15u) + GPUScene().frameIdx * 23u)) & 255u;
 			const float2 noise = frac(g_BlueNoiseSamples[sampleIdx]);
-			const float3 shadowRayDirection = VectorInCone(-u_params.lightDirection, maxConeAngle, noise);
+			const float3 shadowRayDirection = VectorInCone(-PARAMS_DIRECTIONAL_LIGHT_SHADOW_MASK->lightDirection, maxConeAngle, noise);
 
 			float minT = 0.f;
 
 #if CONTINUE_RAYS
-			const uint16_t continuationDist = u_params.rayContinuationDists.Load(DispatchRaysIndex().x);
-			minT = (continuationDist / 255.f) * u_params.ssTraceDistance;
+			const uint16_t continuationDist = PARAMS_DIRECTIONAL_LIGHT_SHADOW_MASK->rayContinuationDists.Load(DispatchRaysIndex().x);
+			minT = (continuationDist / 255.f) * PARAMS_DIRECTIONAL_LIGHT_SHADOW_MASK->ssTraceDistance;
 #endif // CONTINUE_RAYS
 
 			RayDesc rayDesc;
 			rayDesc.TMin        = minT;
-			rayDesc.TMax        = u_params.maxTraceDistance;
+			rayDesc.TMax        = PARAMS_DIRECTIONAL_LIGHT_SHADOW_MASK->maxTraceDistance;
 			rayDesc.Origin      = worldLocation;
 			rayDesc.Direction   = shadowRayDirection;
 
@@ -67,13 +67,13 @@ float TraceShadowRay(in uint2 pixel)
 void OutputShadowMask(in RayTraceCommand command, in float shadowMaskValue)
 {
 	const uint2 outputCoords = command.blockCoords + command.localOffset;
-	u_shadowMask[outputCoords] = shadowMaskValue;
+	PARAMS_DIRECTIONAL_LIGHT_SHADOW_MASK->shadowMask[outputCoords] = shadowMaskValue;
 }
 
 [shader("raygeneration")]
 void GenerateShadowRaysRTG()
 {
-	const EncodedRayTraceCommand encodedTraceCommand = u_traceCommands[DispatchRaysIndex().x];
+	const EncodedRayTraceCommand encodedTraceCommand = PARAMS_TRACE_SHADOW_RAYS->traceCommands[DispatchRaysIndex().x];
 	const RayTraceCommand traceCommand = DecodeTraceCommand(encodedTraceCommand);
 
 	const uint2 coords = traceCommand.blockCoords + traceCommand.localOffset;

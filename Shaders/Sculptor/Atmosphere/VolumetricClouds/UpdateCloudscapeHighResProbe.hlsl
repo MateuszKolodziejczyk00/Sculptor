@@ -1,8 +1,8 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(UpdateCloudscapeHighResProbeDS, 0)]]
-[[descriptor_set(CloudscapeDS, 1)]]
-[[descriptor_set(RenderViewDS, 2)]]
+[[shader_params(UpdateCloudscapeHighResProbeConstants, PARAMS_UPDATE_CLOUDSCAPE_HIGH_RES_PROBE)]]
+[[shader_params(CloudscapeConstants, PARAMS_CLOUDSCAPE)]]
+[[shader_params(GPURenderView, VIEW)]]
 
 #include "Atmosphere/VolumetricClouds/CloudscapeRaymarcher.hlsli"
 #include "Utils/Packing.hlsli"
@@ -17,9 +17,9 @@ struct CS_INPUT
 [numthreads(32, 1, 1)]
 void UpdateCloudscapeHighResProbeCS(CS_INPUT input)
 {
-    const uint2 coords = u_constants.updateOffset + input.groupID.xy;
+    const uint2 coords = PARAMS_UPDATE_CLOUDSCAPE_HIGH_RES_PROBE->updateOffset + input.groupID.xy;
 
-    const float2 uv = (coords + 0.5f) * u_cloudscapeConstants.highResProbeRcpRes;
+    const float2 uv = (coords + 0.5f) * PARAMS_CLOUDSCAPE->highResProbeRcpRes;
 
     const float3 direction = OctahedronDecodeHemisphereNormal(uv);
 
@@ -27,9 +27,9 @@ void UpdateCloudscapeHighResProbeCS(CS_INPUT input)
 
     const Ray ray = Ray::Create(probeLocation, direction);
 
-    const float3 skyAvgLuminance = u_skyViewProbe.Load(0u);
+    const float3 skyAvgLuminance = PARAMS_UPDATE_CLOUDSCAPE_HIGH_RES_PROBE->skyViewProbe.Load(0u);
 
-    const float noise = frac(u_blueNoise256.Load(uint3(coords & 255u, 0u)) + SPT_GOLDEN_RATIO * (u_constants.updateLoopIdx & 31u));
+    const float noise = frac(PARAMS_UPDATE_CLOUDSCAPE_HIGH_RES_PROBE->blueNoise256.Load(uint3(coords & 255u, 0u)) + SPT_GOLDEN_RATIO * (PARAMS_UPDATE_CLOUDSCAPE_HIGH_RES_PROBE->updateLoopIdx & 31u));
 
     CloudscapeRaymarchParams raymarchParams = CloudscapeRaymarchParams::Create();
     raymarchParams.ray = ray;
@@ -40,10 +40,10 @@ void UpdateCloudscapeHighResProbeCS(CS_INPUT input)
     const CloudscapeRaymarchResult raymarchRes = WaveRaymarchCloudscape<PROBE_CLODUD_SCATTERING_OCTAVES_NUM>(raymarchParams);
 
     const float4 newValue = float4(raymarchRes.inScattering, raymarchRes.transmittance);
-    const float4 oldValue = u_rwProbe[coords];
+    const float4 oldValue = PARAMS_UPDATE_CLOUDSCAPE_HIGH_RES_PROBE->rwProbe[coords];
 
     if(WaveIsFirstLane())
     {
-        u_rwProbe[coords] = lerp(oldValue, newValue, u_constants.blendFactor);
+        PARAMS_UPDATE_CLOUDSCAPE_HIGH_RES_PROBE->rwProbe[coords] = lerp(oldValue, newValue, PARAMS_UPDATE_CLOUDSCAPE_HIGH_RES_PROBE->blendFactor);
     }
 }

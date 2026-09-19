@@ -48,7 +48,7 @@ struct DIReservoir
 		return selected_p_hat > 0.f;
 	}
 
-	bool Update(in float rnd, in EmissiveSample newSample, in float p_hat)
+	[mutating] bool Update(in float rnd, in EmissiveSample newSample, in float p_hat)
 	{
 		const float w_i = p_hat / newSample.pdf_A;
 
@@ -66,7 +66,7 @@ struct DIReservoir
 		return updateReservoir;
 	}
 
-	bool Update(in float rnd, in DIReservoir other, in float p_hat)
+	[mutating] bool Update(in float rnd, in DIReservoir other, in float p_hat)
 	{
 		const float w_i = other.M * p_hat * other.weightSum;
 
@@ -84,7 +84,7 @@ struct DIReservoir
 		return updateReservoir;
 	}
 
-	void Normalize()
+	[mutating] void Normalize()
 	{
 		weightSum = selected_p_hat > 0.f ? (1.f / selected_p_hat) * weightSum * (1.f / M) : 0.f;
 	}

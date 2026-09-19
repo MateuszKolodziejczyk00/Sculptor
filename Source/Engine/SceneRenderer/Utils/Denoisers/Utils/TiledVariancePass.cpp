@@ -1,10 +1,6 @@
 #include "TiledVariancePass.h"
 #include "RenderGraphBuilder.h"
 #include "MathUtils.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
 #include "ResourcesManager.h"
 
 
@@ -14,11 +10,10 @@ namespace spt::rsc::denoising::tiled_variance
 namespace tiles_variance
 {
 
-DS_BEGIN(TilesVarianceDS, rg::RGDescriptorSetState<TilesVarianceDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),										u_tilesVarianceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_inputValueTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
-DS_END();
+BEGIN_SHADER_STRUCT(TiledVarianceParams)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>, tilesVarianceTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>, inputValueTexture)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CreateTilesVariancePipeline()
@@ -39,16 +34,16 @@ static rg::RGTextureViewHandle ComputeTilesVariance(rg::RenderGraphBuilder& grap
 
 	const rg::RGTextureViewHandle tilesVariance = graphBuilder.CreateTextureView(RG_DEBUG_NAME("TilesVariance"), rg::TextureDef(tilesResolution, params.dataTexture->GetFormat()));
 
-	lib::MTHandle<TilesVarianceDS> ds = graphBuilder.CreateDescriptorSet<TilesVarianceDS>(RENDERER_RESOURCE_NAME("Tiles Variance DS"));
-	ds->u_tilesVarianceTexture = tilesVariance;
-	ds->u_inputValueTexture = params.dataTexture;
+	TiledVarianceParams shaderConstants;
+	shaderConstants.tilesVarianceTexture = tilesVariance;
+	shaderConstants.inputValueTexture    = params.dataTexture;
 
 	static const rdr::PipelineStateID pipeline = CreateTilesVariancePipeline();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("{}: Tiles Variance Filter", params.debugName.Get().ToString())),
 						  pipeline,
 						  tilesResolution,
-						  rg::BindDescriptorSets(std::move(ds)));
+						  rg::ShaderParams(shaderConstants));
 
 	return tilesVariance;
 }
@@ -58,11 +53,10 @@ static rg::RGTextureViewHandle ComputeTilesVariance(rg::RenderGraphBuilder& grap
 namespace variance_max
 {
 
-DS_BEGIN(TilesVarianceMax3x3DS, rg::RGDescriptorSetState<TilesVarianceMax3x3DS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_tilesVarianceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),										u_tilesVarianceMax3x3Texture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
-DS_END();
+BEGIN_SHADER_STRUCT(TilesVarianceMax3x3Params)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>, tilesVarianceTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>, tilesVarianceMax3x3Texture)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CreateTilesVarianceMax3x3Pipeline()
@@ -80,16 +74,16 @@ static rg::RGTextureViewHandle ComputeMaxVariance3x3(rg::RenderGraphBuilder& gra
 
 	const rg::RGTextureViewHandle tilesVarianceMax = graphBuilder.CreateTextureView(RG_DEBUG_NAME("TilesVarianceMax"), rg::TextureDef(tilesResolution, params.dataTexture->GetFormat()));
 
-	const lib::MTHandle<TilesVarianceMax3x3DS> ds = graphBuilder.CreateDescriptorSet<TilesVarianceMax3x3DS>(RENDERER_RESOURCE_NAME("Tiles Variance Max 3x3 DS"));
-	ds->u_tilesVarianceTexture			= tilesVariance;
-	ds->u_tilesVarianceMax3x3Texture	= tilesVarianceMax;
+	TilesVarianceMax3x3Params shaderConstants;
+	shaderConstants.tilesVarianceTexture       = tilesVariance;
+	shaderConstants.tilesVarianceMax3x3Texture = tilesVarianceMax;
 
 	static const rdr::PipelineStateID pipeline = CreateTilesVarianceMax3x3Pipeline();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("{}: Tiles Variance Max 3x3 Filter", params.debugName.Get().ToString())),
 						  pipeline,
 						  tilesResolution,
-						  rg::BindDescriptorSets(std::move(ds)));
+						  rg::ShaderParams(shaderConstants));
 
 	return tilesVarianceMax;
 }

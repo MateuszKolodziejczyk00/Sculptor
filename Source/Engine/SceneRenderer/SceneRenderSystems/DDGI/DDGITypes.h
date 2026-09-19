@@ -3,12 +3,6 @@
 #include "SculptorCoreTypes.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "Utility/NamedType.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/StructuredCPUToGPUBufferBinding.h"
-#include "DescriptorSetBindings/ArrayOfSRVTexturesBinding.h"
-#include "DescriptorSetBindings/ArrayOfTextureBlocksBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 
 
 namespace spt::rsc::ddgi
@@ -43,6 +37,10 @@ struct DDGIVolumeParams
 };
 
 
+using VolumeIlluminanceTexturesArray = lib::StaticArray<gfx::ConstSRVTexture2D<math::Vector4f>, constants::maxTexturesPerVolume>;
+using VolumeHitDistanceTexturesArray = lib::StaticArray<gfx::ConstSRVTexture2D<math::Vector2f>, constants::maxTexturesPerVolume>;
+
+
 BEGIN_SHADER_STRUCT(DDGIVolumeGPUParams)
 	SHADER_STRUCT_FIELD(math::Vector3f, probesOriginWorldLocation) // AABB begin
 	SHADER_STRUCT_FIELD(math::Vector3f, probesEndWorldLocation) // AABB end
@@ -73,18 +71,15 @@ BEGIN_SHADER_STRUCT(DDGIVolumeGPUParams)
 	SHADER_STRUCT_FIELD(math::Vector2f, probesHitDistanceTextureUVPerProbeNoBorder)
 	SHADER_STRUCT_FIELD(Real32,         probeIlluminanceEncodingGamma)
 
-	SHADER_STRUCT_FIELD(Uint32,         illuminanceTextureIdx)
-	SHADER_STRUCT_FIELD(Uint32,         hitDistanceTextureIdx)
-	SHADER_STRUCT_FIELD(Uint32,         averageLuminanceTextureIdx)
+	SHADER_STRUCT_FIELD(VolumeIlluminanceTexturesArray,         illuminanceTextures)
+	SHADER_STRUCT_FIELD(VolumeHitDistanceTexturesArray,         hitDistanceTextures)
+	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture3D<math::Vector3f>, averageLuminanceTexture)
 END_SHADER_STRUCT();
 
 
 struct DDGIVolumeGPUDefinition
 {
 	DDGIVolumeGPUParams gpuParams;
-
-	gfx::TexturesBindingsAllocationHandle illuminanceTexturesAllocation;
-	gfx::TexturesBindingsAllocationHandle hitDistanceTexturesAllocation;
 };
 
 
@@ -124,13 +119,10 @@ BEGIN_SHADER_STRUCT(DDGIVolumesDefinition)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(DDGISceneDS, rg::RGDescriptorSetState<DDGISceneDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTexture2DBlocksBinding<math::Vector4f, constants::maxVolumesCount * constants::maxTexturesPerVolume * 2, true>), u_probesTextures2D)
-	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures3DBinding<constants::maxVolumesCount, true>),                                                            u_probesTextures3D)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),                                                            u_probesDataSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGILODsDefinition>),                                                                    u_ddgiLODs)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGIVolumesDefinition>),                                                                 u_volumesDef)
-DS_END();
+BEGIN_SHADER_STRUCT(DDGIGPUScene)
+	SHADER_STRUCT_FIELD(DDGILODsDefinition,    ddgiLODs)
+	SHADER_STRUCT_FIELD(DDGIVolumesDefinition, volumesDef)
+END_SHADER_STRUCT();
 
 
 class DDGIGPUVolumeHandle
@@ -139,7 +131,7 @@ public:
 
 	DDGIGPUVolumeHandle();
 
-	DDGIGPUVolumeHandle(lib::MTHandle<DDGISceneDS> sceneDS, Uint32 index, DDGIVolumeGPUParams& volumeParams, const DDGIVolumeGPUDefinition& volumeGPUDefinition);
+	DDGIGPUVolumeHandle(Uint32 index, DDGIVolumeGPUParams& volumeParams, const DDGIVolumeGPUDefinition& volumeGPUDefinition);
 
 	bool IsValid() const;
 
@@ -161,11 +153,6 @@ private:
 	DDGIVolumeGPUParams* m_volumeParams = nullptr;
 
 	Uint32 m_index = idxNone<Uint32>;
-
-	lib::MTHandle<DDGISceneDS> m_ddgiSceneDS;
-
-	gfx::TexturesBindingsAllocationHandle m_illuminanceTextureBindingsAllocation;
-	gfx::TexturesBindingsAllocationHandle m_hitDistanceTextureBindingsAllocation;
 };
 
 } // spt::rsc::ddgi

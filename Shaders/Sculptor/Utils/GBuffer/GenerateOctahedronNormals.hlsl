@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(GenerateOctahedronNormalsDS, 0)]]
+[[shader_params(GenerateOctahedronNormalsConstants, PARAMS_GENERATE_OCTAHEDRON_NORMALS)]]
 
 #include "Utils/GBuffer/GBuffer.hlsli"
 #include "Utils/Packing.hlsli"
@@ -19,12 +19,12 @@ struct CS_INPUT
 [numthreads(GROUP_SIZE_X, GROUP_SIZE_Y, 1)]
 void GenerateOctahedronNormalsCS(CS_INPUT input)
 {
-	const uint2 coords = min(input.globalID.xy, u_constants.resolution - 1u);
+	const uint2 coords = min(input.globalID.xy, PARAMS_GENERATE_OCTAHEDRON_NORMALS->resolution - 1u);
 
-	const float4 packedTangentFrame = u_tangentFrame.Load(uint3(coords, 0u));
+	const float4 packedTangentFrame = PARAMS_GENERATE_OCTAHEDRON_NORMALS->tangentFrame.Load(uint3(coords, 0u));
 	const float3 normal = DecodeGBufferNormal(packedTangentFrame);
 
 	const float2 octahedronNormal = OctahedronEncodeNormal(normal);
 
-	u_rwOctahedronNormals[coords] = octahedronNormal;
+	PARAMS_GENERATE_OCTAHEDRON_NORMALS->rwOctahedronNormals[coords] = octahedronNormal;
 }

@@ -1,10 +1,10 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(SRTemporalResamplingDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
+[[shader_params(TemporalResamplingConstants, PARAMS_S_R_TEMPORAL_RESAMPLING)]]
+[[shader_params(GPURenderView, VIEW)]]
 
 #if ENABLE_SECOND_TRACING_PASS
-[[descriptor_set(SRAdditionalPassesAllocatorDS, 2)]]
+[[shader_params(SRAdditionalPassesAllocatorParams, PARAMS_S_R_ADDITIONAL_PASSES_ALLOCATOR)]]
 #endif // ENABLE_SECOND_TRACING_PASS
 
 
@@ -59,10 +59,10 @@ struct SRTemporalResampler
 		resampler.currentReservoir = SRReservoir::CreateEmpty();
 		resampler.currentReservoir.spatialResamplingRangeID = SR_RESERVOIR_DEFAULT_SPATIAL_RANGE_ID;
 
-		resampler.historyGBuffer.depthTexture             = u_historyDepthTexture;
-		resampler.historyGBuffer.normalsTexture           = u_historyNormalsTexture;
-		resampler.historyGBuffer.baseColorMetallicTexture = u_historyBaseColorTexture;
-		resampler.historyGBuffer.roughnessTexture         = u_historyRoughnessTexture;
+		resampler.historyGBuffer.depthTexture             = PARAMS_S_R_TEMPORAL_RESAMPLING->historyDepthTexture;
+		resampler.historyGBuffer.normalsTexture           = PARAMS_S_R_TEMPORAL_RESAMPLING->historyNormalsTexture;
+		resampler.historyGBuffer.baseColorMetallicTexture = PARAMS_S_R_TEMPORAL_RESAMPLING->historyBaseColorTexture;
+		resampler.historyGBuffer.roughnessTexture         = PARAMS_S_R_TEMPORAL_RESAMPLING->historyRoughnessTexture;
 
 		const float p_hat = EvaluateTargetFunction(resampler.centerPixelSurface, initialReservoir.hitLocation, initialReservoir.luminance);
 
@@ -86,8 +86,8 @@ struct SRTemporalResampler
 
 	SRReservoir LoadHistoryReservoir(in uint2 coords)
 	{
-		const uint historyReservoirIdx = GetScreenReservoirIdx(coords, u_resamplingConstants.reservoirsResolution);
-		SRReservoir historyReservoir = UnpackReservoir(u_historyReservoirsBuffer[historyReservoirIdx]);
+		const uint historyReservoirIdx = GetScreenReservoirIdx(coords, PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->reservoirsResolution);
+		SRReservoir historyReservoir = UnpackReservoir(PARAMS_S_R_TEMPORAL_RESAMPLING->historyReservoirsBuffer[historyReservoirIdx]);
 
 		const uint maxHistoryLength = 20u;
 		historyReservoir.M = uint16_t(min(historyReservoir.M, maxHistoryLength));
@@ -100,14 +100,14 @@ struct SRTemporalResampler
 		float maxAge;
 
 		// Reduce max age for close hits to maintain close indirect shadows (needed only for higher roughness)
-		if(u_passConstants.enableHitDistanceBasedMaxAge && centerPixelSurface.roughness >= 0.15f)
+		if(PARAMS_S_R_TEMPORAL_RESAMPLING->enableHitDistanceBasedMaxAge && centerPixelSurface.roughness >= 0.15f)
 		{
-			const float hitDist = u_historySpecularHitDist.Load(uint3(historySamplePixel, 0u));
-			maxAge = Remap(hitDist, 0.8f, 4.0f, 4.f, float(u_passConstants.reservoirMaxAge));
+			const float hitDist = PARAMS_S_R_TEMPORAL_RESAMPLING->historySpecularHitDist.Load(uint3(historySamplePixel, 0u));
+			maxAge = Remap(hitDist, 0.8f, 4.0f, 4.f, float(PARAMS_S_R_TEMPORAL_RESAMPLING->reservoirMaxAge));
 		}
 		else
 		{
-			maxAge = u_passConstants.reservoirMaxAge;
+			maxAge = PARAMS_S_R_TEMPORAL_RESAMPLING->reservoirMaxAge;
 		}
 
 		if(!m_wasSampleTraced)
@@ -120,19 +120,19 @@ struct SRTemporalResampler
 		return maxAge;
 	}
 
-	bool TrySelectHistorySample(in int2 historySamplePixel, inout RngState rng)
+	[mutating] bool TrySelectHistorySample(in int2 historySamplePixel, inout RngState rng)
 	{
 		const uint sampleIdx = m_currentSampleIdx++;
 
 		m_sampleCoords[sampleIdx] = -1;
-		if(all(historySamplePixel < 0) || all(historySamplePixel >= u_resamplingConstants.resolution))
+		if(all(historySamplePixel < 0) || all(historySamplePixel >= PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->resolution))
 		{
 			return false;
 		}
 
 		m_sampleCoords[sampleIdx] = historySamplePixel;
 
-		const MinimalSurfaceInfo selectedHistorySurface = GetMinimalSurfaceInfo(historyGBuffer, historySamplePixel, u_prevFrameSceneView);
+		const MinimalSurfaceInfo selectedHistorySurface = GetMinimalSurfaceInfo(historyGBuffer, historySamplePixel, PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->pixelSize, VIEW->prevFrameSceneView);
 
 		if(!SurfacesAllowResampling(centerPixelSurface, selectedHistorySurface)
 			|| !MaterialsAllowResampling(centerPixelSurface, selectedHistorySurface))
@@ -199,7 +199,7 @@ struct SRTemporalResampler
 		return true;
 	}
 
-	SRReservoir FinishResampling(int2 pixel)
+	[mutating] SRReservoir FinishResampling(int2 pixel)
 	{
 		currentReservoir.age++;
 
@@ -220,7 +220,7 @@ struct SRTemporalResampler
 	
 			const int2 samplePixel = m_sampleCoords[sampleIdx];
 	
-			const MinimalSurfaceInfo reusedSurface = GetMinimalSurfaceInfo(historyGBuffer, samplePixel, u_prevFrameSceneView);
+			const MinimalSurfaceInfo reusedSurface = GetMinimalSurfaceInfo(historyGBuffer, samplePixel, PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->pixelSize, VIEW->prevFrameSceneView);
 	
 			const SRReservoir reuseReservoir = LoadHistoryReservoir(samplePixel);
 	
@@ -254,11 +254,11 @@ void AppendAdditionalTraceCommand(in uint2 traceCoords)
 	uint appendOffset = 0u;
 	if (WaveIsFirstLane())
 	{
-		InterlockedAdd(u_commandsNum[0], commandsNum, OUT appendOffset);
+		appendOffset = PARAMS_S_R_ADDITIONAL_PASSES_ALLOCATOR->commandsNum.AtomicAdd(0u, commandsNum);
 
-		uint tracesNum = 0;
-		InterlockedAdd(u_tracesNum[0], commandsNum, OUT tracesNum);
-		InterlockedMax(u_tracesDispatchGroupsNum[0], (tracesNum + commandsNum + 63) / 64);
+		uint tracesNum = PARAMS_S_R_ADDITIONAL_PASSES_ALLOCATOR->tracesNum.AtomicAdd(0u, commandsNum);
+
+		PARAMS_S_R_ADDITIONAL_PASSES_ALLOCATOR->tracesDispatchGroupsNum.AtomicMax(0u, (tracesNum + commandsNum + 63) / 64);
 	}
 
 	const uint2 ballot = WaveActiveBallot(true).xy;
@@ -270,18 +270,18 @@ void AppendAdditionalTraceCommand(in uint2 traceCoords)
 	traceCommand.variableRateMask = SPT_VARIABLE_RATE_1X1;
 	const EncodedRayTraceCommand encodedTraceCommand = EncodeTraceCommand(traceCommand);
 
-	u_rayTracesCommands[appendOffset] = encodedTraceCommand;
+	PARAMS_S_R_ADDITIONAL_PASSES_ALLOCATOR->rayTracesCommands[appendOffset] = encodedTraceCommand;
 
-	u_rwVariableRateBlocksTexture[traceCoords] = PackVRBlockInfo(uint2(0, 0), SPT_VARIABLE_RATE_1X1);
+	PARAMS_S_R_TEMPORAL_RESAMPLING->rwVariableRateBlocksTexture[traceCoords] = PackVRBlockInfo(uint2(0, 0), SPT_VARIABLE_RATE_1X1);
 }
 
 
 bool WasVariableRateReprojectionSuccessful(in uint2 coords)
 {
-	const uint2 reprojectionSuccessMaskCoords = coords << (u_passConstants.variableRateTileSizeBitOffset + uint2(3u, 2u));
+	const uint2 reprojectionSuccessMaskCoords = coords << (PARAMS_S_R_TEMPORAL_RESAMPLING->variableRateTileSizeBitOffset + uint2(3u, 2u));
 	const uint reprojectionSuccessMaskBit     = (coords.y & 3u) * 8u + (coords.x & 7u);
 
-	const uint reprojectionSuccessMask = u_vrReprojectionSuccessMask.Load(uint3(reprojectionSuccessMaskCoords, 0u)).x;
+	const uint reprojectionSuccessMask = PARAMS_S_R_ADDITIONAL_PASSES_ALLOCATOR->vrReprojectionSuccessMask.Load(uint3(reprojectionSuccessMaskCoords, 0u)).x;
 	const bool reprojectionSuccess     = (reprojectionSuccessMask & (1u << reprojectionSuccessMaskBit)) != 0u;
 
 	return reprojectionSuccess;
@@ -306,40 +306,40 @@ void ResampleTemporallyCS(CS_INPUT input)
 #if ENABLE_SECOND_TRACING_PASS
 	if(all(pixel == 0))
 	{
-		u_commandsNum[1] = 1;
-		u_commandsNum[2] = 1;
+		PARAMS_S_R_ADDITIONAL_PASSES_ALLOCATOR->commandsNum[1] = 1;
+		PARAMS_S_R_ADDITIONAL_PASSES_ALLOCATOR->commandsNum[2] = 1;
 	}
 #endif // ENABLE_SECOND_TRACING_PASS
 	
-	if(all(pixel < u_resamplingConstants.resolution))
+	if(all(pixel < PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->resolution))
 	{
-		const float depth = u_depthTexture.Load(uint3(pixel, 0));
+		const float depth = PARAMS_S_R_TEMPORAL_RESAMPLING->depthTexture.Load(uint3(pixel, 0));
 		if(depth <= 0.f)
 		{
 			return;
 		}
 
 		MinimalGBuffer currentGBuffer;
-		currentGBuffer.depthTexture             = u_depthTexture;
-		currentGBuffer.normalsTexture           = u_normalsTexture;
-		currentGBuffer.baseColorMetallicTexture = u_baseColorTexture;
-		currentGBuffer.roughnessTexture         = u_roughnessTexture;
+		currentGBuffer.depthTexture             = PARAMS_S_R_TEMPORAL_RESAMPLING->depthTexture;
+		currentGBuffer.normalsTexture           = PARAMS_S_R_TEMPORAL_RESAMPLING->normalsTexture;
+		currentGBuffer.baseColorMetallicTexture = PARAMS_S_R_TEMPORAL_RESAMPLING->baseColorTexture;
+		currentGBuffer.roughnessTexture         = PARAMS_S_R_TEMPORAL_RESAMPLING->roughnessTexture;
 
-		const MinimalSurfaceInfo centerPixelSurface = GetMinimalSurfaceInfo(currentGBuffer, pixel, u_sceneView);
+		const MinimalSurfaceInfo centerPixelSurface = GetMinimalSurfaceInfo(currentGBuffer, pixel, PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->pixelSize, VIEW->sceneView);
 
-		const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_resamplingConstants.reservoirsResolution);
+		const uint reservoirIdx = GetScreenReservoirIdx(pixel, PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->reservoirsResolution);
 
-		RngState rng = RngState::Create(pixel, u_resamplingConstants.frameIdx);
+		RngState rng = RngState::Create(pixel, PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->frameIdx);
 
 		SRTemporalResampler resampler;
 
 		uint2 traceCoords;
 		uint variableRateMask;
-		GetVariableRateInfo(u_rwVariableRateBlocksTexture, pixel, OUT traceCoords, OUT variableRateMask);
+		GetVariableRateInfo(PARAMS_S_R_TEMPORAL_RESAMPLING->rwVariableRateBlocksTexture, pixel, OUT traceCoords, OUT variableRateMask);
 		const bool wasSampleTraced = all(traceCoords == pixel);
 
 		{
-			const SRPackedReservoir packedReservoir = u_initialResservoirsBuffer[reservoirIdx];
+			const SRPackedReservoir packedReservoir = PARAMS_S_R_TEMPORAL_RESAMPLING->initialResservoirsBuffer[reservoirIdx];
 			const SRReservoir reservoir = UnpackReservoir(packedReservoir);
 
 			resampler = SRTemporalResampler::Create(centerPixelSurface, reservoir, wasSampleTraced);
@@ -347,9 +347,9 @@ void ResampleTemporallyCS(CS_INPUT input)
 
 		if (centerPixelSurface.roughness >= SPECULAR_TRACE_MAX_ROUGHNESS)
 		{
-			const float2 uv = (float2(pixel) + 0.5f) * u_resamplingConstants.pixelSize;
+			const float2 uv = (float2(pixel) + 0.5f) * PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->pixelSize;
 			
-			const float2 motion = u_motionTexture.Load(uint3(pixel, 0u));
+			const float2 motion = PARAMS_S_R_TEMPORAL_RESAMPLING->motionTexture.Load(uint3(pixel, 0u));
 
 			float2 reprojectedUV = uv - motion;
 
@@ -359,26 +359,26 @@ void ResampleTemporallyCS(CS_INPUT input)
 				const float randomRange = 48.f;
 				if(reprojectedUV.x < 0.f)
 				{
-					reprojectedUV.x = rng.Next() * randomRange * u_resamplingConstants.pixelSize.x;
+					reprojectedUV.x = rng.Next() * randomRange * PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->pixelSize.x;
 				}
 				else if (reprojectedUV.x > 1.f)
 				{
-					reprojectedUV.x = 1.f - rng.Next() * randomRange * u_resamplingConstants.pixelSize.x;
+					reprojectedUV.x = 1.f - rng.Next() * randomRange * PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->pixelSize.x;
 				}
 
 				if (reprojectedUV.y < 0.f)
 				{
-					reprojectedUV.y = rng.Next() * randomRange * u_resamplingConstants.pixelSize.y;
+					reprojectedUV.y = rng.Next() * randomRange * PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->pixelSize.y;
 				}
 				else if (reprojectedUV.y > 1.f)
 				{
-					reprojectedUV.y = 1.f - rng.Next() * randomRange * u_resamplingConstants.pixelSize.y;
+					reprojectedUV.y = 1.f - rng.Next() * randomRange * PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->pixelSize.y;
 				}
 
 				for(uint sampleIdx = 0; sampleIdx < HISTORY_SAMPLE_COUNT; ++sampleIdx)
 				{
-					const float2 sampleUV = reprojectedUV - (u_sceneView.jitter - u_prevFrameSceneView.jitter) * sampleIdx;
-					const int2 samplePixel = ApplyTemporalPermutation(floor(sampleUV * u_resamplingConstants.resolution), u_resamplingConstants.frameIdx, u_resamplingConstants.resolution);
+					const float2 sampleUV = reprojectedUV - (VIEW->sceneView.jitter - VIEW->prevFrameSceneView.jitter) * sampleIdx;
+					const int2 samplePixel = ApplyTemporalPermutation(floor(sampleUV * PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->resolution), PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->frameIdx, PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->resolution);
 					
 					if(resampler.TrySelectHistorySample(samplePixel, INOUT rng))
 					{
@@ -402,18 +402,18 @@ void ResampleTemporallyCS(CS_INPUT input)
 		}
 #endif // ENABLE_SECOND_TRACING_PASS
 
-		if(variableRateMask <= SPT_VARIABLE_RATE_2X2 || (u_resamplingConstants.frameIdx & 3u) != ((pixel.x & 1u) + ((pixel.y & 1u) << 1u)))
+		if(variableRateMask <= SPT_VARIABLE_RATE_2X2 || (PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->frameIdx & 3u) != ((pixel.x & 1u) + ((pixel.y & 1u) << 1u)))
 		{
 			newReservoir.AddFlag(SR_RESERVOIR_FLAGS_VALIDATED);
 		}
 
 		const SRPackedReservoir packedReservoir = PackReservoir(newReservoir);
 
-		u_outReservoirsBuffer[reservoirIdx] = packedReservoir;
+		PARAMS_S_R_TEMPORAL_RESAMPLING->outReservoirsBuffer[reservoirIdx] = packedReservoir;
 
 		if(!wasSampleTraced)
 		{
-			u_initialResservoirsBuffer[reservoirIdx] = packedReservoir;
+			PARAMS_S_R_TEMPORAL_RESAMPLING->initialResservoirsBuffer[reservoirIdx] = packedReservoir;
 		}
 	}
 }

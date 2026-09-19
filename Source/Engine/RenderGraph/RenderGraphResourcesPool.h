@@ -2,10 +2,10 @@
 
 #include "SculptorCoreTypes.h"
 #include "RenderGraphTypes.h"
-#include "Types/DescriptorSetState/DescriptorSetStateTypes.h"
 #include "Types/Texture.h"
 #include "RenderGraphMacros.h"
 #include "DeviceQueues/DeviceQueuesManager.h"
+#include "Utils/ConstantsAllocator.h"
 
 
 namespace spt::rdr

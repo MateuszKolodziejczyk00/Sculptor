@@ -1,9 +1,9 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderSceneDS)]]
-[[descriptor_set(RenderViewDS)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
+[[shader_params(GPURenderView, VIEW)]]
 
-[[shader_params(RayTracingDebugConstants, u_constants)]]
+[[shader_params(RayTracingDebugConstants, PARAMS_RAY_TRACING_DEBUG_CONSTANTS)]]
 
 #include "RayTracing/RayTracingMaterials.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
@@ -14,6 +14,8 @@ struct DebugRayPayloadData
 {
 	bool isMiss;
 
+	float3 baseColor;
+
 	GPUPtr<RTInstanceInterface> hitInstance;
 };
 
@@ -23,7 +25,10 @@ void RayTracingDebugCHS(inout DebugRayPayloadData payload, in BuiltInTriangleInt
 {
 	const RTMaterialEvaluationParams evalParams = RTMaterialEvaluationParams::CreateFromAttribs(attrib);
 
+	MaterialEvaluationOutput evaluatedMaterial = RTMaterial::EvaluateMat(evalParams);
+
 	payload.isMiss = false;
+	payload.baseColor = evaluatedMaterial.baseColor;
 	payload.hitInstance = evalParams.hitInstance;
 }
 
@@ -54,7 +59,7 @@ void RayTracingDebugRTG()
 {
 	const uint2 coords = DispatchRaysIndex().xy;
 
-	const float2 uv = (float2(coords) + 0.5f) * u_constants.rcpResolution;
+	const float2 uv = (float2(coords) + 0.5f) * PARAMS_RAY_TRACING_DEBUG_CONSTANTS->rcpResolution;
 
 	RTSceneInterface rtScene = RTScene();
 
@@ -65,8 +70,8 @@ void RayTracingDebugRTG()
 	RayDesc rayDesc;
 	rayDesc.TMin      = 0.f;
 	rayDesc.TMax      = 10000.f;
-	rayDesc.Origin    = u_sceneView.viewLocation;
-	rayDesc.Direction = ComputeViewRayDirectionWS(u_sceneView, uv);
+	rayDesc.Origin    = VIEW->sceneView.viewLocation;
+	rayDesc.Direction = ComputeViewRayDirectionWS(VIEW->sceneView, uv);
 
 	TraceRay(rtScene.tlas.GetResource(),
 			 0,
@@ -93,20 +98,21 @@ void RayTracingDebugRTG()
 			color.xyz = float3((valueHash >> 16) & 0xFF, (valueHash >> 8) & 0xFF, valueHash & 0xFF) / 255.f;
 			color.w = 1.f;
 		}
+		color = float4(payload.baseColor, 1.f);
 
-		if (all(coords == u_constants.debugCrosshairPos))
+		if (all(coords == PARAMS_RAY_TRACING_DEBUG_CONSTANTS->debugCrosshairPos))
 		{
 			RTDebugInstanceInfo debugInstanceInfo;
 			debugInstanceInfo.instance = payload.hitInstance.Load();
-			u_constants.rwDebugInstanceInfo.Store(0u, debugInstanceInfo);
+			PARAMS_RAY_TRACING_DEBUG_CONSTANTS->rwDebugInstanceInfo.Store(0u, debugInstanceInfo);
 		}
 	}
 
 	// Draw crosshair
-	if (any(abs(int2(coords) - int2(u_constants.debugCrosshairPos)) < 2) && all(abs(int2(coords) - int2(u_constants.debugCrosshairPos)) <= 10))
+	if (any(abs(int2(coords) - int2(PARAMS_RAY_TRACING_DEBUG_CONSTANTS->debugCrosshairPos)) < 2) && all(abs(int2(coords) - int2(PARAMS_RAY_TRACING_DEBUG_CONSTANTS->debugCrosshairPos)) <= 10))
 	{
 		color = float4(1.f, 0.f, 0.f, 1.f);
 	}
 
-	u_constants.rwDebugColor.Store(coords, color);
+	PARAMS_RAY_TRACING_DEBUG_CONSTANTS->rwDebugColor.Store(coords, color);
 }

@@ -1,10 +1,6 @@
 #include "SpecularReflectionsRenderStage.h"
 #include "SceneRenderSystems/Atmosphere/AtmosphereRenderSystem.h"
 #include "SceneRenderSystems/DDGI/DDGIRenderSystem.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/ConstantBufferRefBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
 #include "RenderScene.h"
 #include "RenderGraphBuilder.h"
 #include "Utils/SceneRenderingTypes.h"
@@ -13,7 +9,6 @@
 #include "SceneRenderSystems/DDGI/DDGIRenderSystem.h"
 #include "SceneRenderer/Utils/DepthBasedUpsampler.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ViewRenderSystems/ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 #include "SceneRenderer/RenderStages/Utils/RayBinner.h"
 #include "SceneRenderer/RenderStages/Utils/TracesAllocator.h"
@@ -84,23 +79,18 @@ namespace ray_directions
 {
 
 BEGIN_SHADER_STRUCT(GenerateRayDirectionsConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
-	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
-	SHADER_STRUCT_FIELD(Uint32,         seed)
+	SHADER_STRUCT_FIELD(math::Vector2u,                                resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,                                invResolution)
+	SHADER_STRUCT_FIELD(Uint32,                                        seed)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<Uint32>,                      tracesNum)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<vrt::EncodedRayTraceCommand>, traceCommands)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>,             normalsTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>,             baseColorMetallicTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,                     depthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,                     roughnessTexture)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,                    rwRaysDirections)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Real32>,                    rwRaysPdfs)
 END_SHADER_STRUCT()
-
-
-DS_BEGIN(GenerateRayDirectionsDS, rg::RGDescriptorSetState<GenerateRayDirectionsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),                       u_tracesNum)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<vrt::EncodedRayTraceCommand>),  u_traceCommands)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                   u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                   u_baseColorMetallicTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                           u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                           u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                     u_rwRaysDirections)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Real32>),                     u_rwRaysPdfs)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<GenerateRayDirectionsConstants>), u_constants)
-DS_END();
 
 
 static rdr::PipelineStateID CreateGenerateRayDirectionsPipeline()
@@ -134,27 +124,24 @@ RayDirections GenerateRayDirections(rg::RenderGraphBuilder& graphBuilder, const 
 	const rg::RGBufferViewHandle rayPdfsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Ray PDFs Buffer"), rayPdfsBufferDef, rhi::EMemoryUsage::GPUOnly);
 
 	GenerateRayDirectionsConstants shaderConstants;
-	shaderConstants.resolution    = resolution;
-	shaderConstants.invResolution = resolution.cast<Real32>().cwiseInverse();
-	shaderConstants.seed          = lib::rnd::RandomFromTypeDomain<Uint32>();
-
-	lib::MTHandle<GenerateRayDirectionsDS> generateRayDirectionsDS = graphBuilder.CreateDescriptorSet<GenerateRayDirectionsDS>(RENDERER_RESOURCE_NAME("GenerateRayDirectionsDS"));
-	generateRayDirectionsDS->u_tracesNum                = tracesAllocation.tracesNum;
-	generateRayDirectionsDS->u_traceCommands            = tracesAllocation.rayTraceCommands;
-	generateRayDirectionsDS->u_normalsTexture           = params.normalsTexture;
-	generateRayDirectionsDS->u_baseColorMetallicTexture = params.baseColorTexture;
-	generateRayDirectionsDS->u_depthTexture             = params.depthTexture;
-	generateRayDirectionsDS->u_roughnessTexture         = params.roughnessTexture;
-	generateRayDirectionsDS->u_rwRaysDirections         = rayDirectionsBuffer;
-	generateRayDirectionsDS->u_rwRaysPdfs               = rayPdfsBuffer;
-	generateRayDirectionsDS->u_constants                = shaderConstants;
+	shaderConstants.resolution               = resolution;
+	shaderConstants.invResolution            = resolution.cast<Real32>().cwiseInverse();
+	shaderConstants.seed                     = lib::rnd::RandomFromTypeDomain<Uint32>();
+	shaderConstants.tracesNum                = tracesAllocation.tracesNum;
+	shaderConstants.traceCommands            = tracesAllocation.rayTraceCommands;
+	shaderConstants.normalsTexture           = params.normalsTexture;
+	shaderConstants.baseColorMetallicTexture = params.baseColorTexture;
+	shaderConstants.depthTexture             = params.depthTexture;
+	shaderConstants.roughnessTexture         = params.roughnessTexture;
+	shaderConstants.rwRaysDirections         = rayDirectionsBuffer;
+	shaderConstants.rwRaysPdfs               = rayPdfsBuffer;
 
 	const rdr::PipelineStateID generateRayDirectionsPipeline = CreateGenerateRayDirectionsPipeline();
 
 	graphBuilder.DispatchIndirect(RG_DEBUG_NAME("Generate Ray Directions"),
 								  generateRayDirectionsPipeline,
 								  tracesAllocation.dispatchIndirectArgs, 0,
-								  rg::BindDescriptorSets(std::move(generateRayDirectionsDS), viewSpec.GetShadingViewContext().sharcCacheDS));
+								  rg::ShaderParams(shaderConstants, viewSpec.GetShadingViewContext().sharcCacheParams));
 
 	return RayDirections{ rayDirectionsBuffer, rayPdfsBuffer };
 }
@@ -186,16 +173,6 @@ struct RTShadingParams
 	math::Vector2u         reservoirsResolution;
 	rg::RGBufferViewHandle reservoirsBuffer;
 };
-
-
-BEGIN_SHADER_STRUCT(RTShadingConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u,  resolution)
-	SHADER_STRUCT_FIELD(math::Vector2f,  invResolution)
-	SHADER_STRUCT_FIELD(math::Vector2u,  reservoirsResolution)
-	SHADER_STRUCT_FIELD(HeightFogParams, heightFog)
-	SHADER_STRUCT_FIELD(Uint32,          rayCommandsBufferSize)
-	SHADER_STRUCT_FIELD(Uint32,          frameIdx)
-END_SHADER_STRUCT();
 
 
 BEGIN_SHADER_STRUCT(RTHitMaterialInfo)
@@ -233,21 +210,26 @@ static constexpr Uint64 ComputeMissShadingIndirectArgsOffset()
 }
 
 
-DS_BEGIN(RTShadingDS, rg::RGDescriptorSetState<RTShadingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_skyViewLUT)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_transmittanceLUT)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),                    u_atmosphereParams)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),                               u_rayDirections)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Real32>),                               u_rayPdfs)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<RTHitMaterialInfo>),                    u_hitMaterialInfos)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<sr_restir::SRPackedReservoir>),       u_reservoirsBuffer)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<RaysShadingCounts>),                    u_tracesNum)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<vrt::EncodedRayTraceCommand>),          u_traceCommands)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),                               u_sortedTraces)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<RTShadingConstants>),                     u_constants)
-DS_END();
+BEGIN_SHADER_STRUCT(RTShadingConstants)
+	SHADER_STRUCT_FIELD(math::Vector2u,                                      resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,                                      invResolution)
+	SHADER_STRUCT_FIELD(math::Vector2u,                                      reservoirsResolution)
+	SHADER_STRUCT_FIELD(HeightFogParams,                                     heightFog)
+	SHADER_STRUCT_FIELD(Uint32,                                              rayCommandsBufferSize)
+	SHADER_STRUCT_FIELD(Uint32,                                              frameIdx)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>,                   skyViewLUT)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>,                   transmittanceLUT)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<AtmosphereParams>,                       atmosphereParams)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<Uint32>,                         rayDirections)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<Real32>,                         rayPdfs)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,                           depthTexture)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<RTHitMaterialInfo>,              hitMaterialInfos)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<sr_restir::SRPackedReservoir>, reservoirsBuffer)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<RaysShadingCounts>,              tracesNum)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<vrt::EncodedRayTraceCommand>,    traceCommands)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<Uint32>,                         sortedTraces)
+END_SHADER_STRUCT();
+
 
 namespace miss_rays
 {
@@ -259,7 +241,7 @@ static rdr::PipelineStateID CreateMissRaysShadingPipeline()
 }
 
 
-static void ShadeMissRays(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const SpecularReflectionsParams& srParams, const RTShadingParams& shadingParams, lib::MTHandle<RTShadingDS> shadingDS)
+static void ShadeMissRays(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const SpecularReflectionsParams& srParams, const RTShadingParams& shadingParams, const rdr::GPUPtr<RTShadingConstants>& shadingConstants)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -270,8 +252,7 @@ static void ShadeMissRays(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 	graphBuilder.DispatchIndirect(RG_DEBUG_NAME("Miss Rays Shading"),
 								  missRaysShadingPipeline,
 								  shadingParams.shadingIndirectArgs, ComputeMissShadingIndirectArgsOffset(),
-								  rg::BindDescriptorSets(std::move(shadingDS),
-														 shadingViewContext.cloudscapeProbesDS));
+								  rg::ShaderParams(shadingConstants, shadingViewContext.cloudscapeProbesParams));
 }
 
 } // miss_rays
@@ -312,7 +293,7 @@ RT_PSO(HitRayShadingPSO)
 };
 
 
-static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const SpecularReflectionsParams& srParams, const RTShadingParams& shadingParams, lib::MTHandle<RTShadingDS> shadingDS)
+static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const SpecularReflectionsParams& srParams, const RTShadingParams& shadingParams, const rdr::GPUPtr<RTShadingConstants>& shadingConstants)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -321,7 +302,6 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const SceneRender
 	const LightsRenderSystem& lightsRenderSystem = rendererInterface.GetRenderSystemChecked<LightsRenderSystem>();
 
 	const ddgi::DDGIRenderSystem& ddgiRenderSystem = rendererInterface.GetRenderSystemChecked<ddgi::DDGIRenderSystem>();
-	lib::MTHandle<ddgi::DDGISceneDS> ddgiDS = ddgiRenderSystem.GetDDGISceneDS();
 
 	const Bool useSharc = renderer_params::useSharcAsRadianceCache && SharcGICache::IsSharcSupported();
 
@@ -335,10 +315,10 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const SceneRender
 	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("Hit Rays Shading"),
 								   HitRayShadingPSO::GetPermutation(permutation),
 								   shadingParams.shadingIndirectArgs, ComputeHitShadingIndirectArgsOffset(),
-								   rg::BindDescriptorSets(std::move(shadingDS),
-														  std::move(ddgiDS),
-														  shadingViewContext.sharcCacheDS,
-														  lightsRenderSystem.GetGlobalLightsDS()));
+								   rg::ShaderParams(shadingConstants,
+													ddgiRenderSystem.GetDDGIGPUScene(),
+													shadingViewContext.sharcCacheParams,
+													lightsRenderSystem.GetGlobalLightsParams()));
 }
 
 } // hit_rays
@@ -359,65 +339,41 @@ static void ShadeRays(rg::RenderGraphBuilder& graphBuilder, const SceneRendererI
 	rtShadingConstants.heightFog             = pmSystem.GetHeightFogParams();
 	rtShadingConstants.rayCommandsBufferSize = static_cast<Uint32>(shadingParams.sortedTraces->GetSize() / sizeof(vrt::EncodedRayTraceCommand));
 	rtShadingConstants.frameIdx              = viewSpec.GetFrameIdx();
+	rtShadingConstants.skyViewLUT         = srParams.skyViewLUT;
+	rtShadingConstants.transmittanceLUT   = atmosphereContext.transmittanceLUT;
+	rtShadingConstants.atmosphereParams   = atmosphereContext.atmosphereParams;
+	rtShadingConstants.hitMaterialInfos   = shadingParams.rtGBuffer.hitMaterialInfos;
+	rtShadingConstants.rayDirections      = shadingParams.rtGBuffer.rayDirections;
+	rtShadingConstants.rayPdfs            = shadingParams.rtGBuffer.rayPdfs;
+	rtShadingConstants.depthTexture       = srParams.depthTexture;
+	rtShadingConstants.reservoirsBuffer   = shadingParams.reservoirsBuffer;
+	rtShadingConstants.traceCommands      = shadingParams.tracesAllocation.rayTraceCommands;
+	rtShadingConstants.sortedTraces       = shadingParams.sortedTraces;
+	rtShadingConstants.tracesNum          = shadingParams.raysShadingCounts;
 
-	const lib::MTHandle<RTShadingDS> shadingDS = graphBuilder.CreateDescriptorSet<RTShadingDS>(RENDERER_RESOURCE_NAME("RTShadingDS"));
-	shadingDS->u_skyViewLUT         = srParams.skyViewLUT;
-	shadingDS->u_transmittanceLUT   = atmosphereContext.transmittanceLUT;
-	shadingDS->u_atmosphereParams   = atmosphereContext.atmosphereParamsBuffer->GetFullView();
-	shadingDS->u_hitMaterialInfos   = shadingParams.rtGBuffer.hitMaterialInfos;
-	shadingDS->u_rayDirections      = shadingParams.rtGBuffer.rayDirections;
-	shadingDS->u_rayPdfs            = shadingParams.rtGBuffer.rayPdfs;
-	shadingDS->u_depthTexture       = srParams.depthTexture;
-	shadingDS->u_reservoirsBuffer   = shadingParams.reservoirsBuffer;
-	shadingDS->u_traceCommands      = shadingParams.tracesAllocation.rayTraceCommands;
-	shadingDS->u_sortedTraces       = shadingParams.sortedTraces;
-	shadingDS->u_tracesNum          = shadingParams.raysShadingCounts;
-	shadingDS->u_constants          = rtShadingConstants;
+	const rdr::GPUPtr<RTShadingConstants> shadingConstants = graphBuilder.CreateGPUData(rtShadingConstants);
 
-	miss_rays::ShadeMissRays(graphBuilder, rendererInterface, renderScene, viewSpec, srParams, shadingParams, shadingDS);
-	hit_rays::ShadeHitRays(graphBuilder, rendererInterface, renderScene, viewSpec, srParams, shadingParams, shadingDS);
+	miss_rays::ShadeMissRays(graphBuilder, rendererInterface, renderScene, viewSpec, srParams, shadingParams, shadingConstants);
+	hit_rays::ShadeHitRays(graphBuilder, rendererInterface, renderScene, viewSpec, srParams, shadingParams, shadingConstants);
 }
 
 } // shading
 
-namespace vrt_resolve
-{
-
-DS_BEGIN(RTShadingDS, rg::RGDescriptorSetState<RTShadingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_skyViewLUT)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_transmittanceLUT)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),                    u_atmosphereParams)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                           u_rayDirectionTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_rayPdfTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<shading::RTHitMaterialInfo>),           u_hitMaterialInfos)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<sr_restir::SRPackedReservoir>),         u_reservoirsBuffer)
-DS_END();
-
-} // vrt_resolve
-
 
 BEGIN_SHADER_STRUCT(SpecularReflectionsTraceConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
-	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
-	SHADER_STRUCT_FIELD(Uint32,         rayCommandsBufferSize)
-	SHADER_STRUCT_FIELD(SSTracerData,   ssrTracer)
-	SHADER_STRUCT_FIELD(Real32,         ssrTraceLength)
-	SHADER_STRUCT_FIELD(GPUGBuffer,     gpuGBuffer)
+	SHADER_STRUCT_FIELD(math::Vector2u,                                       resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,                                       invResolution)
+	SHADER_STRUCT_FIELD(Uint32,                                               rayCommandsBufferSize)
+	SHADER_STRUCT_FIELD(SSTracerData,                                         ssrTracer)
+	SHADER_STRUCT_FIELD(Real32,                                               ssrTraceLength)
+	SHADER_STRUCT_FIELD(GPUGBuffer,                                           gpuGBuffer)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<Uint32>,                             rayDirections)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<vrt::EncodedRayTraceCommand>,        traceCommands)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<shading::RTHitMaterialInfo>,       hitMaterialInfos)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,                           sortedRays) // hits first
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<shading::RaysShadingIndirectArgs>, shadingIndirectArgs)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<shading::RaysShadingCounts>,       raysShadingCounts)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(SpecularReflectionsTraceDS, rg::RGDescriptorSetState<SpecularReflectionsTraceDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),                               u_rayDirections)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<vrt::EncodedRayTraceCommand>),          u_traceCommands)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<shading::RTHitMaterialInfo>),         u_hitMaterialInfos)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                             u_sortedRays) // hits first
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<shading::RaysShadingIndirectArgs>),   u_shadingIndirectArgs)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<shading::RaysShadingCounts>),         u_raysShadingCounts)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SpecularReflectionsTraceConstants>),      u_constants)
-DS_END();
 
 
 RT_PSO(SpecularReflectionsTracePSO)
@@ -489,30 +445,28 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, const Scene
 	raysShadingCountsBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
 	const rg::RGBufferViewHandle raysShadingCountsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Rays Shading Counts Buffer"), raysShadingCountsBufferDef, rhi::EMemoryUsage::GPUOnly);
 
+	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Shading Indirect Args"), shadingIndirectArgsBuffer, 0u);
+	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Rays Shading Counts"), raysShadingCountsBuffer, 0u);
+
+
 	SpecularReflectionsTraceConstants shaderConstants;
 	shaderConstants.resolution            = params.resolution;
 	shaderConstants.invResolution         = params.resolution.cast<Real32>().cwiseInverse();
 	shaderConstants.rayCommandsBufferSize = static_cast<Uint32>(sortedRaysBuffer->GetSize() / sizeof(vrt::EncodedRayTraceCommand));
 	shaderConstants.ssrTracer             = CreateScreenSpaceTracerData(viewContext.linearDepth, static_cast<Uint32>(renderer_params::ssrtStepsNum));
-	shaderConstants.ssrTraceLength         = renderer_params::ssrtTraceLenght;
+	shaderConstants.ssrTraceLength        = renderer_params::ssrtTraceLenght;
 	shaderConstants.gpuGBuffer            = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
-
-	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Shading Indirect Args"), shadingIndirectArgsBuffer, 0u);
-	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Rays Shading Counts"), raysShadingCountsBuffer, 0u);
-
-	lib::MTHandle<SpecularReflectionsTraceDS> traceRaysDS = graphBuilder.CreateDescriptorSet<SpecularReflectionsTraceDS>(RENDERER_RESOURCE_NAME("SpecularReflectionsTraceDS"));
-	traceRaysDS->u_rayDirections       = rayDirections;
-	traceRaysDS->u_traceCommands       = traceParams.tracesAllocation.rayTraceCommands;
-	traceRaysDS->u_hitMaterialInfos    = hitMaterialInfos;
-	traceRaysDS->u_sortedRays          = sortedRaysBuffer;
-	traceRaysDS->u_shadingIndirectArgs = shadingIndirectArgsBuffer;
-	traceRaysDS->u_raysShadingCounts   = raysShadingCountsBuffer;
-	traceRaysDS->u_constants           = shaderConstants;
+	shaderConstants.rayDirections         = rayDirections;
+	shaderConstants.traceCommands         = traceParams.tracesAllocation.rayTraceCommands;
+	shaderConstants.hitMaterialInfos      = hitMaterialInfos;
+	shaderConstants.sortedRays            = sortedRaysBuffer;
+	shaderConstants.shadingIndirectArgs   = shadingIndirectArgsBuffer;
+	shaderConstants.raysShadingCounts     = raysShadingCountsBuffer;
 
 	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("Specular Reflections Trace Rays"),
 								   SpecularReflectionsTracePSO::pso,
 								   traceParams.tracesAllocation.tracingIndirectArgs, 0u,
-								   rg::BindDescriptorSets(std::move(traceRaysDS)));
+								   rg::ShaderParams(shaderConstants));
 
 	// Phase (3) Shade Rays
 
@@ -577,19 +531,14 @@ static rdr::ShaderID CreateVariableRateTextureShader(const VariableRatePermutati
 
 
 BEGIN_SHADER_STRUCT(VariableRateRTConstants)
-	SHADER_STRUCT_FIELD(Uint32, forceFullRateTracing)
+	SHADER_STRUCT_FIELD(Uint32,                            forceFullRateTracing)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, influenceTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         roughnessTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, varianceEstimation)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         linearDepthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, specularReflectionsTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, diffuseReflectionsTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(RTVariableRateTextureDS, rg::RGDescriptorSetState<RTVariableRateTextureDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_influenceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_varianceEstimation)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_linearDepthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_specularReflectionsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_diffuseReflectionsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VariableRateRTConstants>), u_rtConstants)
-DS_END();
 
 } // vrt
 
@@ -881,7 +830,6 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 					specularUpsampleParams.depth                   = viewContext.depth;
 					specularUpsampleParams.depthHalfRes            = viewContext.depthHalfRes;
 					specularUpsampleParams.normalsHalfRes          = viewContext.normalsHalfRes;
-					specularUpsampleParams.renderViewDS            = viewSpec.GetRenderViewDS();
 					specularUpsampleParams.fireflyFilteringEnabled = true;
 					specularReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, denoiserResult.denoisedSpecular, specularUpsampleParams);
 				}
@@ -892,7 +840,6 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 					diffuseUpsampleParams.depth                   = viewContext.depth;
 					diffuseUpsampleParams.depthHalfRes            = viewContext.depthHalfRes;
 					diffuseUpsampleParams.normalsHalfRes          = viewContext.normalsHalfRes;
-					diffuseUpsampleParams.renderViewDS            = viewSpec.GetRenderViewDS();
 					diffuseUpsampleParams.fireflyFilteringEnabled = true;
 					diffuseReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, denoiserResult.denoisedDiffuse, diffuseUpsampleParams);
 				}
@@ -941,18 +888,20 @@ void SpecularReflectionsRenderStage::RenderVariableRateTexture(rg::RenderGraphBu
 
 	const rdr::ShaderID vrtShader = vrt::CreateVariableRateTextureShader(m_variableRateRenderer.GetPermutationSettings());
 
-	vrt::VariableRateRTConstants shaderConstants;
-	shaderConstants.forceFullRateTracing = renderer_params::forceFullRateTracingReflections;
+	{
+		vrt::VariableRateRTConstants shaderConstants;
+		shaderConstants.forceFullRateTracing = renderer_params::forceFullRateTracingReflections;
+		shaderConstants.influenceTexture           = reflectionsViewData.reflectionsInfluenceTexture;
+		shaderConstants.roughnessTexture           = isHalfRes ? viewContext.roughnessHalfRes : viewContext.gBuffer[GBuffer::Texture::Roughness];
+		shaderConstants.varianceEstimation         = reflectionsViewData.varianceEstimation;
+		shaderConstants.linearDepthTexture         = isHalfRes ? viewContext.linearDepthHalfRes : viewContext.linearDepth;
+		shaderConstants.specularReflectionsTexture = reflectionsViewData.finalSpecularGI;
+		shaderConstants.diffuseReflectionsTexture  = reflectionsViewData.finalDiffuseGI;
 
-	lib::MTHandle<vrt::RTVariableRateTextureDS> vrtDS = graphBuilder.CreateDescriptorSet<vrt::RTVariableRateTextureDS>(RENDERER_RESOURCE_NAME("RTVariableRateTextureDS"));
-	vrtDS->u_influenceTexture           = reflectionsViewData.reflectionsInfluenceTexture;
-	vrtDS->u_roughnessTexture           = isHalfRes ? viewContext.roughnessHalfRes : viewContext.gBuffer[GBuffer::Texture::Roughness];
-	vrtDS->u_varianceEstimation         = reflectionsViewData.varianceEstimation;
-	vrtDS->u_linearDepthTexture         = isHalfRes ? viewContext.linearDepthHalfRes : viewContext.linearDepth;
-	vrtDS->u_specularReflectionsTexture = reflectionsViewData.finalSpecularGI;
-	vrtDS->u_diffuseReflectionsTexture  = reflectionsViewData.finalDiffuseGI;
-	vrtDS->u_rtConstants                = shaderConstants;
-	m_variableRateRenderer.Render(graphBuilder, nullptr, vrtShader, rg::BindDescriptorSets(vrtDS));
+		rg::BindShaderParamsScope bindShaderParamsScope(graphBuilder, rg::ShaderParams(shaderConstants));
+
+		m_variableRateRenderer.Render(graphBuilder, nullptr, vrtShader);
+	}
 }
 
 void SpecularReflectionsRenderStage::UpdateSharcCache(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext)

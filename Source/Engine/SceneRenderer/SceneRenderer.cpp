@@ -148,7 +148,7 @@ RenderViewSpecsArray CollectRenderViews(rg::RenderGraphBuilder& graphBuilder, co
 }
 
 
-lib::MTHandle<RenderSceneDS> UpdateRenderSystemsPerFrame(SceneRendererData& rendererData, rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, const SceneUpdateContext& updateContext)
+rdr::GPUPtr<RenderSceneConstants> UpdateRenderSystemsPerFrame(SceneRendererData& rendererData, rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, const SceneUpdateContext& updateContext)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -204,10 +204,7 @@ lib::MTHandle<RenderSceneDS> UpdateRenderSystemsPerFrame(SceneRendererData& rend
 		systemsAPI.CallUpdateGPUSceneDataFunc(activeSystem.systemType, *activeSystem.system, updateContext, sceneConstants);
 	}
 
-	lib::MTHandle<RenderSceneDS> renderSceneDS = graphBuilder.CreateDescriptorSet<RenderSceneDS>(RENDERER_RESOURCE_NAME("RenderSceneDS"));
-	renderSceneDS->u_renderSceneConstants = sceneConstants;
-
-	return renderSceneDS;
+	return graphBuilder.CreateGPUData(sceneConstants);
 }
 
 
@@ -223,7 +220,7 @@ void ProcessRenderStage(rg::RenderGraphBuilder& graphBuilder, SceneRendererRunti
 	{
 		if (viewSpec.SupportsStage(stage))
 		{
-			const rg::BindDescriptorSetsScope viewDSScope(graphBuilder, rg::BindDescriptorSets(viewSpec.GetRenderViewDS()));
+			const rg::BindShaderParamsScope viewParamsScope(graphBuilder, rg::ShaderParams(viewSpec.GetViewShaderParams()));
 
 			const RenderViewPrivate& view = reinterpret_cast<const RenderViewPrivate&>(viewSpec.GetRenderView());
 			RenderStageBase* stageInstance = view.renderStages[stageIdx];
@@ -304,8 +301,8 @@ rg::RGTextureViewHandle ExecuteSceneRendering(SceneRendererHandle renderer, rg::
 			.rendererSettings  = settings
 		};
 
-	const lib::MTHandle<RenderSceneDS> renderSceneDS = renderer_utils::UpdateRenderSystemsPerFrame(*rendererData, graphBuilder, scene, updateContext);
-	const rg::BindDescriptorSetsScope rendererDSScope(graphBuilder, rg::BindDescriptorSets(std::move(renderSceneDS)));
+	const rdr::GPUPtr<RenderSceneConstants> renderSceneShaderParams = renderer_utils::UpdateRenderSystemsPerFrame(*rendererData, graphBuilder, scene, updateContext);
+	const rg::BindShaderParamsScope sceneParamsScope(graphBuilder, rg::ShaderParams(renderSceneShaderParams));
 
 	ViewRenderingSpec* mainViewSpec = nullptr;
 	renderer_utils::RenderViewSpecsArray renderViewsSpecs = renderer_utils::CollectRenderViews(graphBuilder, rendererRuntime, scene, view, OUT mainViewSpec);

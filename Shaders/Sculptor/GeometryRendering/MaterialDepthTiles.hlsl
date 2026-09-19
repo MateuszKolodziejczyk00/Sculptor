@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(CreateMaterialDepthTilesDS, 0)]]
+[[shader_params(MaterialDepthTilesShaderParams, PARAMS_CREATE_MATERIAL_DEPTH_TILES)]]
 
 #include "GeometryRendering/GeometryCommon.hlsli"
 
@@ -119,13 +119,13 @@ struct CS_INPUT
 void MaterialDepthTilesCS(CS_INPUT input)
 {
 	const uint2 groupOffset = input.groupID.xy * 64u;
-	const uint2 pixel = min(u_params.materialDepthResolution - 2, groupOffset + 2 * input.localID.xy);
+	const uint2 pixel = min(PARAMS_CREATE_MATERIAL_DEPTH_TILES->materialDepthResolution - 2, groupOffset + 2 * input.localID.xy);
 
 	float4 materialDepth = 1.f;
-	materialDepth.x = u_materialDepthTexture.Load(uint3(pixel + uint2(0, 0), 0));
-	materialDepth.y = u_materialDepthTexture.Load(uint3(pixel + uint2(0, 1), 0));
-	materialDepth.z = u_materialDepthTexture.Load(uint3(pixel + uint2(1, 0), 0));
-	materialDepth.w = u_materialDepthTexture.Load(uint3(pixel + uint2(1, 1), 0));
+	materialDepth.x = PARAMS_CREATE_MATERIAL_DEPTH_TILES->materialDepthTexture.Load(uint3(pixel + uint2(0, 0), 0));
+	materialDepth.y = PARAMS_CREATE_MATERIAL_DEPTH_TILES->materialDepthTexture.Load(uint3(pixel + uint2(0, 1), 0));
+	materialDepth.z = PARAMS_CREATE_MATERIAL_DEPTH_TILES->materialDepthTexture.Load(uint3(pixel + uint2(1, 0), 0));
+	materialDepth.w = PARAMS_CREATE_MATERIAL_DEPTH_TILES->materialDepthTexture.Load(uint3(pixel + uint2(1, 1), 0));
 
 	const uint4 materialBatchIdx = uint4(
 		MaterialDepthToMaterialBatchIdx(materialDepth.x),
@@ -153,6 +153,6 @@ void MaterialDepthTilesCS(CS_INPUT input)
 		uint maxMaterialBatchIdx;
 		UnpackBatchIndices(tileValues[0][0], OUT minMaterialBatchIdx, OUT maxMaterialBatchIdx);
 
-		u_materialDepthTilesTexture[input.groupID.xy] = uint2(minMaterialBatchIdx, maxMaterialBatchIdx);
+		PARAMS_CREATE_MATERIAL_DEPTH_TILES->materialDepthTilesTexture[input.groupID.xy] = uint2(minMaterialBatchIdx, maxMaterialBatchIdx);
 	}
 }

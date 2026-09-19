@@ -1,9 +1,4 @@
 #include "AutomaticExposure.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "RenderGraphBuilder.h"
 #include "Utils/ViewRenderingSpec.h"
@@ -13,6 +8,7 @@
 #include "SceneRenderer/RenderStages/Utils/BilateralGridRenderer.h"
 #include "RenderScene.h"
 #include "EngineFrame.h"
+#include "ResourcesManager.h"
 
 
 namespace spt::rsc
@@ -62,12 +58,11 @@ BEGIN_SHADER_STRUCT(ExposureSettings)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(LuminanceHistogramDS, rg::RGDescriptorSetState<LuminanceHistogramDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_linearColorTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_sampler)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<ExposureSettings>),                        u_exposureSettings)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                              u_luminanceHistogram)
-DS_END();
+BEGIN_SHADER_STRUCT(LuminanceHistogramConstants)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, linearColorTexture)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<ExposureSettings>,     exposureSettings)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,        luminanceHistogram)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CompileLuminanceHistogramPipeline()
@@ -78,7 +73,7 @@ static rdr::PipelineStateID CompileLuminanceHistogramPipeline()
 }
 
 
-static rg::RGBufferViewHandle CreateLuminanceHistogram(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const ExposureSettings& exposureSettings, rg::RGTextureViewHandle linearColorTexture)
+static rg::RGBufferViewHandle CreateLuminanceHistogram(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const rdr::GPUPtr<ExposureSettings>& exposureSettings, rg::RGTextureViewHandle linearColorTexture)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -92,30 +87,30 @@ static rg::RGBufferViewHandle CreateLuminanceHistogram(rg::RenderGraphBuilder& g
 
 	graphBuilder.FillBuffer(RG_DEBUG_NAME("Reset Luminance Histogram"), luminanceHistogramBuffer, 0, histogramSize, 0);
 	
-	const lib::MTHandle<LuminanceHistogramDS> luminanceHistogramDS = graphBuilder.CreateDescriptorSet<LuminanceHistogramDS>(RENDERER_RESOURCE_NAME("LuminanceHistogramDS"));
-	luminanceHistogramDS->u_linearColorTexture	= linearColorTexture;
-	luminanceHistogramDS->u_exposureSettings	= exposureSettings;
-	luminanceHistogramDS->u_luminanceHistogram	= luminanceHistogramBuffer;
+	LuminanceHistogramConstants consts;
+	consts.linearColorTexture = linearColorTexture;
+	consts.exposureSettings   = exposureSettings;
+	consts.luminanceHistogram = luminanceHistogramBuffer;
 
 	static const rdr::PipelineStateID pipelineState = CompileLuminanceHistogramPipeline();
 
-	const math::Vector2u textureRes = exposureSettings.textureSize;
+	const math::Vector2u textureRes = linearColorTexture->GetResolution2D();
 	const math::Vector3u dispatchGroupsNum(math::Utils::DivideCeil(textureRes.x(), 32u), math::Utils::DivideCeil(textureRes.y(), 32u), 1);
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Luminance Histogram"),
 						  pipelineState,
 						  dispatchGroupsNum,
-						  rg::BindDescriptorSets(luminanceHistogramDS));
+						  rg::ShaderParams(consts));
 
 	return luminanceHistogramBuffer;
 }
 
 
-DS_BEGIN(ComputeAdaptedLuminanceDS, rg::RGDescriptorSetState<ComputeAdaptedLuminanceDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<ExposureSettings>),     u_exposureSettings)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),             u_luminanceHistogram)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Real32>),           u_adaptedLuminance)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<ViewExposureData>), u_viewExposureData)
-DS_END();
+BEGIN_SHADER_STRUCT(ComputeAdaptedLuminanceConstants)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<ExposureSettings>,        exposureSettings)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<Uint32>,             luminanceHistogram)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Real32>,           adaptedLuminance)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<ViewExposureData>, viewExposureData)
+END_SHADER_STRUCT();
 
 
 struct ViewLuminanceData
@@ -132,7 +127,7 @@ static rdr::PipelineStateID CompileAdaptedLuminancePipeline()
 }
 
 
-static rg::RGBufferViewHandle ComputeAdaptedLuminance(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const ExposureSettings& exposureSettings, rg::RGBufferViewHandle luminanceHistogram, rg::RGBufferViewHandle viewExposureData)
+static rg::RGBufferViewHandle ComputeAdaptedLuminance(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const rdr::GPUPtr<ExposureSettings>& exposureSettings, rg::RGBufferViewHandle luminanceHistogram, rg::RGBufferViewHandle viewExposureData)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -153,15 +148,15 @@ static rg::RGBufferViewHandle ComputeAdaptedLuminance(rg::RenderGraphBuilder& gr
 
 	const rg::RGBufferViewHandle adaptedLuminanceBuffer = graphBuilder.AcquireExternalBufferView(viewLuminanceData.adaptedLuminance->GetFullView());
 
-	const lib::MTHandle<ComputeAdaptedLuminanceDS> computeAdaptedLuminanceDS = graphBuilder.CreateDescriptorSet<ComputeAdaptedLuminanceDS>(RENDERER_RESOURCE_NAME("ComputeAdaptedLuminanceDS"));
-	computeAdaptedLuminanceDS->u_exposureSettings	= exposureSettings;
-	computeAdaptedLuminanceDS->u_luminanceHistogram = luminanceHistogram;
-	computeAdaptedLuminanceDS->u_adaptedLuminance	= adaptedLuminanceBuffer;
-	computeAdaptedLuminanceDS->u_viewExposureData	= viewExposureData;
+	ComputeAdaptedLuminanceConstants consts;
+	consts.exposureSettings   = exposureSettings;
+	consts.luminanceHistogram = luminanceHistogram;
+	consts.adaptedLuminance   = adaptedLuminanceBuffer;
+	consts.viewExposureData   = viewExposureData;
 
 	static const rdr::PipelineStateID pipelineState = CompileAdaptedLuminancePipeline();
 
-	graphBuilder.Dispatch(RG_DEBUG_NAME("Adapted Luminance"), pipelineState, math::Vector3u(1, 1, 1), rg::BindDescriptorSets(computeAdaptedLuminanceDS));
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Adapted Luminance"), pipelineState, math::Vector3u(1, 1, 1), rg::ShaderParams(consts));
 
 	return adaptedLuminanceBuffer;
 }
@@ -187,8 +182,6 @@ static bilateral_grid::BilateralGridInfo RenderBilateralGrid(rg::RenderGraphBuil
 
 	gaussian_blur_renderer::GaussianBlur2DParams logLuminanceBlurParams(params::logLuminanceBlurSigma, params::logLuminanceBlurXKernel, params::logLuminanceBlurYKernel);
 	grid.downsampledLogLuminance = gaussian_blur_renderer::ApplyGaussianBlur2D(graphBuilder, RG_DEBUG_NAME("Downsampled Log Luminance Blur"), grid.downsampledLogLuminance, logLuminanceBlurParams);
-
-	const math::Vector2u tileSize = bilateral_grid::GetGridTileSize();
 
 	return grid;
 }
@@ -219,9 +212,10 @@ Outputs RenderAutoExposure(rg::RenderGraphBuilder& graphBuilder, const RenderSce
 	exposureSettings.rejectedBrightPixelsPercentage = params::rejectedBrightPixelsPercentage;
 	exposureSettings.ec0                            = params::ec0;
 	exposureSettings.ec1                            = params::ec1;
+	const rdr::GPUPtr<luminance_histogram_internal::ExposureSettings> exposureSettingsGPU = graphBuilder.CreateGPUData(exposureSettings);
 
-	const rg::RGBufferViewHandle luminanceHistogram = luminance_histogram_internal::CreateLuminanceHistogram(graphBuilder, viewSpec, exposureSettings, inputs.linearColor);
-	luminance_histogram_internal::ComputeAdaptedLuminance(graphBuilder, viewSpec, exposureSettings, luminanceHistogram, inputs.viewExposureData);
+	const rg::RGBufferViewHandle luminanceHistogram = luminance_histogram_internal::CreateLuminanceHistogram(graphBuilder, viewSpec, exposureSettingsGPU, inputs.linearColor);
+	luminance_histogram_internal::ComputeAdaptedLuminance(graphBuilder, viewSpec, exposureSettingsGPU, luminanceHistogram, inputs.viewExposureData);
 
 	Outputs outputs;
 	outputs.bilateralGridInfo = bilateralGrid;

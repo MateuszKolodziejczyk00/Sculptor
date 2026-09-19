@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(DebugGeometryPassDS, 0)]]
+[[shader_params(DebugGeometryPassConstants, PARAMS)]]
 
 
 #define DEBUG_GEOMETRY_TYPE_LINE   0
@@ -26,11 +26,11 @@ VS_OUTPUT ProcessLine(VS_INPUT input)
 {
 	VS_OUTPUT output;
 
-	const DebugLineDefinition lineDef = u_passConstants.lines.Load(input.instanceIdx);
+	const DebugLineDefinition lineDef = PARAMS->lines.Load(input.instanceIdx);
 
 	const float3 vertexWS = input.vertexIdx == 0u ? lineDef.begin : lineDef.end;
 
-	output.clipSpace = mul(u_passConstants.viewProjectionMatrix, float4(vertexWS, 1.0f));
+	output.clipSpace = mul(PARAMS->viewProjectionMatrix, float4(vertexWS, 1.0f));
 	output.color     = float4(lineDef.color, 1.f);
 
 	return output;
@@ -41,7 +41,7 @@ VS_OUTPUT ProcessMarker(VS_INPUT input)
 {
 	VS_OUTPUT output;
 
-	const DebugMarkerDefinition markerDef = u_passConstants.markers.Load(input.instanceIdx);
+	const DebugMarkerDefinition markerDef = PARAMS->markers.Load(input.instanceIdx);
 
 	float3 localSpace = 0.f;
 	const uint axis = (input.vertexIdx >> 1u);
@@ -49,7 +49,7 @@ VS_OUTPUT ProcessMarker(VS_INPUT input)
 
 	const float3 vertexWS = markerDef.location + localSpace * markerDef.size;
 
-	output.clipSpace = mul(u_passConstants.viewProjectionMatrix, float4(vertexWS, 1.0f));
+	output.clipSpace = mul(PARAMS->viewProjectionMatrix, float4(vertexWS, 1.0f));
 	output.color     = float4(markerDef.color, 1.f);
 
 	return output;
@@ -60,13 +60,13 @@ VS_OUTPUT ProcessSphere(VS_INPUT input)
 {
 	VS_OUTPUT output;
 
-	const DebugSphereDefinition sphereDef = u_passConstants.spheres.Load(input.instanceIdx);
+	const DebugSphereDefinition sphereDef = PARAMS->spheres.Load(input.instanceIdx);
 
-	const float3 localSpace = u_passConstants.sphereVertices.Load(input.vertexIdx) * sphereDef.radius;
+	const float3 localSpace = PARAMS->sphereVertices.Load(input.vertexIdx) * sphereDef.radius;
 
 	const float3 vertexWS = sphereDef.center + localSpace;
 
-	output.clipSpace = mul(u_passConstants.viewProjectionMatrix, float4(vertexWS, 1.0f));
+	output.clipSpace = mul(PARAMS->viewProjectionMatrix, float4(vertexWS, 1.0f));
 	output.color     = float4(sphereDef.color, 1.f);
 
 	return output;

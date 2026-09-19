@@ -27,6 +27,8 @@ public:
 
 	static const VkPhysicalDeviceRayTracingPipelinePropertiesKHR& GetRayTracingPipelineProperties();
 
+	static const VkPhysicalDeviceDescriptorHeapPropertiesEXT& GetDescriptorProps();
+
 private:
 
 	VulkanRHILimits() = default;

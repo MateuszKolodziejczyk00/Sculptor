@@ -1,9 +1,9 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderViewDS)]]
-[[descriptor_set(SharcCacheDS)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(SharcCacheParams, PARAMS_SHARC_CACHE)]]
 
-[[shader_params(SharcDebugViewConstants, u_constants)]]
+[[shader_params(SharcDebugViewConstants, PARAMS_SHARC_DEBUG_VIEW_CONSTANTS)]]
 
 
 #include "SpecularReflections/SculptorSharcQuery.hlsli"
@@ -23,7 +23,7 @@ void SharcDebugViewCS(CS_INPUT input)
 
 	float3 luminance = 0.f;
 
-	const GBufferInterface gbuffer = GBufferInterface(u_constants.gpuGBuffer);
+	const GBufferInterface gbuffer = GBufferInterface(PARAMS_SHARC_DEBUG_VIEW_CONSTANTS->gpuGBuffer);
 
 	const SurfaceInfo surface = gbuffer.GetSurfaceInfo(coords);
 
@@ -35,12 +35,12 @@ void SharcDebugViewCS(CS_INPUT input)
 #if SHARC_MATERIAL_DEMODULATION
 		query.materialDemodulation = 1.f;
 #endif // SHARC_MATERIAL_DEMODULATION
-		if (!QueryCachedLuminance(u_sceneView.viewLocation, u_viewExposure.exposure, query, OUT luminance))
+		if (!QueryCachedLuminance(VIEW->sceneView.viewLocation, VIEW->viewExposure->exposure, query, OUT luminance))
 		{
 			luminance = 0.f;
 
 		}
 	}
 
-	debug::WriteDebugPixelOnScreen(coords, float4(luminance * u_viewExposure.exposure, 1.f));
+	debug::WriteDebugPixelOnScreen(coords, float4(luminance * VIEW->viewExposure->exposure, 1.f));
 }

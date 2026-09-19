@@ -126,17 +126,27 @@ struct LightingContribution
 		return Create(inLuminance, inLuminance);
 	}
 
-	LightingContribution operator*(float3 value)
-	{
-		LightingContribution res;
-		res.sceneLuminance         = sceneLuminance * value;
-		res.eyeAdaptationLuminance = eyeAdaptationLuminance * value;
-		return res;
-	}
-
 	float3 sceneLuminance;
 	float3 eyeAdaptationLuminance;
 };
+
+
+LightingContribution operator*(LightingContribution lhs, float rhs)
+{
+	LightingContribution res;
+	res.sceneLuminance         = lhs.sceneLuminance * rhs;
+	res.eyeAdaptationLuminance = lhs.eyeAdaptationLuminance * rhs;
+	return res;
+}
+
+
+LightingContribution operator*(LightingContribution lhs, float3 rhs)
+{
+	LightingContribution res;
+	res.sceneLuminance         = lhs.sceneLuminance * rhs;
+	res.eyeAdaptationLuminance = lhs.eyeAdaptationLuminance * rhs;
+	return res;
+}
 
 
 LightingContribution DoShading(in ShadedSurface surface, in float3 lightDir, in float3 viewDir, in float3 peakIlluminance)

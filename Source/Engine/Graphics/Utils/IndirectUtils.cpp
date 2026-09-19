@@ -47,7 +47,6 @@ rg::RGBufferViewHandle CreateIndirectInstancedDrawCommand(rg::RenderGraphBuilder
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Initialize Indirect Instanced Draw Command"),
 						  InitIndirectInstancedDrawCommandPSO::pso,
 						  1u,
-						  rg::EmptyDescriptorSets(),
 						  shaderConstants);
 
 	return commandBuffer;
@@ -77,7 +76,6 @@ rg::RGBufferViewHandle CreateIndirectDispatchMeshCommand(rg::RenderGraphBuilder&
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Initialize Indirect Dispatch Mesh Command"),
 						  InitIndirectDispatchMeshCommandPSO::pso,
 						  1u,
-						  rg::EmptyDescriptorSets(),
 						  shaderConstants);
 
 	return commandBuffer;

@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(DownsampleGeometryTexturesDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
+[[shader_params(DownsampleGeometryTexturesConstants, PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES)]]
+[[shader_params(GPURenderView, VIEW)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/GBuffer/GBuffer.hlsli"
@@ -58,19 +58,19 @@ void DownsampleGeometryTexturesCS(CS_INPUT input)
 {
 	const uint2 pixel = input.globalID.xy;
 
-	if(all(pixel < u_constants.outputRes))
+	if(all(pixel < PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->outputRes))
 	{
 		const uint2 inputBasePixel = pixel * 2;
 
-		const float2 inputBaseUV = (float2(inputBasePixel) + 0.5f) * u_constants.inputPixelSize;
+		const float2 inputBaseUV = (float2(inputBasePixel) + 0.5f) * PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->inputPixelSize;
 
 		const uint2 samplesOffset[4] = { uint2(0, 1), uint2(1, 1), uint2(1, 0), uint2(0, 0) };
 
-		const float4 depths = u_depthTexture.Gather(u_nearestSampler, inputBaseUV, 0);
+		const float4 depths = PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->depthTexture.Gather(BindlessSamplers::NearestClampEdge(), inputBaseUV);
 
-		const float2 outputUV = (float2(pixel) + 0.5f) * u_constants.outputPixelSize;
+		const float2 outputUV = (float2(pixel) + 0.5f) * PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->outputPixelSize;
 
-		const Ray outputCameraRay = CreateViewRayWS(u_sceneView, outputUV);
+		const Ray outputCameraRay = CreateViewRayWS(VIEW->sceneView, outputUV);
 
 		float4 intersectionDepths = depths;
 		const float minDepth = min(min(min(depths.x, depths.y), depths.z), depths.w);
@@ -79,12 +79,12 @@ void DownsampleGeometryTexturesCS(CS_INPUT input)
 		{
 			if(!IsNearlyZero(depths[sampleIdx]))
 			{
-				const uint3 inputPixel = uint3(min(inputBasePixel + samplesOffset[sampleIdx], u_constants.inputRes - 1), 0);
-				const float2 inputUV = (float2(inputPixel.xy) + 0.5f) * u_constants.inputPixelSize;
+				const uint3 inputPixel = uint3(min(inputBasePixel + samplesOffset[sampleIdx], PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->inputRes - 1), 0);
+				const float2 inputUV = (float2(inputPixel.xy) + 0.5f) * PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->inputPixelSize;
 
-				const float3 locationWS = NDCToWorldSpace(float3(inputUV * 2.f - 1.f, depths[sampleIdx]), u_sceneView);
+				const float3 locationWS = NDCToWorldSpace(float3(inputUV * 2.f - 1.f, depths[sampleIdx]), VIEW->sceneView);
 
-				const float4 tangentFrame = u_tangentFrameTexture.Load(inputPixel);
+				const float4 tangentFrame = PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->tangentFrameTexture.Load(inputPixel);
 				const float3 normal = DecodeGBufferNormal(tangentFrame);
 
 				const Plane samplePlane = Plane::Create(normal, locationWS);
@@ -93,7 +93,7 @@ void DownsampleGeometryTexturesCS(CS_INPUT input)
 				if(intersection.IsValid())
 				{
 					const float3 intersectionWS = outputCameraRay.GetIntersectionLocation(intersection);
-					const float3 intersectionNDC = WorldSpaceToNDC(intersectionWS, u_sceneView);
+					const float3 intersectionNDC = WorldSpaceToNDC(intersectionWS, VIEW->sceneView);
 
 					if(intersectionNDC.z > minDepth)
 					{
@@ -106,30 +106,30 @@ void DownsampleGeometryTexturesCS(CS_INPUT input)
 		const bool useMinDepth = ((pixel.x + pixel.y) & 1) == 1;
 		const int mostImportantSampleIdx = SelectSampleForDownsampledTexture(useMinDepth, intersectionDepths);
 
-		const uint3 inputPixel = uint3(min(inputBasePixel + samplesOffset[mostImportantSampleIdx], u_constants.inputRes - 1), 0);
-		const float2 inputUV = (float2(inputPixel.xy) + 0.5f) * u_constants.inputPixelSize;
+		const uint3 inputPixel = uint3(min(inputBasePixel + samplesOffset[mostImportantSampleIdx], PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->inputRes - 1), 0);
+		const float2 inputUV = (float2(inputPixel.xy) + 0.5f) * PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->inputPixelSize;
 
-		const float4 tangentFrame = u_tangentFrameTexture.Load(inputPixel);
+		const float4 tangentFrame = PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->tangentFrameTexture.Load(inputPixel);
 		const float3 normal = DecodeGBufferNormal(tangentFrame);
 
 		const float depth = intersectionDepths[mostImportantSampleIdx];
 
-		const float2 motion = u_motionTexture.Load(inputPixel);
+		const float2 motion = PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->motionTexture.Load(inputPixel);
 
-		u_depthTextureHalfRes[pixel]   = depth;
-		u_motionTextureHalfRes[pixel]  = motion;
-		u_normalsTextureHalfRes[pixel] = OctahedronEncodeNormal(normal);
+		PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->depthTextureHalfRes[pixel]   = depth;
+		PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->motionTextureHalfRes[pixel]  = motion;
+		PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->normalsTextureHalfRes[pixel] = OctahedronEncodeNormal(normal);
 
-		if(u_constants.downsampleBaseColor)
+		if(PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->downsampleBaseColor)
 		{
-			const float4 baseColorMetalic = u_baseColorMetallicTexture.Load(inputPixel);
-			u_baseColorTextureHalfRes[pixel] = baseColorMetalic;
+			const float4 baseColorMetalic = PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->baseColorMetallicTexture.Load(inputPixel);
+			PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->baseColorTextureHalfRes[pixel] = baseColorMetalic;
 		}
 
-		if(u_constants.downsampleRoughness)
+		if(PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->downsampleRoughness)
 		{
-			const float roughness = u_roughnessTexture.Load(inputPixel);
-			u_roughnessTextureHalfRes[pixel] = roughness;
+			const float roughness = PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->roughnessTexture.Load(inputPixel);
+			PARAMS_DOWNSAMPLE_GEOMETRY_TEXTURES->roughnessTextureHalfRes[pixel] = roughness;
 		}
 	}
 }

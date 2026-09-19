@@ -137,7 +137,7 @@ uint CreateCompressedVariableRateData(in uint variableRateMask)
 }
 
 
-uint LoadVariableRate(in Texture2D<uint> vrTexture, in uint2 pixel)
+uint LoadVariableRate(in SRVTexture2D<uint> vrTexture, in uint2 pixel)
 {
 	const uint variableRateData = vrTexture.Load(uint3(pixel, 0));
 
@@ -150,12 +150,12 @@ uint LoadVariableRate(in Texture2D<uint> vrTexture, in uint2 pixel)
 #endif // USE_CONSERVATIVE_REPROJECTION
 
 
-uint LoadHistoryVariableRate(in Texture2D<uint> vrTexture, in uint2 coords)
+uint LoadHistoryVariableRate(in SRVTexture2D<uint> vrTexture, in uint2 coords)
 {
 	return vrTexture.Load(uint3(coords, 0));
 }
 
-uint LoadHistoryVariableRateSubsampled(in Texture2D<uint> vrTexture, in uint2 coords)
+uint LoadHistoryVariableRateSubsampled(in SRVTexture2D<uint> vrTexture, in uint2 coords)
 {
 #if USE_CONSERVATIVE_REPROJECTION
 
@@ -236,7 +236,7 @@ void UnpackVRBlockInfo(in uint packedVRBlockInfo, out uint2 localOffset, out uin
 }
 
 
-uint2 GetVariableBlockCoords(in Texture2D<uint> variableRateBlocksTexture, in uint2 pixel)
+uint2 GetVariableBlockCoords(in SRVTexture2D<uint> variableRateBlocksTexture, in uint2 pixel)
 {
 	const uint vrBlockInfo = variableRateBlocksTexture.Load(uint3(pixel, 0)).x;
 
@@ -250,7 +250,7 @@ uint2 GetVariableBlockCoords(in Texture2D<uint> variableRateBlocksTexture, in ui
 }
 
 
-void GetVariableRateInfo(in RWTexture2D<uint> variableRateBlocksTexture, in uint2 pixel, out uint2 traceCoords, out uint variableRateMask)
+void GetVariableRateInfo(in UAVTexture2D<uint> variableRateBlocksTexture, in uint2 pixel, out uint2 traceCoords, out uint variableRateMask)
 {
 	const uint vrBlockInfo = variableRateBlocksTexture[pixel];
 
@@ -275,14 +275,14 @@ uint2 GetVariableTraceCoords(in uint vrBlockInfo, in uint2 pixel)
 }
 
 
-uint2 GetVariableTraceCoords(in Texture2D<uint> variableRateBlocksTexture, in uint2 pixel)
+uint2 GetVariableTraceCoords(in SRVTexture2D<uint> variableRateBlocksTexture, in uint2 pixel)
 {
 	const uint vrBlockInfo = variableRateBlocksTexture.Load(uint3(pixel, 0)).x;
 	return GetVariableTraceCoords(vrBlockInfo, pixel);
 }
 
 
-uint2 GetVariableTraceCoords(in RWTexture2D<uint> variableRateBlocksTexture, in uint2 pixel)
+uint2 GetVariableTraceCoords(in UAVTexture2D<uint> variableRateBlocksTexture, in uint2 pixel)
 {
 	const uint vrBlockInfo = variableRateBlocksTexture[pixel];
 	return GetVariableTraceCoords(vrBlockInfo, pixel);

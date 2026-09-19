@@ -1,6 +1,10 @@
 #ifndef TERRAIN_TYPES_HLSLI
 #define TERRAIN_TYPES_HLSLI
 
+
+#include "Materials/MaterialSystem.hlsli"
+
+
 struct TerrainMaterialsFactors
 {
 	uint4  materialIDs;
@@ -8,7 +12,7 @@ struct TerrainMaterialsFactors
 };
 
 
-struct TerrainDetilingSampler
+struct TerrainDetilingSampler : IMaterialSampler
 {
 	float2 uva;
 	float2 uvb;
@@ -74,18 +78,27 @@ struct TerrainDetilingSampler
 		return sampler;
 	}
 
-	template<typename T>
-	T Sample(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv)
+	T Sample<T : ITexelElement & IWeightable>(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv)
 	{
-		const float2 b = smoothstep(0.25,0.75, frac(uv));
+		const float2 b = smoothstep(0.25f, 0.75f, frac(uv));
 		
 		const T sampleA = texture.Sample(sampler, uva);
 		const T sampleB = texture.Sample(sampler, uvb);
 		const T sampleC = texture.Sample(sampler, uvc);
 		const T sampleD = texture.Sample(sampler, uvd);
 
-		 return lerp(lerp(sampleA, sampleB, b.x), 
-					 lerp(sampleC, sampleD, b.x), b.y);
+		return T.Lerp(T.Lerp(sampleA, sampleB, b.x), 
+					  T.Lerp(sampleC, sampleD, b.x), b.y);
+	}
+
+	T SampleLevel<T : ITexelElement & IWeightable>(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv, in float level)
+	{
+		return texture.SampleLevel(sampler, uv, level);
+	}
+
+	T SampleGrad<T : ITexelElement & IWeightable>(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv, in float2 ddx, in float2 ddy)
+	{
+		return texture.SampleGrad(sampler, uv, ddx, ddy);
 	}
 };
 
@@ -113,41 +126,49 @@ void AccumulateTerrainMaterial(inout TerrainMaterialsFactors factors, uint mater
 		return;
 	}
 
-	[unroll]
-	for (uint idx = 0u; idx < 4u; ++idx)
 	{
-		if (factors.materialIDs[idx] == materialID)
+		[unroll]
+		for (uint idx = 0u; idx < 4u; ++idx)
 		{
-			factors.materialWeights[idx] += weight;
-			return;
+			if (factors.materialIDs[idx] == materialID)
+			{
+				factors.materialWeights[idx] += weight;
+				return;
+			}
 		}
 	}
 
-	[unroll]
-	for (uint idx = 0u; idx < 4u; ++idx)
 	{
-		if (factors.materialIDs[idx] == IDX_NONE_8)
+		[unroll]
+		for (uint idx = 0u; idx < 4u; ++idx)
 		{
-			factors.materialIDs[idx]     = materialID;
-			factors.materialWeights[idx] = weight;
-			return;
+			if (factors.materialIDs[idx] == IDX_NONE_8)
+			{
+				factors.materialIDs[idx]     = materialID;
+				factors.materialWeights[idx] = weight;
+				return;
+			}
 		}
 	}
 
 	uint smallestWeightIdx = 0u;
-	[unroll]
-	for (uint idx = 1u; idx < 4u; ++idx)
 	{
-		if (factors.materialWeights[idx] < factors.materialWeights[smallestWeightIdx])
+		[unroll]
+		for (uint idx = 1u; idx < 4u; ++idx)
 		{
-			smallestWeightIdx = idx;
+			if (factors.materialWeights[idx] < factors.materialWeights[smallestWeightIdx])
+			{
+				smallestWeightIdx = idx;
+			}
 		}
 	}
 
-	if (weight > factors.materialWeights[smallestWeightIdx])
 	{
-		factors.materialIDs[smallestWeightIdx]     = materialID;
-		factors.materialWeights[smallestWeightIdx] = weight;
+		if (weight > factors.materialWeights[smallestWeightIdx])
+		{
+			factors.materialIDs[smallestWeightIdx]     = materialID;
+			factors.materialWeights[smallestWeightIdx] = weight;
+		}
 	}
 }
 
@@ -217,10 +238,10 @@ TerrainMaterialsFactors SampleTerrainMaterialsMap(in TerrainMaterialsMap materia
 								   CubicBSplineWeight( 1.f - bilinearFrac.y),
 								   CubicBSplineWeight( 2.f - bilinearFrac.y));
 
-	const uint4 gatherLowerLeft  = materialsMap.materialIDs.Gather<uint4>(BindlessSamplers::NearestClampEdge(), uv + float2(-texelSize.x, -texelSize.y));
-	const uint4 gatherLowerRight = materialsMap.materialIDs.Gather<uint4>(BindlessSamplers::NearestClampEdge(), uv + float2( texelSize.x, -texelSize.y));
-	const uint4 gatherUpperLeft  = materialsMap.materialIDs.Gather<uint4>(BindlessSamplers::NearestClampEdge(), uv + float2(-texelSize.x,  texelSize.y));
-	const uint4 gatherUpperRight = materialsMap.materialIDs.Gather<uint4>(BindlessSamplers::NearestClampEdge(), uv + float2( texelSize.x,  texelSize.y));
+	const uint4 gatherLowerLeft  = materialsMap.materialIDs.Gather(BindlessSamplers::NearestClampEdge(), uv + float2(-texelSize.x, -texelSize.y));
+	const uint4 gatherLowerRight = materialsMap.materialIDs.Gather(BindlessSamplers::NearestClampEdge(), uv + float2( texelSize.x, -texelSize.y));
+	const uint4 gatherUpperLeft  = materialsMap.materialIDs.Gather(BindlessSamplers::NearestClampEdge(), uv + float2(-texelSize.x,  texelSize.y));
+	const uint4 gatherUpperRight = materialsMap.materialIDs.Gather(BindlessSamplers::NearestClampEdge(), uv + float2( texelSize.x,  texelSize.y));
 
 	TerrainMaterialsFactors factors = CreateEmptyTerrainMaterialsFactors();
 
@@ -250,7 +271,7 @@ TerrainMaterialsFactors SampleTerrainMaterialsMap(in TerrainMaterialsMap materia
 #else
 	const float2 bilinearCoords  = uv * materialsMap.resolution - 0.5f + SPT_SUB_PIXEL_PRECITION_OFFSET;
 
-	const uint4 materialIDs = materialsMap.materialIDs.Gather<uint4>(BindlessSamplers::NearestClampEdge(), uv);
+	const uint4 materialIDs = materialsMap.materialIDs.Gather(BindlessSamplers::NearestClampEdge(), uv);
 
 	const float2 bilinearFrac    = frac(bilinearCoords);
 	const float2 invBilinearFrac = 1.f - bilinearFrac;

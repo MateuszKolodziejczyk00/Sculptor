@@ -38,7 +38,7 @@ void UnpackTileDrawCommand(uint tileLODAndChangeMask, out uint tileIdx, out uint
 }
 
 
-struct TerrainInterface : TerrainSceneData
+extension TerrainSceneData
 {
 	TerrainClipmapTileGPU GetTile(uint tileIdx)
 	{
@@ -76,7 +76,7 @@ struct TerrainInterface : TerrainSceneData
 	float GetHeightSmooth(float2 locationXY)
 	{
 		const float2 uv = GetHeightMapUV(locationXY);
-		const float heightMapValue = SampleTricubicBSpline(heightMap.texture.GetResource(), BindlessSamplers::LinearClampEdge(), uv, heightMap.res, heightMap.invRes);
+		const float heightMapValue = SampleTricubicBSpline(heightMap.texture, BindlessSamplers::LinearClampEdge(), uv, heightMap.res, heightMap.invRes);
 		return lerp(heightMap.minHeight, heightMap.maxHeight, heightMapValue);
 	}
 
@@ -183,12 +183,13 @@ struct TerrainInterface : TerrainSceneData
 	}
 };
 
+typealias TerrainInterface = TerrainSceneData;
 
-#if defined(DS_RenderSceneDS)
+#if defined(PARAM_RenderSceneConstants)
 TerrainInterface SceneTerrain()
 {
-	return TerrainInterface(u_renderSceneConstants.terrain);
+	return SCENE->terrain;
 }
-#endif // DS_RenderSceneDS
+#endif // PARAM_RenderSceneConstants
 
 #endif // TERRAIN_HLSLI

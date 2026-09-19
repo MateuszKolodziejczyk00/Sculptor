@@ -15,7 +15,7 @@ float3 GetCloudscapeProbeLocation(CloudscapeConstants cloudscape, uint2 probeCoo
     return float3(cloudscape.probesOrigin + cloudscape.probesSpacing * probeCoords, cloudscape.probesHeight);
 }
 
-#ifdef DS_CloudscapeProbesDS
+#ifdef PARAM_CloudscapeProbesParams
 
 struct CloudscapeSample
 {
@@ -25,10 +25,10 @@ struct CloudscapeSample
 
 CloudscapeSample SampleCloudscapeProbe(uint2 probeCoords, in float2 octUV)
 {
-    probeCoords = min(probeCoords, u_cloudscapeConstants.probesNum - 1u);
-    const float2 uv = probeCoords * u_cloudscapeConstants.uvPerProbe + u_cloudscapeConstants.uvBorder + u_cloudscapeConstants.uvPerProbeNoBorders * octUV;
+    probeCoords = min(probeCoords, PARAM_CloudscapeProbesParams->cloudscapeConstants->probesNum - 1u);
+    const float2 uv = probeCoords * PARAM_CloudscapeProbesParams->cloudscapeConstants->uvPerProbe + PARAM_CloudscapeProbesParams->cloudscapeConstants->uvBorder + PARAM_CloudscapeProbesParams->cloudscapeConstants->uvPerProbeNoBorders * octUV;
 
-    const float4 probeData = u_cloudscapeProbes.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0.f);
+    const float4 probeData = PARAM_CloudscapeProbesParams->cloudscapeProbes.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0.f);
 
     CloudscapeSample res;
     res.inScattering  = probeData.xyz;
@@ -51,7 +51,7 @@ CloudscapeSample SampleCloudscape(in float3 location, in float3 direction)
     result.inScattering = 0.f;
     result.transmittance = 0.f;
 
-    const float2 probeCoords = (location.xy - u_cloudscapeConstants.probesOrigin) * u_cloudscapeConstants.rcpProbesSpacing;
+    const float2 probeCoords = (location.xy - PARAM_CloudscapeProbesParams->cloudscapeConstants->probesOrigin) * PARAM_CloudscapeProbesParams->cloudscapeConstants->rcpProbesSpacing;
 
     const float2 fracCoords = frac(probeCoords);
 
@@ -89,7 +89,7 @@ CloudscapeSample SampleHighResCloudscape(in float3 direction)
 
     const float2 octUV = OctahedronEncodeHemisphereNormal(direction);
 
-    const float4 probesData = u_cloudscapeHighResProbe.SampleLevel(BindlessSamplers::LinearClampEdge(), octUV, 0.f);
+    const float4 probesData = PARAM_CloudscapeProbesParams->cloudscapeHighResProbe.SampleLevel(BindlessSamplers::LinearClampEdge(), octUV, 0.f);
 
     result.inScattering  = probesData.xyz;
     result.transmittance = probesData.w;
@@ -97,6 +97,6 @@ CloudscapeSample SampleHighResCloudscape(in float3 direction)
     return result;
 }
 
-#endif // DS_CloudscapeProbesDS
+#endif // PARAM_CloudscapeProbesParams
 
 #endif // CLOUDSCAPE_HLSLI

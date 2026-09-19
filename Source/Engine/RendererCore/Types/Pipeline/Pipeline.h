@@ -4,7 +4,6 @@
 #include "RendererResource.h"
 #include "RHIBridge/RHIPipelineImpl.h"
 #include "ShaderMetaData.h"
-#include "RHICore/RHIPipelineLayoutTypes.h"
 
 
 namespace spt::rdr
@@ -28,8 +27,6 @@ public:
 protected:
 
 	void AppendToPipelineMetaData(const smd::ShaderMetaData& shaderMetaData);
-
-	SPT_NODISCARD rhi::PipelineLayoutDefinition CreateLayoutDefinition() const;
 
 private:
 

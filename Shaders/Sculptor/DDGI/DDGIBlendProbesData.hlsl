@@ -27,15 +27,15 @@
 #endif // RAYS_NUM_PER_PROBE
 
 
-[[descriptor_set(DDGIBlendProbesDataDS, 0)]]
+[[shader_params(DDGIBlendProbesDataConsts, PARAMS_D_D_G_I_BLEND_PROBES_DATA)]]
 
 #if DDGI_BLEND_TYPE == DDGI_BLEND_ILLUMINANCE
 
-[[descriptor_set(DDGIUpdateProbesIlluminanceDS, 1)]]
+
 
 #elif DDGI_BLEND_TYPE == DDGI_BLEND_DISTANCES
 
-[[descriptor_set(DDGIUpdateProbesHitDistanceDS, 1)]]
+
 
 #endif // DDGI_BLEND_TYPE
 
@@ -67,14 +67,13 @@ void CacheRaysResults(in uint updatedProbeIdx, in uint2 threadLocalID)
 {
     const uint flatThreadLocalID = threadLocalID.y * GROUP_SIZE_X + threadLocalID.x;
 
-    uint2 traceResultTextureRes;
-    u_traceRaysResultTexture.GetDimensions(traceResultTextureRes.x, traceResultTextureRes.y);
+    uint2 traceResultTextureRes = PARAMS_D_D_G_I_BLEND_PROBES_DATA->traceRaysResultTexture.GetResolution();
 
     const float2 rcpTraceResultTextureRes = rcp(float2(traceResultTextureRes));
 
     for (uint rayIdx = flatThreadLocalID; rayIdx < RAYS_NUM_PER_PROBE; rayIdx += (GROUP_SIZE_X * GROUP_SIZE_Y))
     {
-        const float4 rayResult = u_traceRaysResultTexture.Load(uint3(updatedProbeIdx, rayIdx, 0u));
+        const float4 rayResult = PARAMS_D_D_G_I_BLEND_PROBES_DATA->traceRaysResultTexture.Load(uint3(updatedProbeIdx, rayIdx, 0u));
 
         rayDirections[rayIdx] = GetProbeRayDirection(rayIdx, RAYS_NUM_PER_PROBE);
 
@@ -86,7 +85,7 @@ void CacheRaysResults(in uint updatedProbeIdx, in uint2 threadLocalID)
 
         rayHitDistances[rayIdx] = rayResult.w;
 
-        rayHitDistances[rayIdx] = min(rayResult.w, u_volumeParams.probesSpacing.x * 1.5f);
+        rayHitDistances[rayIdx] = min(rayResult.w, PARAMS_D_D_G_I_BLEND_PROBES_DATA->volumeParams->probesSpacing.x * 1.5f);
 
 #endif // DDGI_BLEND_TYPE
     }
@@ -103,18 +102,18 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 
     GroupMemoryBarrierWithGroupSync();
 
-    const uint3 updatedProbeCoords = ComputeUpdatedProbeCoords(updatedProbeIdx, u_relitParams.probesToUpdateCoords, u_relitParams.probesToUpdateCount);
-    const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(u_volumeParams, updatedProbeCoords);
+    const uint3 updatedProbeCoords = ComputeUpdatedProbeCoords(updatedProbeIdx, PARAMS_D_D_G_I_BLEND_PROBES_DATA->relitParams->probesToUpdateCoords, PARAMS_D_D_G_I_BLEND_PROBES_DATA->relitParams->probesToUpdateCount);
+    const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(*PARAMS_D_D_G_I_BLEND_PROBES_DATA->volumeParams, updatedProbeCoords);
 
 #if DDGI_BLEND_TYPE == DDGI_BLEND_ILLUMINANCE
 
-    const DDGIProbeDataCoords probeDataOffset = ComputeProbeIlluminanceDataOffset(u_volumeParams, probeWrappedCoords);
-    const RWTexture2D<float4> probeIlluminanceTexture = u_volumeIlluminanceTextures[probeDataOffset.textureIdx];
+    const DDGIProbeDataCoords probeDataOffset = ComputeProbeIlluminanceDataOffset(*PARAMS_D_D_G_I_BLEND_PROBES_DATA->volumeParams, probeWrappedCoords);
+    UAVTexture2D<float4> probeIlluminanceTexture = PARAMS_D_D_G_I_BLEND_PROBES_DATA->volumeTextures[probeDataOffset.textureIdx];
 
 #elif DDGI_BLEND_TYPE == DDGI_BLEND_DISTANCES
 
-    const DDGIProbeDataCoords probeDataOffset = ComputeProbeHitDistanceDataOffset(u_volumeParams, probeWrappedCoords);
-    const RWTexture2D<float4> probeHitDistanceTexture = u_volumeHitDistanceTextures[probeDataOffset.textureIdx];
+    const DDGIProbeDataCoords probeDataOffset = ComputeProbeHitDistanceDataOffset(*PARAMS_D_D_G_I_BLEND_PROBES_DATA->volumeParams, probeWrappedCoords);
+    UAVTexture2D<float4> probeHitDistanceTexture = PARAMS_D_D_G_I_BLEND_PROBES_DATA->volumeTextures[probeDataOffset.textureIdx];
 
 #endif // DDGI_BLEND_TYPE
 
@@ -214,12 +213,12 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
             result = luminanceSum / (2.f * weightSum);
         }
 
-        const float exponent = 1.f / u_volumeParams.probeIlluminanceEncodingGamma;
+        const float exponent = 1.f / PARAMS_D_D_G_I_BLEND_PROBES_DATA->volumeParams->probeIlluminanceEncodingGamma;
         result = pow(result, exponent);
         
         const float3 prevIlluminance = probeIlluminanceTexture[dataCoords].xyz;
 
-        float hysteresis = u_relitParams.blendHysteresis;
+        float hysteresis = PARAMS_D_D_G_I_BLEND_PROBES_DATA->relitParams->blendHysteresis;
 
         if (all(prevIlluminance) < 0.0001f)
         {
@@ -232,7 +231,7 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
         const float histeresisDelta = maxIlluminanceDiff > MaxComponent(prevIlluminance) * 0.2f ? 1.f : 0.f;
         hysteresis = max(hysteresis - histeresisDelta, 0.f);
 
-        const float3 probeLocation = GetProbeWorldLocation(u_volumeParams, updatedProbeCoords);
+        const float3 probeLocation = GetProbeWorldLocation(*PARAMS_D_D_G_I_BLEND_PROBES_DATA->volumeParams, updatedProbeCoords);
 
         float3 deltaThisFrame = delta * (1.f - hysteresis);
         result = prevIlluminance + deltaThisFrame;
@@ -247,9 +246,9 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
             result = float2(hitDistanceSum, hitDistanceSquaredSum) / weightSum;
         }
         
-        float hysteresis = u_relitParams.blendHysteresis;
-        const float3 probeLocation = GetProbeWorldLocation(u_volumeParams, updatedProbeCoords);
-        if (any(probeLocation < u_relitParams.prevAABBMin) || any(probeLocation > u_relitParams.prevAABBMax))
+        float hysteresis = PARAMS_D_D_G_I_BLEND_PROBES_DATA->relitParams->blendHysteresis;
+        const float3 probeLocation = GetProbeWorldLocation(*PARAMS_D_D_G_I_BLEND_PROBES_DATA->volumeParams, updatedProbeCoords);
+        if (any(probeLocation < PARAMS_D_D_G_I_BLEND_PROBES_DATA->relitParams->prevAABBMin) || any(probeLocation > PARAMS_D_D_G_I_BLEND_PROBES_DATA->relitParams->prevAABBMax))
         {
             hysteresis = 0.f;
         }

@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[shader_params(CompileTileHeightMinMaxMapConstants, u_constants)]]
+[[shader_params(CompileTileHeightMinMaxMapConstants, PARAMS_COMPILE_TILE_HEIGHT_MIN_MAX_MAP_CONSTANTS)]]
 
 
 struct CS_INPUT
@@ -13,22 +13,22 @@ struct CS_INPUT
 void CompileTileHeightMinMaxMapCS(CS_INPUT input)
 {
 	const int2 tileCoords      = int2(input.globalID.xy);
-	const int2 tileResolution  = int2(u_constants.rwTileHeightMinMaxMap.GetResolution());
-	const int2 heightMapMaxTexel = int2(u_constants.heightMapResolution) - 1;
+	const int2 tileResolution  = int2(PARAMS_COMPILE_TILE_HEIGHT_MIN_MAX_MAP_CONSTANTS->rwTileHeightMinMaxMap.GetResolution());
+	const int2 heightMapMaxTexel = int2(PARAMS_COMPILE_TILE_HEIGHT_MIN_MAX_MAP_CONSTANTS->heightMapResolution) - 1;
 
 	if (any(tileCoords >= tileResolution))
 	{
 		return;
 	}
 
-	const float2 terrainSize = u_constants.maxBounds - u_constants.minBounds;
-	const float2 tileMin     = u_constants.minBounds + float2(tileCoords) * u_constants.tileSizeMeters;
-	const float2 tileMax     = min(tileMin + u_constants.tileSizeMeters, u_constants.maxBounds);
+	const float2 terrainSize = PARAMS_COMPILE_TILE_HEIGHT_MIN_MAX_MAP_CONSTANTS->maxBounds - PARAMS_COMPILE_TILE_HEIGHT_MIN_MAX_MAP_CONSTANTS->minBounds;
+	const float2 tileMin     = PARAMS_COMPILE_TILE_HEIGHT_MIN_MAX_MAP_CONSTANTS->minBounds + float2(tileCoords) * PARAMS_COMPILE_TILE_HEIGHT_MIN_MAX_MAP_CONSTANTS->tileSizeMeters;
+	const float2 tileMax     = min(tileMin + PARAMS_COMPILE_TILE_HEIGHT_MIN_MAX_MAP_CONSTANTS->tileSizeMeters, PARAMS_COMPILE_TILE_HEIGHT_MIN_MAX_MAP_CONSTANTS->maxBounds);
 
-	const float2 uvMin = saturate((tileMin - u_constants.minBounds) / terrainSize);
-	const float2 uvMax = saturate((tileMax - u_constants.minBounds) / terrainSize);
+	const float2 uvMin = saturate((tileMin - PARAMS_COMPILE_TILE_HEIGHT_MIN_MAX_MAP_CONSTANTS->minBounds) / terrainSize);
+	const float2 uvMax = saturate((tileMax - PARAMS_COMPILE_TILE_HEIGHT_MIN_MAX_MAP_CONSTANTS->minBounds) / terrainSize);
 
-	const float2 heightMapResolution = float2(u_constants.heightMapResolution);
+	const float2 heightMapResolution = float2(PARAMS_COMPILE_TILE_HEIGHT_MIN_MAX_MAP_CONSTANTS->heightMapResolution);
 	int2 minTexel = int2(floor(uvMin * heightMapResolution - 0.5f));
 	int2 maxTexel = int2(floor(uvMax * heightMapResolution - 0.5f)) + 1;
 
@@ -42,11 +42,11 @@ void CompileTileHeightMinMaxMapCS(CS_INPUT input)
 	{
 		for (int x = minTexel.x; x <= maxTexel.x; ++x)
 		{
-			const float height = u_constants.heightMap.Load(int2(x, y));
+			const float height = PARAMS_COMPILE_TILE_HEIGHT_MIN_MAX_MAP_CONSTANTS->heightMap.Load(int2(x, y));
 			minHeight = min(minHeight, height);
 			maxHeight = max(maxHeight, height);
 		}
 	}
 
-	u_constants.rwTileHeightMinMaxMap.Store(tileCoords, float2(minHeight, maxHeight));
+	PARAMS_COMPILE_TILE_HEIGHT_MIN_MAX_MAP_CONSTANTS->rwTileHeightMinMaxMap.Store(tileCoords, float2(minHeight, maxHeight));
 }

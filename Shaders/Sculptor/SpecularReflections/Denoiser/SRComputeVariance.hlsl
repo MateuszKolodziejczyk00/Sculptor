@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderViewDS, 0)]]
-[[descriptor_set(SRComputeVarianceDS, 1)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(SRComputeVarianceConstants, PARAMS_S_R_COMPUTE_VARIANCE)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
@@ -56,8 +56,8 @@ void SRComputeVarianceCS(CS_INPUT input)
 {
 	const uint2 pixel = input.globalID.xy;
 
-	const uint specularHistoryLength = u_specularHistoryLengthTexture.Load(uint3(pixel, 0u)).x;
-	const uint diffuseHistoryLength  = u_diffuseHistoryLengthTexture.Load(uint3(pixel, 0u)).x;
+	const uint specularHistoryLength = PARAMS_S_R_COMPUTE_VARIANCE->specularHistoryLengthTexture.Load(uint3(pixel, 0u)).x;
+	const uint diffuseHistoryLength  = PARAMS_S_R_COMPUTE_VARIANCE->diffuseHistoryLengthTexture.Load(uint3(pixel, 0u)).x;
 
 	const uint temporalVarianceRequiredHistoryLength = 4u;
 
@@ -81,29 +81,29 @@ void SRComputeVarianceCS(CS_INPUT input)
 
 			const uint3 samplePixel = uint3(max(groupPixelOffset + int2(x, y) - KERNEL_RADIUS, int2(0, 0)), 0u);
 
-			gs_samplesGeoData[x][y].normal      = half3(OctahedronDecodeNormal(u_normalsTexture.Load(samplePixel)));
-			gs_samplesGeoData[x][y].linearDepth = ComputeLinearDepth(u_depthTexture.Load(samplePixel).x, u_sceneView);
+			gs_samplesGeoData[x][y].normal      = half3(OctahedronDecodeNormal(PARAMS_S_R_COMPUTE_VARIANCE->normalsTexture.Load(samplePixel)));
+			gs_samplesGeoData[x][y].linearDepth = ComputeLinearDepth(PARAMS_S_R_COMPUTE_VARIANCE->depthTexture.Load(samplePixel).x, VIEW->sceneView);
 
 			if(useSpecularSpatialVarianceBallot > 0u)
 			{
-				gs_specularY_SH2[x][y] = u_specularY_SH2.Load(samplePixel);
+				gs_specularY_SH2[x][y] = PARAMS_S_R_COMPUTE_VARIANCE->specularY_SH2.Load(samplePixel);
 			}
 
 			if(useDiffuseSpatialVarianceBallot > 0u)
 			{
-				gs_diffuseY_SH2[x][y] = u_diffuseY_SH2.Load(samplePixel);
+				gs_diffuseY_SH2[x][y] = PARAMS_S_R_COMPUTE_VARIANCE->diffuseY_SH2.Load(samplePixel);
 			}
 		}
 
 		GroupMemoryBarrierWithGroupSync();
 	}
 
-	if(all(pixel < u_constants.resolution))
+	if(all(pixel < PARAMS_S_R_COMPUTE_VARIANCE->resolution))
 	{
-		const float2 specularMoments = u_specularMomentsTexture.Load(uint3(pixel, 0u)).xy;
+		const float2 specularMoments = PARAMS_S_R_COMPUTE_VARIANCE->specularMomentsTexture.Load(uint3(pixel, 0u)).xy;
 		float specularVariance = abs(specularMoments.y - specularMoments.x * specularMoments.x);
 
-		const float2 diffuseMoments = u_diffuseMomentsTexture.Load(uint3(pixel, 0u)).xy;
+		const float2 diffuseMoments = PARAMS_S_R_COMPUTE_VARIANCE->diffuseMomentsTexture.Load(uint3(pixel, 0u)).xy;
 		float diffuseVariance = abs(diffuseMoments.y - diffuseMoments.x * diffuseMoments.x);
 
 		if (useSpecularSpatialVariance || useDiffuseSpatialVariance)
@@ -173,6 +173,6 @@ void SRComputeVarianceCS(CS_INPUT input)
 			}
 		}
 
-		u_rwVarianceTexture[pixel] = float2(specularVariance, diffuseVariance);
+		PARAMS_S_R_COMPUTE_VARIANCE->rwVarianceTexture[pixel] = float2(specularVariance, diffuseVariance);
 	}
 }

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "Types/DescriptorSetState/DescriptorSetStateTypes.h"
 
 
 namespace spt::rdr
@@ -11,14 +10,8 @@ class GraphicsPipeline;
 class ComputePipeline;
 class RayTracingPipeline;
 class Pipeline;
-class DescriptorSetState;
 class CommandQueue;
 class RenderContext;
-
-namespace constants
-{
-static constexpr Uint32 maxDSNum = 16u;
-} // constants
 
 
 class PipelinePendingState
@@ -34,7 +27,7 @@ public:
 	void									UnbindGraphicsPipeline();
 	const lib::SharedPtr<GraphicsPipeline>&	GetBoundGraphicsPipeline() const;
 
-	void									FlushDirtyDSForGraphicsPipeline(rhi::RHICommandBuffer& cmdBuffer);
+	void									FlushParamsForGraphicsPipeline(rhi::RHICommandBuffer& cmdBuffer);
 
 	// Compute Pipeline =================================================
 	
@@ -42,7 +35,7 @@ public:
 	void									UnbindComputePipeline();
 	const lib::SharedPtr<ComputePipeline>&	GetBoundComputePipeline() const;
 
-	void									FlushDirtyDSForComputePipeline(rhi::RHICommandBuffer& cmdBuffer);
+	void									FlushParamsForComputePipeline(rhi::RHICommandBuffer& cmdBuffer);
 
 	// Ray Tracing Pipeline =============================================
 	
@@ -50,61 +43,35 @@ public:
 	void										UnbindRayTracingPipeline();
 	const lib::SharedPtr<RayTracingPipeline>&	GetBoundRayTracingPipeline() const;
 
-	void										FlushDirtyDSForRayTracingPipeline(rhi::RHICommandBuffer& cmdBuffer);
+	void										FlushParamsForRayTracingPipeline(rhi::RHICommandBuffer& cmdBuffer);
 	
-	// Descriptor Set States ============================================
+	// Shader Params ====================================================
 	
-	void BindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state);
-	void UnbindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state);
-
-	void BindShaderParams(Uint32 heapOffset);
+	void BindShaderParams(lib::HashedString type, rhi::DeviceAddress address);
+	void UnbindShaderParams(lib::HashedString type);
 
 private:
 
-	using DynamicOffsetsArray = lib::InlineDynamicArray<Uint32, constants::maxDSNum>;
+	using ShaderParamsData = lib::InlineDynamicArray<Byte, 64u>;
 
-	struct DSBindCommand
+	struct PendingBindings
 	{
-		Uint32 idx;
-		Uint32 heapOffset;
+		ShaderParamsData shaderParamsData;
 	};
 
-	using DSBindCommands = lib::InlineDynamicArray<DSBindCommand, constants::maxDSNum>;
-
-	struct BoundDescriptorSetState
+	struct BoundShaderParam
 	{
-		DSStateTypeID typeID;
-		Uint32        heapOffset;
+		lib::HashedString  type;
+		rhi::DeviceAddress address;
 	};
 
-	struct PipelineDescriptorsState
-	{
-		lib::InlineDynamicArray<Bool, constants::maxDSNum> dirtyDescriptorSets;
-		Bool isBindlessBound = false;
-	};
-
-	void TryMarkAsDirty(const lib::MTHandle<DescriptorSetState>& state);
-	void TryMarkAsDirtyImpl(const lib::MTHandle<DescriptorSetState>& state, const lib::SharedPtr<Pipeline>& pipeline, PipelineDescriptorsState& descriptorsState);
-
-	void UpdateDescriptorSetsOnPipelineChange(const lib::SharedPtr<Pipeline>& prevPipeline, const lib::SharedRef<Pipeline>& newPipeline, PipelineDescriptorsState& descriptorsState);
-
-	DSBindCommands FlushPendingDescriptorSets(const lib::SharedRef<Pipeline>& pipeline, PipelineDescriptorsState& descriptorsState);
-
-	const BoundDescriptorSetState* GetBoundDescriptorSetState(DSStateTypeID dsTypeID) const;
+	PendingBindings FlushPendingParams(const lib::SharedRef<Pipeline>& pipeline);
 
 	lib::SharedPtr<GraphicsPipeline>	m_boundGfxPipeline;
 	lib::SharedPtr<ComputePipeline>		m_boundComputePipeline;
 	lib::SharedPtr<RayTracingPipeline>	m_boundRayTracingPipeline;
 
-	lib::InlineDynamicArray<BoundDescriptorSetState, 64u> m_boundDescriptorSetStates;
-
-	Uint32 m_pendingShaderParamsOffset = idxNone<Uint32>;
-
-	PipelineDescriptorsState m_gfxPipelineDescriptorsState;
-	PipelineDescriptorsState m_computePipelineDescriptorsState;
-	PipelineDescriptorsState m_rayTracingPipelineDescriptorsState;
-
-	Uint32 m_bindlessDescriptorsHeapOffset = 0u;
+	lib::InlineDynamicArray<BoundShaderParam, 64u> m_boundShaderParams;
 };
 
 } // spt::rdr

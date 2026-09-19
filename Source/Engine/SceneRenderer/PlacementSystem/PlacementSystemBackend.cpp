@@ -77,16 +77,16 @@ namespace render_impl
 
 {
 BEGIN_SHADER_STRUCT(PlacementConstants)
-	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<GPUPlacementEntry>, rwEntries)
-	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,            rwEntriesNum)
-	SHADER_STRUCT_FIELD(Real32,                                placementSpacing)
-	SHADER_STRUCT_FIELD(Uint32,                                resolution)
-	SHADER_STRUCT_FIELD(PlacementPrefabsCollection,            prefabsCollection)
-	SHADER_STRUCT_FIELD(math::Vector2i,                        beginCoords)
-	SHADER_STRUCT_FIELD(math::Vector2i,                        endCoords)
-	SHADER_STRUCT_FIELD(math::Vector2i,                        lastBeginCoords)
-	SHADER_STRUCT_FIELD(math::Vector2i,                        lastEndCoords)
-	SHADER_STRUCT_FIELD(Bool,                                  lastCoordsValid)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<GPUPlacementEntry>, rwEntries)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<Uint32>,            rwEntriesNum)
+	SHADER_STRUCT_FIELD(Real32,                                   placementSpacing)
+	SHADER_STRUCT_FIELD(Uint32,                                   resolution)
+	SHADER_STRUCT_FIELD(PlacementPrefabsCollection,               prefabsCollection)
+	SHADER_STRUCT_FIELD(math::Vector2i,                           beginCoords)
+	SHADER_STRUCT_FIELD(math::Vector2i,                           endCoords)
+	SHADER_STRUCT_FIELD(math::Vector2i,                           lastBeginCoords)
+	SHADER_STRUCT_FIELD(math::Vector2i,                           lastEndCoords)
+	SHADER_STRUCT_FIELD(Bool,                                     lastCoordsValid)
 END_SHADER_STRUCT();
 
 
@@ -147,7 +147,6 @@ void ComputePlacemenets(rg::RenderGraphBuilder& graphBuilder, const SceneRendere
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Compute Placements"),
 						  PlacementShaderPSO::pso,
 						  math::Vector2u(dispatchSize, dispatchSize),
-						  rg::EmptyDescriptorSets(),
 						  shaderConstants);
 
 	exe.placementDefIdx = placementCommand.placementDefIdx;

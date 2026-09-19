@@ -1,9 +1,5 @@
 #include "SRVariance.h"
 #include "RenderGraphBuilder.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "ResourcesManager.h"
 #include "Utils/Denoisers/SpecularReflectionsDenoiser/SRDenoiserTypes.h"
@@ -14,22 +10,17 @@ namespace spt::rsc::sr_denoiser
 {
 
 BEGIN_SHADER_STRUCT(SRComputeVarianceConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
+	SHADER_STRUCT_FIELD(math::Vector2u,                          resolution)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>,       specularMomentsTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>,       diffuseMomentsTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<RTSphericalBasisType>, specularY_SH2)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<RTSphericalBasisType>, diffuseY_SH2)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>,       rwVarianceTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Uint32>,               specularHistoryLengthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Uint32>,               diffuseHistoryLengthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,               depthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>,       normalsTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(SRComputeVarianceDS, rg::RGDescriptorSetState<SRComputeVarianceDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),               u_specularMomentsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),               u_diffuseMomentsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<RTSphericalBasisType>),         u_specularY_SH2)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<RTSphericalBasisType>),         u_diffuseY_SH2)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                u_rwVarianceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                       u_specularHistoryLengthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                       u_diffuseHistoryLengthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                       u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),               u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRComputeVarianceConstants>), u_constants)
-DS_END();
 
 
 static rdr::PipelineStateID CreateComputeVariancePipeline()
@@ -58,46 +49,38 @@ void ComputeTemporalVariance(rg::RenderGraphBuilder& graphBuilder, const Tempora
 	const math::Vector2u resolution = params.outVarianceTexture->GetResolution2D();
 
 	SRComputeVarianceConstants shaderConstants;
-	shaderConstants.resolution = resolution;
-
-	lib::MTHandle<SRComputeVarianceDS> ds = graphBuilder.CreateDescriptorSet<SRComputeVarianceDS>(RENDERER_RESOURCE_NAME("SR Compute Std Dev DS"));
-	ds->u_specularMomentsTexture       = params.specularMomentsTexture;
-	ds->u_diffuseMomentsTexture        = params.diffuseMomentsTexture;
-	ds->u_specularY_SH2                = params.specularY_SH2;
-	ds->u_diffuseY_SH2                 = params.diffuseY_SH2;
-	ds->u_rwVarianceTexture            = params.outVarianceTexture;
-	ds->u_specularHistoryLengthTexture = params.specularHistoryLengthTexture;
-	ds->u_diffuseHistoryLengthTexture  = params.diffuseHistoryLengthTexture;
-	ds->u_depthTexture                 = params.depthTexture;
-	ds->u_normalsTexture               = params.normalsTexture;
-	ds->u_constants                    = shaderConstants;
+	shaderConstants.resolution                   = resolution;
+	shaderConstants.specularMomentsTexture       = params.specularMomentsTexture;
+	shaderConstants.diffuseMomentsTexture        = params.diffuseMomentsTexture;
+	shaderConstants.specularY_SH2                = params.specularY_SH2;
+	shaderConstants.diffuseY_SH2                 = params.diffuseY_SH2;
+	shaderConstants.rwVarianceTexture            = params.outVarianceTexture;
+	shaderConstants.specularHistoryLengthTexture = params.specularHistoryLengthTexture;
+	shaderConstants.diffuseHistoryLengthTexture  = params.diffuseHistoryLengthTexture;
+	shaderConstants.depthTexture                 = params.depthTexture;
+	shaderConstants.normalsTexture               = params.normalsTexture;
 
 	static const rdr::PipelineStateID pipeline = CreateComputeVariancePipeline();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{} SR Compute Variance", params.debugName.AsString()),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 4u)),
-						  rg::BindDescriptorSets(std::move(ds)));
+						  rg::ShaderParams(shaderConstants));
 }
 
 
 BEGIN_SHADER_STRUCT(SREstimateVarianceConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
-	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
-	SHADER_STRUCT_FIELD(math::Vector4f, weights)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,                    invResolution)
+	SHADER_STRUCT_FIELD(math::Vector4f,                    weights)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>, rwVarianceEstimationTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, inVarianceTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Uint32>,         specularHistoryLengthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Uint32>,         diffuseHistoryLengthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         depthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, normalsTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         roughnessTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(SREstimateVarianceDS, rg::RGDescriptorSetState<SREstimateVarianceDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                 u_rwVarianceEstimationTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                u_inVarianceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                        u_specularHistoryLengthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                        u_diffuseHistoryLengthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                        u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                        u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SREstimateVarianceConstants>), u_constants)
-DS_END();
 
 
 static rdr::PipelineStateID CreateEstimateVariancePipeline(Bool isHorizontal)
@@ -128,39 +111,35 @@ void EstimateVariance(rg::RenderGraphBuilder& graphBuilder, const VarianceEstima
 	{
 		static const rdr::PipelineStateID horizontalPipeline = CreateEstimateVariancePipeline(true);
 
-		const lib::MTHandle<SREstimateVarianceDS> ds = graphBuilder.CreateDescriptorSet<SREstimateVarianceDS>(RENDERER_RESOURCE_NAME("SR Estimate Variance DS"));
-		ds->u_rwVarianceEstimationTexture  = params.intermediateVarianceTexture;
-		ds->u_inVarianceTexture            = params.inOutVarianceTexture;
-		ds->u_specularHistoryLengthTexture = params.specularHistoryLengthTexture;
-		ds->u_diffuseHistoryLengthTexture  = params.diffuseHistoryLengthTexture;
-		ds->u_depthTexture                 = params.depthTexture;
-		ds->u_normalsTexture               = params.normalsTexture;
-		ds->u_roughnessTexture             = params.roughnessTexture;
-		ds->u_constants                    = shaderConstants;
+		shaderConstants.rwVarianceEstimationTexture  = params.intermediateVarianceTexture;
+		shaderConstants.inVarianceTexture            = params.inOutVarianceTexture;
+		shaderConstants.specularHistoryLengthTexture = params.specularHistoryLengthTexture;
+		shaderConstants.diffuseHistoryLengthTexture  = params.diffuseHistoryLengthTexture;
+		shaderConstants.depthTexture                 = params.depthTexture;
+		shaderConstants.normalsTexture               = params.normalsTexture;
+		shaderConstants.roughnessTexture             = params.roughnessTexture;
 
 		graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{} SR Estimate Variance (Horizontal Pass)", params.debugName.AsString()),
 							  horizontalPipeline,
 							  math::Utils::DivideCeil(resolution, math::Vector2u(16u, 16u)),
-							  rg::BindDescriptorSets(std::move(ds)));
+							  rg::ShaderParams(shaderConstants));
 	}
 
 	{
 		static const rdr::PipelineStateID verticalPipeline = CreateEstimateVariancePipeline(false);
 
-		const lib::MTHandle<SREstimateVarianceDS> ds = graphBuilder.CreateDescriptorSet<SREstimateVarianceDS>(RENDERER_RESOURCE_NAME("SR Estimate Variance DS"));
-		ds->u_rwVarianceEstimationTexture  = params.inOutVarianceTexture;
-		ds->u_inVarianceTexture            = params.intermediateVarianceTexture;
-		ds->u_specularHistoryLengthTexture = params.specularHistoryLengthTexture;
-		ds->u_diffuseHistoryLengthTexture  = params.diffuseHistoryLengthTexture;
-		ds->u_depthTexture                 = params.depthTexture;
-		ds->u_normalsTexture               = params.normalsTexture;
-		ds->u_roughnessTexture             = params.roughnessTexture;
-		ds->u_constants                    = shaderConstants;
+		shaderConstants.rwVarianceEstimationTexture  = params.inOutVarianceTexture;
+		shaderConstants.inVarianceTexture            = params.intermediateVarianceTexture;
+		shaderConstants.specularHistoryLengthTexture = params.specularHistoryLengthTexture;
+		shaderConstants.diffuseHistoryLengthTexture  = params.diffuseHistoryLengthTexture;
+		shaderConstants.depthTexture                 = params.depthTexture;
+		shaderConstants.normalsTexture               = params.normalsTexture;
+		shaderConstants.roughnessTexture             = params.roughnessTexture;
 
 		graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{} SR Estimate Variance (Vertical Pass)", params.debugName.AsString()),
 							  verticalPipeline,
 							  math::Utils::DivideCeil(resolution, math::Vector2u(16u, 16u)),
-							  rg::BindDescriptorSets(std::move(ds)));
+							  rg::ShaderParams(shaderConstants));
 	}
 }
 

@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RTCopyTracedReservoirsDS, 0)]]
+[[shader_params(RTCopyTracedReservoirsParams, PARAMS_R_T_COPY_TRACED_RESERVOIRS)]]
 
 #include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
 #include "SpecularReflections/SRReservoir.hlsli"
@@ -17,17 +17,17 @@ void RTCopyTracedReservoirsCS(CS_INPUT input)
 {
 	const uint traceCommandIndex = input.globalID.x;
 
-	if(traceCommandIndex >= u_tracesNum[0])
+	if(traceCommandIndex >= PARAMS_R_T_COPY_TRACED_RESERVOIRS->tracesNum[0])
 	{
 		return;
 	}
 
-	const EncodedRayTraceCommand encodedTraceCommand = u_traceCommands[traceCommandIndex];
+	const EncodedRayTraceCommand encodedTraceCommand = PARAMS_R_T_COPY_TRACED_RESERVOIRS->traceCommands[traceCommandIndex];
 	const RayTraceCommand traceCommand = DecodeTraceCommand(encodedTraceCommand);
 
 	const uint2 coords = traceCommand.blockCoords + traceCommand.localOffset;
 
-	const uint reservoirIdx = GetScreenReservoirIdx(coords, u_resamplingConstants.reservoirsResolution);
+	const uint reservoirIdx = GetScreenReservoirIdx(coords, PARAMS_R_T_COPY_TRACED_RESERVOIRS->resamplingConstants->reservoirsResolution);
 
-	u_outReservoirs[reservoirIdx] = u_inReservoirs[reservoirIdx];
+	PARAMS_R_T_COPY_TRACED_RESERVOIRS->outReservoirs[reservoirIdx] = PARAMS_R_T_COPY_TRACED_RESERVOIRS->inReservoirs[reservoirIdx];
 }

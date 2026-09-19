@@ -1,7 +1,6 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "Common/DescriptorSetCompilation/DescriptorSetCompilationDefTypes.h"
 #include "ShaderDebugMetaData.h"
 
 
@@ -14,44 +13,16 @@ public:
 
 	ShaderCompilationMetaData() = default;
 
-	void AddDescriptorSetMetaData(SizeType dsIdx, const sc::DescriptorSetCompilationMetaData& metaData)
+	void AddShaderParam(const lib::HashedString& typeName)
 	{
-		SPT_PROFILER_FUNCTION();
+		SPT_CHECK(!lib::Contains(m_shaderParamsTypes, typeName));
 
-		if (dsIdx >= m_dsMetaData.size())
-		{
-			m_dsMetaData.resize(dsIdx + 1);
-		}
-
-		m_dsMetaData[dsIdx] = metaData;
+		m_shaderParamsTypes.emplace_back(typeName);
 	}
 
-	SizeType GetDSTypeID(SizeType descriptorSetIdx) const
+	const lib::DynamicArray<lib::HashedString>& GetShaderParamsTypes() const
 	{
-		if (descriptorSetIdx < m_dsMetaData.size())
-		{
-			return m_dsMetaData[descriptorSetIdx].typeID;
-		}
-		else
-		{
-			return idxNone<SizeType>;
-		}
-	}
-
-	SizeType GetDescriptorSetsNum() const
-	{
-		return m_dsMetaData.size();
-	}
-
-	void SetShaderParamsTypeName(const lib::HashedString& name)
-	{
-		SPT_CHECK(!m_shaderParamsTypeName.IsValid());
-		m_shaderParamsTypeName = name;
-	}
-
-	const lib::HashedString& GetShaderParamsTypeName() const
-	{
-		return m_shaderParamsTypeName;
+		return m_shaderParamsTypes;
 	}
 
 #if SPT_SHADERS_DEBUG_FEATURES
@@ -88,9 +59,7 @@ public:
 
 private:
 
-	lib::DynamicArray<sc::DescriptorSetCompilationMetaData> m_dsMetaData;
-
-	lib::HashedString m_shaderParamsTypeName;
+	lib::DynamicArray<lib::HashedString> m_shaderParamsTypes;
 
 #if SPT_SHADERS_DEBUG_FEATURES
 	ShaderDebugMetaData debugMetaData;

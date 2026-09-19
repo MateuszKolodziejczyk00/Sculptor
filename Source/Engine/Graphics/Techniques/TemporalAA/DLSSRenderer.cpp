@@ -12,7 +12,7 @@ rg::RGTextureViewHandle PrepareExposureTexture(rg::RenderGraphBuilder& graphBuil
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rg::RGTextureViewHandle exposureTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Exposure Texture"), rg::TextureDef(math::Vector2u(1u, 1u), rhi::EFragmentFormat::R32_S_Float));
+	const rg::RGTextureViewHandle exposureTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Exposure Texture"), rg::TextureDef(math::Vector2u(1u, 1u), rhi::EFragmentFormat::R32_S_Float).SetType(rhi::ETextureType::Texture2D));
 
 	graphBuilder.CopyBufferToFullTexture(RG_DEBUG_NAME("Copy Exposure To Texture"),
 										 renderingParams.exposure.exposureBuffer, renderingParams.exposure.exposureOffset,

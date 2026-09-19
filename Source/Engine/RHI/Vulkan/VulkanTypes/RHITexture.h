@@ -136,8 +136,8 @@ public:
 	
 	VkImageView							GetHandle() const;
 
-	void								CopyUAVDescriptor(Byte* dst) const;
-	void								CopySRVDescriptor(Byte* dst) const;
+	void								CopyUAVDescriptor(lib::Span<Byte> dst) const;
+	void								CopySRVDescriptor(lib::Span<Byte> dst) const;
 
 	const RHITexture*					GetTexture() const;
 
@@ -161,6 +161,9 @@ public:
 private:
 
 	VkImageView							m_viewHandle;
+	VkImageViewType						m_viewType;
+	VkFormat							m_viewFormat;
+	VkComponentMapping					m_componentMapping;
 
 	rhi::TextureSubresourceRange		m_subresourceRange;
 

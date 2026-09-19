@@ -4,10 +4,6 @@
 #include "ResourcesManager.h"
 #include "Common/ShaderCompilationInput.h"
 #include "Utils/ViewRenderingSpec.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
 #include "Utils/hiZRenderer.h"
 
 
@@ -19,11 +15,10 @@ REGISTER_RENDER_STAGE(ERenderStage::MotionAndDepth, MotionAndDepthRenderStage);
 namespace camera_motion
 {
 
-DS_BEGIN(CameraMotionDS, rg::RGDescriptorSetState<CameraMotionDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToBorder>),	u_depthSampler)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depth)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),								u_motion)
-DS_END();
+BEGIN_SHADER_STRUCT(CameraMotionConstants)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,               depth)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>,       motion)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CompileCameraMotionPipeline()
@@ -44,16 +39,16 @@ void ComputeCameraMotion(rg::RenderGraphBuilder& graphBuilder, const ViewRenderi
 
 	static const rdr::PipelineStateID pipeline = CompileCameraMotionPipeline();
 
-	const lib::MTHandle<CameraMotionDS> cameraMotionDS = graphBuilder.CreateDescriptorSet<CameraMotionDS>(RENDERER_RESOURCE_NAME("CameraMotionDS"));
-	cameraMotionDS->u_depth		= depthTextureView;
-	cameraMotionDS->u_motion	= motionTextureView;
+	CameraMotionConstants shaderConstants;
+	shaderConstants.depth	= depthTextureView;
+	shaderConstants.motion	= motionTextureView;
 
 	const math::Vector2u dispatchGroups = math::Utils::DivideCeil(renderingRes, math::Vector2u(8, 8));
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Camera Motion"),
 						  pipeline,
 						  math::Vector3u(dispatchGroups.x(), dispatchGroups.y(), 1u),
-						  rg::BindDescriptorSets(cameraMotionDS));
+						  rg::ShaderParams(shaderConstants));
 }
 
 } // camera_motion

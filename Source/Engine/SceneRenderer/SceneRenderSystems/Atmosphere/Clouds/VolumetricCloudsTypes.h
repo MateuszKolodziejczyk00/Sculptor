@@ -2,15 +2,8 @@
 
 #include "SculptorCoreTypes.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "DescriptorSetBindings/ConstantBufferRefBinding.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
 #include "SceneRenderSystems/Atmosphere/AtmosphereTypes.h"
 #include "RGResources/RGResourceHandles.h"
-#include "DescriptorSetBindings/ChildDSBinding.h"
 
 
 namespace spt::rsc::clouds
@@ -66,37 +59,33 @@ BEGIN_SHADER_STRUCT(CloudscapeConstants)
 	SHADER_STRUCT_FIELD(DirectionalLightGPUData, mainDirectionalLight)
 
 	SHADER_STRUCT_FIELD(Real32, time)
+
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<AtmosphereParams>, atmosphereConstants)
+
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, transmittanceLUT)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector4f>, baseShapeNoise)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector4f>, detailShapeNoise)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector3f>, curlNoise)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, weatherMap)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<Real32>,         shadowsCache)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         densityLUT)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, cirrusCloudsMask)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(CloudscapeDS, rg::RGDescriptorSetState<CloudscapeDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<CloudscapeConstants>), u_cloudscapeConstants)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>), u_atmosphereConstants)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),        u_transmittanceLUT)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),        u_baseShapeNoise)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),        u_detailShapeNoise)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector3f>),        u_curlNoise)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),        u_weatherMap)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<Real32>),                u_shadowsCache)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                u_densityLUT)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),        u_cirrusCloudsMask)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),  u_cloadsLinearClampSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearRepeat>),       u_cloadsLinearRepeatSampler)
-DS_END();
-
-
-DS_BEGIN(CloudscapeProbesDS, rg::RGDescriptorSetState<CloudscapeProbesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),        u_cloudscapeProbes)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),        u_cloudscapeHighResProbe)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<CloudscapeConstants>), u_cloudscapeConstants)
-DS_END();
+BEGIN_SHADER_STRUCT(CloudscapeProbesParams)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, cloudscapeProbes)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, cloudscapeHighResProbe)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<CloudscapeConstants>,  cloudscapeConstants)
+END_SHADER_STRUCT();
 
 
 struct CloudscapeContext
 {
 	const AtmosphereContext&        atmosphere;
 	const CloudscapeConstants&      cloudscapeConstants;
-	lib::MTHandle<CloudscapeDS>     cloudscapeDS;
+
+	rdr::GPUPtr<CloudscapeConstants> gpuCloudscapeConstants;
 
 	Bool resetAccumulation = false;
 

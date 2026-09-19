@@ -6,6 +6,7 @@
 #include "ShaderStructsRegistry.h"
 #include "Utility/Templates/TypeStorage.h"
 #include "Utility/Hash.h"
+#include "Types/Buffer.h"
 
 
 namespace spt::rdr
@@ -445,6 +446,188 @@ public:
 		return lib::Span<const Byte>(Super::GetAddress(), s_size);
 	}
 };
+
+
+template <typename T>
+struct IsHLSLStorage : std::false_type {};
+
+template <typename T>
+struct IsHLSLStorage<HLSLStorage<T>> : std::true_type {};
+
+template <typename T>
+inline constexpr bool isHLSLStorage = IsHLSLStorage<T>::value;
+
+
+template<typename TData>
+struct GPUPtr
+{
+public:
+
+	using DataType = TData;
+
+	GPUPtr() = default;
+
+	GPUPtr(nullptr_t)
+	{ }
+
+	GPUPtr(lib::SharedPtr<rdr::BindableBufferView> bufferView, Uint32 offset)
+		: m_bufferView(std::move(bufferView))
+		, m_offset(offset)
+	{ }
+
+	GPUPtr(const GPUPtr& rhs) = default;
+	GPUPtr& operator=(const GPUPtr& rhs) = default;
+
+	GPUPtr(GPUPtr&& rhs) = default;
+	GPUPtr& operator=(GPUPtr&& rhs) = default;
+
+	Bool IsValid() const
+	{
+		return !!m_bufferView;
+	}
+
+	rhi::DeviceAddress GetDeviceAddress() const
+	{
+		return IsValid() ? m_bufferView->GetBuffer()->GetRHI().GetDeviceAddress() + m_offset : 0u;
+	}
+
+	Byte* GetMappedPtr() const
+	{
+		if (!IsValid())
+		{
+			return nullptr;
+		}
+
+		Byte* bufferPtr = m_bufferView->GetBuffer()->GetRHI().GetPersistentlyMappedPtr();
+		return bufferPtr ? bufferPtr + m_offset : nullptr;
+	}
+
+	const lib::SharedPtr<rdr::BindableBufferView>& GetBufferView() const
+	{
+		return m_bufferView;
+	}
+
+	Uint32 GetOffset() const
+	{
+		return m_offset;
+	}
+
+	Uint32 GetSize() const
+	{
+		return sizeof(rdr::HLSLStorage<TData>);
+	}
+
+	lib::Span<const Byte> GetHLSLDataSpan() const
+	{
+		if (!IsValid())
+		{
+			return {};
+		}
+
+		SPT_CHECK(m_bufferView->GetBuffer()->GetRHI().CanMapMemory());
+
+		const rhi::RHIMappedByteBuffer mappedBuffer(m_bufferView->GetBuffer()->GetRHI());
+		return lib::Span<const Byte>(mappedBuffer.GetPtr() + m_offset, sizeof(rdr::HLSLStorage<TData>));
+	}
+
+	void SetData(const TData& data)
+	{
+		const rdr::HLSLStorage<TData> storageData = data;
+
+		SPT_CHECK(m_bufferView);
+		const rhi::RHIMappedByteBuffer mappedBuffer(m_bufferView->GetBuffer()->GetRHI());
+		std::memcpy(mappedBuffer.GetPtr() + m_offset, &storageData, sizeof(storageData));
+	}
+
+	void Set(lib::SharedPtr<rdr::BindableBufferView> buffer, Uint32 offset = 0u)
+	{
+		m_bufferView = std::move(buffer);
+		m_offset = offset;
+	}
+
+	static constexpr lib::String GetTypeName()
+	{
+		return lib::String("Ptr<") + rdr::shader_translator::GetTypeName<TData>() + ">";
+	}
+
+private:
+
+	lib::SharedPtr<rdr::BindableBufferView> m_bufferView;
+	Uint32 m_offset = 0u;
+};
+
+
+template<>
+struct GPUPtr<void>
+{
+public:
+
+	GPUPtr() = default;
+
+	GPUPtr(nullptr_t)
+	{ }
+
+	template<typename TData>
+	GPUPtr(const GPUPtr<TData>& rhs)
+		: m_bufferView(rhs.GetBufferView())
+		, m_offset(rhs.GetOffset())
+	{ }
+
+	GPUPtr(const GPUPtr& rhs) = default;
+	GPUPtr& operator=(const GPUPtr& rhs) = default;
+
+	GPUPtr(GPUPtr&& rhs) = default;
+	GPUPtr& operator=(GPUPtr&& rhs) = default;
+
+	template<typename TData>
+	GPUPtr& operator=(const GPUPtr<TData>& rhs)
+	{
+		m_bufferView = rhs.GetBufferView();
+		m_offset = rhs.GetOffset();
+		return *this;
+	}
+
+	Bool IsValid() const
+	{
+		return !!m_bufferView;
+	}
+
+	rhi::DeviceAddress GetDeviceAddress() const
+	{
+		return IsValid() ? m_bufferView->GetBuffer()->GetRHI().GetDeviceAddress() + m_offset : 0u;
+	}
+
+	const lib::SharedPtr<rdr::BindableBufferView>& GetBufferView() const
+	{
+		return m_bufferView;
+	}
+
+	Uint32 GetOffset() const
+	{
+		return m_offset;
+	}
+
+	void Set(lib::SharedPtr<rdr::BindableBufferView> buffer, Uint32 offset = 0u)
+	{
+		m_bufferView = std::move(buffer);
+		m_offset = offset;
+	}
+
+private:
+
+	lib::SharedPtr<rdr::BindableBufferView> m_bufferView;
+	Uint32 m_offset = 0u;
+};
+
+
+template <typename T>
+struct IsGPUPtr : std::false_type {};
+
+template <typename T>
+struct IsGPUPtr<GPUPtr<T>> : std::true_type {};
+
+template <typename T>
+inline constexpr bool isGPUPtr = IsGPUPtr<T>::value;
 
 
 template<typename TShaderStructMemberMetaData, typename TMember>

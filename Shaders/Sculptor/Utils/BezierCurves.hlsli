@@ -7,30 +7,37 @@ namespace Bezier
 namespace Cubic
 {
 
-template<typename T>
-struct Curve
+struct Curve<T : IFloat>
 {
 	T p0;
 	T p1;
 	T p2;
 	T p3;
 
-	T Evaluate(in float t)
-	{
-		const float oneMinusT = 1.f - t;
-		return oneMinusT * oneMinusT * oneMinusT * p0 +
-			   3.f * oneMinusT * oneMinusT * t * p1 +
-			   3.f * oneMinusT * t * t * p2 +
-			   t * t * t * p3;
-	}
+	
+T Evaluate(in float t)
+{
+    const T tt = T(t);
+    const T oneMinusT = T(1.0f) - tt;
+    const T three = T(3.0f);
 
-	T EvaluateDerivative(in float t)
-	{
-		const float oneMinusT = 1.f - t;
-		return 3.f * oneMinusT * oneMinusT * (p1 - p0) +
-			   6.f * oneMinusT * t * (p2 - p1) +
-			   3.f * t * t * (p3 - p2);
-	}
+    return oneMinusT * oneMinusT * oneMinusT * p0 +
+           three * oneMinusT * oneMinusT * tt * p1 +
+           three * oneMinusT * tt * tt * p2 +
+           tt * tt * tt * p3;
+}
+
+T EvaluateDerivative(in float t)
+{
+    const T tt = T(t);
+    const T oneMinusT = T(1.0f) - tt;
+    const T three = T(3.0f);
+    const T six = T(6.0f);
+
+    return three * oneMinusT * oneMinusT * (p1 - p0) +
+           six * oneMinusT * tt * (p2 - p1) +
+           three * tt * tt * (p3 - p2);
+}
 };
 
 } // namespace Cubic

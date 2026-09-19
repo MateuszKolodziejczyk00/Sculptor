@@ -1,6 +1,5 @@
 #include "RHIPipeline.h"
 #include "Vulkan/VulkanRHI.h"
-#include "Vulkan/Pipeline/PipelineLayoutsManager.h"
 #include "Vulkan/VulkanRHIUtils.h"
 #include "Vulkan/VulkanUtils.h"
 
@@ -47,17 +46,14 @@ namespace gfx
 struct GraphicsPipelineBuildDefinition
 {
 	GraphicsPipelineBuildDefinition(const rhi::GraphicsPipelineShadersDefinition& inShaderStagesDef,
-									const rhi::GraphicsPipelineDefinition& inPipelineDefinition,
-									const PipelineLayout& inLayout)
+									const rhi::GraphicsPipelineDefinition& inPipelineDefinition)
 		: shaderStagesDef(inShaderStagesDef)
 		, pipelineDefinition(inPipelineDefinition)
-		, layout(inLayout)
 	{
 	}
 
 	const rhi::GraphicsPipelineShadersDefinition& shaderStagesDef;
 	const rhi::GraphicsPipelineDefinition& pipelineDefinition;
-	const PipelineLayout& layout;
 };
 
 
@@ -308,7 +304,10 @@ static VkPipeline BuildGraphicsPipeline(const GraphicsPipelineBuildDefinition& p
 	lib::DynamicArray<VkFormat> colorRTFormats;
 	const VkPipelineRenderingCreateInfo pipelineRenderingInfo = BuildPipelineRenderingInfo(pipelineBuildDef, OUT colorRTFormats);
 
-	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR | VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
+
+	VkPipelineCreateFlags2CreateInfo pipelineFlags2{ VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
+	pipelineFlags2.flags = VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
 
 	VkGraphicsPipelineCreateInfo pipelineInfo{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
 	pipelineInfo.flags					= pipelineFlags;
@@ -323,7 +322,6 @@ static VkPipeline BuildGraphicsPipeline(const GraphicsPipelineBuildDefinition& p
 	pipelineInfo.pDepthStencilState		= &depthStencilStateInfo;
 	pipelineInfo.pColorBlendState		= &colorBlendStateInfo;
 	pipelineInfo.pDynamicState			= &dynamicStateInfo;
-	pipelineInfo.layout					= pipelineBuildDef.layout.GetHandle();
 	pipelineInfo.renderPass				= VK_NULL_HANDLE; // we use dynamic rendering, so render pass doesn't have to be specified
 	pipelineInfo.subpass				= 0;
 	pipelineInfo.basePipelineHandle		= VK_NULL_HANDLE;
@@ -331,6 +329,7 @@ static VkPipeline BuildGraphicsPipeline(const GraphicsPipelineBuildDefinition& p
 
 	VulkanStructsLinkedList piplineInfoLinkedList(pipelineInfo);
 	piplineInfoLinkedList.Append(pipelineRenderingInfo);
+	piplineInfoLinkedList.Append(pipelineFlags2);
 
 	VkPipeline pipelineHandle = VK_NULL_HANDLE;
 
@@ -356,27 +355,30 @@ namespace compute
 
 struct ComputePipelineBuildDefinition
 {
-	ComputePipelineBuildDefinition(const RHIShaderModule& inComputeShaderModule, const PipelineLayout& inPipelineLayout)
+	ComputePipelineBuildDefinition(const RHIShaderModule& inComputeShaderModule)
 		: computeShaderModule(inComputeShaderModule)
-		, layout(inPipelineLayout)
 	{ }
 
-	const RHIShaderModule&		computeShaderModule;
-	const PipelineLayout&		layout;
+	const RHIShaderModule& computeShaderModule;
 };
 
 static VkPipeline BuildComputePipeline(const ComputePipelineBuildDefinition& pipelineBuildDef)
 {
 	SPT_PROFILER_FUNCTION();
 
-	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR | VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
 
 	VkComputePipelineCreateInfo pipelineInfo{ VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
 	pipelineInfo.flags				= pipelineFlags;
 	pipelineInfo.stage				= BuildPipelineShaderStageInfo(pipelineBuildDef.computeShaderModule);
-	pipelineInfo.layout				= pipelineBuildDef.layout.GetHandle();
 	pipelineInfo.basePipelineHandle	= VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex	= 0;
+
+	VkPipelineCreateFlags2CreateInfo pipelineFlags2{ VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
+	pipelineFlags2.flags = VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
+
+	VulkanStructsLinkedList piplineInfoLinkedList(pipelineInfo);
+	piplineInfoLinkedList.Append(pipelineFlags2);
 
 	const VkPipelineCache pipelineCache = VK_NULL_HANDLE;
 
@@ -402,15 +404,13 @@ namespace ray_tracing
 
 struct RayTracingPipelineBuildDefinition
 {
-	RayTracingPipelineBuildDefinition(const rhi::RayTracingShadersDefinition& inShadersDef, const rhi::RayTracingPipelineDefinition& inPipelineDefintion, const PipelineLayout& inPipelineLayout)
+	RayTracingPipelineBuildDefinition(const rhi::RayTracingShadersDefinition& inShadersDef, const rhi::RayTracingPipelineDefinition& inPipelineDefintion)
 		: shadersDef(inShadersDef)
 		, pipelineDefinition(inPipelineDefintion)
-		, layout(inPipelineLayout)
 	{ }
 
 	const rhi::RayTracingShadersDefinition&		shadersDef;
 	const rhi::RayTracingPipelineDefinition&	pipelineDefinition;
-	const PipelineLayout&						layout;
 };
 
 static void AppendShaderStageInfos(INOUT lib::DynamicArray<VkPipelineShaderStageCreateInfo>& stageInfos, const lib::DynamicArray<RHIShaderModule>& shaderModules)
@@ -499,7 +499,7 @@ static VkPipeline BuildRayTracingPipeline(const RayTracingPipelineBuildDefinitio
 	// Miss shader groups
 	std::generate_n(std::back_inserter(shaderGroups), shadersDef.missModules.size(), [ &shaderIdx ] { return CreateGeneralShaderGroup(shaderIdx++); });
 
-	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR | VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
 
 	VkRayTracingPipelineCreateInfoKHR pipelineInfo{ VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR };
 	pipelineInfo.flags							= pipelineFlags;
@@ -508,7 +508,12 @@ static VkPipeline BuildRayTracingPipeline(const RayTracingPipelineBuildDefinitio
 	pipelineInfo.groupCount						= static_cast<Uint32>(shaderGroups.size());
 	pipelineInfo.pGroups						= shaderGroups.data();
 	pipelineInfo.maxPipelineRayRecursionDepth	= pipelineDef.maxRayRecursionDepth;
-	pipelineInfo.layout							= pipelineBuildDef.layout.GetHandle();
+
+	VkPipelineCreateFlags2CreateInfo pipelineFlags2{ VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
+	pipelineFlags2.flags = VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
+
+	VulkanStructsLinkedList piplineInfoLinkedList(pipelineInfo);
+	piplineInfoLinkedList.Append(pipelineFlags2);
 
 	const VkPipelineCache pipelineCache = VK_NULL_HANDLE;
 
@@ -554,43 +559,31 @@ RHIPipeline::RHIPipeline()
 	, m_pipelineType(rhi::EPipelineType::None)
 { }
 
-void RHIPipeline::InitializeRHI(const rhi::GraphicsPipelineShadersDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, const rhi::PipelineLayoutDefinition& layoutDefinition)
+void RHIPipeline::InitializeRHI(const rhi::GraphicsPipelineShadersDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsValid());
 
-	InitializePipelineLayout(layoutDefinition);
-
-	SPT_CHECK(!!m_layout);
-
-	InitializeGraphicsPipeline(shaderStagesDef, pipelineDefinition, *m_layout);
+	InitializeGraphicsPipeline(shaderStagesDef, pipelineDefinition);
 }
 
-void RHIPipeline::InitializeRHI(const rhi::RHIShaderModule& computeShaderModule, const rhi::PipelineLayoutDefinition& layoutDefinition)
+void RHIPipeline::InitializeRHI(const rhi::RHIShaderModule& computeShaderModule)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsValid());
 
-	InitializePipelineLayout(layoutDefinition);
-
-	SPT_CHECK(!!m_layout);
-
-	InitializeComputePipeline(computeShaderModule, *m_layout);
+	InitializeComputePipeline(computeShaderModule);
 }
 
-void RHIPipeline::InitializeRHI(const rhi::RayTracingShadersDefinition& shadersDef, const rhi::RayTracingPipelineDefinition& pipelineDef, const rhi::PipelineLayoutDefinition& layoutDefinition)
+void RHIPipeline::InitializeRHI(const rhi::RayTracingShadersDefinition& shadersDef, const rhi::RayTracingPipelineDefinition& pipelineDef)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsValid());
 
-	InitializePipelineLayout(layoutDefinition);
-
-	SPT_CHECK(!!m_layout);
-
-	InitializeRayTracingPipeline(shadersDef, pipelineDef, *m_layout);
+	InitializeRayTracingPipeline(shadersDef, pipelineDef);
 }
 
 void RHIPipeline::ReleaseRHI()
@@ -613,8 +606,6 @@ RHIPipelineReleaseTicket RHIPipeline::DeferredReleaseRHI()
 	m_debugName.Reset(reinterpret_cast<Uint64>(m_handle), VK_OBJECT_TYPE_PIPELINE);
 	m_handle = VK_NULL_HANDLE;
 	m_pipelineType = rhi::EPipelineType::None;
-
-	m_layout.reset();
 
 	SPT_CHECK(!IsValid());
 
@@ -705,47 +696,33 @@ VkPipeline RHIPipeline::GetHandle() const
 	return m_handle;
 }
 
-const PipelineLayout& RHIPipeline::GetPipelineLayout() const
-{
-	SPT_CHECK(IsValid());
-	SPT_CHECK(!!m_layout);
-	return *m_layout;
-}
-
-void RHIPipeline::InitializePipelineLayout(const rhi::PipelineLayoutDefinition& layoutDefinition)
-{
-	SPT_CHECK(!m_layout);
-
-	m_layout = VulkanRHI::GetPipelineLayoutsManager().GetOrCreatePipelineLayout(layoutDefinition);
-}
-
-void RHIPipeline::InitializeGraphicsPipeline(const rhi::GraphicsPipelineShadersDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, const PipelineLayout& layout)
+void RHIPipeline::InitializeGraphicsPipeline(const rhi::GraphicsPipelineShadersDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const helpers::gfx::GraphicsPipelineBuildDefinition pipelineBuildDefinition(shaderStagesDef, pipelineDefinition, layout);
+	const helpers::gfx::GraphicsPipelineBuildDefinition pipelineBuildDefinition(shaderStagesDef, pipelineDefinition);
 	m_handle = helpers::gfx::BuildGraphicsPipeline(pipelineBuildDefinition);
 
 	m_pipelineType = rhi::EPipelineType::Graphics;
 }
 
-void RHIPipeline::InitializeComputePipeline(const rhi::RHIShaderModule& computeShaderModule, const PipelineLayout& layout)
+void RHIPipeline::InitializeComputePipeline(const rhi::RHIShaderModule& computeShaderModule)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(computeShaderModule.IsValid());
 
-	const helpers::compute::ComputePipelineBuildDefinition pipelineBuildDefinition(computeShaderModule, layout);
+	const helpers::compute::ComputePipelineBuildDefinition pipelineBuildDefinition(computeShaderModule);
 	m_handle = helpers::compute::BuildComputePipeline(pipelineBuildDefinition);
 
 	m_pipelineType = rhi::EPipelineType::Compute;
 }
 
-void RHIPipeline::InitializeRayTracingPipeline(const rhi::RayTracingShadersDefinition& shadersDef, const rhi::RayTracingPipelineDefinition& pipelineDef, const PipelineLayout& layout)
+void RHIPipeline::InitializeRayTracingPipeline(const rhi::RayTracingShadersDefinition& shadersDef, const rhi::RayTracingPipelineDefinition& pipelineDef)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const helpers::ray_tracing::RayTracingPipelineBuildDefinition pipelineBuildDefinition(shadersDef, pipelineDef, layout);
+	const helpers::ray_tracing::RayTracingPipelineBuildDefinition pipelineBuildDefinition(shadersDef, pipelineDef);
 	m_handle = helpers::ray_tracing::BuildRayTracingPipeline(pipelineBuildDefinition);
 
 	m_pipelineType = rhi::EPipelineType::RayTracing;

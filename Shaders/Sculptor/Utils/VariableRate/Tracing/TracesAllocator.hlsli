@@ -27,9 +27,12 @@ struct CompactedMask4x4
 		return instance;
 	}
 
-	uint operator[](in uint idx)
+	__subscript(uint idx) -> uint
 	{
-		return (mask >> (SPT_VARIABLE_RATE_BITS * idx)) & SPT_VARIABLE_RATE_MASK;
+		get
+		{
+			return (mask >> (SPT_VARIABLE_RATE_BITS * idx)) & SPT_VARIABLE_RATE_MASK;
+		}
 	}
 
 	// 4 morton ordered 2x2 tiles
@@ -144,7 +147,7 @@ groupshared uint gs_tracesAllocationOffset;
 
 struct TracesAllocator
 {
-	static TracesAllocator Create(in RWStructuredBuffer<EncodedRayTraceCommand> tracesCommands, in RWStructuredBuffer<uint> inTracesCommandsNum, in RWTexture2D<uint> inVariableRateBlocksTexture)
+	static TracesAllocator Create(in RWTypedBuffer<EncodedRayTraceCommand> tracesCommands, in RWTypedBuffer<uint> inTracesCommandsNum, in UAVTexture2D<uint> inVariableRateBlocksTexture)
 	{
 		TracesAllocator allocator;
 		allocator.m_tracesCommands            = tracesCommands;
@@ -154,13 +157,15 @@ struct TracesAllocator
 	}
 
 #if OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
-	void SetTracesNumBuffers(in RWStructuredBuffer<uint> inTracesNum, in RWStructuredBuffer<uint> inTracesDispatchGroupsNum)
+	[mutating]
+	void SetTracesNumBuffers(in RWTypedBuffer<uint> inTracesNum, in RWTypedBuffer<uint> inTracesDispatchGroupsNum)
 	{
 		m_tracesNum               = inTracesNum;
 		m_tracesDispatchGroupsNum = inTracesDispatchGroupsNum;
 	}
 #endif // OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
 
+	[mutating]
 	void AllocateTraces(in uint2 groupID, in uint2 localID, in uint variableRateMask, in uint traceIdx, in bool maskOutOutput)
 	{
 		if(all(groupID + localID) == 0)
@@ -203,15 +208,13 @@ struct TracesAllocator
 
 			if (WaveIsFirstLane() && traceOutputIdx == 0 && tracesToAllocate > 0)
 			{
-				uint allocationOffset = 0;
 				const uint tracesToAllocateNum = gs_tracesToAllocateNum;
-				InterlockedAdd(m_tracesCommandsNum[0], tracesToAllocateNum, OUT allocationOffset);
+				uint allocationOffset = m_tracesCommandsNum.AtomicAdd(0u, tracesToAllocateNum);
 				gs_tracesAllocationOffset = allocationOffset;
 
 #if OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
-				uint tracesNum = 0;
-				InterlockedAdd(m_tracesNum[0], tracesToAllocateNum, OUT tracesNum);
-				InterlockedMax(m_tracesDispatchGroupsNum[0], (tracesNum + tracesToAllocateNum + 63) / 64);
+				uint tracesNum = m_tracesNum.AtomicAdd(0u, tracesToAllocateNum);
+				m_tracesDispatchGroupsNum.AtomicMax(0u, (tracesNum + tracesToAllocateNum + 63) / 64);
 #endif // OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
 			}
 
@@ -265,13 +268,13 @@ struct TracesAllocator
 		}
 	}
 
-	RWStructuredBuffer<EncodedRayTraceCommand> m_tracesCommands;
-	RWStructuredBuffer<uint>                   m_tracesCommandsNum;
-	RWTexture2D<uint>                          m_variableRateBlocksTexture;
+	RWTypedBuffer<EncodedRayTraceCommand> m_tracesCommands;
+	RWTypedBuffer<uint>                   m_tracesCommandsNum;
+	UAVTexture2D<uint>                    m_variableRateBlocksTexture;
 
 #if OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
-	RWStructuredBuffer<uint>                   m_tracesNum;
-	RWStructuredBuffer<uint>                   m_tracesDispatchGroupsNum;
+	RWTypedBuffer<uint>                   m_tracesNum;
+	RWTypedBuffer<uint>                   m_tracesDispatchGroupsNum;
 #endif // OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
 };
 

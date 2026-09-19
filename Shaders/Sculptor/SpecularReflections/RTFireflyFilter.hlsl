@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RTFireflyFilterDS, 0)]]
+[[shader_params(RTFireflyFilterParams, PARAMS_R_T_FIREFLY_FILTER)]]
 
 #include "SpecularReflections/SRReservoir.hlsli"
 
@@ -33,11 +33,11 @@ groupshared uint  gs_validReservoirsNum;
 void RTFireflyFilterCS(CS_INPUT input)
 {
 	const uint2 coords = input.globalID.xy;
-	const bool isHelperLane = any(coords >= u_resamplingConstants.resolution);
+	const bool isHelperLane = any(coords >= PARAMS_R_T_FIREFLY_FILTER->resamplingConstants->resolution);
 
-	const uint reservoirIdx = GetScreenReservoirIdx(coords, u_resamplingConstants.reservoirsResolution);
+	const uint reservoirIdx = GetScreenReservoirIdx(coords, PARAMS_R_T_FIREFLY_FILTER->resamplingConstants->reservoirsResolution);
 
-	const SRPackedReservoir packedReservoir = u_inOutReservoirsBuffer[reservoirIdx];
+	const SRPackedReservoir packedReservoir = PARAMS_R_T_FIREFLY_FILTER->inOutReservoirsBuffer[reservoirIdx];
 	SRReservoir reservoir = UnpackReservoir(packedReservoir);
 
 	const bool isSpecularTrace = reservoir.HasFlag(SR_RESERVOIR_FLAGS_SPECULAR_TRACE);
@@ -89,7 +89,7 @@ void RTFireflyFilterCS(CS_INPUT input)
 			{
 				reservoir.weightSum = 0.f;
 
-				u_inOutReservoirsBuffer[reservoirIdx] = PackReservoir(reservoir);
+				PARAMS_R_T_FIREFLY_FILTER->inOutReservoirsBuffer[reservoirIdx] = PackReservoir(reservoir);
 			}
 		}
 	}

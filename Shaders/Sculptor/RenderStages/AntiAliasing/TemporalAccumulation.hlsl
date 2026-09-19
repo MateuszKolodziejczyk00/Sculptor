@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(TemporalAccumulationDS, 0)]]
+[[shader_params(TemporalAccumulationConstants, CONSTS)]]
 
 #include "Utils/Sampling.hlsli"
 
@@ -16,19 +16,21 @@ void TemporalAccumulationCS(CS_INPUT input)
 {
 	const int2 coords = input.globalID.xy;
 
-	const float currentExposure = u_exposure[u_constants.exposureOffset];
+	const float currentExposure = CONSTS->exposure[CONSTS->exposureOffset];
 
-	const float3 historyColor = u_constants.accumulatedData.Load(coords).xyz;
+	const float3 historyColor = CONSTS->accumulatedData.Load(coords).xyz;
 
-	float3 inputColor = u_constants.input.Load(coords).xyz / currentExposure;
+	const bool hasHistory = CONSTS->historyWeight > 0.f;
+
+	float3 inputColor = CONSTS->input.Load(coords).xyz / currentExposure;
 	if (any(isnan(inputColor)))
 	{
-		inputColor = u_constants.currentFrameWeight < 1.f ? historyColor : 0.f;
+		inputColor = hasHistory ? historyColor : 0.f;
 	}
 
-	const float3 accumulatedColor = inputColor * u_constants.currentFrameWeight + historyColor * u_constants.historyWeight;
+	const float3 accumulatedColor = inputColor * CONSTS->currentFrameWeight + historyColor * CONSTS->historyWeight;
 	const float3 exposedColor = accumulatedColor * currentExposure;
 
-	u_constants.accumulatedData.Store(coords, float4(accumulatedColor, 1.f));
-	u_constants.output.Store(coords, float4(exposedColor, 1.f));
+	CONSTS->accumulatedData.Store(coords, float4(accumulatedColor, 1.f));
+	CONSTS->output.Store(coords, float4(exposedColor, 1.f));
 }

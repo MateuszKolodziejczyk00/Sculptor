@@ -34,7 +34,6 @@ void RenderTerrainInfluenceGizmo(rg::RenderGraphBuilder& graphBuilder, const Sce
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Terrain Influence Gizmo"),
 						  TerrainInfluenceGizmoPSO::pso,
 						  math::Utils::DivideCeil(params.color->GetResolution2D(), math::Vector2u(16u, 16u)),
-						  rg::EmptyDescriptorSets(),
 						  shaderConstants);
 }
 
@@ -74,7 +73,6 @@ void ExecuteTerrainMaterialPaintCommand(rg::RenderGraphBuilder& graphBuilder, co
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Execute Terrain Material Paint Command"),
 						  TerrainMaterialPaintCommandPSO::pso,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(16u, 16u)),
-						  rg::EmptyDescriptorSets(),
 						  shaderConstants);
 }
 

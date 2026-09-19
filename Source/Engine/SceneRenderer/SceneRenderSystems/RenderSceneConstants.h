@@ -40,9 +40,4 @@ BEGIN_SHADER_STRUCT(RenderSceneConstants)
 	SHADER_STRUCT_FIELD(wsc::WSCData,      wsc)
 END_SHADER_STRUCT();
 
-
-DS_BEGIN(RenderSceneDS, rg::RGDescriptorSetState<RenderSceneDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<RenderSceneConstants>), u_renderSceneConstants)
-DS_END();
-
 } // spt::rsc

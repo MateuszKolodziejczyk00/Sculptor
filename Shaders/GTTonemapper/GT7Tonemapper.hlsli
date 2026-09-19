@@ -96,7 +96,7 @@ struct GTToneMappingCurveV2
     float toeStrength_;
     float kA_, kB_, kC_;
 
-    void initializeCurve(float monitorIntensity,
+    [mutating] void initializeCurve(float monitorIntensity,
                          float alpha,
                          float grayPoint,
                          float linearSection,
@@ -334,7 +334,7 @@ struct GT7ToneMapping
 
     // Initializes the tone mapping curve and related parameters based on the target display luminance.
     // This method should not be called directly. Use initializeAsHDR() or initializeAsSDR() instead.
-    void initializeParameters(float physicalTargetLuminance)
+    [mutating] void initializeParameters(float physicalTargetLuminance)
     {
         framebufferLuminanceTarget_ = physicalValueToFrameBufferValue(physicalTargetLuminance);
 
@@ -358,14 +358,14 @@ struct GT7ToneMapping
     // Input: target display peak luminance in nits (range: 250 to 10,000)
     // Note: The lower limit is 250 because the parameters for GTToneMappingCurveV2
     //       were determined based on an SDR paper white assumption of 250 nits (GRAN_TURISMO_SDR_PAPER_WHITE).
-    void initializeAsHDR(float physicalTargetLuminance)
+    [mutating] void initializeAsHDR(float physicalTargetLuminance)
     {
         sdrCorrectionFactor_ = 1.0f;
         initializeParameters(physicalTargetLuminance);
     }
 
     // Initialize for SDR (Standard Dynamic Range) display.
-    void initializeAsSDR()
+    [mutating] void initializeAsSDR()
     {
         // Regarding SDR output:
         // First, in GT (Gran Turismo), it is assumed that a maximum value of 1.0 in SDR output

@@ -12,9 +12,7 @@ ComputePipeline::ComputePipeline(const RendererResourceName& name, const lib::Sh
 
 	AppendToPipelineMetaData(shader->GetMetaData());
 
-	const rhi::PipelineLayoutDefinition pipelineLayoutDef = CreateLayoutDefinition();
-
-	GetRHI().InitializeRHI(shader->GetRHI(), pipelineLayoutDef);
+	GetRHI().InitializeRHI(shader->GetRHI());
 	GetRHI().SetName(name.Get());
 }
 

@@ -3,7 +3,7 @@
 #include "Buffer.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "GPUApi.h"
-#include "DescriptorSetState/DescriptorManager.h"
+#include "Descriptors/DescriptorManager.h"
 
 namespace spt::rdr
 {
@@ -58,6 +58,11 @@ TopLevelAS::~TopLevelAS()
 
 		releaseTicket.ExecuteReleaseRHI();
 	}));
+}
+
+ResourceDescriptorIdx TopLevelAS::GetSRVDescriptor() const
+{
+	return ResourceDescriptorIdx(m_srvDescriptor.Get() * rhi::RHI::GetDescriptorProps().bufferDescriptorIdxFactor);
 }
 
 void TopLevelAS::InitializeSRVDescriptor()

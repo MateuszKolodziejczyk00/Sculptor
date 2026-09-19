@@ -10,11 +10,6 @@
 #include "RenderScene.h"
 #include "SceneRenderSystems/ShadowMaps/ShadowMapsRenderSystem.h"
 #include "ResourcesManager.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "DescriptorSetBindings/ConditionalBinding.h"
 #include "Common/ShaderCompilationInput.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "Utils/TextureMipsBuilder.h"
@@ -30,18 +25,13 @@ namespace msm
 {
 
 BEGIN_SHADER_STRUCT(FilterMSMParams)
-	SHADER_STRUCT_FIELD(Bool, linearizeDepth)
-	SHADER_STRUCT_FIELD(Real32, nearPlane)
-	SHADER_STRUCT_FIELD(Real32, farPlane)
+	SHADER_STRUCT_FIELD(Bool,                              linearizeDepth)
+	SHADER_STRUCT_FIELD(Real32,                            nearPlane)
+	SHADER_STRUCT_FIELD(Real32,                            farPlane)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, input)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, output)
 END_SHADER_STRUCT();
 
-
-DS_BEGIN(FilterMSMDS, rg::RGDescriptorSetState<FilterMSMDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_input)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_inputSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_output)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<FilterMSMParams>),                         u_params)
-DS_END();
 
 static rdr::PipelineStateID CompileHorizontalMSMFilterPipeline()
 {
@@ -66,13 +56,11 @@ static rdr::PipelineStateID CompileVerticalMSMFilterPipeline()
 namespace vsm
 {
 
-DS_BEGIN(FilterVSMDS, rg::RGDescriptorSetState<FilterVSMDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConditionalBinding<"FILTER_DEPTH",
-							gfx::OptionalSRVTexture2DBinding<Real32>>),         u_depth)
-	DS_BINDING(BINDING_TYPE(gfx::ConditionalBinding<"!FILTER_DEPTH",
-							gfx::OptionalSRVTexture2DBinding<math::Vector2f>>), u_moments)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),           u_output)
-DS_END();
+BEGIN_SHADER_STRUCT(FilterVSMParams)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         depth)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, moments)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>, output)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CompileVSMFilterPipeline(Bool depthFilter)
@@ -147,7 +135,7 @@ void ShadowMapRenderStage::RenderDepth(rg::RenderGraphBuilder& graphBuilder, Sce
 
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Shadow Map (Depth)"),
 							renderPassDef,
-							rg::EmptyDescriptorSets(),
+							rg::ShaderParams(),
 							[renderingRes](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
 								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingRes.cast<Real32>()), 0.f, 1.f);
@@ -240,11 +228,8 @@ void ShadowMapRenderStage::RenderMSM(rg::RenderGraphBuilder& graphBuilder, Scene
 	horizontalFilterParams.linearizeDepth = true;
 	horizontalFilterParams.nearPlane = renderView.GetNearPlane();
 	horizontalFilterParams.farPlane = farPlane.value();
-
-	const lib::MTHandle<msm::FilterMSMDS> horizontalFilterMSMDS = graphBuilder.CreateDescriptorSet<msm::FilterMSMDS>(RENDERER_RESOURCE_NAME("FilterMSMDS (Horizontal)"));
-	horizontalFilterMSMDS->u_input	= shadowMapTextureView;
-	horizontalFilterMSMDS->u_output = blurIntermediateTexture;
-	horizontalFilterMSMDS->u_params = horizontalFilterParams;
+	horizontalFilterParams.input	= shadowMapTextureView;
+	horizontalFilterParams.output = blurIntermediateTexture;
 
 	static rdr::PipelineStateID horizontalBlurPipeline = msm::CompileHorizontalMSMFilterPipeline();
 
@@ -252,19 +237,16 @@ void ShadowMapRenderStage::RenderMSM(rg::RenderGraphBuilder& graphBuilder, Scene
 	graphBuilder.Dispatch(RG_DEBUG_NAME("MSM Horizontal Blur"),
 						  horizontalBlurPipeline,
 						  horizontalBlurWorkCount,
-						  rg::BindDescriptorSets(horizontalFilterMSMDS));
-
-	msm::FilterMSMParams verticalFilterParams;
-	verticalFilterParams.linearizeDepth = false;
+						  rg::ShaderParams(horizontalFilterParams));
 
 	rhi::TextureViewDefinition shadowMapMip0ViewDef;
 	shadowMapMip0ViewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color, 0, 1);
 	const rg::RGTextureViewHandle shadowMapMip0View = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Shadow Map View"), shadowMap, shadowMapMip0ViewDef);
 
-	const lib::MTHandle<msm::FilterMSMDS> verticalFilterMSMDS = graphBuilder.CreateDescriptorSet<msm::FilterMSMDS>(RENDERER_RESOURCE_NAME("FilterMSMDS (Vertical)"));
-	verticalFilterMSMDS->u_input	= blurIntermediateTexture;
-	verticalFilterMSMDS->u_output	= shadowMapMip0View;
-	verticalFilterMSMDS->u_params	= verticalFilterParams;
+	msm::FilterMSMParams verticalFilterParams;
+	verticalFilterParams.linearizeDepth = false;
+	verticalFilterParams.input	= blurIntermediateTexture;
+	verticalFilterParams.output	= shadowMapMip0View;
 
 	static rdr::PipelineStateID verticalBlurPipeline = msm::CompileVerticalMSMFilterPipeline();
 
@@ -272,7 +254,7 @@ void ShadowMapRenderStage::RenderMSM(rg::RenderGraphBuilder& graphBuilder, Scene
 	graphBuilder.Dispatch(RG_DEBUG_NAME("MSM Vertical Blur"),
 						  verticalBlurPipeline,
 						  verticalBlurWorkCount,
-						  rg::BindDescriptorSets(verticalFilterMSMDS));
+						  rg::ShaderParams(verticalFilterParams));
 
 	MipsBuilder::BuildTextureMips(graphBuilder, shadowMap, 0, shadowMap->GetTextureDefinition().mipLevels);
 }
@@ -291,16 +273,16 @@ void ShadowMapRenderStage::RenderVSM(rg::RenderGraphBuilder& graphBuilder, Scene
 	{
 		// Horizontal pass
 
-		const lib::MTHandle<vsm::FilterVSMDS> horizontalFilterDS = graphBuilder.CreateDescriptorSet<vsm::FilterVSMDS>(RENDERER_RESOURCE_NAME("FilterVSMDS (Horizontal)"));
-		horizontalFilterDS->u_depth.Set(depthRenderTarget);
-		horizontalFilterDS->u_output = tempTexture;
+		vsm::FilterVSMParams horizontalFilterParams;
+		horizontalFilterParams.depth = depthRenderTarget;
+		horizontalFilterParams.output = tempTexture;
 
 		static rdr::PipelineStateID horizontalBlurPipeline = vsm::CompileVSMFilterPipeline(true);
 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("VSM Horizontal Blur"),
 							  horizontalBlurPipeline,
 							  math::Utils::DivideCeil(renderingRes, math::Vector2u(128u, 1u)),
-							  rg::BindDescriptorSets(horizontalFilterDS));
+							  rg::ShaderParams(horizontalFilterParams));
 	}
 
 	 
@@ -311,16 +293,16 @@ void ShadowMapRenderStage::RenderVSM(rg::RenderGraphBuilder& graphBuilder, Scene
 		shadowMapMip0ViewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color, 0, 1);
 		const rg::RGTextureViewHandle shadowMapMip0View = graphBuilder.CreateTextureView(RG_DEBUG_NAME("VSM Shadow Map View"), shadowMap, shadowMapMip0ViewDef);
 
-		const lib::MTHandle<vsm::FilterVSMDS> verticalFilterDS = graphBuilder.CreateDescriptorSet<vsm::FilterVSMDS>(RENDERER_RESOURCE_NAME("FilterVSMDS (Vertical)"));
-		verticalFilterDS->u_moments.Set(tempTexture);
-		verticalFilterDS->u_output = shadowMapMip0View;
+		vsm::FilterVSMParams verticalFilterParams;
+		verticalFilterParams.moments = tempTexture;
+		verticalFilterParams.output = shadowMapMip0View;
 
 		static rdr::PipelineStateID verticalBlurPipeline = vsm::CompileVSMFilterPipeline(false);
 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("VSM Vertical Blur"),
 							  verticalBlurPipeline,
 							  math::Utils::DivideCeil(renderingRes, math::Vector2u(1u, 128u)),
-							  rg::BindDescriptorSets(verticalFilterDS));
+							  rg::ShaderParams(verticalFilterParams));
 	}
 
 	MipsBuilder::BuildTextureMips(graphBuilder, shadowMap, 0, shadowMap->GetTextureDefinition().mipLevels);

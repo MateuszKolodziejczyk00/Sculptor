@@ -1,27 +1,19 @@
 #include "LinearizeDepth.h"
 #include "RenderGraphBuilder.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
 #include "View/RenderView.h"
+#include "ResourcesManager.h"
 
 
 namespace spt::rsc
 {
 
 BEGIN_SHADER_STRUCT(LinearizeDepthConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
-	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
+	SHADER_STRUCT_FIELD(math::Vector2u,            resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,            invResolution)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>, depth)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>, rwLinearDepth)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(LinearizeDepthDS, rg::RGDescriptorSetState<LinearizeDepthDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_depth)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                     u_rwLinearDepth)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LinearizeDepthConstants>), u_constants)
-DS_END();
 
 
 static rdr::PipelineStateID CreateLinearizeDepthPipeline()
@@ -44,11 +36,8 @@ rg::RGTextureViewHandle ExecuteLinearizeDepth(rg::RenderGraphBuilder& graphBuild
 	LinearizeDepthConstants shaderConstants;
 	shaderConstants.resolution    = resolution;
 	shaderConstants.invResolution = resolution.cast<Real32>().cwiseInverse();
-
-	lib::MTHandle<LinearizeDepthDS> linearizeDepthDS = graphBuilder.CreateDescriptorSet<LinearizeDepthDS>(RENDERER_RESOURCE_NAME("LinearizeDepthDS"));
-	linearizeDepthDS->u_depth         = depth;
-	linearizeDepthDS->u_rwLinearDepth = linearDepthTexture;
-	linearizeDepthDS->u_constants     = shaderConstants;
+	shaderConstants.depth         = depth;
+	shaderConstants.rwLinearDepth = linearDepthTexture;
 
 	static const rdr::PipelineStateID linearizeDepthPipeline = CreateLinearizeDepthPipeline();
 
@@ -57,7 +46,7 @@ rg::RGTextureViewHandle ExecuteLinearizeDepth(rg::RenderGraphBuilder& graphBuild
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Linearize Depth"),
 						  linearizeDepthPipeline,
 						  math::Utils::DivideCeil(resolution, groupSize),
-						  rg::BindDescriptorSets(std::move(linearizeDepthDS)));
+						  rg::ShaderParams(shaderConstants));
 
 	return linearDepthTexture;
 }

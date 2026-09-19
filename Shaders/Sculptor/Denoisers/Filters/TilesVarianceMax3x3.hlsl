@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(TilesVarianceMax3x3DS, 0)]]
+[[shader_params(TilesVarianceMax3x3Params, PARAMS_TILES_VARIANCE_MAX3X3)]]
 
 
 struct CS_INPUT
@@ -14,8 +14,7 @@ void TilesVarianceMaxCS(CS_INPUT input)
 {
     const uint2 pixel = input.globalID.xy;
     
-    uint2 outputRes;
-    u_tilesVarianceMax3x3Texture.GetDimensions(outputRes.x, outputRes.y);
+    uint2 outputRes = PARAMS_TILES_VARIANCE_MAX3X3->tilesVarianceMax3x3Texture.GetResolution();
 
     if(pixel.x < outputRes.x && pixel.y < outputRes.y)
     {
@@ -29,11 +28,11 @@ void TilesVarianceMaxCS(CS_INPUT input)
             for(int x = -1; x <= 1; ++x)
             {
                 const float2 offset = float2(x, y) * pixelSize;
-                const float variance = u_tilesVarianceTexture.SampleLevel(u_nearestSampler, uv + offset, 0).x;
+                const float variance = PARAMS_TILES_VARIANCE_MAX3X3->tilesVarianceTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv + offset, 0).x;
                 maxVariance = max(maxVariance, variance);
             }
         }
 
-        u_tilesVarianceMax3x3Texture[pixel] = maxVariance;
+        PARAMS_TILES_VARIANCE_MAX3X3->tilesVarianceMax3x3Texture[pixel] = maxVariance;
     }
 }

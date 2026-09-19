@@ -52,7 +52,6 @@ static void CompilePBRMaterialTextures(rg::RenderGraphBuilder& graphBuilder, mat
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Compile PBR Material Textures"),
 						  CompilePBRMaterialTexturesPSO::pso,
 						  dispatchGroupsNum,
-						  rg::EmptyDescriptorSets(),
 						  params);
 }
 
@@ -87,7 +86,6 @@ static rg::RGTextureViewHandle GenerateHeightMapFromNormals(rg::RenderGraphBuild
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Generate Depth Map From Normals"),
 						  GenerateDepthMapFromNormalsPSO::pso,
 						  math::Vector3u(math::Utils::DivideCeil(resolution.x(), 16u), math::Utils::DivideCeil(resolution.y(), 16u), 1u),
-						  rg::EmptyDescriptorSets(),
 						  constants);
 
 	return depth;
@@ -126,7 +124,6 @@ static rg::RGTextureViewHandle GenerateOcclusionMap(rg::RenderGraphBuilder& grap
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Generate Occlusion Map"),
 						  GenerateOcclusionMapPSO::pso,
 						  math::Vector3u(math::Utils::DivideCeil(resolution.x(), 16u), math::Utils::DivideCeil(resolution.y(), 16u), 1u),
-						  rg::EmptyDescriptorSets(),
 						  constants);
 
 	return occlusion;
@@ -165,7 +162,6 @@ static void GeneratePBRTexturesMips(rg::RenderGraphBuilder& graphBuilder, math::
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Generate PBR Textures Misp"),
 						  GeneratePBRTexturesMipsPSO::pso,
 						  dispatchGroupsNum,
-						  rg::EmptyDescriptorSets(),
 						  constants);
 }
 

@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[shader_params(GenerateDepthMapFromNormalsConstants, u_constants)]]
+[[shader_params(GenerateDepthMapFromNormalsConstants, PARAMS_GENERATE_DEPTH_MAP_FROM_NORMALS_CONSTANTS)]]
 
 #define POM_PIXEL_FOOTPRINT 0.01f
 
@@ -16,7 +16,7 @@ void GenerateCS(CS_INPUT input)
 {
 	const int2 coords = input.globalID.xy;
 
-	const uint2 resolution = u_constants.rwDepth.GetResolution();
+	const uint2 resolution = PARAMS_GENERATE_DEPTH_MAP_FROM_NORMALS_CONSTANTS->rwDepth.GetResolution();
 	if (any(coords >= resolution))
 	{
 		return;
@@ -48,17 +48,17 @@ void GenerateCS(CS_INPUT input)
 				break;
 			}
 
-			if (u_constants.alpha.IsValid())
+			if (PARAMS_GENERATE_DEPTH_MAP_FROM_NORMALS_CONSTANTS->alpha.IsValid())
 			{
 				const float2 sampleUV = (float2(sampleCoords) + 0.5f) * rcpResolution;
-				const float alpha = u_constants.alpha.SampleLevel(BindlessSamplers::LinearClampEdge(), sampleUV, 0);
+				const float alpha = PARAMS_GENERATE_DEPTH_MAP_FROM_NORMALS_CONSTANTS->alpha.SampleLevel(BindlessSamplers::LinearClampEdge(), sampleUV, 0);
 				if (alpha < 0.5f)
 				{
 					break;
 				}
 			}
 
-			float3 normal = u_constants.normals.Load(int2(sampleCoords)).xyz;
+			float3 normal = PARAMS_GENERATE_DEPTH_MAP_FROM_NORMALS_CONSTANTS->normals.Load(int2(sampleCoords)).xyz;
 			normal.xy = normal.xy * 2.f - 1.f;
 			normal = normalize(normal);
 
@@ -75,9 +75,9 @@ void GenerateCS(CS_INPUT input)
 	const float strength = 0.5f;
 
 	float finalDepth = -(heightSum / samplesNum);
-	finalDepth /= u_constants.maxDepthCm;
+	finalDepth /= PARAMS_GENERATE_DEPTH_MAP_FROM_NORMALS_CONSTANTS->maxDepthCm;
 	finalDepth *= strength;
 	finalDepth = saturate(finalDepth + 1.f);
 
-	u_constants.rwDepth.Store(coords, 1.f - finalDepth);
+	PARAMS_GENERATE_DEPTH_MAP_FROM_NORMALS_CONSTANTS->rwDepth.Store(coords, 1.f - finalDepth);
 }

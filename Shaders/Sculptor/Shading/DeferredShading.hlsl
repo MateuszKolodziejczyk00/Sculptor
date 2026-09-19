@@ -1,15 +1,15 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderViewDS)]]
-[[descriptor_set(RenderSceneDS)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
 
-[[descriptor_set(DeferredShadingDS)]]
+[[shader_params(DeferredShadingContstants, PARAMS_DEFERRED_SHADING)]]
 
-[[descriptor_set(ViewShadingInputDS)]]
+[[shader_params(ViewShadingParams, PARAMS_VIEW_SHADING_INPUT)]]
 
 #if ENABLE_DDGI
 
-[[descriptor_set(DDGISceneDS)]]
+[[shader_params(DDGIGPUScene, PARAMS_D_D_G_I_SCENE)]]
 
 #include "DDGI/DDGITypes.hlsli"
 
@@ -29,11 +29,11 @@ struct CS_INPUT
 GBufferData LoadGBuffer(uint3 pixel)
 {
 	GBufferInput gbufferInput;
-	gbufferInput.gBuffer0 = u_gBuffer0Texture;
-	gbufferInput.gBuffer1 = u_gBuffer1Texture;
-	gbufferInput.gBuffer2 = u_gBuffer2Texture;
-	gbufferInput.gBuffer3 = u_gBuffer3Texture;
-	gbufferInput.gBuffer4 = u_gBuffer4Texture;
+	gbufferInput.gBuffer0 = PARAMS_DEFERRED_SHADING->gBuffer0Texture;
+	gbufferInput.gBuffer1 = PARAMS_DEFERRED_SHADING->gBuffer1Texture;
+	gbufferInput.gBuffer2 = PARAMS_DEFERRED_SHADING->gBuffer2Texture;
+	gbufferInput.gBuffer3 = PARAMS_DEFERRED_SHADING->gBuffer3Texture;
+	gbufferInput.gBuffer4 = PARAMS_DEFERRED_SHADING->gBuffer4Texture;
 
 	return DecodeGBuffer(gbufferInput, pixel);
 }
@@ -46,16 +46,16 @@ void DeferredShadingCS(CS_INPUT input)
 
 	float3 luminance = 0.f;
 
-	if(all(pixel.xy < u_deferredShadingConstants.resolution))
+	if(all(pixel.xy < PARAMS_DEFERRED_SHADING->resolution))
 	{
-		const float depth = u_depthTexture.Load(pixel).x;
+		const float depth = PARAMS_DEFERRED_SHADING->depthTexture.Load(pixel).x;
 
 		if(depth > 0.f)
 		{
-			const float2 screenUV = (float2(pixel.xy) + 0.5f) * u_deferredShadingConstants.pixelSize;
+			const float2 screenUV = (float2(pixel.xy) + 0.5f) * PARAMS_DEFERRED_SHADING->pixelSize;
 			const float3 ndc = float3(screenUV * 2.f - 1.f, depth);
 
-			const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
+			const float3 worldLocation = NDCToWorldSpace(ndc, VIEW->sceneView);
 
 			const GBufferData gBufferData = LoadGBuffer(pixel);
 
@@ -65,11 +65,11 @@ void DeferredShadingCS(CS_INPUT input)
 			surface.geometryNormal = gBufferData.normal;
 			surface.roughness      = gBufferData.roughness;
 			surface.uv             = screenUV;
-			surface.linearDepth    = ComputeLinearDepth(depth, u_sceneView);
+			surface.linearDepth    = ComputeLinearDepth(depth, VIEW->sceneView);
 			
 			ComputeSurfaceColor(gBufferData.baseColor, gBufferData.metallic, OUT surface.diffuseColor, OUT surface.specularColor);
 
-			const float3 toView = normalize(u_sceneView.viewLocation - worldLocation);
+			const float3 toView = normalize(VIEW->sceneView.viewLocation - worldLocation);
 
 			ViewLightingAccumulator lightingAccumulator = ViewLightingAccumulator::Create();
 			CalcReflectedLuminance(surface, toView, INOUT lightingAccumulator);
@@ -84,15 +84,15 @@ void DeferredShadingCS(CS_INPUT input)
 #if ENABLE_DDGI
 			float ambientOcclusion = 1.f;
 
-			if (u_deferredShadingConstants.isAmbientOcclusionEnabled)
+			if (PARAMS_DEFERRED_SHADING->isAmbientOcclusionEnabled)
 			{
-				ambientOcclusion = u_ambientOcclusionTexture.Load(pixel);
+				ambientOcclusion = PARAMS_VIEW_SHADING_INPUT->ambientOcclusionTexture.Load(pixel);
 			}
 
 			DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(worldLocation, surface.geometryNormal, toView);
 			ddgiSampleParams.sampleDirection = surface.shadingNormal;
 
-			const float random = u_blueNoise256Texture.Load(uint3(pixel.xy & 255, 0)).x;
+			const float random = PARAMS_DEFERRED_SHADING->blueNoise256Texture.Load(uint3(pixel.xy & 255, 0)).x;
 
 			// Use blue noise to blend between the two volumes. This way we can sample only one volume per pixel.
 			indirectIlluminance = DDGISampleIlluminanceBlended(ddgiSampleParams, random, DDGISampleContext::Create()) * ambientOcclusion;
@@ -107,5 +107,5 @@ void DeferredShadingCS(CS_INPUT input)
 		}
 	}
 
-	u_luminanceTexture[pixel.xy] = float4(luminance, 1.f);
+	PARAMS_DEFERRED_SHADING->luminanceTexture[pixel.xy] = float4(luminance, 1.f);
 }

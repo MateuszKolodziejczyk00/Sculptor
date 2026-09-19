@@ -104,7 +104,7 @@ uint PCGHash(in uint input)
 }
 
 
-class RngState
+struct RngState
 {
 	static RngState Create(in uint2 pixel, in uint frame)
 	{
@@ -114,7 +114,7 @@ class RngState
 		return state;
 	}
 
-	float Next()
+	[mutating] float Next()
 	{
 		seed = PCGHash(seed);
 		return seed / 4294967296.f;

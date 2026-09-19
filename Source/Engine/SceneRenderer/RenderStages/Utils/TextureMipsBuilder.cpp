@@ -2,10 +2,6 @@
 #include "Utils/ViewRenderingSpec.h"
 #include "RenderGraphBuilder.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ResourcesManager.h"
 #include "Common/ShaderCompilationInput.h"
 
@@ -16,20 +12,14 @@ namespace MipsBuilder
 {
 
 BEGIN_SHADER_STRUCT(MipsBuildPassParams)
-	SHADER_STRUCT_FIELD(Uint32, downsampleMipsNum)
+	SHADER_STRUCT_FIELD(Uint32,                               downsampleMipsNum)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>, inputTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector4f>, textureMip0)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>,    textureMip1)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>,    textureMip2)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>,    textureMip3)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>,    textureMip4)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(MipsBuildPassDS, rg::RGDescriptorSetState<MipsBuildPassDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<MipsBuildPassParams>),                    u_mipsBuildParams)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_inputSampler)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_inputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                            u_textureMip0)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),                    u_textureMip1)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),                    u_textureMip2)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),                    u_textureMip3)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),                    u_textureMip4)
-DS_END();
 
 
 static rdr::PipelineStateID CompileBuildMipsPipeline()
@@ -71,26 +61,23 @@ void BuildTextureMips(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureHandle 
 
 		MipsBuildPassParams params;
 		params.downsampleMipsNum = downsampleMipsNum;
-
-		const lib::MTHandle<MipsBuildPassDS> mipsBuildDS = graphBuilder.CreateDescriptorSet<MipsBuildPassDS>(RENDERER_RESOURCE_NAME(std::format("BuildHiZDS (Mips {} - {})", mipIdx0 + sourceMipLevel, mipIdx0 + downsampleMipsNum + sourceMipLevel)));
-		mipsBuildDS->u_mipsBuildParams = params;
-		mipsBuildDS->u_inputTexture = inputTexture;
-		mipsBuildDS->u_textureMip0 = textureMipViews[mipIdx];
+		params.inputTexture = inputTexture;
+		params.textureMip0 = textureMipViews[mipIdx];
 		if (downsampleMipsNum >= 2)
 		{
-			mipsBuildDS->u_textureMip1 = textureMipViews[mipIdx + 1];
+			params.textureMip1 = textureMipViews[mipIdx + 1];
 		}
 		if (downsampleMipsNum >= 3)
 		{
-			mipsBuildDS->u_textureMip2 = textureMipViews[mipIdx + 2];
+			params.textureMip2 = textureMipViews[mipIdx + 2];
 		}
 		if (downsampleMipsNum >= 4)
 		{
-			mipsBuildDS->u_textureMip3 = textureMipViews[mipIdx + 3];
+			params.textureMip3 = textureMipViews[mipIdx + 3];
 		}
 		if (downsampleMipsNum >= 5)
 		{
-			mipsBuildDS->u_textureMip4 = textureMipViews[mipIdx + 4];
+			params.textureMip4 = textureMipViews[mipIdx + 4];
 		}
 
 		const math::Vector2u outputRes(std::max(sourceMipResolution.x() >> mipIdx, 1u), std::max(sourceMipResolution.y() >> mipIdx, 1u));
@@ -98,7 +85,7 @@ void BuildTextureMips(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureHandle 
 		graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("Build HiZ (Mips ({} - {})", mipIdx, mipIdx0 + downsampleMipsNum)),
 							  buildMipsPipeline, 
 							  groupCount,
-							  rg::BindDescriptorSets(mipsBuildDS));
+							  rg::ShaderParams(params));
 
 		inputTexture = textureMipViews[mipIdx + downsampleMipsNum - 1];
 	}

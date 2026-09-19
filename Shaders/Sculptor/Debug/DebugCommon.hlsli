@@ -4,7 +4,7 @@
 namespace debug
 {
 
-class Literal
+struct Literal
 {
 	uint2 val;
 };
@@ -29,7 +29,7 @@ Literal CreateLiteral(uint2 val)
 #define SPT_LINE __LINE__
 
 
-[[descriptor_set(ShaderDebugCommandBufferDS)]]
+[[shader_params(ShaderDebugCommandBufferParams, PARAMS_SHADER_DEBUG_COMMAND_BUFFER)]]
 
 
 namespace debug
@@ -37,17 +37,17 @@ namespace debug
 
 bool HasValidCursorPos()
 {
-	return all(u_debugCommandsBufferParams.mouseUV > 0.f);
+	return all(PARAMS_SHADER_DEBUG_COMMAND_BUFFER->mouseUV > 0.f);
 }
 
 bool IsPixelHovered(uint2 coords, uint2 resolution)
 {
-	return all(round(u_debugCommandsBufferParams.mouseUV * resolution) == coords);
+	return all(round(PARAMS_SHADER_DEBUG_COMMAND_BUFFER->mouseUV * resolution) == coords);
 }
 
 void WriteDebugPixel(uint2 pixel, float4 value)
 {
-	u_debugOutputTexture[pixel] = value;
+	PARAMS_SHADER_DEBUG_COMMAND_BUFFER->debugOutputTexture[pixel] = value;
 }
 
 void WriteDebugPixel(uint2 pixel, float3 value)
@@ -67,7 +67,7 @@ void WriteDebugPixel(uint2 pixel, float value)
 
 void WriteDebugPixelOnScreen(uint2 pixel, float4 value)
 {
-	u_debugOnScreenOutputTexture[pixel] = value;
+	PARAMS_SHADER_DEBUG_COMMAND_BUFFER->debugOnScreenOutputTexture[pixel] = value;
 }
 
 } // debug

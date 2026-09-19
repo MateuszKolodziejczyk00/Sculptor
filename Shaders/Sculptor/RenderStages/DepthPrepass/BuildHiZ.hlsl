@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(BuildHiZDS, 0)]]
+[[shader_params(BuildHiZParams, PARAMS_BUILD_HI_Z)]]
 
 
 groupshared float groupDepths[16][16];
@@ -32,16 +32,15 @@ struct CS_INPUT
 [numthreads(16, 16, 1)]
 void BuildHiZCS(CS_INPUT input)
 {
-    uint2 outputRes;
-    u_HiZMip0.GetDimensions(outputRes.x, outputRes.y);
+    uint2 outputRes = PARAMS_BUILD_HI_Z->HiZMip0.GetResolution();
 
     const uint2 pixel = input.globalID.xy;
     const float2 uv = float2((float(pixel.x) + 0.5f) / float(outputRes.x), (float(pixel.y) + 0.5f) / float(outputRes.y));
     
-    float depth = u_depthTexture.SampleLevel(u_depthSampler, uv, 0).x;
-    u_HiZMip0[pixel] = depth;
+    float depth = PARAMS_BUILD_HI_Z->depthTexture.SampleLevel(BindlessSamplers::LinearMinClampEdge(), uv, 0).x;
+    PARAMS_BUILD_HI_Z->HiZMip0[pixel] = depth;
 
-    if(u_buildParams.downsampleMipsNum == 1)
+    if(PARAMS_BUILD_HI_Z->downsampleMipsNum == 1)
     {
         return;
     }
@@ -57,10 +56,10 @@ void BuildHiZCS(CS_INPUT input)
     if(isRelevantInvocation)
     {
         depth = GetMinDepth(localPixel);
-        u_HiZMip1[pixel >> 1] = depth;
+        PARAMS_BUILD_HI_Z->HiZMip1[pixel >> 1] = depth;
     }
 
-    if(u_buildParams.downsampleMipsNum == 2)
+    if(PARAMS_BUILD_HI_Z->downsampleMipsNum == 2)
     {
         return;
     }
@@ -79,10 +78,10 @@ void BuildHiZCS(CS_INPUT input)
     if(isRelevantInvocation)
     {
         depth = GetMinDepth(localPixel);
-        u_HiZMip2[pixel >> 2] = depth;
+        PARAMS_BUILD_HI_Z->HiZMip2[pixel >> 2] = depth;
     }
     
-    if(u_buildParams.downsampleMipsNum == 3)
+    if(PARAMS_BUILD_HI_Z->downsampleMipsNum == 3)
     {
         return;
     }
@@ -101,10 +100,10 @@ void BuildHiZCS(CS_INPUT input)
     if(isRelevantInvocation)
     {
         depth = GetMinDepth(localPixel);
-        u_HiZMip3[pixel >> 3] = depth;
+        PARAMS_BUILD_HI_Z->HiZMip3[pixel >> 3] = depth;
     }
     
-    if(u_buildParams.downsampleMipsNum == 4)
+    if(PARAMS_BUILD_HI_Z->downsampleMipsNum == 4)
     {
         return;
     }
@@ -123,6 +122,6 @@ void BuildHiZCS(CS_INPUT input)
     if(isRelevantInvocation)
     {
         depth = GetMinDepth(localPixel);
-        u_HiZMip4[pixel >> 4] = depth;
+        PARAMS_BUILD_HI_Z->HiZMip4[pixel >> 4] = depth;
     }
 }

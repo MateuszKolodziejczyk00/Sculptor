@@ -3,9 +3,6 @@
 #include "SculptorCoreTypes.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "Material.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "RenderSceneTypes.h"
 #include "StaticMeshes/StaticMeshGeometry.h"
 
@@ -31,14 +28,9 @@ END_SHADER_STRUCT();
 
 
 BEGIN_SHADER_STRUCT(GeometryGPUBatchData)
-	SHADER_STRUCT_FIELD(Uint32, elementsNum)
+	SHADER_STRUCT_FIELD(Uint32,                                    elementsNum)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<GeometryBatchElement>, batchElements)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(GeometryBatchDS, rg::RGDescriptorSetState<GeometryBatchDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<GeometryBatchElement>), u_batchElements)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<GeometryGPUBatchData>),   u_batchData)
-DS_END();
 
 
 // Batch for visiblity buffer generation
@@ -62,8 +54,7 @@ struct GeometryBatch
 	Uint32 batchElementsNum = 0u;
 	Uint32 batchMeshletsNum = 0u;
 	GeometryBatchPermutation permutation;
-
-	lib::MTHandle<GeometryBatchDS> batchDS;
+	GeometryGPUBatchData batchData;
 };
 
 

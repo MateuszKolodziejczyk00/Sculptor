@@ -303,6 +303,10 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 				}
 			}
 		}
+
+		ImGui::SameLine();
+
+		ImGui::Text("Handle ID: %u", *reinterpret_cast<const Uint16*>(data.data()));
 	}
 	else if (memberStructMetaData)
 	{
@@ -510,7 +514,11 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 				inspectParams.structTypeName = buffer.structTypeName;
 				m_parentNodeViewer.OpenBufferCapture(inspectParams);
 			}
+
+			ImGui::SameLine();
 		}
+
+		ImGui::Text("Element Idx: %u", *reinterpret_cast<const Uint32*>(data.data()));
 	}
 	else if (typeNameStr.starts_with("GPUNamedElemsSpan"))
 	{
@@ -540,7 +548,11 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 				inspectParams.structTypeName = buffer.structTypeName;
 				m_parentNodeViewer.OpenBufferCapture(inspectParams);
 			}
+
+			ImGui::SameLine();
 		}
+
+		ImGui::Text("Begin Idx: %u, Size: %u", *reinterpret_cast<const Uint32*>(data.data()), *reinterpret_cast<const Uint32*>(data.data() + sizeof(Uint32)));
 	}
 	else if (typeNameStr.starts_with("NamedBufferDescriptor") || typeNameStr.starts_with("TypedBuffer"))
 	{

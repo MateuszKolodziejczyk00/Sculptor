@@ -3,10 +3,6 @@
 #include "SceneRendererTypes.h"
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHITextureTypes.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "RGResources/RGResourceHandles.h"
 #include "Bindless/BindlessTypes.h"
@@ -210,15 +206,9 @@ struct SceneRendererStatics
 };
 
 
-BEGIN_SHADER_STRUCT(DepthCullingParams)
-	SHADER_STRUCT_FIELD(math::Vector2f, hiZResolution)
+BEGIN_SHADER_STRUCT(DepthCullingData)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>, hiZTexture)
+	SHADER_STRUCT_FIELD(math::Vector2f,               hiZResolution)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(DepthCullingDS, rg::RGDescriptorSetState<DepthCullingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                      u_hiZTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>), u_hiZSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DepthCullingParams>),                        u_depthCullingParams)
-DS_END();
 
 } // spt::rsc

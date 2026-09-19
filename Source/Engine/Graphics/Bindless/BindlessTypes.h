@@ -2,7 +2,7 @@
 
 #include "GraphicsMacros.h"
 #include "SculptorCoreTypes.h"
-#include "Types/DescriptorSetState/DescriptorTypes.h"
+#include "Descriptors/DescriptorTypes.h"
 #include "ShaderStructs/ShaderStructsTypes.h"
 #include "Types/Texture.h"
 #include "Types/Buffer.h"
@@ -137,6 +137,18 @@ public:
 		else
 		{
 			return std::get<rg::RGTextureViewHandle>(m_textureView).IsValid();
+		}
+	}
+
+	lib::SharedPtr<rdr::TextureView> GetTextureView() const
+	{
+		if (std::holds_alternative<lib::SharedPtr<rdr::TextureView>>(m_textureView))
+		{
+			return std::get<lib::SharedPtr<rdr::TextureView>>(m_textureView);
+		}
+		else
+		{
+			return nullptr;
 		}
 	}
 
@@ -356,6 +368,12 @@ public:
 	{
 		SPT_CHECK_MSG(m_tlas, "Invalid TLAS in TLASDescriptor");
 		return m_tlas->GetSRVDescriptor();
+	}
+
+	rhi::DeviceAddress GetDeviceAddress() const
+	{
+		SPT_CHECK_MSG(m_tlas, "Invalid TLAS in TLASDescriptor");
+		return m_tlas->GetRHI().GetDeviceAddress();
 	}
 
 	Bool IsValid() const
@@ -649,9 +667,7 @@ struct StructCPPToHLSLTranslator<gfx::TLASDescriptor<metadata>>
 	static void Copy(const gfx::TLASDescriptor<metadata>& cppData, lib::Span<Byte> hlslData)
 	{
 		SPT_CHECK(hlslData.size() == 8u);
-		Uint32* hlsl = reinterpret_cast<Uint32*>(hlslData.data());
-		hlsl[0] = cppData.GetDescriptorIdx();
-		hlsl[1] = 2137;
+		reinterpret_cast<rhi::DeviceAddress*>(hlslData.data())[0] = cppData.GetDeviceAddress();
 	}
 };
 
@@ -776,10 +792,69 @@ struct ShaderStructReferencer<gfx::GPUNamedElemsSpan<TNamedBuffer, TDataType>>
 	}
 };
 
+template<typename TData>
+struct StructTranslator<rdr::GPUPtr<TData>>
+{
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return rdr::GPUPtr<TData>::GetTypeName();
+	}
+};
+
+template<typename TData>
+struct StructCPPToHLSLTranslator<rdr::GPUPtr<TData>>
+{
+	static void Copy(const rdr::GPUPtr<TData>& cppData, lib::Span<Byte> hlslData)
+	{
+		StructCPPToHLSLTranslator<Uint64>::Copy(cppData.GetDeviceAddress(), hlslData);
+	}
+};
+
+template<typename TData>
+struct StructHLSLSizeEvaluator<rdr::GPUPtr<TData>>
+{
+	static constexpr Uint32 Size()
+	{
+		return StructHLSLSizeEvaluator<Uint64>::Size();
+	}
+};
+
+template<typename TData>
+struct StructHLSLAlignmentEvaluator<rdr::GPUPtr<TData>>
+{
+	static constexpr Uint32 Alignment()
+	{
+		return StructHLSLAlignmentEvaluator<Uint64>::Alignment();
+	}
+};
+
+template<typename TData>
+struct ShaderStructReferencer<rdr::GPUPtr<TData>>
+{
+	static constexpr void CollectReferencedStructs(lib::DynamicArray<lib::String>& references)
+	{
+		ShaderStructReferencer<TData>::CollectReferencedStructs(references);
+	}
+};
+
 } // spt::rdr::shader_translator
 
 namespace spt::rg
 {
+
+template<typename TShaderStruct>
+struct HLSLStructDependenciesBuider<rdr::GPUPtr<TShaderStruct>>
+{
+	static void CollectDependencies(lib::Span<const Byte> hlsl, RGDependenciesBuilder& dependenciesBuilder)
+	{
+		const rhi::DeviceAddress structDeviceAddress = *reinterpret_cast<const rhi::DeviceAddress*>(hlsl.data());
+		if (structDeviceAddress != 0u)
+		{
+			const TShaderStruct* structPtr = reinterpret_cast<const TShaderStruct*>(dependenciesBuilder.TryResolveDeviceAddress(structDeviceAddress));
+			HLSLStructDependenciesBuider<TShaderStruct>::CollectDependencies(lib::Span<const Byte>(reinterpret_cast<const Byte*>(structPtr), sizeof(TShaderStruct)), dependenciesBuilder);
+		}
+	}
+};
 
 template<gfx::TextureDescriptorMetadata metadata, typename TType>
 struct HLSLStructDependenciesBuider<gfx::TextureDescriptor<metadata, TType>>
@@ -798,7 +873,7 @@ struct HLSLStructDependenciesBuider<gfx::TextureDescriptor<metadata, TType>>
 			{
 				constexpr rg::ERGTextureAccess access = metadata.isUAV ? ERGTextureAccess::ShaderWrite : ERGTextureAccess::ShaderRead;
 
-				dependenciesBuilder.AddTextureAccess(descriptoridx, access);
+				dependenciesBuilder.AddTextureAccess(rdr::ResourceDescriptorIdx(hlslData[0] / rhi::RHI::GetDescriptorProps().textureDescriptorIdxFactor), access);
 			}
 		}
 	}
@@ -831,7 +906,7 @@ struct HLSLStructDependenciesBuider<gfx::BufferDescriptor<metadata, TType>>
 				}
 #endif // DEBUG_RENDER_GRAPH
 
-				dependenciesBuilder.AddBufferAccess(descriptoridx, accessInfo);
+				dependenciesBuilder.AddBufferAccess(rdr::ResourceDescriptorIdx(hlslData[0] / rhi::RHI::GetDescriptorProps().bufferDescriptorIdxFactor), accessInfo);
 			}
 		}
 	}

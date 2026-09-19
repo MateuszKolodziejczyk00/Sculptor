@@ -5,7 +5,6 @@
 #include "RGResources/RGTrackedObject.h"
 #include "RGResourceHandles.h"
 #include "RGRenderPassDefinition.h"
-#include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "RenderGraphTypes.h"
 #include "Pipelines/PipelineState.h"
 #include "RGDiagnostics.h"
@@ -42,10 +41,19 @@ struct RGExecutionContext
 
 struct RGNodeNullDebugMetaData { };
 
+
 struct RGNodeComputeDebugMetaData
 {
 	rdr::PipelineStateID pipelineStateID;
 };
+
+
+struct RGBoundShaderParam
+{
+	lib::HashedString  type;
+	rhi::DeviceAddress deviceAddress = 0u;
+};
+
 
 using RGNodeDebugMetaData = std::variant<RGNodeNullDebugMetaData, RGNodeComputeDebugMetaData>;
 
@@ -83,9 +91,7 @@ public:
 
 	void AddPreExecutionBarrier(rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess);
 
-	void AddDescriptorSetState(lib::MTHandle<rdr::DescriptorSetState> dsState);
-
-	void SetShaderParamsDescriptors(const rhi::RHIDescriptorRange& range);
+	void AddShaderParam(lib::HashedString type, rhi::DeviceAddress deviceAddress);
 
 	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context);
 
@@ -101,9 +107,8 @@ private:
 	void PreExecuteBarrier(rdr::CommandRecorder& recorder);
 	void ReleaseResources();
 
-	void BindDescriptorSetStates(rdr::CommandRecorder& recorder);
 	void BindShaderParams(rdr::CommandRecorder& recorder);
-	void UnbindDescriptorSetStates(rdr::CommandRecorder& recorder);
+	void UnbindShaderParams(rdr::CommandRecorder& recorder);
 
 	// Execution Helpers ================================================
 
@@ -133,9 +138,7 @@ private:
 
 	rhi::RHIDependency m_preExecuteDependency;
 
-	lib::DynamicPushArray<lib::MTHandle<rdr::DescriptorSetState>> m_dsStates;
-
-	Uint32 m_shaderParamsDescriptorHeapOffset = idxNone<Uint32>;
+	lib::DynamicPushArray<RGBoundShaderParam> m_boundShaderParams;
 
 #if DEBUG_RENDER_GRAPH
 	RGNodeDebugMetaData m_debugMetaData;
@@ -187,7 +190,7 @@ public:
 	
 	const lib::HashedString& GetName() const;
 
-	void AddDescriptorSetState(lib::MTHandle<rdr::DescriptorSetState> dsState);
+	void AddShaderParam(lib::HashedString type, rhi::DeviceAddress deviceAddress);
 
 	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context);
 
@@ -197,7 +200,7 @@ protected:
 
 private:
 
-	lib::DynamicPushArray<lib::MTHandle<rdr::DescriptorSetState>> m_dsStatesToBind;
+	lib::DynamicPushArray<RGBoundShaderParam> m_boundShaderParams;
 
 	RenderGraphDebugName m_name;
 };

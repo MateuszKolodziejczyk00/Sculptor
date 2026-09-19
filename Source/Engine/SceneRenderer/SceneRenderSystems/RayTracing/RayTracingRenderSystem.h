@@ -2,8 +2,6 @@
 
 #include "RenderSceneMacros.h"
 #include "SceneRenderSystems/SceneRenderSystem.h"
-#include "DescriptorSetBindings/AccelerationStructureBinding.h"
-#include "RayTracingSceneTypes.h"
 
 
 namespace spt::rdr

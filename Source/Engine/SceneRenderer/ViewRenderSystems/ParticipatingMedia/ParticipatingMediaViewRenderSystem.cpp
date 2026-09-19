@@ -4,11 +4,6 @@
 #include "Utils/ViewRenderingSpec.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "SceneRenderSystems/DDGI/DDGIRenderSystem.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "GlobalResources/GlobalResources.h"
 #include "RenderScene.h"
@@ -51,28 +46,22 @@ RendererBoolParameter fogBlurEnableTonemap("Fog Blur Enable Tonemap", { "Volumet
 } // parameters
 
 BEGIN_SHADER_STRUCT(VolumetricFogConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, blueNoiseResMask)
-	SHADER_STRUCT_FIELD(math::Vector3u, fogGridRes)
-	SHADER_STRUCT_FIELD(Real32,	        fogNearPlane)
-	SHADER_STRUCT_FIELD(math::Vector3f, fogGridInvRes)
-	SHADER_STRUCT_FIELD(Real32,         fogFarPlane)
-	SHADER_STRUCT_FIELD(Uint32,         localLightsScatteringMaxDepth)
-	SHADER_STRUCT_FIELD(Real32,         localLightsScatteringWNormalization)
-	SHADER_STRUCT_FIELD(Uint32,         frameIdx)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    blueNoiseResMask)
+	SHADER_STRUCT_FIELD(math::Vector3u,                    fogGridRes)
+	SHADER_STRUCT_FIELD(Real32,                            fogNearPlane)
+	SHADER_STRUCT_FIELD(math::Vector3f,                    fogGridInvRes)
+	SHADER_STRUCT_FIELD(Real32,                            fogFarPlane)
+	SHADER_STRUCT_FIELD(Uint32,                            localLightsScatteringMaxDepth)
+	SHADER_STRUCT_FIELD(Real32,                            localLightsScatteringWNormalization)
+	SHADER_STRUCT_FIELD(Uint32,                            frameIdx)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, blueNoiseTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         depthTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(RenderVolumetricFogDS, rg::RGDescriptorSetState<RenderVolumetricFogDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VolumetricFogConstants>),                    u_fogConstants)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                              u_blueNoiseTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                      u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>), u_depthSampler)
-DS_END();
 
 
 struct VolumetricFogRenderingParams
 {
-	lib::MTHandle<RenderVolumetricFogDS> volumetricFogDS;
+	rdr::GPUPtr<VolumetricFogConstants> volumetricFogData;
 };
 
 
@@ -80,16 +69,10 @@ namespace tile_min_depth
 {
 
 BEGIN_SHADER_STRUCT(TileMinDepthConstants)
-	SHADER_STRUCT_FIELD(math::Vector2f, depthInvRes)
+	SHADER_STRUCT_FIELD(math::Vector2f,            depthInvRes)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>, depthTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>, outMinDepthTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(RenderTileMinDepthDS, rg::RGDescriptorSetState<RenderTileMinDepthDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                      u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>), u_minSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                       u_outMinDepthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TileMinDepthConstants>),                     u_constants)
-DS_END();
 
 
 static rdr::PipelineStateID CompileRenderTileMinDepthPipeline()
@@ -112,12 +95,9 @@ rg::RGTextureViewHandle RenderTileMinDepth(rg::RenderGraphBuilder& graphBuilder,
 																				   rg::TextureDef(tilesNum, rhi::EFragmentFormat::R32_S_Float));
 
 	TileMinDepthConstants shaderConstants;
-	shaderConstants.depthInvRes = depthTexture->GetResolution2D().cast<Real32>().cwiseInverse();
-
-	const lib::MTHandle<RenderTileMinDepthDS> tileMinDepthDS = graphBuilder.CreateDescriptorSet<RenderTileMinDepthDS>(RENDERER_RESOURCE_NAME("TileMinDepthDS"));
-	tileMinDepthDS->u_depthTexture       = depthTexture;
-	tileMinDepthDS->u_outMinDepthTexture = minDepthTexture;
-	tileMinDepthDS->u_constants          = shaderConstants;
+	shaderConstants.depthInvRes        = depthTexture->GetResolution2D().cast<Real32>().cwiseInverse();
+	shaderConstants.depthTexture       = depthTexture;
+	shaderConstants.outMinDepthTexture = minDepthTexture;
 
 	static const rdr::PipelineStateID renderTileMinDepthPipeline = CompileRenderTileMinDepthPipeline();
 
@@ -126,7 +106,7 @@ rg::RGTextureViewHandle RenderTileMinDepth(rg::RenderGraphBuilder& graphBuilder,
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Tile Min Depth"),
 						  renderTileMinDepthPipeline,
 						  math::Utils::DivideCeil(depthTexture->GetResolution2D(), groupSize),
-						  rg::BindDescriptorSets(tileMinDepthDS));
+						  rg::ShaderParams(shaderConstants));
 
 	return minDepthTexture;
 }
@@ -138,17 +118,12 @@ namespace participating_media
 {
 
 BEGIN_SHADER_STRUCT(RenderParticipatingMediaParams)
-	SHADER_STRUCT_FIELD(math::Vector3f, constantFogAlbedo)
-	SHADER_STRUCT_FIELD(Real32, constantFogDensity)
-	SHADER_STRUCT_FIELD(Real32, constantFogExtinction)
-	SHADER_STRUCT_FIELD(Real32, fogHeightFalloff)
+	SHADER_STRUCT_FIELD(math::Vector3f,                    constantFogAlbedo)
+	SHADER_STRUCT_FIELD(Real32,                            constantFogDensity)
+	SHADER_STRUCT_FIELD(Real32,                            constantFogExtinction)
+	SHADER_STRUCT_FIELD(Real32,                            fogHeightFalloff)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture3D<math::Vector4f>, participatingMediaTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(RenderParticipatingMediaDS, rg::RGDescriptorSetState<RenderParticipatingMediaDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>), u_participatingMediaTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<RenderParticipatingMediaParams>), u_participatingMediaParams)
-DS_END();
 
 
 static rdr::PipelineStateID CompileRenderParticipatingMediaPipeline()
@@ -163,14 +138,11 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	SPT_PROFILER_FUNCTION();
 
 	RenderParticipatingMediaParams pariticipatingMediaParams;
-	pariticipatingMediaParams.constantFogAlbedo     = parameters::consantFogAlbedo;
-	pariticipatingMediaParams.constantFogDensity    = parameters::constantFogDensity;
-	pariticipatingMediaParams.constantFogExtinction = parameters::constantFogExtinction;
-	pariticipatingMediaParams.fogHeightFalloff      = parameters::fogHeightFalloff;
-
-	const lib::MTHandle<RenderParticipatingMediaDS> participatingMediaDS = graphBuilder.CreateDescriptorSet<RenderParticipatingMediaDS>(RENDERER_RESOURCE_NAME("RenderParticipatingMediaDS"));
-	participatingMediaDS->u_participatingMediaTexture = fogParams.participatingMediaTextureView;
-	participatingMediaDS->u_participatingMediaParams  = pariticipatingMediaParams;
+	pariticipatingMediaParams.constantFogAlbedo         = parameters::consantFogAlbedo;
+	pariticipatingMediaParams.constantFogDensity        = parameters::constantFogDensity;
+	pariticipatingMediaParams.constantFogExtinction     = parameters::constantFogExtinction;
+	pariticipatingMediaParams.fogHeightFalloff          = parameters::fogHeightFalloff;
+	pariticipatingMediaParams.participatingMediaTexture = fogParams.participatingMediaTextureView;
 
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(4u, 4u, 4u));
 
@@ -179,7 +151,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Participating Media"),
 						  renderParticipatingMediaPipeline,
 						  dispatchSize,
-						  rg::BindDescriptorSets(participatingMediaDS, fogRenderingParams.volumetricFogDS));
+						  rg::ShaderParams(pariticipatingMediaParams, fogRenderingParams.volumetricFogData));
 }
 
 } // participating_media
@@ -188,19 +160,14 @@ namespace shadow_term
 {
 
 BEGIN_SHADER_STRUCT(VolumetricFogShadowTermConstants)
-	SHADER_STRUCT_FIELD(math::Matrix4f, cloudsTransmittanceMapViewProj)
-	SHADER_STRUCT_FIELD(Bool,           hasCloudsTransmittanceMap)
-	SHADER_STRUCT_FIELD(Bool,           hasValidHistory)
-	SHADER_STRUCT_FIELD(Real32,         accumulationCurrentFrameWeight)
+	SHADER_STRUCT_FIELD(math::Matrix4f,            cloudsTransmittanceMapViewProj)
+	SHADER_STRUCT_FIELD(Bool,                      hasCloudsTransmittanceMap)
+	SHADER_STRUCT_FIELD(Bool,                      hasValidHistory)
+	SHADER_STRUCT_FIELD(Real32,                    accumulationCurrentFrameWeight)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture3D<Real32>, rwDirLightShadowTerm)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<Real32>, historyDirLightShadowTerm)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>, cloudsTransmittanceMap)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(ComputeDirectionalLightShadowTermDS, rg::RGDescriptorSetState<ComputeDirectionalLightShadowTermDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<Real32>),                              u_rwDirLightShadowTerm)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<Real32>),                     u_historyDirLightShadowTerm)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                     u_cloudsTransmittanceMap)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VolumetricFogShadowTermConstants>), u_constants)
-DS_END();
 
 
 static rdr::PipelineStateID CompileComputeDirectionalLightShadowTermPipeline()
@@ -230,14 +197,12 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 		shadowTermConstants.hasCloudsTransmittanceMap      = true;
 	}
 
-	lib::MTHandle<ComputeDirectionalLightShadowTermDS> ds = graphBuilder.CreateDescriptorSet<ComputeDirectionalLightShadowTermDS>(RENDERER_RESOURCE_NAME("ComputeDirectionalLightShadowTermDS"));
-	ds->u_rwDirLightShadowTerm      = fogParams.directionalLightShadowTerm;
-	ds->u_historyDirLightShadowTerm = fogParams.historyDirectionalLightShadowTerm;
-	ds->u_constants                 = shadowTermConstants;
+	shadowTermConstants.rwDirLightShadowTerm      = fogParams.directionalLightShadowTerm;
+	shadowTermConstants.historyDirLightShadowTerm = fogParams.historyDirectionalLightShadowTerm;
 
 	if (transmittanceMap)
 	{
-		ds->u_cloudsTransmittanceMap = transmittanceMap->cloudsTransmittanceTexture;
+		shadowTermConstants.cloudsTransmittanceMap = transmittanceMap->cloudsTransmittanceTexture;
 	}
 
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(4u, 4u, 4u));
@@ -247,9 +212,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Compute Directional Light Shadow Term"),
 						  pipline,
 						  dispatchSize,
-						  rg::BindDescriptorSets(std::move(ds),
-												 fogRenderingParams.volumetricFogDS,
-												 shadingParams.shadingInputDS));
+						  rg::ShaderParams(shadowTermConstants, fogRenderingParams.volumetricFogData, shadingParams.viewShadingParams));
 }
 
 } // shadow_term
@@ -261,16 +224,9 @@ namespace indirect
 {
 
 BEGIN_SHADER_STRUCT(IndirectInScatteringConstants)
-	SHADER_STRUCT_FIELD(math::Vector3f, indirectGridRes)
+	SHADER_STRUCT_FIELD(math::Vector3f,                    indirectGridRes)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture3D<math::Vector3f>, inScatteringTexture)
 END_SHADER_STRUCT();
-
-
-
-DS_BEGIN(IndirectInScatteringDS, rg::RGDescriptorSetState<IndirectInScatteringDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector3f>),                            u_inScatteringTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_phaseFunctionLUTSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<IndirectInScatteringConstants>),          u_indirectInScatteringConstants)
-DS_END();
 
 
 static rdr::PipelineStateID CompileComputeIndirectInScatteringPipeline()
@@ -286,9 +242,9 @@ static Bool Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	SPT_PROFILER_FUNCTION();
 
 	const ddgi::DDGIRenderSystem* ddgiRenderSystem = rendererInterface.GetRenderSystem<ddgi::DDGIRenderSystem>();
-	lib::MTHandle<ddgi::DDGISceneDS> ddgiDS = ddgiRenderSystem ? ddgiRenderSystem->GetDDGISceneDS() : nullptr;
+	const rdr::GPUPtr<ddgi::DDGIGPUScene>& ddgiGPUScene = ddgiRenderSystem ? ddgiRenderSystem->GetDDGIGPUScene() : nullptr;
 
-	if (!ddgiDS.IsValid())
+	if (!ddgiGPUScene.IsValid())
 	{
 		graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear Indirect In-Scattering Texture"), fogParams.indirectInScatteringTextureView, rhi::ClearColor(0.f, 0.f, 0.f, 0.f));
 		return false;
@@ -297,11 +253,8 @@ static Bool Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	const math::Vector3u indirectInScatteringRes = fogParams.indirectInScatteringTextureView->GetResolution();
 
 	IndirectInScatteringConstants indirectInScatteringConstants;
-	indirectInScatteringConstants.indirectGridRes = indirectInScatteringRes.cast<Real32>();
-
-	const lib::MTHandle<IndirectInScatteringDS> indirectInScatteringDS = graphBuilder.CreateDescriptorSet<IndirectInScatteringDS>(RENDERER_RESOURCE_NAME("IndirectInScatteringDS"));
-	indirectInScatteringDS->u_inScatteringTexture           = fogParams.indirectInScatteringTextureView;
-	indirectInScatteringDS->u_indirectInScatteringConstants = indirectInScatteringConstants;
+	indirectInScatteringConstants.indirectGridRes     = indirectInScatteringRes.cast<Real32>();
+	indirectInScatteringConstants.inScatteringTexture = fogParams.indirectInScatteringTextureView;
 
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(indirectInScatteringRes, math::Vector3u(4u, 4u, 4u));
 
@@ -310,9 +263,9 @@ static Bool Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Compute Indirect In-Scattering"),
 						  computeInScatteringPipeline,
 						  dispatchSize,
-						  rg::BindDescriptorSets(indirectInScatteringDS,
-												 fogRenderingParams.volumetricFogDS,
-												 std::move(ddgiDS)));
+						  rg::ShaderParams(indirectInScatteringConstants,
+												 fogRenderingParams.volumetricFogData,
+												 ddgiGPUScene));
 
 	return true;
 }
@@ -320,23 +273,17 @@ static Bool Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 } // indirect
 
 BEGIN_SHADER_STRUCT(VolumetricFogInScatteringParams)
-	SHADER_STRUCT_FIELD(Real32,         paseFunctionAnisotrophy)
-	SHADER_STRUCT_FIELD(Real32,         enableDirectionalLightsInScattering)
-	SHADER_STRUCT_FIELD(Bool,           enableIndirectInScattering)
-	SHADER_STRUCT_FIELD(Bool,           hasValidHistory)
+	SHADER_STRUCT_FIELD(Real32,                            paseFunctionAnisotrophy)
+	SHADER_STRUCT_FIELD(Real32,                            enableDirectionalLightsInScattering)
+	SHADER_STRUCT_FIELD(Bool,                              enableIndirectInScattering)
+	SHADER_STRUCT_FIELD(Bool,                              hasValidHistory)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector4f>, participatingMediaTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<Real32>,         directionalLightShadowTerm)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture3D<math::Vector4f>, inScatteringTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector3f>, indirectInScatteringTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture3D<math::Vector4f>, localLightsInScatteringTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector4f>, historyLocalLightsInScatteringTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(ComputeInScatteringDS, rg::RGDescriptorSetState<ComputeInScatteringDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),                            u_participatingMediaTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<Real32>),                                    u_directionalLightShadowTerm)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSample)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>),                             u_inScatteringTexture)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<math::Vector3f>),                    u_indirectInScatteringTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>),                             u_localLightsInScatteringTexture)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<math::Vector4f>),                    u_historyLocalLightsInScatteringTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VolumetricFogInScatteringParams>),         u_inScatteringParams)
-DS_END();
 
 
 static rdr::PipelineStateID CompileComputeInScatteringPipeline()
@@ -355,19 +302,16 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	const Bool hasValidIndirectInScattering = indirect::Render(graphBuilder, rendererInterface, renderScene, viewSpec, fogParams, fogRenderingParams);
 
 	VolumetricFogInScatteringParams inScatteringParams;
-	inScatteringParams.paseFunctionAnisotrophy             = parameters::phaseFunctionAnisotrophy;
-	inScatteringParams.enableDirectionalLightsInScattering = parameters::enableDirectionalLightsInScattering;
-	inScatteringParams.enableIndirectInScattering          = hasValidIndirectInScattering;
-	inScatteringParams.hasValidHistory                     = fogParams.historyLocalLightsInScattering.IsValid();
-
-	const lib::MTHandle<ComputeInScatteringDS> computeInScatteringDS = graphBuilder.CreateDescriptorSet<ComputeInScatteringDS>(RENDERER_RESOURCE_NAME("ComputeInScatteringDS"));
-	computeInScatteringDS->u_participatingMediaTexture             = fogParams.participatingMediaTextureView;
-	computeInScatteringDS->u_directionalLightShadowTerm            = fogParams.directionalLightShadowTerm;
-	computeInScatteringDS->u_inScatteringTexture                   = fogParams.inScatteringTextureView;
-	computeInScatteringDS->u_inScatteringParams                    = inScatteringParams;
-	computeInScatteringDS->u_localLightsInScatteringTexture        = fogParams.localLightsInScattering;
-	computeInScatteringDS->u_historyLocalLightsInScatteringTexture = fogParams.historyLocalLightsInScattering;
-	computeInScatteringDS->u_indirectInScatteringTexture           = fogParams.indirectInScatteringTextureView;
+	inScatteringParams.paseFunctionAnisotrophy               = parameters::phaseFunctionAnisotrophy;
+	inScatteringParams.enableDirectionalLightsInScattering   = parameters::enableDirectionalLightsInScattering;
+	inScatteringParams.enableIndirectInScattering            = hasValidIndirectInScattering;
+	inScatteringParams.hasValidHistory                       = fogParams.historyLocalLightsInScattering.IsValid();
+	inScatteringParams.participatingMediaTexture             = fogParams.participatingMediaTextureView;
+	inScatteringParams.directionalLightShadowTerm            = fogParams.directionalLightShadowTerm;
+	inScatteringParams.inScatteringTexture                   = fogParams.inScatteringTextureView;
+	inScatteringParams.localLightsInScatteringTexture        = fogParams.localLightsInScattering;
+	inScatteringParams.historyLocalLightsInScatteringTexture = fogParams.historyLocalLightsInScattering;
+	inScatteringParams.indirectInScatteringTexture           = fogParams.indirectInScatteringTextureView;
 
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(4u, 4u, 4u));
 
@@ -376,9 +320,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Compute In-Scattering"),
 						  computeInScatteringPipeline,
 						  dispatchSize,
-						  rg::BindDescriptorSets(computeInScatteringDS,
-												 fogRenderingParams.volumetricFogDS,
-												 shadingParams.shadingInputDS));
+						  rg::ShaderParams(inScatteringParams, fogRenderingParams.volumetricFogData, shadingParams.viewShadingParams));
 }
 
 } // in_scattering
@@ -386,11 +328,10 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 namespace integrate_in_scattering
 {
 
-DS_BEGIN(IntegrateInScatteringDS, rg::RGDescriptorSetState<IntegrateInScatteringDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),                            u_inScatteringTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_inScatteringSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>),                             u_integratedInScatteringTexture)
-DS_END();
+BEGIN_SHADER_STRUCT(IntegrateInScatteringConstants)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector4f>, inScatteringTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture3D<math::Vector4f>, integratedInScatteringTexture)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CompileIntegrateInScatteringPipeline()
@@ -404,9 +345,9 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::MTHandle<IntegrateInScatteringDS> computeInScatteringDS = graphBuilder.CreateDescriptorSet<IntegrateInScatteringDS>(RENDERER_RESOURCE_NAME("IntegrateInScatteringDS"));
-	computeInScatteringDS->u_inScatteringTexture           = fogParams.inScatteringTextureView;
-	computeInScatteringDS->u_integratedInScatteringTexture = fogParams.integratedInScatteringTextureView;
+	IntegrateInScatteringConstants integrateInScatteringParams;
+	integrateInScatteringParams.inScatteringTexture           = fogParams.inScatteringTextureView;
+	integrateInScatteringParams.integratedInScatteringTexture = fogParams.integratedInScatteringTextureView;
 
 	const math::Vector3u dispatchElements = math::Vector3u(fogParams.volumetricFogResolution.x(), fogParams.volumetricFogResolution.y(), 1u);
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(dispatchElements, math::Vector3u(8u, 8u, 1u));
@@ -416,7 +357,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Integrate In-Scattering"),
 						  computeInScatteringPipeline,
 						  dispatchSize,
-						  rg::BindDescriptorSets(computeInScatteringDS, fogRenderingParams.volumetricFogDS, viewSpec.GetRenderViewDS()));
+						  rg::ShaderParams(integrateInScatteringParams, fogRenderingParams.volumetricFogData));
 }
 
 } // integrate_in_scattering
@@ -530,17 +471,10 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 	fogConstants.localLightsScatteringMaxDepth       = volumetricFogLocalLightsZRes;
 	fogConstants.localLightsScatteringWNormalization = volumetricFogZRes / static_cast<Real32>(volumetricFogLocalLightsZRes);
 
-	const ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
-
-	const rg::RGTextureViewHandle tileMinDepth = tile_min_depth::RenderTileMinDepth(graphBuilder, shadingViewContext.depth, math::Vector2u(volumetricTileSize, volumetricTileSize));
-
 	const rg::RGTextureViewHandle dirLightShadowTerm = graphBuilder.AcquireExternalTextureView(m_directionalLightShadowTerm.GetCurrent());
 
 	VolumetricFogRenderingParams fogRenderingParams;
-	fogRenderingParams.volumetricFogDS = graphBuilder.CreateDescriptorSet<RenderVolumetricFogDS>(RENDERER_RESOURCE_NAME("VolumetricFogDS"));
-	fogRenderingParams.volumetricFogDS->u_fogConstants     = fogConstants;
-	fogRenderingParams.volumetricFogDS->u_blueNoiseTexture = blueNoiseTexture;
-	fogRenderingParams.volumetricFogDS->u_depthTexture     = tileMinDepth;
+	fogRenderingParams.volumetricFogData = graphBuilder.CreateGPUData(fogConstants);
 
 	m_volumetricFogParams = VolumetricFogParams{};
 	m_volumetricFogParams.participatingMediaTextureView     = participatingMediaTextureView;

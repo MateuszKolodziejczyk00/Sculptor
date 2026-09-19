@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(ResolveReservoirsDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
+[[shader_params(ResolveReservoirsParams, PARAMS_RESOLVE_RESERVOIRS)]]
+[[shader_params(GPURenderView, VIEW)]]
 
 #include "SpecularReflections/SRReservoir.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
@@ -21,14 +21,14 @@ void ResolveReservoirsCS(CS_INPUT input)
 {
 	uint2 pixel = input.globalID.xy;
 	
-	if(all(pixel < u_resamplingConstants.resolution))
+	if(all(pixel < PARAMS_RESOLVE_RESERVOIRS->resamplingConstants->resolution))
 	{
 		uint2 reservoirCoords = pixel;
 
-		const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_resamplingConstants.reservoirsResolution);
-		SRReservoir reservoir = UnpackReservoir(u_reservoirsBuffer[reservoirIdx]);
+		const uint reservoirIdx = GetScreenReservoirIdx(pixel, PARAMS_RESOLVE_RESERVOIRS->resamplingConstants->reservoirsResolution);
+		SRReservoir reservoir = UnpackReservoir(PARAMS_RESOLVE_RESERVOIRS->reservoirsBuffer[reservoirIdx]);
 
-		const uint2 traceCoords = GetVariableTraceCoords(u_variableRateBlocksTexture, pixel);
+		const uint2 traceCoords = GetVariableTraceCoords(PARAMS_RESOLVE_RESERVOIRS->variableRateBlocksTexture, pixel);
 
 		const bool isTracingCoord = all(pixel == traceCoords);
 
@@ -37,8 +37,8 @@ void ResolveReservoirsCS(CS_INPUT input)
 		if(!canUseReservoir && !isTracingCoord)
 		{
 			reservoirCoords = traceCoords;
-			const uint tracingReservoirIdx = GetScreenReservoirIdx(traceCoords, u_resamplingConstants.reservoirsResolution);
-			reservoir = UnpackReservoir(u_reservoirsBuffer[tracingReservoirIdx]);
+			const uint tracingReservoirIdx = GetScreenReservoirIdx(traceCoords, PARAMS_RESOLVE_RESERVOIRS->resamplingConstants->reservoirsResolution);
+			reservoir = UnpackReservoir(PARAMS_RESOLVE_RESERVOIRS->reservoirsBuffer[tracingReservoirIdx]);
 		}
 
 		float3 specularLo = 0.f;
@@ -48,21 +48,21 @@ void ResolveReservoirsCS(CS_INPUT input)
 
 		if(reservoir.IsValid() && reservoir.HasValidResult())
 		{
-			const float depth = u_depthTexture.Load(uint3(reservoirCoords, 0));
-			const float2 uv = (reservoirCoords + 0.5f) * u_resamplingConstants.pixelSize;
+			const float depth = PARAMS_RESOLVE_RESERVOIRS->depthTexture.Load(uint3(reservoirCoords, 0));
+			const float2 uv = (reservoirCoords + 0.5f) * PARAMS_RESOLVE_RESERVOIRS->resamplingConstants->pixelSize;
 			const float3 ndc = float3(uv * 2.f - 1.f, depth);
 	
-			const float3 sampleLocation = NDCToWorldSpace(ndc, u_sceneView);
+			const float3 sampleLocation = NDCToWorldSpace(ndc, VIEW->sceneView);
 	
-			const float3 sampleNormal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(reservoirCoords, 0)));
+			const float3 sampleNormal = OctahedronDecodeNormal(PARAMS_RESOLVE_RESERVOIRS->normalsTexture.Load(uint3(reservoirCoords, 0)));
 	
-			const float3 toView = normalize(u_sceneView.viewLocation - sampleLocation);
+			const float3 toView = normalize(VIEW->sceneView.viewLocation - sampleLocation);
 	
-			const float roughness = u_roughnessTexture.Load(uint3(reservoirCoords, 0));
+			const float roughness = PARAMS_RESOLVE_RESERVOIRS->roughnessTexture.Load(uint3(reservoirCoords, 0));
 
-			const float4 baseColorMetallic = u_baseColorTexture.Load(uint3(reservoirCoords, 0));
+			const float4 baseColorMetallic = PARAMS_RESOLVE_RESERVOIRS->baseColorTexture.Load(uint3(reservoirCoords, 0));
 
-			float f0;
+			float3 f0;
 			float3 diffuseColor;
 			ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, OUT diffuseColor, OUT f0);
 
@@ -77,7 +77,7 @@ void ResolveReservoirsCS(CS_INPUT input)
 			specularLo = NdotL * brdf.specular * luminance;
 	
 			const float NdotV = saturate(dot(sampleNormal, toView));
-			const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_brdfIntegrationLUTSampler, float2(NdotV, roughness), 0);
+			const float2 integratedBRDF = PARAMS_RESOLVE_RESERVOIRS->brdfIntegrationLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), float2(NdotV, roughness), 0);
 	
 			if(any(isnan(specularLo)) || any(isinf(specularLo)))
 			{
@@ -90,8 +90,8 @@ void ResolveReservoirsCS(CS_INPUT input)
 			diffuseLo = luminance * NdotL; // demodulated without lambertian term for denoise
 		}
 
-		u_specularLumHitDistanceTexture[pixel] = float4(specularLo, hitDistance);
-		u_diffuseLumHitDistanceTexture[pixel]  = float4(diffuseLo, hitDistance);
-		u_lightDirectionTexture[pixel]         = OctahedronEncodeNormal(lightDir);
+		PARAMS_RESOLVE_RESERVOIRS->specularLumHitDistanceTexture[pixel] = float4(specularLo, hitDistance);
+		PARAMS_RESOLVE_RESERVOIRS->diffuseLumHitDistanceTexture[pixel]  = float4(diffuseLo, hitDistance);
+		PARAMS_RESOLVE_RESERVOIRS->lightDirectionTexture[pixel]         = OctahedronEncodeNormal(lightDir);
 	}
 }

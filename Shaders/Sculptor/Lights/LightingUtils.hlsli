@@ -8,7 +8,13 @@
 #define LIGHT_TYPE_SPOT  1
 
 
-class SceneLightingAccumulator
+interface ILightingAccumulator
+{
+	[mutating] void Accumulate(in LightingContribution contribution);
+};
+
+
+struct SceneLightingAccumulator : ILightingAccumulator
 {
 	static SceneLightingAccumulator Create()
 	{
@@ -17,12 +23,12 @@ class SceneLightingAccumulator
 		return accumulator;
 	}
 
-	void Accumulate(in LightingContribution contribution)
+	[mutating] void Accumulate(in LightingContribution contribution)
 	{
 		sceneLuminance += contribution.sceneLuminance;
 	}
 
-	void Accumulate(in float3 luminance)
+	[mutating] void Accumulate(in float3 luminance)
 	{
 		sceneLuminance += luminance;
 	}
@@ -36,7 +42,7 @@ class SceneLightingAccumulator
 };
 
 
-class ViewLightingAccumulator
+struct ViewLightingAccumulator : ILightingAccumulator
 {
 	static ViewLightingAccumulator Create()
 	{
@@ -46,7 +52,7 @@ class ViewLightingAccumulator
 		return accumulator;
 	}
 
-	void Accumulate(in LightingContribution contribution)
+	[mutating] void Accumulate(in LightingContribution contribution)
 	{
 		sceneLuminance         += contribution.sceneLuminance;
 		eyeAdaptationLuminance += contribution.eyeAdaptationLuminance;
@@ -84,8 +90,7 @@ float PhaseFunction(in float3 toView, in float3 fromLight, float g)
 
 [[shader_struct(LocalLightGPUData)]]
 
-[[override]]
-struct LocalLightInterface : LocalLightGPUData
+extension LocalLightGPUData
 {
 	bool IsPointLight()
 	{
@@ -97,6 +102,9 @@ struct LocalLightInterface : LocalLightGPUData
 		return type == LIGHT_TYPE_SPOT;
 	}
 };
+
+
+typealias LocalLightInterface = LocalLightGPUData;
 
 
 // Clamped inverse-square falloff function from:

@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderTileMinDepthDS, 0)]]
+[[shader_params(TileMinDepthConstants, PARAMS_RENDER_TILE_MIN_DEPTH)]]
 
 
 struct CS_INPUT
@@ -15,9 +15,9 @@ struct CS_INPUT
 void TileMinDepthCS(CS_INPUT input)
 {
 	const uint2 pixel = input.globalID.xy * 2;
-	const float2 uv   = (float2(pixel) + 1.f) * u_constants.depthInvRes; // add 1 because we sample 2x2 squares using min filter
+	const float2 uv   = (float2(pixel) + 1.f) * PARAMS_RENDER_TILE_MIN_DEPTH->depthInvRes; // add 1 because we sample 2x2 squares using min filter
 
-	const float minDepth2x2 = u_depthTexture.SampleLevel(u_minSampler, uv, 0).x;
+	const float minDepth2x2 = PARAMS_RENDER_TILE_MIN_DEPTH->depthTexture.SampleLevel(BindlessSamplers::LinearMinClampEdge(), uv, 0).x;
 
 	const float leftTileDepth = input.localID.x < 4  ? minDepth2x2 : 999999.f;
 	const float rightTileSize = input.localID.x >= 4 ? minDepth2x2 : 999999.f;
@@ -29,6 +29,6 @@ void TileMinDepthCS(CS_INPUT input)
 	const uint threadIdx = WaveGetLaneIndex();
 	if (threadIdx < 2)
 	{
-		u_outMinDepthTexture[outputTile + uint2(threadIdx, 0)] = tilesMinDepth[threadIdx];
+		PARAMS_RENDER_TILE_MIN_DEPTH->outMinDepthTexture[outputTile + uint2(threadIdx, 0)] = tilesMinDepth[threadIdx];
 	}
 }

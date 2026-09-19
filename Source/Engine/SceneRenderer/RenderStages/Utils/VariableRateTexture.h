@@ -144,7 +144,7 @@ public:
 
 	void Reproject(rg::RenderGraphBuilder& graphBuilder, const VariableRateReprojectionParams& reprojectionParams);
 
-	void Render(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle inputTexture, std::optional<rdr::ShaderID> customShader = {}, lib::Span<const lib::MTHandle<rg::RGDescriptorSetStateBase>> additionalDescriptorSets = {});
+	void Render(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle inputTexture, std::optional<rdr::ShaderID> customShader = {});
 
 private:
 

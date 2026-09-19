@@ -721,7 +721,8 @@ end
 EShaderCompiler =
 {
     Shaderc     = "Shaderc",
-    DXC         = "DXC"
+    DXC         = "DXC",
+	Slang       = "Slang"
 }
 
 selectedShaderCompiler = nil

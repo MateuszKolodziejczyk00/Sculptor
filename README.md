@@ -4,6 +4,7 @@ Built from scratch for learning, experimentation, and performance research.
 # Build
 - Download with submodules (You can use: git clone --recurse-submodules https://github.com/MateuszKolodziejczyk00/Sculptor)
 - Download and install newest Vulkan SDK
+- Run DownloadDependencies.bat script
 - Run GenerateSolution.bat script
 - (Optional) Run DownloadOptionalDependencies.bat to download NVidia Sharc. Without it, engine will fallback to DDGI
 - Open solution and set SculptorEd as startup project

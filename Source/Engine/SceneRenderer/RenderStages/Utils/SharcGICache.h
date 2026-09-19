@@ -1,10 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 
 
 namespace spt::rg
@@ -26,21 +23,16 @@ class ViewRenderingSpec;
 struct SceneRendererInterface;
 
 
-BEGIN_SHADER_STRUCT(SharcCacheConstants)
-	SHADER_STRUCT_FIELD(Uint32, entriesNum)
-END_SHADER_STRUCT();
-
-
 BEGIN_SHADER_STRUCT(SharcShadersPermutation)
 	SHADER_STRUCT_FIELD(Bool, SHARC_DEMODULATE_MATERIALS)
 END_SHADER_STRUCT()
 
 
-DS_BEGIN(SharcCacheDS, rg::RGDescriptorSetState<SharcCacheDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint64>),          u_hashEntries)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<math::Vector4u>),  u_voxelData)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SharcCacheConstants>), u_sharcCacheConstants)
-DS_END();
+BEGIN_SHADER_STRUCT(SharcCacheParams)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint64>,          hashEntries)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<math::Vector4u>,  voxelData)
+	SHADER_STRUCT_FIELD(Uint32,                              entriesNum)
+END_SHADER_STRUCT();
 
 
 struct SharcUpdateParams

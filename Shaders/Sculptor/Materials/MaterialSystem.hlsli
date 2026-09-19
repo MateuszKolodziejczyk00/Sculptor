@@ -5,7 +5,15 @@
 #include "SceneRendering/GPUMaterials.hlsli"
 
 
-struct DefaultMaterialSampler
+interface IMaterialSampler
+{
+	T Sample<T : ITexelElement & IWeightable>(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv);
+	T SampleLevel<T : ITexelElement & IWeightable>(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv, in float level);
+	T SampleGrad<T : ITexelElement & IWeightable>(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv, in float2 ddx, in float2 ddy);
+};
+
+
+struct DefaultMaterialSampler : IMaterialSampler
 {
 	static DefaultMaterialSampler Initialize(MaterialEvaluationParameters evalParams)
 	{
@@ -13,20 +21,17 @@ struct DefaultMaterialSampler
 		return sampler;
 	}
 
-	template<typename T>
-	T Sample(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv)
+	T Sample<T : ITexelElement & IWeightable>(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv)
 	{
 		return texture.Sample(sampler, uv);
 	}
 
-	template<typename T>
-	T SampleLevel(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv, in float level)
+	T SampleLevel<T : ITexelElement & IWeightable>(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv, in float level)
 	{
 		return texture.SampleLevel(sampler, uv, level);
 	}
 
-	template<typename T>
-	T SampleGrad(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv, in float2 ddx, in float2 ddy)
+	T SampleGrad<T : ITexelElement & IWeightable>(in SRVTexture2D<T> texture, SamplerState sampler, in float2 uv, in float2 ddx, in float2 ddy)
 	{
 		return texture.SampleGrad(sampler, uv, ddx, ddy);
 	}
@@ -55,8 +60,7 @@ struct DefaultMaterialSampler
  * MaterialEvaluationOutput EvaluateMaterial(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData);
  */
 
-template<typename TSampler>
-CustomOpacityOutput EvaluateCustomOpacity(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
+CustomOpacityOutput EvaluateCustomOpacity<TSampler : IMaterialSampler>(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
 {
 	CustomOpacityOutput output;
 	output.shouldDiscard = false;
@@ -64,8 +68,7 @@ CustomOpacityOutput EvaluateCustomOpacity(TSampler sampler, MaterialEvaluationPa
 }
 
 
-template<typename TSampler>
-MaterialEvaluationOutput EvaluateMaterial(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
+MaterialEvaluationOutput EvaluateMaterial<TSampler : IMaterialSampler>(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
 {
 	MaterialEvaluationOutput output;
 	return output;
@@ -110,15 +113,13 @@ MaterialEvaluationOutput EvaluateMaterial(TSampler sampler, MaterialEvaluationPa
 [[shader_struct(MaterialUnifiedData)]]
 
 
-template<typename TMaterialData>
-TMaterialData LoadMaterialData(in MaterialUnifiedData materialsData, in MaterialDataHandle materialDataHandle)
+TMaterialData LoadMaterialData<TMaterialData>(in MaterialUnifiedData materialsData, in MaterialDataHandle materialDataHandle)
 {
 	const uint materialDataOffset = uint(materialDataHandle.id) * SPT_MATERIAL_DATA_ALIGNMENT;
 	return materialsData.materialsData.Load<TMaterialData>(materialDataOffset);
 }
 
-template<typename TMaterialFeature>
-TMaterialFeature LoadMaterialFeature(in MaterialUnifiedData materialsData, in MaterialDataHandle materialDataHandle, in uint16_t featureID)
+TMaterialFeature LoadMaterialFeature<TMaterialFeature>(in MaterialUnifiedData materialsData, in MaterialDataHandle materialDataHandle, in uint16_t featureID)
 {
 	const uint materialFeatureOffset = uint(materialDataHandle.id) * SPT_MATERIAL_DATA_ALIGNMENT + uint(featureID);
 	return materialsData.materialsData.Load<TMaterialFeature>(materialFeatureOffset);
@@ -139,10 +140,9 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
 #endif // SPT_MATERIAL_DATA_TYPE
 
 
-#ifdef DS_RenderSceneDS
+#ifdef PARAM_RenderSceneConstants
 
-template<typename TMaterialData>
-TMaterialData LoadMaterialDataInternal(in MaterialDataHandle materialDataHandle)
+TMaterialData LoadMaterialDataInternal<TMaterialData>(in MaterialDataHandle materialDataHandle)
 {
 	return LoadMaterialData<TMaterialData>(GPUMaterials().data, materialDataHandle);
 }
@@ -154,12 +154,11 @@ SPT_MATERIAL_DATA_TYPE LoadMaterialData(in MaterialDataHandle materialDataHandle
 }
 #endif // SPT_MATERIAL_DATA_TYPE
 
-template<typename TMaterialFeature>
-TMaterialFeature LoadMaterialFeature(in MaterialDataHandle materialDataHandle, in uint16_t featureID)
+TMaterialFeature LoadMaterialFeature<TMaterialFeature>(in MaterialDataHandle materialDataHandle, in uint16_t featureID)
 {
 	return LoadMaterialFeature<TMaterialFeature>(GPUMaterials().data, materialDataHandle, featureID);
 }
 
-#endif // DS_RenderSceneDS
+#endif // PARAM_RenderSceneConstants
 
 #endif // MATERIAL_SYSTEM_HLSLI

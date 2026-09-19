@@ -1,9 +1,6 @@
 #include "DeferredShadingRenderStage.h"
 #include "RenderGraphBuilder.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
 #include "RenderScene.h"
 #include "GlobalResources/GlobalResources.h"
 #include "SceneRenderSystems/DDGI/DDGIRenderSystem.h"
@@ -31,23 +28,18 @@ namespace deferred_shading
 {
 
 BEGIN_SHADER_STRUCT(DeferredShadingContstants)
-	SHADER_STRUCT_FIELD(math::Vector2u,  resolution)
-	SHADER_STRUCT_FIELD(math::Vector2f,  pixelSize)
-	SHADER_STRUCT_FIELD(Bool,            isAmbientOcclusionEnabled)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,                    pixelSize)
+	SHADER_STRUCT_FIELD(Bool,                              isAmbientOcclusionEnabled)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         depthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         blueNoise256Texture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, gBuffer0Texture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, gBuffer1Texture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         gBuffer2Texture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, gBuffer3Texture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Uint32>,         gBuffer4Texture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, luminanceTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(DeferredShadingDS, rg::RGDescriptorSetState<DeferredShadingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                      u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                      u_blueNoise256Texture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),              u_gBuffer0Texture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),              u_gBuffer1Texture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                      u_gBuffer2Texture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),              u_gBuffer3Texture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                      u_gBuffer4Texture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),               u_luminanceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DeferredShadingContstants>), u_deferredShadingConstants)
-DS_END();
 
 
 BEGIN_SHADER_STRUCT(DeferredShadingPermutation)
@@ -102,35 +94,30 @@ void ExecuteDeferredShading(rg::RenderGraphBuilder& graphBuilder, const Deferred
 	shaderConstants.resolution                = resolution;
 	shaderConstants.pixelSize                 = math::Vector2f::Ones().cwiseQuotient(resolution.cast<Real32>());
 	shaderConstants.isAmbientOcclusionEnabled = viewContext.ambientOcclusion.IsValid();
-
-	lib::MTHandle<DeferredShadingDS> deferredShadingDS = graphBuilder.CreateDescriptorSet<DeferredShadingDS>(RENDERER_RESOURCE_NAME("DeferredShadingDS"));
-	deferredShadingDS->u_depthTexture             = viewContext.depth;
-	deferredShadingDS->u_blueNoise256Texture      = gfx::global::Resources::Get().blueNoise256.GetView();
-	deferredShadingDS->u_gBuffer0Texture          = gBuffer[0];
-	deferredShadingDS->u_gBuffer1Texture          = gBuffer[1];
-	deferredShadingDS->u_gBuffer2Texture          = gBuffer[2];
-	deferredShadingDS->u_gBuffer3Texture          = gBuffer[3];
-	deferredShadingDS->u_gBuffer4Texture          = gBuffer[4];
-	deferredShadingDS->u_luminanceTexture         = shadingParams.outputLuminance;
-	deferredShadingDS->u_deferredShadingConstants = shaderConstants;
+	shaderConstants.depthTexture             = viewContext.depth;
+	shaderConstants.blueNoise256Texture      = gfx::global::Resources::Get().blueNoise256.GetView();
+	shaderConstants.gBuffer0Texture          = gBuffer[0];
+	shaderConstants.gBuffer1Texture          = gBuffer[1];
+	shaderConstants.gBuffer2Texture          = gBuffer[2];
+	shaderConstants.gBuffer3Texture          = gBuffer[3];
+	shaderConstants.gBuffer4Texture          = gBuffer[4];
+	shaderConstants.luminanceTexture         = shadingParams.outputLuminance;
 
 	DeferredShadingPermutation permutation;
 	permutation.ENABLE_DDGI         = false;
 	permutation.TILED_SHADING_DEBUG = renderer_params::enableTiledShadingDebug;
 
-	lib::MTHandle<ddgi::DDGISceneDS> ddgiDS;
+	rdr::GPUPtr<ddgi::DDGIGPUScene> ddgiScene;
 	if (permutation.ENABLE_DDGI)
 	{
 		const ddgi::DDGIRenderSystem& ddgiRenderSystem = shadingParams.rendererInterface.GetRenderSystemChecked<ddgi::DDGIRenderSystem>();
-		ddgiDS = ddgiRenderSystem.GetDDGISceneDS();
+		ddgiScene = ddgiRenderSystem.GetDDGIGPUScene();
 	}
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Deferred Shading"),
 						  DeferredShadingPSO::GetPermutation(permutation),
 						  math::Utils::DivideCeil(resolution, math::Vector2u{ 8u, 8u }),
-						  rg::BindDescriptorSets(std::move(deferredShadingDS),
-												 viewContext.shadingInputDS,
-												 ddgiDS));
+						  rg::ShaderParams(shaderConstants, viewContext.viewShadingParams, ddgiScene));
 }
 
 } // deferred_shading

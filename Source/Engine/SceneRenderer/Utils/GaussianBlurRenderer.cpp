@@ -1,9 +1,5 @@
 #include "GaussianBlurRenderer.h"
 #include "RenderGraphBuilder.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ResourcesManager.h"
 #include "ShaderStructs/ShaderStructs.h"
 
@@ -14,22 +10,17 @@ namespace gaussian_blur_renderer
 {
 
 BEGIN_SHADER_STRUCT(GaussianBlurConstants)
-	SHADER_STRUCT_FIELD(math::Vector3u, resolution)
-	SHADER_STRUCT_FIELD(Uint32,         dimention)
-	SHADER_STRUCT_FIELD(Uint32,         kernelSize)
-	SHADER_STRUCT_FIELD(Real32,         sigma)
-	SHADER_STRUCT_FIELD(Bool,           is3DTexture)
-	SHADER_STRUCT_FIELD(Bool,           useTonemappedValues)
+	SHADER_STRUCT_FIELD(math::Vector3u,                    resolution)
+	SHADER_STRUCT_FIELD(Uint32,                            dimention)
+	SHADER_STRUCT_FIELD(Uint32,                            kernelSize)
+	SHADER_STRUCT_FIELD(Real32,                            sigma)
+	SHADER_STRUCT_FIELD(Bool,                              is3DTexture)
+	SHADER_STRUCT_FIELD(Bool,                              useTonemappedValues)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, input2D)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, output2D)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector4f>, input3D)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture3D<math::Vector4f>, output3D)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(GaussianBlurDS, rg::RGDescriptorSetState<GaussianBlurDS>)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),  u_input2D)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),   u_output2D)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<math::Vector4f>),  u_input3D)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture3DBinding<math::Vector4f>),   u_output3D)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<GaussianBlurConstants>), u_constants)
-DS_END();
 
 
 static rdr::PipelineStateID CompileGaussianBlurPipeline()
@@ -55,18 +46,16 @@ void ApplyGaussianBlurPass(rg::RenderGraphBuilder& graphBuilder, rg::RenderGraph
 	shaderConstants.is3DTexture         = is3DTexture;
 	shaderConstants.useTonemappedValues = useTonemappedValues;
 
-	lib::MTHandle<GaussianBlurDS> gaussianBlurDS = graphBuilder.CreateDescriptorSet<GaussianBlurDS>(RENDERER_RESOURCE_NAME("GaussianBlurDS"));
 	if (is3DTexture)
 	{
-		gaussianBlurDS->u_input3D  = input;
-		gaussianBlurDS->u_output3D = output;
+		shaderConstants.input3D  = input;
+		shaderConstants.output3D = output;
 	}
 	else
 	{
-		gaussianBlurDS->u_input2D  = input;
-		gaussianBlurDS->u_output2D = output;
+		shaderConstants.input2D  = input;
+		shaderConstants.output2D = output;
 	}
-	gaussianBlurDS->u_constants = shaderConstants;
 
 	static const rdr::PipelineStateID pipeline = CompileGaussianBlurPipeline();
 
@@ -89,7 +78,7 @@ void ApplyGaussianBlurPass(rg::RenderGraphBuilder& graphBuilder, rg::RenderGraph
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("Gaussian Blur ({}) (dimetion {})", debugName.AsString(), dimention),
 						  pipeline,
 						  dispatchSize,
-						  rg::BindDescriptorSets(std::move(gaussianBlurDS)));
+						  rg::ShaderParams(shaderConstants));
 }
 
 rg::RGTextureViewHandle ApplyGaussianBlur2D(rg::RenderGraphBuilder& graphBuilder, rg::RenderGraphDebugName debugName, rg::RGTextureViewHandle input, const GaussianBlur2DParams& params)

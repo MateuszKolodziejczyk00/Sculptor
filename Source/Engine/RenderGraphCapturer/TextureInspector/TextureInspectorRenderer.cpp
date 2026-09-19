@@ -1,12 +1,7 @@
 #include "TextureInspectorRenderer.h"
+#include "Bindless/BindlessTypes.h"
 #include "RenderGraphBuilder.h"
-#include "Types/DescriptorSetState/DescriptorSetState.h"
-#include "RGDescriptorSetState.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
 #include "Loaders/TextureLoader.h"
 
 
@@ -16,16 +11,16 @@ namespace spt::rg::capture
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Utilities =====================================================================================
 
-DS_BEGIN(TextureInspectorFilterDS, rg::RGDescriptorSetState<TextureInspectorFilterDS>)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),                    u_floatTexture)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4i>),                    u_intTexture)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<math::Vector4f>),                    u_floatTexture3D)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<math::Vector4i>),                    u_intTexture3D)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TextureInspectorFilterParams>),            u_params)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_outputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<TextureInspectorReadbackData>),        u_readbackBuffer)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<math::Vector4u>),              u_histogram)
-DS_END();
+BEGIN_SHADER_STRUCT(TextureInspectorFilterConstants)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>,                   floatTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4i>,                   intTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector4f>,                   floatTexture3D)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector4i>,                   intTexture3D)
+	SHADER_STRUCT_FIELD(TextureInspectorFilterParams,                        params)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>,                   outputTexture)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<TextureInspectorReadbackData>, readbackBuffer)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<math::Vector4u>,                    histogram)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CompileTextureViewerFilterPipeline()
@@ -71,32 +66,32 @@ void TextureInspectorRenderer::Render(const lib::SharedRef<rdr::TextureView>& in
 
 	const Bool isIntTexture = m_parameters.isIntTexture;
 	
-	lib::MTHandle<TextureInspectorFilterDS> filterDS = graphBuilder.CreateDescriptorSet<TextureInspectorFilterDS>(RENDERER_RESOURCE_NAME("TextureInspectorFilterDS"));
-	filterDS->u_params = m_parameters;
-	filterDS->u_outputTexture = outputTextureView;
+	TextureInspectorFilterConstants shaderConstants;
+	shaderConstants.params = m_parameters;
+	shaderConstants.outputTexture = outputTextureView;
 	if (m_parameters.depthSlice3D != idxNone<Uint32>)
 	{
 		if (isIntTexture)
 		{
-			filterDS->u_intTexture3D = inputTextureView;
+			shaderConstants.intTexture3D = inputTextureView;
 		}
 		else
 		{
-			filterDS->u_floatTexture3D = inputTextureView;
+			shaderConstants.floatTexture3D = inputTextureView;
 		}
 	}
 	else
 	{
 		if (isIntTexture)
 		{
-			filterDS->u_intTexture = inputTextureView;
+			shaderConstants.intTexture = inputTextureView;
 		}
 		else
 		{
-			filterDS->u_floatTexture = inputTextureView;
+			shaderConstants.floatTexture = inputTextureView;
 		}
 	}
-	filterDS->u_readbackBuffer = graphBuilder.AcquireExternalBufferView(readbackBuffer->GetFullView());
+	shaderConstants.readbackBuffer = graphBuilder.AcquireExternalBufferView(readbackBuffer->GetFullView());
 
 	const Bool wantsHistogram = m_parameters.shouldOutputHistogram;
 	lib::SharedPtr<rdr::Buffer> histogramReadbackBuffer;
@@ -112,7 +107,7 @@ void TextureInspectorRenderer::Render(const lib::SharedRef<rdr::TextureView>& in
 
 		rgHistogram = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Texture Histogram"), histogramDef, rhi::EMemoryUsage::GPUOnly);
 
-		filterDS->u_histogram = rgHistogram;
+		shaderConstants.histogram = rgHistogram;
 
 		graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Texture Histogram"), rgHistogram, 0u);
 	}
@@ -122,7 +117,7 @@ void TextureInspectorRenderer::Render(const lib::SharedRef<rdr::TextureView>& in
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Texture Viewer Filter Pass"),
 						  pipelineState,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(filterDS)));
+						  rg::ShaderParams(shaderConstants));
 
 	if (wantsHistogram)
 	{

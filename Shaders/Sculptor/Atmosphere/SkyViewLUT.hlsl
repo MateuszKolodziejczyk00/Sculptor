@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderSkyViewLUTDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(SkyViewConstants, CONSTS)]]
 
 #include "Atmosphere/Atmosphere.hlsli"
 #include "Utils/Shapes.hlsli"
@@ -35,13 +35,13 @@ float3 RaymarchScattering(in Ray ray, in float3 lightDirection, in float stepsNu
 
         const float3 sampleLocation =  ray.origin + ray.direction * currentT;
 
-        const ScatteringValues scatteringValues = ComputeScatteringValues(u_atmosphereParams, sampleLocation);
+        const ScatteringValues scatteringValues = ComputeScatteringValues(*CONSTS->atmosphereParams, sampleLocation);
 
         const float3 sampleTransmittance = exp(-dt * scatteringValues.extinction);
 
-        const float3 lightTransmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, sampleLocation, lightDirection);
+        const float3 lightTransmittance = GetTransmittanceFromLUT(*CONSTS->atmosphereParams, CONSTS->transmittanceLUT, BindlessSamplers::LinearClampEdge(), sampleLocation, lightDirection);
 
-        const float3 multiScatteringPsi = GetMultiScatteringPsiFromLUT(u_atmosphereParams, u_multiScatteringLUT, u_linearSampler, sampleLocation, lightDirection);
+        const float3 multiScatteringPsi = GetMultiScatteringPsiFromLUT(*CONSTS->atmosphereParams, CONSTS->multiScatteringLUT, BindlessSamplers::LinearClampEdge(), sampleLocation, lightDirection);
         
         const float3 rayleighScattering = scatteringValues.rayleighScattering * (rayleighPhaseValue * lightTransmittance + multiScatteringPsi);
         const float3 mieScattering = scatteringValues.mieScattering * (miePhaseValue * lightTransmittance + multiScatteringPsi);
@@ -63,8 +63,7 @@ void RenderSkyViewLUTCS(CS_INPUT input)
 {
     const uint2 pixel = input.globalID.xy;
     
-    uint2 outputRes;
-    u_skyViewLUT.GetDimensions(outputRes.x, outputRes.y);
+    uint2 outputRes = CONSTS->skyViewLUT.GetResolution();
 
     if(pixel.x < outputRes.x && pixel.y < outputRes.y)
     {
@@ -84,10 +83,10 @@ void RenderSkyViewLUTCS(CS_INPUT input)
             compressedV = Pow2(coord);
         }
 
-        const float3 viewLocation = GetLocationInAtmosphere(u_atmosphereParams, u_sceneView.viewLocation);
+        const float3 viewLocation = GetLocationInAtmosphere(*CONSTS->atmosphereParams, VIEW->sceneView.viewLocation);
         const float viewHeight = length(viewLocation);
 
-        const float distToHorizon = sqrt(Pow2(viewHeight) - Pow2(u_atmosphereParams.groundRadiusMM));
+        const float distToHorizon = sqrt(Pow2(viewHeight) - Pow2(CONSTS->atmosphereParams->groundRadiusMM));
         const float horizonAngle = acos(distToHorizon / viewHeight) - 0.5f * PI;
 
         const float altitudeAngle = compressedV * 0.5f * PI - horizonAngle;
@@ -100,8 +99,8 @@ void RenderSkyViewLUTCS(CS_INPUT input)
 
         const float3 rayDirection = float3(cosAzimuth * cosAltitude, sinAzimuth * cosAltitude, sinAltitude);
 
-        const Sphere groundSphere     = Sphere::Create(ZERO_VECTOR, u_atmosphereParams.groundRadiusMM);
-        const Sphere atmosphereSphere = Sphere::Create(ZERO_VECTOR, u_atmosphereParams.atmosphereRadiusMM);
+        const Sphere groundSphere     = Sphere::Create(ZERO_VECTOR, CONSTS->atmosphereParams->groundRadiusMM);
+        const Sphere atmosphereSphere = Sphere::Create(ZERO_VECTOR, CONSTS->atmosphereParams->atmosphereRadiusMM);
 
         const Ray ray = { viewLocation, rayDirection };
 
@@ -114,15 +113,20 @@ void RenderSkyViewLUTCS(CS_INPUT input)
 
         float3 skyLuminance = 0.f;
 
-        for (int lightIdx = 0; lightIdx < u_atmosphereParams.directionalLightsNum; ++lightIdx)
+        for (int lightIdx = 0; lightIdx < CONSTS->atmosphereParams->directionalLightsNum; ++lightIdx)
         {
-            const DirectionalLightGPUData directionalLight = u_directionalLights[lightIdx];
+            //const DirectionalLightGPUData directionalLight = CONSTS->directionalLights[lightIdx];
+            const DirectionalLightGPUData directionalLight = CONSTS->directionalLightsPtr[lightIdx];
+
+//            DirectionalLightGPUData directionalLight;
+//directionalLight.direction = float3(0.0f, 0.0f, 1.0f); // Example direction
+//directionalLight.outerSpaceIlluminance = 12.f;
 
             const float3 lightDirection = -directionalLight.direction;
 
             skyLuminance += RaymarchScattering(ray, lightDirection, raymarchingStepsNum, rayDistance) * directionalLight.outerSpaceIlluminance;
         }
 
-        u_skyViewLUT[pixel] = skyLuminance;
+        CONSTS->skyViewLUT[pixel] = skyLuminance;
     }
 }

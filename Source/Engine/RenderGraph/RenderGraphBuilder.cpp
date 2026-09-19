@@ -30,7 +30,6 @@ RenderGraphBuilder::RenderGraphBuilder(lib::MemoryArena& memoryArena, RenderGrap
 	, m_onGraphExecutionFinished(js::CreateEvent("Render Graph Execution Finished Event"))
 	, m_preGPUWorkSubmittedEvent(js::CreateEvent("Render Graph Pre GPU Work Submitted Event"))
 	, m_resourcesPool(resourcesPool)
-	, m_dsAllocator(1024u * 1024u)
 	, m_memoryArena(memoryArena)
 {
 	m_resourcesPool.Prepare();
@@ -44,13 +43,6 @@ RenderGraphBuilder::~RenderGraphBuilder()
 	{
 		node->~RGNode();
 	}
-
-#if SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME
-	for (const auto& ds : m_allocatedDSStates)
-	{
-		SPT_CHECK_MSG(ds->GetRefCount() == 1, "Descriptor set {0} is still in use!", ds->GetName().GetData());
-	}
-#endif // SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME
 }
 
 void RenderGraphBuilder::BindGPUStatisticsCollector(const lib::SharedRef<rdr::GPUStatisticsCollector>& collector)
@@ -787,14 +779,16 @@ void RenderGraphBuilder::ClearTexture(const RenderGraphDebugName& clearName, RGT
 	AddNodeInternal(node, dependencies);
 }
 
-void RenderGraphBuilder::BindDescriptorSetState(const lib::MTHandle<RGDescriptorSetStateBase>& dsState)
+void RenderGraphBuilder::UnbindShaderParam(const lib::HashedString& paramType)
 {
-	m_boundDSStates.EmplaceBack(dsState);
-}
-
-void RenderGraphBuilder::UnbindDescriptorSetState(const lib::MTHandle<RGDescriptorSetStateBase>& dsState)
-{
-	m_boundDSStates.RemoveElementSwap(dsState);
+	for (Uint32 i = 0; i < m_boundShaderParams.size(); ++i)
+	{
+		if (m_boundShaderParams[i].paramType == paramType)
+		{
+			m_boundShaderParams.RemoveAtSwap(i);
+			return;
+		}
+	}
 }
 
 void RenderGraphBuilder::Execute()
@@ -806,87 +800,46 @@ void RenderGraphBuilder::Execute()
 	SPT_LOG_TRACE(RenderGraph_Synchronization, "RenderGraphBuilder::Execute: Render graph execution finished");
 }
 
-void RenderGraphBuilder::AssignDescriptorSetsToNode(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<lib::MTHandle<RGDescriptorSetStateBase> const> dsStatesRange, RGDependenciesBuilder& dependenciesBuilder)
+Bool RenderGraphBuilder::AssignShaderParamToNodeInternal(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<const Byte> paramData, const lib::HashedString& paramType, RGDependenciesBuilder& dependenciesBuilder)
 {
-	const smd::ShaderMetaData* metaData = pipeline ? &pipeline->GetMetaData() : nullptr;
+	const Bool isParamTypeValid = pipeline ? pipeline->GetMetaData().HasShaderParam(paramType) : true;
 
-	const auto processDSStatesRange = [&metaData, &node, &dependenciesBuilder](const auto& range)
+	if (!isParamTypeValid)
 	{
-		for (const lib::MTHandle<RGDescriptorSetStateBase>& ds : range)
-		{
-			if (ds.IsValid() && (!metaData || metaData->FindDescriptorSetOfType(ds->GetTypeID()) != idxNone<Uint32>))
-			{
-				node.AddDescriptorSetState(ds);
-				ds->BuildRGDependencies(dependenciesBuilder);
-			}
-		}
-	};
+		return false;
+	}
 
-	processDSStatesRange(dsStatesRange);
-	processDSStatesRange(m_boundDSStates);
+	const rdr::ConstantBufferAllocation cbAllocation = m_resourcesPool.GetConstantsAllocator().Allocate(static_cast<Uint32>(paramData.size()));
+	std::memcpy(cbAllocation.buffer->GetRHI().MapPtr() + cbAllocation.offset, paramData.data(), paramData.size());
+
+	AssignShaderParamToNodeInternal(node, pipeline, cbAllocation.buffer->GetFullView(), cbAllocation.offset, static_cast<Uint32>(paramData.size()), paramType, dependenciesBuilder);
+
+	return true;
 }
 
-void RenderGraphBuilder::AssignDescriptorSetsToSubpass(RGSubpass& subpass, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<lib::MTHandle<RGDescriptorSetStateBase> const> dsStatesRange, RGDependenciesBuilder& dependenciesBuilder)
+Bool RenderGraphBuilder::AssignShaderParamToNodeInternal(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, const lib::SharedPtr<rdr::BindableBufferView>& bufferView, Uint32 offset, Uint32 size, const lib::HashedString& paramType, RGDependenciesBuilder& dependenciesBuilder)
 {
-	const smd::ShaderMetaData* metaData = pipeline ? &pipeline->GetMetaData() : nullptr;
+	const Bool isParamTypeValid = pipeline ? pipeline->GetMetaData().HasShaderParam(paramType) : true;
 
-	const auto processDSStatesRange = [&metaData, &subpass, &dependenciesBuilder](const auto& range)
+	if (!isParamTypeValid)
 	{
-		for (const lib::MTHandle<RGDescriptorSetStateBase>& ds : range)
-		{
-			if (ds.IsValid() && (!metaData || metaData->FindDescriptorSetOfType(ds->GetTypeID()) != idxNone<Uint32>))
-			{
-				subpass.AddDescriptorSetState(ds);
-				ds->BuildRGDependencies(dependenciesBuilder);
-			}
-		}
-	};
-
-	processDSStatesRange(dsStatesRange);
-	processDSStatesRange(m_boundDSStates);
-}
-
-Bool RenderGraphBuilder::AssignShaderParamsToNodeInternal(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<const Byte> paramsData, const lib::HashedString& paramsType, RGDependenciesBuilder& dependenciesBuilder)
-{
-	if (!pipeline)
-	{
-		SPT_LOG_WARN(RenderGraph, "RenderGraphBuilder::AssignShaderParamsToNodeInternal: Trying to assign shader params to a node with invalid PSO. Node name: {}", node.GetName().ToString());
 		return false;
 	}
 
-	const smd::ShaderMetaData& metaData = pipeline->GetMetaData();
-	const lib::HashedString expectedParamsType = metaData.GetShaderParamsType();
-	if (!expectedParamsType.IsValid())
-	{
-		SPT_LOG_WARN(RenderGraph, "RenderGraphBuilder::AssignShaderParamsToNodeInternal: Trying to assign shader params to a node with PSO that does not define shader params. Node name: {}", node.GetName().ToString());
-		return false;
-	}
-
-	if (paramsType != expectedParamsType)
-	{
-		SPT_LOG_ERROR(RenderGraph, "RenderGraphBuilder::AssignShaderParamsToNodeInternal: Mismatched shader params type. Expected: {}, got: {}. Node name: {}", expectedParamsType.ToString(), paramsType.ToString(), node.GetName().ToString());
-		return false;
-	}
-
-	const rdr::ConstantBufferAllocation cbAllocation = m_resourcesPool.GetConstantsAllocator().Allocate(static_cast<Uint32>(paramsData.size()));
-	std::memcpy(cbAllocation.buffer->GetRHI().MapPtr() + cbAllocation.offset, paramsData.data(), paramsData.size());
-
-	const lib::SharedPtr<rdr::DescriptorSetLayout>& layout = rdr::GPUApi::GetShaderParamsDSLayout();
-	const rhi::RHIDescriptorRange descriptors = m_dsAllocator.AllocateRange(static_cast<Uint32>(layout->GetRHI().GetDescriptorsDataSize()));
-	const Uint64 descriptorOffset = layout->GetRHI().GetDescriptorOffset(0u);
-	cbAllocation.buffer->GetRHI().CopySRVDescriptor(cbAllocation.offset, cbAllocation.size, descriptors.data.data() + descriptorOffset);
+	const Uint64 totalOffset = bufferView->GetOffset() + offset;
 
 	RGBufferAccessInfo paramsBufferAccess;
 	paramsBufferAccess.access = ERGBufferAccess::Read;
 #if DEBUG_RENDER_GRAPH
-	paramsBufferAccess.structTypeName = paramsType;
-	paramsBufferAccess.dataOffset     = cbAllocation.offset;
-	paramsBufferAccess.dataSize       = cbAllocation.size;
+	paramsBufferAccess.structTypeName = paramType;
+	paramsBufferAccess.dataOffset     = static_cast<Uint32>(totalOffset);
+	paramsBufferAccess.dataSize       = size;
 #endif // DEBUG_RENDER_GRAPH
 
-	dependenciesBuilder.AddBufferAccess(cbAllocation.buffer->GetFullView(), paramsBufferAccess);
+	dependenciesBuilder.AddBufferAccess(bufferView, paramsBufferAccess);
 
-	node.SetShaderParamsDescriptors(descriptors);
+	const rhi::DeviceAddress deviceAddress = bufferView->GetBuffer()->GetRHI().GetDeviceAddress() + totalOffset;
+	node.AddShaderParam(paramType, deviceAddress);
 
 	return true;
 }
@@ -1370,6 +1323,22 @@ void RenderGraphBuilder::ResolveBufferReleases()
 	}
 }
 
+rdr::ConstantBufferAllocation RenderGraphBuilder::AllocateConstantBuffer(lib::Span<const Byte> data)
+{
+	SPT_CHECK(!data.empty());
+
+	const rdr::ConstantBufferAllocation cbAllocation = m_resourcesPool.GetConstantsAllocator().Allocate(static_cast<Uint32>(data.size()));
+	std::memcpy(cbAllocation.buffer->GetRHI().MapPtr() + cbAllocation.offset, data.data(), data.size());
+
+	return cbAllocation;
+}
+
+rdr::ConstantBufferAllocation RenderGraphBuilder::AllocateConstantBuffer(Uint32 size)
+{
+	SPT_CHECK(size > 0u);
+	return m_resourcesPool.GetConstantsAllocator().Allocate(size);
+}
+
 rdr::PipelineStateID RenderGraphBuilder::GetOrCreateComputePipelineStateID(rdr::ShaderID shader) const
 {
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME(shader.GetName()), shader);
@@ -1380,15 +1349,6 @@ lib::SharedPtr<rdr::Pipeline> RenderGraphBuilder::GetPipelineObject(rdr::Pipelin
 	SPT_CHECK(psoID.IsValid());
 
 	return rdr::ResourcesManager::GetPipelineObject(psoID);
-}
-
-rdr::DescriptorSetStateParams RenderGraphBuilder::BuildDesctiptorSetStateParams()
-{
-	return rdr::DescriptorSetStateParams
-	{
-		.descriptorsAllocator = &m_dsAllocator,
-		.constantsAllocator   = &m_resourcesPool.GetConstantsAllocator()
-	};
 }
 
 } // spt::rg

@@ -9,8 +9,7 @@
 [[shader_struct(RTInstanceData)]]
 
 
-[[override]]
-struct RTInstanceInterface : RTInstanceData
+extension RTInstanceData
 {
 	bool IsDoubleSided() 
 	{ 
@@ -19,15 +18,50 @@ struct RTInstanceInterface : RTInstanceData
 };
 
 
+typealias RTInstanceInterface = RTInstanceData;
+
+
 [[shader_struct(RTSceneData)]]
 
 
-struct RTSceneInterface : RTSceneData
+extension RTSceneData
 {
-	bool VisibilityTest(in RayDesc rayDesc);
+	bool VisibilityTest(in RayDesc rayDesc)
+	{
+		RayPayloadData payload = RayPayloadData::Init();
+	
+		const uint instanceMask = RT_INSTANCE_FLAG_OPAQUE;
+	
+		TraceRay(tlas.GetResource(),
+				 RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
+				 instanceMask,
+				 0,
+				 1,
+				 0,
+				 rayDesc,
+				 payload);
+	
+		return payload.visibility.isMiss;
+	}
 
 #ifdef RT_MATERIAL_TRACING
-	RayPayloadData TraceMaterialRay(in RayDesc rayDesc);
+	RayPayloadData TraceMaterialRay(in RayDesc rayDesc)
+	{
+		RayPayloadData payload = RayPayloadData::Init();
+	
+		const uint instanceMask = RT_INSTANCE_FLAG_OPAQUE;
+	
+		TraceRay(tlas.GetResource(),
+				 0,
+				 instanceMask,
+				 0,
+				 1,
+				 0,
+				 rayDesc,
+				 payload);
+	
+		return payload;
+	}
 #endif // RTMaterialsMissShaderTag
 
 	GPUPtr<RTInstanceInterface> GetInstancePtr(uint instanceIdx)
@@ -36,52 +70,13 @@ struct RTSceneInterface : RTSceneData
 	}
 };
 
+typealias RTSceneInterface = RTSceneData;
 
-bool RTSceneInterface::VisibilityTest(in RayDesc rayDesc)
-{
-	RayPayloadData payload = RayPayloadData::Init();
-
-	const uint instanceMask = RT_INSTANCE_FLAG_OPAQUE;
-
-	TraceRay(tlas.GetResource(),
-			 RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
-			 instanceMask,
-			 0,
-			 1,
-			 0,
-			 rayDesc,
-			 payload);
-
-	return payload.visibility.isMiss;
-}
-
-
-#ifdef RT_MATERIAL_TRACING
-RayPayloadData RTSceneInterface::TraceMaterialRay(in RayDesc rayDesc)
-{
-	RayPayloadData payload = RayPayloadData::Init();
-
-	const uint instanceMask = RT_INSTANCE_FLAG_OPAQUE;
-
-	TraceRay(tlas.GetResource(),
-			 0,
-			 instanceMask,
-			 0,
-			 1,
-			 0,
-			 rayDesc,
-			 payload);
-
-	return payload;
-}
-#endif // RT_MATERIAL_TRACING
-
-
-#ifdef DS_RenderSceneDS
+#ifdef PARAM_RenderSceneConstants
 RTSceneInterface RTScene()
 {
-	return RTSceneInterface(u_renderSceneConstants.rtScene);
+	return SCENE->rtScene;
 }
-#endif // DS_RenderSceneDS
+#endif // PARAM_RenderSceneConstants
 
 #endif // RTSCENE_HLSLI

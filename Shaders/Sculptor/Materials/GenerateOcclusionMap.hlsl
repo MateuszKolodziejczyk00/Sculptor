@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[shader_params(GenerateOcclusionMapConstants, u_constants)]]
+[[shader_params(GenerateOcclusionMapConstants, PARAMS_GENERATE_OCCLUSION_MAP_CONSTANTS)]]
 
 #include "Utils/Random.hlsli"
 
@@ -29,19 +29,19 @@ float FindHorizonCos(in float2 startCoords, in float2 dir, in float centerHeight
 			break;
 		}
 
-		if (u_constants.alpha.IsValid())
+		if (PARAMS_GENERATE_OCCLUSION_MAP_CONSTANTS->alpha.IsValid())
 		{
 			const float2 sampleUV = (float2(sampleCoords) + 0.5f) * rcpResolution;
-			const float alpha = u_constants.alpha.SampleLevel(BindlessSamplers::LinearClampEdge(), sampleUV, 0);
+			const float alpha = PARAMS_GENERATE_OCCLUSION_MAP_CONSTANTS->alpha.SampleLevel(BindlessSamplers::LinearClampEdge(), sampleUV, 0);
 			if (alpha < 0.5f)
 			{
 				continue;
 			}
 		}
 
-		const float sampleHeight = 1.f - u_constants.depth.SampleLevel(BindlessSamplers::LinearClampEdge(), (float2(sampleCoords) + 0.5f) * rcpResolution, 0);
+		const float sampleHeight = 1.f - PARAMS_GENERATE_OCCLUSION_MAP_CONSTANTS->depth.SampleLevel(BindlessSamplers::LinearClampEdge(), (float2(sampleCoords) + 0.5f) * rcpResolution, 0);
 
-		const float3 delta = float3((sampleCoords - startCoords) * POM_PIXEL_FOOTPRINT, (sampleHeight - centerHeight) * u_constants.maxDepthCm);
+		const float3 delta = float3((sampleCoords - startCoords) * POM_PIXEL_FOOTPRINT, (sampleHeight - centerHeight) * PARAMS_GENERATE_OCCLUSION_MAP_CONSTANTS->maxDepthCm);
 
 		const float horizonCos = normalize(delta).z;
 		h0Cos = max(h0Cos, horizonCos);
@@ -56,7 +56,7 @@ float EvaluateGTAO(in int2 coords, in uint2 resolution, in float2 rcpResolution,
 	const float slicesNum = 32.f;
 	const float angleStep = PI / slicesNum;
 
-	const float centerHeight = 1.f - u_constants.depth.Load(coords);
+	const float centerHeight = 1.f - PARAMS_GENERATE_OCCLUSION_MAP_CONSTANTS->depth.Load(coords);
 
 	const float rayLength = 10.f;
 
@@ -94,7 +94,7 @@ float EvaluateStochasticAO(in int2 coords, in uint2 resolution, in float2 rcpRes
 
 	RngState rng = RngState::Create(coords, 2137u);
 
-	const float centerHeight = 1.f - u_constants.depth.Load(coords) * u_constants.maxDepthCm;
+	const float centerHeight = 1.f - PARAMS_GENERATE_OCCLUSION_MAP_CONSTANTS->depth.Load(coords) * PARAMS_GENERATE_OCCLUSION_MAP_CONSTANTS->maxDepthCm;
 	const float3 origin = float3((coords + 0.5f) * POM_PIXEL_FOOTPRINT, centerHeight);
 
 	float visSum = 0.f;
@@ -109,7 +109,7 @@ float EvaluateStochasticAO(in int2 coords, in uint2 resolution, in float2 rcpRes
 		for (float t = POM_PIXEL_FOOTPRINT; t < rayLenght; t += POM_PIXEL_FOOTPRINT)
 		{
 			const float3 tracePos = origin + t * rayDirection;
-			if (tracePos.z >= u_constants.maxDepthCm)
+			if (tracePos.z >= PARAMS_GENERATE_OCCLUSION_MAP_CONSTANTS->maxDepthCm)
 			{
 				break;
 			}
@@ -120,7 +120,7 @@ float EvaluateStochasticAO(in int2 coords, in uint2 resolution, in float2 rcpRes
 				break;
 			}
 
-			const float sampleHeight = 1.f - u_constants.depth.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0) * u_constants.maxDepthCm;
+			const float sampleHeight = 1.f - PARAMS_GENERATE_OCCLUSION_MAP_CONSTANTS->depth.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0) * PARAMS_GENERATE_OCCLUSION_MAP_CONSTANTS->maxDepthCm;
 
 			const float bias = 0.01f;
 			if (tracePos.z + bias < sampleHeight)
@@ -143,7 +143,7 @@ void GenerateCS(CS_INPUT input)
 {
 	const int2 coords = input.globalID.xy;
 
-	const uint2 resolution = u_constants.rwOcclusion.GetResolution();
+	const uint2 resolution = PARAMS_GENERATE_OCCLUSION_MAP_CONSTANTS->rwOcclusion.GetResolution();
 	if (any(coords >= resolution))
 	{
 		return;
@@ -151,7 +151,7 @@ void GenerateCS(CS_INPUT input)
 
 	const float2 rcpResolution = 1.f / resolution;
 
-	float3 normal = u_constants.normals.Load(coords).xyz;
+	float3 normal = PARAMS_GENERATE_OCCLUSION_MAP_CONSTANTS->normals.Load(coords).xyz;
 	normal.xy = normal.xy * 2.f - 1.f;
 	normal = normalize(normal);
 
@@ -161,5 +161,5 @@ void GenerateCS(CS_INPUT input)
 	const float occlusion = EvaluateStochasticAO(coords, resolution, rcpResolution, normal);
 #endif //QUALITY
 
-	u_constants.rwOcclusion.Store(coords, occlusion);
+	PARAMS_GENERATE_OCCLUSION_MAP_CONSTANTS->rwOcclusion.Store(coords, occlusion);
 }

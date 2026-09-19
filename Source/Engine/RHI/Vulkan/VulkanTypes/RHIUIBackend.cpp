@@ -1,7 +1,6 @@
 #include "RHIUIBackend.h"
 #include "imgui_impl_vulkan.h"
 #include "RHIWindow.h"
-#include "RHISampler.h"
 #include "RHITexture.h"
 #include "Vulkan/VulkanRHI.h"
 #include "Vulkan/Device/LogicalDevice.h"
@@ -57,6 +56,33 @@ void RHIUIBackend::InitializeRHI(ui::UIContext context, const RHIWindow& window)
 	m_context = context;
 
 	m_lastPoolIdx = 0;
+
+//typedef VkResult (VKAPI_PTR *PFN_vkCreateSampler)(VkDevice device, const VkSamplerCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkSampler* pSampler);
+
+	VkSamplerCreateInfo samplerCreateInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+	samplerCreateInfo.magFilter               = VK_FILTER_LINEAR;
+	samplerCreateInfo.minFilter               = VK_FILTER_LINEAR;
+	samplerCreateInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+	samplerCreateInfo.addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	samplerCreateInfo.addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	samplerCreateInfo.addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	samplerCreateInfo.mipLodBias              = 0.0f;
+	samplerCreateInfo.anisotropyEnable        = VK_FALSE;
+	samplerCreateInfo.maxAnisotropy           = 1.0f;
+	samplerCreateInfo.compareEnable           = VK_FALSE;
+	samplerCreateInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
+	samplerCreateInfo.minLod                  = 0.0f;
+	samplerCreateInfo.maxLod                  = VK_LOD_CLAMP_NONE;
+	samplerCreateInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerCreateInfo.flags                   = 0;
+
+	SPT_VK_CHECK(vkCreateSampler(VulkanRHI::GetDeviceHandle(), &samplerCreateInfo, VulkanRHI::GetAllocationCallbacks(), &m_linearSampler));
+
+	samplerCreateInfo.magFilter = VK_FILTER_NEAREST;
+	samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
+
+	SPT_VK_CHECK(vkCreateSampler(VulkanRHI::GetDeviceHandle(), &samplerCreateInfo, VulkanRHI::GetAllocationCallbacks(), &m_nearestSampler));
 }
 
 void RHIUIBackend::ReleaseRHI()
@@ -138,14 +164,16 @@ void RHIUIBackend::Render(const RHICommandBuffer& cmdBuffer)
 	}
 }
 
-ui::TextureID RHIUIBackend::GetUITexture(const RHITextureView& textureView, const RHISampler& sampler)
+ui::TextureID RHIUIBackend::GetUITexture(const RHITextureView& textureView, rhi::ESamplerFilterType filterType)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(textureView.IsValid());
-	SPT_CHECK(sampler.IsValid());
 
-	const ui::TextureID uiTexture = ImGui_ImplVulkan_AddTexture(sampler.GetHandle(), textureView.GetHandle(), VK_IMAGE_LAYOUT_GENERAL);
+	const VkSampler samplerHandle = filterType == rhi::ESamplerFilterType::Linear ? m_linearSampler : m_nearestSampler;
+	SPT_CHECK(samplerHandle != VK_NULL_HANDLE);
+
+	const ui::TextureID uiTexture = ImGui_ImplVulkan_AddTexture(samplerHandle, textureView.GetHandle(), VK_IMAGE_LAYOUT_GENERAL);
 
 #if SPT_RHI_DEBUG
 	const VkDescriptorSet* textureDS = reinterpret_cast<const VkDescriptorSet*>(&uiTexture);

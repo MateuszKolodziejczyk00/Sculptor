@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(LinearizeDepthDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
+[[shader_params(LinearizeDepthConstants, PARAMS_LINEARIZE_DEPTH)]]
+[[shader_params(GPURenderView, VIEW)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 
@@ -28,12 +28,12 @@ void LinearizeDepthCS(CS_INPUT input)
 {
 	const uint2 quadCoords = input.globalID.xy * 2u;
 
-	const float2 uv = (quadCoords + 1.f) * u_constants.invResolution;
-	const float4 depthSample = u_depth.Gather(BindlessSamplers::NearestClampEdge(), uv);
+	const float2 uv = (quadCoords + 1.f) * PARAMS_LINEARIZE_DEPTH->invResolution;
+	const float4 depthSample = PARAMS_LINEARIZE_DEPTH->depth.Gather(BindlessSamplers::NearestClampEdge(), uv);
 
-	const float4 linearDepth = ComputeLinearDepth(depthSample, u_sceneView);
+	const float4 linearDepth = ComputeLinearDepth(depthSample, VIEW->sceneView);
 
-	const uint2 lastCoord = u_constants.resolution - 1;
+	const uint2 lastCoord = PARAMS_LINEARIZE_DEPTH->resolution - 1;
 
 #if CACHE_COHERENT_WRITES
 
@@ -50,17 +50,17 @@ void LinearizeDepthCS(CS_INPUT input)
 
 	const uint2 localOutputCoords = groupOutputCoords + input.localID.xy;
 
-	u_rwLinearDepth[min(localOutputCoords, lastCoord)]                                     = gs_linearDepth[input.localID.x][input.localID.y];
-	u_rwLinearDepth[min(localOutputCoords + uint2(GROUP_SIZE_X, 0), lastCoord)]            = gs_linearDepth[input.localID.x + GROUP_SIZE_X][input.localID.y];
-	u_rwLinearDepth[min(localOutputCoords + uint2(0, GROUP_SIZE_Y), lastCoord)]            = gs_linearDepth[input.localID.x][input.localID.y + GROUP_SIZE_Y];
-	u_rwLinearDepth[min(localOutputCoords + uint2(GROUP_SIZE_X, GROUP_SIZE_Y), lastCoord)] = gs_linearDepth[input.localID.x + GROUP_SIZE_X][input.localID.y + GROUP_SIZE_Y];
+	PARAMS_LINEARIZE_DEPTH->rwLinearDepth[min(localOutputCoords, lastCoord)]                                     = gs_linearDepth[input.localID.x][input.localID.y];
+	PARAMS_LINEARIZE_DEPTH->rwLinearDepth[min(localOutputCoords + uint2(GROUP_SIZE_X, 0), lastCoord)]            = gs_linearDepth[input.localID.x + GROUP_SIZE_X][input.localID.y];
+	PARAMS_LINEARIZE_DEPTH->rwLinearDepth[min(localOutputCoords + uint2(0, GROUP_SIZE_Y), lastCoord)]            = gs_linearDepth[input.localID.x][input.localID.y + GROUP_SIZE_Y];
+	PARAMS_LINEARIZE_DEPTH->rwLinearDepth[min(localOutputCoords + uint2(GROUP_SIZE_X, GROUP_SIZE_Y), lastCoord)] = gs_linearDepth[input.localID.x + GROUP_SIZE_X][input.localID.y + GROUP_SIZE_Y];
 
 #else
 
-	u_rwLinearDepth[min(quadCoords, lastCoord)]               = linearDepth.w;
-	u_rwLinearDepth[min(quadCoords + uint2(1, 0), lastCoord)] = linearDepth.z;
-	u_rwLinearDepth[min(quadCoords + uint2(1, 1), lastCoord)] = linearDepth.y;
-	u_rwLinearDepth[min(quadCoords + uint2(0, 1), lastCoord)] = linearDepth.x;
+	PARAMS_LINEARIZE_DEPTH->rwLinearDepth[min(quadCoords, lastCoord)]               = linearDepth.w;
+	PARAMS_LINEARIZE_DEPTH->rwLinearDepth[min(quadCoords + uint2(1, 0), lastCoord)] = linearDepth.z;
+	PARAMS_LINEARIZE_DEPTH->rwLinearDepth[min(quadCoords + uint2(1, 1), lastCoord)] = linearDepth.y;
+	PARAMS_LINEARIZE_DEPTH->rwLinearDepth[min(quadCoords + uint2(0, 1), lastCoord)] = linearDepth.x;
 
 #endif // CACHE_COHERENT_WRITES
 }

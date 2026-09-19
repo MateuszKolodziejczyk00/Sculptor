@@ -1,9 +1,9 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(BloomPassDS, 0)]]
+[[shader_params(BloomPassInfo, PARAMS_BLOOM_PASS)]]
 
 #ifdef BLOOM_COMPOSITE
-[[descriptor_set(BloomCompositePassDS, 1)]]
+[[shader_params(BloomCompositePassInfo, PARAMS_BLOOM_COMPOSITE_PASS)]]
 #endif // BLOOM_COMPOSITE
 
 #include "Utils/Exposure.hlsli"
@@ -39,7 +39,7 @@ float3 ComputeAverage(float3 a, float3 b, float3 c, float3 d)
 }
 
 
-float3 DownsampleFilter(Texture2D inputTexture, SamplerState inputSampler, float2 uv, float2 pixelSize)
+float3 DownsampleFilter(SRVTexture2D<float4> inputTexture, SamplerState inputSampler, float2 uv, float2 pixelSize)
 {
 	const float3 Center = inputTexture.SampleLevel(inputSampler, uv, 0).xyz;
 
@@ -73,7 +73,7 @@ float3 DownsampleFilter(Texture2D inputTexture, SamplerState inputSampler, float
 }
 
 
-float3 UpsampleFilter(Texture2D inputTexture, SamplerState inputSampler, float2 uv, float2 pixelSize)
+float3 UpsampleFilter(SRVTexture2D<float4> inputTexture, SamplerState inputSampler, float2 uv, float2 pixelSize)
 {
 	float3 result = 0.f;
 	
@@ -96,19 +96,18 @@ void BloomDownsampleCS(CS_INPUT input)
 {
 	const uint2 pixel = input.globalID.xy;
 
-	uint2 outputRes;
-	u_outputTexture.GetDimensions(outputRes.x, outputRes.y);
+	uint2 outputRes = PARAMS_BLOOM_PASS->outputTexture.GetResolution();
 
 	if (pixel.x < outputRes.x && pixel.y < outputRes.y)
 	{
-		const float2 inputPixelSize = u_bloomInfo.inputPixelSize;
-		const float2 outputPixelSize = u_bloomInfo.outputPixelSize;
+		const float2 inputPixelSize = PARAMS_BLOOM_PASS->inputPixelSize;
+		const float2 outputPixelSize = PARAMS_BLOOM_PASS->outputPixelSize;
 
 		const float2 uv = (pixel + 0.5f) * outputPixelSize;
 		
-		const float3 input = DownsampleFilter(u_inputTexture, u_linearSampler, uv, inputPixelSize);
+		const float3 input = DownsampleFilter(PARAMS_BLOOM_PASS->inputTexture, BindlessSamplers::LinearClampEdge(), uv, inputPixelSize);
 
-		u_outputTexture[pixel] = float4(input, 1.f);
+		PARAMS_BLOOM_PASS->outputTexture[pixel] = float4(input, 1.f);
 	}
 }
 
@@ -118,21 +117,20 @@ void BloomUpsampleCS(CS_INPUT input)
 {
 	const uint2 pixel = input.globalID.xy;
 
-	uint2 outputRes;
-	u_outputTexture.GetDimensions(outputRes.x, outputRes.y);
+	uint2 outputRes = PARAMS_BLOOM_PASS->outputTexture.GetResolution();
 
 	if(pixel.x < outputRes.x && pixel.y < outputRes.y)
 	{
-		const float2 inputPixelSize = u_bloomInfo.inputPixelSize;
-		const float2 outputPixelSize = u_bloomInfo.outputPixelSize;
+		const float2 inputPixelSize = PARAMS_BLOOM_PASS->inputPixelSize;
+		const float2 outputPixelSize = PARAMS_BLOOM_PASS->outputPixelSize;
 
 		const float2 uv = (pixel + 0.5f) * outputPixelSize;
 		
-		const float3 bloom = UpsampleFilter(u_inputTexture, u_linearSampler, uv, inputPixelSize);
+		const float3 bloom = UpsampleFilter(PARAMS_BLOOM_PASS->inputTexture, BindlessSamplers::LinearClampEdge(), uv, inputPixelSize);
 
-		const float3 existing = u_outputTexture[pixel].xyz;
+		const float3 existing = PARAMS_BLOOM_PASS->outputTexture[pixel].xyz;
 
-		u_outputTexture[pixel] = float4(bloom + existing, 1.f);
+		PARAMS_BLOOM_PASS->outputTexture[pixel] = float4(bloom + existing, 1.f);
 	}
 }
 
@@ -143,28 +141,27 @@ void BloomCompositeCS(CS_INPUT input)
 {
 	const uint2 pixel = input.globalID.xy;
 
-	uint2 outputRes;
-	u_outputTexture.GetDimensions(outputRes.x, outputRes.y);
+	uint2 outputRes = PARAMS_BLOOM_PASS->outputTexture.GetResolution();
 
 	if(pixel.x < outputRes.x && pixel.y < outputRes.y)
 	{
-		const float2 inputPixelSize = u_bloomInfo.inputPixelSize;
-		const float2 outputPixelSize = u_bloomInfo.outputPixelSize;
+		const float2 inputPixelSize = PARAMS_BLOOM_PASS->inputPixelSize;
+		const float2 outputPixelSize = PARAMS_BLOOM_PASS->outputPixelSize;
 
 		const float2 uv = pixel * outputPixelSize + outputPixelSize * 0.5f;
 		
-		float3 bloom = UpsampleFilter(u_inputTexture, u_linearSampler, uv, inputPixelSize) * u_bloomInfo.bloomIntensity;
+		float3 bloom = UpsampleFilter(PARAMS_BLOOM_PASS->inputTexture, BindlessSamplers::LinearClampEdge(), uv, inputPixelSize) * PARAMS_BLOOM_PASS->bloomIntensity;
 
-		const float3 imageColor = u_outputTexture[pixel].rgb;
+		const float3 imageColor = PARAMS_BLOOM_PASS->outputTexture[pixel].rgb;
 
 		bloom = lerp(bloom, imageColor, 0.99f);
 
-		if(u_bloomCompositeInfo.hasLensFlaresTexture)
+		if(PARAMS_BLOOM_COMPOSITE_PASS->hasLensFlaresTexture)
 		{
-			bloom += UpsampleFilter(u_lensFlaresTexture, u_linearSampler, uv, inputPixelSize) * u_bloomCompositeInfo.lensFlaresIntensity;
+			bloom += UpsampleFilter(PARAMS_BLOOM_COMPOSITE_PASS->lensFlaresTexture, BindlessSamplers::LinearClampEdge(), uv, inputPixelSize) * PARAMS_BLOOM_COMPOSITE_PASS->lensFlaresIntensity;
 		}
 		
-		u_outputTexture[pixel] = float4(bloom, 1.f);
+		PARAMS_BLOOM_PASS->outputTexture[pixel] = float4(bloom, 1.f);
 	}
 }
 

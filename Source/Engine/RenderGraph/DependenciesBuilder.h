@@ -112,7 +112,6 @@ struct RGBufferAccessInfo
 
 	ERGBufferAccess access = ERGBufferAccess::Unknown;
 
-
 #if DEBUG_RENDER_GRAPH
 	lib::HashedString structTypeName;
 	Uint32            elementsNum = 1u;
@@ -139,6 +138,8 @@ public:
 	void AddBufferAccess(RGBufferViewHandle buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages = RGDependencyStages());
 	void AddBufferAccess(const lib::SharedPtr<rdr::BindableBufferView>& buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages = RGDependencyStages());
 	void AddBufferAccess(rdr::ResourceDescriptorIdx bufferDescriptor, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages = RGDependencyStages());
+
+	const Byte* TryResolveDeviceAddress(rhi::DeviceAddress deviceAddress) const;
 
 private:
 

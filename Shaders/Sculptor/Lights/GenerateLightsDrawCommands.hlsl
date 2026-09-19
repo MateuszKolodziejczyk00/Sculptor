@@ -1,8 +1,8 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderViewDS, 0)]]
-[[descriptor_set(GenerateLightsDrawCommnadsDS, 1)]]
-[[descriptor_set(DepthCullingDS, 2)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(GenerateLightDrawCommandsConstants, PARAMS_GENERATE_LIGHTS_DRAW_COMMNADS)]]
+[[shader_params(DepthCullingData, PARAMS_DEPTH_CULLING)]]
 
 #include "Utils/Wave.hlsli"
 #include "Utils/Culling.hlsli"
@@ -20,34 +20,34 @@ void GenerateLightsDrawCommandsCS(CS_INPUT input)
 {
 	const uint lightIdx = input.globalID.x;
 
-	if(lightIdx < u_lightsData.localLightsNum)
+	if(lightIdx < PARAMS_GENERATE_LIGHTS_DRAW_COMMNADS->lightsData->localLightsNum)
 	{
-		const LocalLightInterface localLight = u_localLights[lightIdx];
+		const LocalLightInterface localLight = PARAMS_GENERATE_LIGHTS_DRAW_COMMNADS->localLights[lightIdx];
 
 		float3 boundingSphereCenter;
 		float boundingSphereRadius;
 		CreateLightBoundingSphere(localLight, OUT boundingSphereCenter, OUT boundingSphereRadius);
 
-		bool isLightVisible = IsSphereInFrustum(u_sceneViewCullingData.cullingPlanes, boundingSphereCenter, boundingSphereRadius);
+		bool isLightVisible = IsSphereInFrustum(VIEW->cullingData.cullingPlanes, boundingSphereCenter, boundingSphereRadius);
 
 		if(isLightVisible)
 		{
-			const float near = GetNearPlane(u_sceneView);
-			const float p01 = u_sceneView.projectionMatrix[0][1];
-			const float p12 = u_sceneView.projectionMatrix[1][2];
+			const float near = GetNearPlane(VIEW->sceneView);
+			const float p01 = VIEW->sceneView.projectionMatrix[0][1];
+			const float p12 = VIEW->sceneView.projectionMatrix[1][2];
 
-			const float2 hiZRes = u_depthCullingParams.hiZResolution;
+			const float2 hiZRes = PARAMS_DEPTH_CULLING->hiZResolution;
 
-			const float3 boundingSphereCenterVS = mul(u_sceneView.viewMatrix, float4(boundingSphereCenter, 1.f)).xyz;
+			const float3 boundingSphereCenterVS = mul(VIEW->sceneView.viewMatrix, float4(boundingSphereCenter, 1.f)).xyz;
 
 			float4 aabbOnScreen = 0.f;
-			isLightVisible = !IsSphereCenterBehindHiZ(u_hiZTexture, u_hiZSampler, hiZRes, boundingSphereCenterVS, boundingSphereRadius, near, p01, p12, OUT aabbOnScreen);
+			isLightVisible = !IsSphereCenterBehindHiZ(PARAMS_DEPTH_CULLING->hiZTexture, BindlessSamplers::LinearMinClampEdge(), hiZRes, boundingSphereCenterVS, boundingSphereRadius, near, p01, p12, OUT aabbOnScreen);
 		}
 
 		if(isLightVisible)
 		{
 			LightIndirectDrawCommand lightDrawCommand;
-			lightDrawCommand.vertexCount    = localLight.type == LIGHT_TYPE_POINT ? u_constants.pointLightProxyVerticesNum : u_constants.spotLightProxyVerticesNum;
+			lightDrawCommand.vertexCount    = localLight.type == LIGHT_TYPE_POINT ? PARAMS_GENERATE_LIGHTS_DRAW_COMMNADS->pointLightProxyVerticesNum : PARAMS_GENERATE_LIGHTS_DRAW_COMMNADS->spotLightProxyVerticesNum;
 			lightDrawCommand.instanceCount  = 1;
 			lightDrawCommand.firstVertex    = 0;
 			lightDrawCommand.firstInstance  = 0;
@@ -61,12 +61,12 @@ void GenerateLightsDrawCommandsCS(CS_INPUT input)
 				uint outputPointLightIdx = 0;
 				if (WaveIsFirstLane())
 				{
-					InterlockedAdd(u_pointLightDrawsCount[0], visiblePointLightsNum, outputPointLightIdx);
+					outputPointLightIdx = PARAMS_GENERATE_LIGHTS_DRAW_COMMNADS->pointLightDrawsCount.AtomicAdd(0u, visiblePointLightsNum);
 				}
 
 				outputPointLightIdx = WaveReadLaneFirst(outputPointLightIdx) + GetCompactedIndex(visiblePointLightsBallot, WaveGetLaneIndex());
 
-				u_pointLightDraws[outputPointLightIdx] = lightDrawCommand;
+				PARAMS_GENERATE_LIGHTS_DRAW_COMMNADS->pointLightDraws[outputPointLightIdx] = lightDrawCommand;
 			}
 			else if (localLight.type == LIGHT_TYPE_SPOT)
 			{
@@ -76,12 +76,12 @@ void GenerateLightsDrawCommandsCS(CS_INPUT input)
 				uint outputSpotLightIdx = 0;
 				if (WaveIsFirstLane())
 				{
-					InterlockedAdd(u_spotLightDrawsCount[0], visibleSpotLightsNum, outputSpotLightIdx);
+					outputSpotLightIdx = PARAMS_GENERATE_LIGHTS_DRAW_COMMNADS->spotLightDrawsCount.AtomicAdd(0u, visibleSpotLightsNum);
 				}
 
 				outputSpotLightIdx = WaveReadLaneFirst(outputSpotLightIdx) + GetCompactedIndex(visibleSpotLightsBallot, WaveGetLaneIndex());
 
-				u_spotLightDraws[outputSpotLightIdx] = lightDrawCommand;
+				PARAMS_GENERATE_LIGHTS_DRAW_COMMNADS->spotLightDraws[outputSpotLightIdx] = lightDrawCommand;
 			}
 		}
 	}

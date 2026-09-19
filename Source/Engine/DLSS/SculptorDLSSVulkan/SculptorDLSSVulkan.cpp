@@ -187,7 +187,15 @@ Bool NGXInstance::Initialize()
 
 	const lib::WString dlssDataPathW = engn::GetEngine().GetPaths().executableDirectory.wstring();
 
-	const NVSDK_NGX_Result initResult = NVSDK_NGX_VULKAN_Init(constants::dlssApplicationID, dlssDataPathW.c_str(), rhi::RHI::GetInstanceHandle(), rhi::RHI::GetPhysicalDeviceHandle(), rhi::RHI::GetDeviceHandle());
+	const auto callback = [](const char* message, NVSDK_NGX_Logging_Level loggingLevel, NVSDK_NGX_Feature sourceComponent)
+	{
+		SPT_LOG_INFO(DLSS, message);
+	};
+
+	NVSDK_NGX_FeatureCommonInfo featureInfo{};
+	featureInfo.LoggingInfo.LoggingCallback     = callback;
+	featureInfo.LoggingInfo.MinimumLoggingLevel = NVSDK_NGX_LOGGING_LEVEL_OFF;
+	const NVSDK_NGX_Result initResult = NVSDK_NGX_VULKAN_Init(constants::dlssApplicationID, dlssDataPathW.c_str(), rhi::RHI::GetInstanceHandle(), rhi::RHI::GetPhysicalDeviceHandle(), rhi::RHI::GetDeviceHandle(), nullptr, nullptr, &featureInfo, NVSDK_NGX_Version_API);
 
 	if (initResult != NVSDK_NGX_Result_Success)
 	{
@@ -240,11 +248,11 @@ END_RG_NODE_PARAMETERS_STRUCT();
 
 
 BEGIN_RG_NODE_PARAMETERS_STRUCT(DLSSRayReconstructionParams)
-	RG_TEXTURE_VIEW(diffuseAlbedo,       rg::ERGTextureAccess::ShaderRead,  rhi::EPipelineStage::ComputeShader)
-	RG_TEXTURE_VIEW(specularAlbedo,      rg::ERGTextureAccess::ShaderWrite, rhi::EPipelineStage::ComputeShader)
-	RG_TEXTURE_VIEW(normals,             rg::ERGTextureAccess::ShaderRead,  rhi::EPipelineStage::ComputeShader)
-	RG_TEXTURE_VIEW(roughness,           rg::ERGTextureAccess::ShaderRead,  rhi::EPipelineStage::ComputeShader)
-	RG_TEXTURE_VIEW(specularHitDistance, rg::ERGTextureAccess::ShaderRead,  rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(diffuseAlbedo,       rg::ERGTextureAccess::ShaderRead, rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(specularAlbedo,      rg::ERGTextureAccess::ShaderRead, rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(normals,             rg::ERGTextureAccess::ShaderRead, rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(roughness,           rg::ERGTextureAccess::ShaderRead, rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(specularHitDistance, rg::ERGTextureAccess::ShaderRead, rhi::EPipelineStage::ComputeShader)
 END_RG_NODE_PARAMETERS_STRUCT()
 
 

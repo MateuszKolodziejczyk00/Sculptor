@@ -1,6 +1,7 @@
 #include "RHIDescriptorHeap.h"
 #include "Vulkan/VulkanRHI.h"
 #include "Vulkan/Device/LogicalDevice.h"
+#include "Vulkan/VulkanRHIUtils.h"
 
 
 namespace spt::vulkan
@@ -25,9 +26,11 @@ void RHIDescriptorHeap::InitializeRHI(const rhi::DescriptorHeapDefinition& defin
 {
 	SPT_PROFILER_FUNCTION();
 
+	const rhi::DescriptorProps& descriptorProps = VulkanRHI::GetLogicalDevice().GetDescriptorProps();
+
 	rhi::BufferDefinition bufferDef;
-	bufferDef.size  = definition.size;
-	bufferDef.usage = rhi::EBufferUsage::DescriptorBuffer;
+	bufferDef.size  = definition.size + (definition.type == rhi::EDescriptorHeapType::Sampler ? descriptorProps.reservedSamplerHeapSize : descriptorProps.reservedResourceHeapSize);
+	bufferDef.usage = definition.type == rhi::EDescriptorHeapType::Sampler ? rhi::EBufferUsage::SamplerDescriptorHeap : rhi::EBufferUsage::ResourceDescriptorHeap;
 	bufferDef.flags = rhi::EBufferFlags::WithVirtualSuballocations;
 
 	rhi::RHICommittedAllocationDefinition allocationDef;
@@ -35,11 +38,16 @@ void RHIDescriptorHeap::InitializeRHI(const rhi::DescriptorHeapDefinition& defin
 	allocationDef.allocationInfo.allocationFlags = rhi::EAllocationFlags::CreateMapped;
 	allocationDef.alignment                      = VulkanRHI::GetLogicalDevice().GetDescriptorProps().descriptorsAlignment;
 	m_buffer.InitializeRHI(bufferDef, allocationDef);
+
+	m_descriptorSize = definition.type == rhi::EDescriptorHeapType::Sampler ? descriptorProps.samplerDescriptorSize : descriptorProps.resourceDescriptorSize;
+	m_descriptorsNum = static_cast<Uint32>(definition.size / m_descriptorSize);
+
+	m_mappedBuffer.Construct(m_buffer);
 }
 
 void RHIDescriptorHeap::ReleaseRHI()
 {
-	// nothing to do here
+	m_mappedBuffer.Destroy();
 }
 
 RHIDescriptorHeapReleaseTicket RHIDescriptorHeap::DeferredReleaseRHI()
@@ -55,6 +63,13 @@ RHIDescriptorHeapReleaseTicket RHIDescriptorHeap::DeferredReleaseRHI()
 Bool RHIDescriptorHeap::IsValid() const
 {
 	return m_buffer.IsValid();
+}
+
+rhi::EDescriptorHeapType RHIDescriptorHeap::GetType() const
+{
+	SPT_CHECK(IsValid());
+
+	return lib::HasAnyFlag(m_buffer.GetUsage(), rhi::EBufferUsage::SamplerDescriptorHeap) ? rhi::EDescriptorHeapType::Sampler : rhi::EDescriptorHeapType::Resource;
 }
 
 rhi::RHIDescriptorRange RHIDescriptorHeap::AllocateRange(Uint64 size)
@@ -95,6 +110,42 @@ void RHIDescriptorHeap::SetName(const lib::HashedString& name)
 const lib::HashedString& RHIDescriptorHeap::GetName() const
 {
 	return m_buffer.GetName();
+}
+
+void RHIDescriptorHeap::CopySamplerDescriptor(const rhi::SamplerDefinition& def, lib::Span<Byte> dst)
+{
+	VkSamplerCreateInfo samplerInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+	samplerInfo.flags                      = RHIToVulkan::GetSamplerCreateFlags(def.flags);
+	samplerInfo.magFilter                  = RHIToVulkan::GetSamplerFilterType(def.magnificationFilter);
+	samplerInfo.minFilter                  = RHIToVulkan::GetSamplerFilterType(def.minificationFilter);
+	samplerInfo.mipmapMode                 = RHIToVulkan::GetMipMapAddressingMode(def.mipMapAdressingMode);
+	samplerInfo.addressModeU               = RHIToVulkan::GetAxisAddressingMode(def.addressingModeU);
+	samplerInfo.addressModeV               = RHIToVulkan::GetAxisAddressingMode(def.addressingModeV);
+	samplerInfo.addressModeW               = RHIToVulkan::GetAxisAddressingMode(def.addressingModeW);
+	samplerInfo.mipLodBias                 = def.mipLodBias;
+	samplerInfo.anisotropyEnable           = def.enableAnisotropy;
+	samplerInfo.maxAnisotropy              = def.maxAnisotropy;
+	samplerInfo.minLod                     = def.minLod;
+	samplerInfo.maxLod                     = def.maxLod < 0.f ? VK_LOD_CLAMP_NONE : def.maxLod;
+	samplerInfo.borderColor                = RHIToVulkan::GetBorderColor(def.borderColor);
+	samplerInfo.unnormalizedCoordinates    = def.unnormalizedCoords;
+	
+	if (def.compareOp != rhi::ECompareOp::None)
+	{
+		samplerInfo.compareEnable   = VK_TRUE;
+		samplerInfo.compareOp       = RHIToVulkan::GetCompareOp(def.compareOp);
+	}
+	
+	VkSamplerReductionModeCreateInfo reductionModeInfo{ VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO };
+	reductionModeInfo.reductionMode = RHIToVulkan::GetSamplerReductionMode(def.reductionMode);
+	
+	samplerInfo.pNext = &reductionModeInfo;
+
+	VkHostAddressRangeEXT hostAddressRange;
+	hostAddressRange.address = dst.data();
+	hostAddressRange.size    = dst.size();
+
+	vkWriteSamplerDescriptorsEXT(VulkanRHI::GetDeviceHandle(), 1u, &samplerInfo, &hostAddressRange);
 }
 
 } // spt::vulkan

@@ -23,9 +23,9 @@ struct MeshPayload
 struct PerVertexData
 {
 	float4 locationCS : SV_Position;
-#if GEOMETRY_PIPELINE_USE_MATERIAL
+//#if GEOMETRY_PIPELINE_USE_MATERIAL
 	float2 uv : UV;
-#endif // GEOMETRY_PIPELINE_USE_MATERIAL
+//#endif // GEOMETRY_PIPELINE_USE_MATERIAL
 };
 
 

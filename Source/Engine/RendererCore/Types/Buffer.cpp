@@ -1,7 +1,7 @@
 #include "Buffer.h"
 #include "RendererUtils.h"
 #include "GPUMemoryPool.h"
-#include "DescriptorSetState/DescriptorManager.h"
+#include "Descriptors/DescriptorManager.h"
 #include "GPUApi.h"
 #include "ResourcesManager.h"
 
@@ -63,6 +63,11 @@ BindableBufferView::~BindableBufferView()
 			GPUApi::GetDescriptorManager().FreeResourceDescriptor(std::move(uavDescriptor));
 		}));
 	}
+}
+
+ResourceDescriptorIdx BindableBufferView::GetUAVDescriptor() const
+{
+	return ResourceDescriptorIdx(m_uavDescriptor.Get() * rhi::RHI::GetDescriptorProps().bufferDescriptorIdxFactor);
 }
 
 lib::SharedPtr<BindableBufferView> BindableBufferView::AsSharedPtr()

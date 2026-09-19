@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(SRATrousFilterDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
+[[shader_params(SRATrousFilteringParams, PARAMS_S_R_A_TROUS_FILTER)]]
+[[shader_params(GPURenderView, VIEW)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
@@ -20,7 +20,7 @@ struct CS_INPUT
 
 float2 LoadVariance(in Texture2D<float2> varianceTexture, in int2 coords)
 {
-	const uint2 clampedCoords = clamp(coords, int2(0, 0), int2(u_constants.resolution - 1));
+	const uint2 clampedCoords = clamp(coords, int2(0, 0), int2(PARAMS_S_R_A_TROUS_FILTER->resolution - 1));
 	return varianceTexture.Load(uint3(clampedCoords, 0));
 }
 
@@ -107,32 +107,32 @@ void SRATrousFilterCS(CS_INPUT input)
 
 	const int2 pixel = groupOffset + localID;
 
-	CacheGroupVariance(u_inVariance, groupOffset, localID);
+	CacheGroupVariance(PARAMS_S_R_A_TROUS_FILTER->inVariance, groupOffset, localID);
 	
-	if(all(pixel < u_constants.resolution))
+	if(all(pixel < PARAMS_S_R_A_TROUS_FILTER->resolution))
 	{
-		const float2 uv = (float2(pixel) + 0.5f) * u_constants.invResolution;
+		const float2 uv = (float2(pixel) + 0.5f) * PARAMS_S_R_A_TROUS_FILTER->invResolution;
 
-		const float3 normal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(pixel, 0)));
+		const float3 normal = OctahedronDecodeNormal(PARAMS_S_R_A_TROUS_FILTER->normalsTexture.Load(uint3(pixel, 0)));
 
-		const float centerLinearDepth = u_linearDepthTexture.Load(uint3(pixel, 0));
+		const float centerLinearDepth = PARAMS_S_R_A_TROUS_FILTER->linearDepthTexture.Load(uint3(pixel, 0));
 
 		if(isinf(centerLinearDepth))
 		{
 			return;
 		}
 
-		const float roughness = u_roughnessTexture.Load(uint3(pixel, 0));
+		const float roughness = PARAMS_S_R_A_TROUS_FILTER->roughnessTexture.Load(uint3(pixel, 0));
 
 		if(roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
 		{
-			const RTSphericalBasis outSpecularY_SH = RawToRTSphericalBasis(u_constants.inSpecularY.Load(uint3(pixel, 0)));
-			const RTSphericalBasis outDiffuseY_SH = RawToRTSphericalBasis(u_constants.inDiffuseY.Load(uint3(pixel, 0)));
-			const float4 outDiffSpecCoCg = u_constants.inDiffSpecCoCg.Load(uint3(pixel, 0));
+			const RTSphericalBasis outSpecularY_SH = RawToRTSphericalBasis(PARAMS_S_R_A_TROUS_FILTER->inSpecularY.Load(uint3(pixel, 0)));
+			const RTSphericalBasis outDiffuseY_SH = RawToRTSphericalBasis(PARAMS_S_R_A_TROUS_FILTER->inDiffuseY.Load(uint3(pixel, 0)));
+			const float4 outDiffSpecCoCg = PARAMS_S_R_A_TROUS_FILTER->inDiffSpecCoCg.Load(uint3(pixel, 0));
 #if OUTPUT_SH
-			u_constants.rwSpecularY.Store(pixel, RTSphericalBasisToRaw(outSpecularY_SH));
-			u_constants.rwDiffuseY.Store(pixel, RTSphericalBasisToRaw(outDiffuseY_SH));
-			u_constants.rwDiffSpecCoCg.Store(pixel, outDiffSpecCoCg);
+			PARAMS_S_R_A_TROUS_FILTER->rwSpecularY.Store(pixel, RTSphericalBasisToRaw(outSpecularY_SH));
+			PARAMS_S_R_A_TROUS_FILTER->rwDiffuseY.Store(pixel, RTSphericalBasisToRaw(outDiffuseY_SH));
+			PARAMS_S_R_A_TROUS_FILTER->rwDiffSpecCoCg.Store(pixel, outDiffSpecCoCg);
 #else
 			const float3 outSpecularYCoCg = float3(outSpecularY_SH.Evaluate(normal), outDiffSpecCoCg.zw);
 			const float3 outDiffuseYCoCg  = float3(outDiffuseY_SH.Evaluate(normal), outDiffSpecCoCg.xy);
@@ -140,21 +140,21 @@ void SRATrousFilterCS(CS_INPUT input)
 			const float3 outSpecular = YCoCgToRGB(outSpecularYCoCg);
 			const float3 outDiffuse  = YCoCgToRGB(outDiffuseYCoCg);
 
-			u_constants.rwSpecularRGB.Store(pixel, outSpecular);
-			u_constants.rwDiffuseRGB.Store(pixel, outDiffuse);
+			PARAMS_S_R_A_TROUS_FILTER->rwSpecularRGB.Store(pixel, outSpecular);
+			PARAMS_S_R_A_TROUS_FILTER->rwDiffuseRGB.Store(pixel, outDiffuse);
 #endif // OUTPUT_SH
 			return;
 		}
 		
 		const float lumStdDevMultiplier = 1.2f;
 		
-		const float3 centerWS = LinearDepthToWS(u_sceneView, uv * 2.f - 1.f, centerLinearDepth);
+		const float3 centerWS = LinearDepthToWS(VIEW->sceneView, uv * 2.f - 1.f, centerLinearDepth);
 
-		const float specularHistoryLength = u_specularHistoryLengthTexture.Load(uint3(pixel, 0));
+		const float specularHistoryLength = PARAMS_S_R_A_TROUS_FILTER->specularHistoryLengthTexture.Load(uint3(pixel, 0));
 		const float roughnessFilterStrength = ComputeRoughnessFilterStrength(roughness, specularHistoryLength);
 
-		const RTSphericalBasis specularY_SH = RawToRTSphericalBasis(u_constants.inSpecularY.Load(uint3(pixel, 0)));
-		const RTSphericalBasis diffuseY_SH  = RawToRTSphericalBasis(u_constants.inDiffuseY.Load(uint3(pixel, 0)));
+		const RTSphericalBasis specularY_SH = RawToRTSphericalBasis(PARAMS_S_R_A_TROUS_FILTER->inSpecularY.Load(uint3(pixel, 0)));
+		const RTSphericalBasis diffuseY_SH  = RawToRTSphericalBasis(PARAMS_S_R_A_TROUS_FILTER->inDiffuseY.Load(uint3(pixel, 0)));
 
 		const float specularLumCenter = specularY_SH.Evaluate(normal);
 		const float diffuseLumCenter  = diffuseY_SH.Evaluate(normal);
@@ -170,9 +170,9 @@ void SRATrousFilterCS(CS_INPUT input)
 
 		RTSphericalBasis specularY_SH_Sum = specularY_SH * kernel[0];
 		RTSphericalBasis diffuseY_SH_Sum  = diffuseY_SH * kernel[0];
-		float4 diffSpecCoCg_Sum     = u_constants.inDiffSpecCoCg.Load(uint3(pixel, 0)) * kernel[0];
+		float4 diffSpecCoCg_Sum     = PARAMS_S_R_A_TROUS_FILTER->inDiffSpecCoCg.Load(uint3(pixel, 0)) * kernel[0];
 
-		const ATrousVarianceData varianceData = LoadVariance3x3(u_inVariance, groupOffset, localID);
+		const ATrousVarianceData varianceData = LoadVariance3x3(PARAMS_S_R_A_TROUS_FILTER->inVariance, groupOffset, localID);
 
 		const float centerSpecularVariance = varianceData.center.x;
 		const float centerDiffuseVariance  = varianceData.center.y;
@@ -202,24 +202,24 @@ void SRATrousFilterCS(CS_INPUT input)
 					continue;
 				}
 
-				const int2 samplePixel = clamp(pixel + int2(x, y) * u_constants.samplesOffset, int2(0, 0), int2(u_constants.resolution - 1));
+				const int2 samplePixel = clamp(pixel + int2(x, y) * PARAMS_S_R_A_TROUS_FILTER->samplesOffset, int2(0, 0), int2(PARAMS_S_R_A_TROUS_FILTER->resolution - 1));
 				float weight = 1.f;
 
-				const float sampleLinearDepth = u_linearDepthTexture.Load(uint3(samplePixel, 0));
-				const float sampleRoughness = u_roughnessTexture.Load(uint3(samplePixel, 0));
-				const float3 sampleNormal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(samplePixel, 0)));
+				const float sampleLinearDepth = PARAMS_S_R_A_TROUS_FILTER->linearDepthTexture.Load(uint3(samplePixel, 0));
+				const float sampleRoughness = PARAMS_S_R_A_TROUS_FILTER->roughnessTexture.Load(uint3(samplePixel, 0));
+				const float3 sampleNormal = OctahedronDecodeNormal(PARAMS_S_R_A_TROUS_FILTER->normalsTexture.Load(uint3(samplePixel, 0)));
 				SPT_CHECK_MSG(all(!isnan(sampleNormal)) && all(!isinf(sampleNormal)), L"Invalid sample normal");
 
-				RTSphericalBasis sampleSpecularY_SH = RawToRTSphericalBasis(u_constants.inSpecularY.Load(uint3(samplePixel, 0)));
-				RTSphericalBasis sampleDiffuseY_SH  = RawToRTSphericalBasis(u_constants.inDiffuseY.Load(uint3(samplePixel, 0)));
-				const float4 sampleDiffSpecCoCg     = u_constants.inDiffSpecCoCg.Load(uint3(samplePixel, 0));
+				RTSphericalBasis sampleSpecularY_SH = RawToRTSphericalBasis(PARAMS_S_R_A_TROUS_FILTER->inSpecularY.Load(uint3(samplePixel, 0)));
+				RTSphericalBasis sampleDiffuseY_SH  = RawToRTSphericalBasis(PARAMS_S_R_A_TROUS_FILTER->inDiffuseY.Load(uint3(samplePixel, 0)));
+				const float4 sampleDiffSpecCoCg     = PARAMS_S_R_A_TROUS_FILTER->inDiffSpecCoCg.Load(uint3(samplePixel, 0));
 
 				if(isinf(sampleLinearDepth))
 				{
 					continue;
 				}
 
-				const float3 sampleWS = LinearDepthToWS(u_sceneView, samplePixel * u_constants.invResolution * 2.f - 1.f, sampleLinearDepth);
+				const float3 sampleWS = LinearDepthToWS(VIEW->sceneView, samplePixel * PARAMS_S_R_A_TROUS_FILTER->invResolution * 2.f - 1.f, sampleLinearDepth);
 				const float dw = ComputeWorldLocationWeight(centerWS, normal, sampleWS);
 				weight *= dw;
 
@@ -240,7 +240,7 @@ void SRATrousFilterCS(CS_INPUT input)
 
 				specularY_SH_Sum = specularY_SH_Sum + (sampleSpecularY_SH * specularWeight);
 
-				const float2 variance = u_inVariance.Load(uint3(samplePixel, 0));
+				const float2 variance = PARAMS_S_R_A_TROUS_FILTER->inVariance.Load(uint3(samplePixel, 0));
 				const float sampleSpecularVariance = variance.x;
 
 				specularVarianceSum += sampleSpecularVariance * Pow2(specularWeight);
@@ -276,14 +276,14 @@ void SRATrousFilterCS(CS_INPUT input)
 		const float4 outDiffSpecCoCg = diffSpecCoCg_Sum / float4(diffuseWeightSum, diffuseWeightSum, specularWeightSum, specularWeightSum);
 
 #if OUTPUT_SH
-		u_constants.rwSpecularY.Store(pixel, RTSphericalBasisToRaw(outSpecularY_SH));
-		u_constants.rwDiffuseY.Store(pixel, RTSphericalBasisToRaw(outDiffuseY_SH));
-		u_constants.rwDiffSpecCoCg.Store(pixel, outDiffSpecCoCg);
+		PARAMS_S_R_A_TROUS_FILTER->rwSpecularY.Store(pixel, RTSphericalBasisToRaw(outSpecularY_SH));
+		PARAMS_S_R_A_TROUS_FILTER->rwDiffuseY.Store(pixel, RTSphericalBasisToRaw(outDiffuseY_SH));
+		PARAMS_S_R_A_TROUS_FILTER->rwDiffSpecCoCg.Store(pixel, outDiffSpecCoCg);
 
 		const float outSpecularVariance = specularVarianceSum / Pow2(specularWeightSum);
 		const float outDiffuseVariance = diffuseWeightSum > 0.f ? diffuseVarianceSum / Pow2(diffuseWeightSum) : 0.f;
 
-		u_outVariance[pixel] = float2(outSpecularVariance, outDiffuseVariance);
+		PARAMS_S_R_A_TROUS_FILTER->outVariance[pixel] = float2(outSpecularVariance, outDiffuseVariance);
 #else
 		const float3 outSpecularYCoCg = float3(outSpecularY_SH.Evaluate(normal), outDiffSpecCoCg.zw);
 		const float3 outDiffuseYCoCg  = float3(outDiffuseY_SH.Evaluate(normal), outDiffSpecCoCg.xy);
@@ -291,8 +291,8 @@ void SRATrousFilterCS(CS_INPUT input)
 		const float3 outSpecular = YCoCgToRGB(outSpecularYCoCg);
 		const float3 outDiffuse  = YCoCgToRGB(outDiffuseYCoCg);
 
-		u_constants.rwSpecularRGB.Store(pixel, outSpecular);
-		u_constants.rwDiffuseRGB.Store(pixel, outDiffuse);
+		PARAMS_S_R_A_TROUS_FILTER->rwSpecularRGB.Store(pixel, outSpecular);
+		PARAMS_S_R_A_TROUS_FILTER->rwDiffuseRGB.Store(pixel, outDiffuse);
 #endif
 	}
 }

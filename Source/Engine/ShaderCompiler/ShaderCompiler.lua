@@ -5,6 +5,8 @@ if GetSelectedRHI() == ERHI.Vulkan then
         include "Shaderc/Shaderc"
     elseif GetSelectedShaderCompiler() == EShaderCompiler.DXC then
         include "DXC/DXC"
+	elseif GetSelectedShaderCompiler() == EShaderCompiler.Slang then
+		include "Slang/Slang"
     end
 end
 

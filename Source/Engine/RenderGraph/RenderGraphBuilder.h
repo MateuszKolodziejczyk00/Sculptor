@@ -4,14 +4,15 @@
 #include "SculptorCoreTypes.h"
 #include "RenderGraphTypes.h"
 #include "Pipelines/PipelineState.h"
-#include "RGDescriptorSetState.h"
 #include "RGResources/RGResources.h"
 #include "RGResources/RGAllocator.h"
 #include "DependenciesBuilder.h"
 #include "RGResources/RGNode.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "RGNodeParametersStruct.h"
+#include "Utility/Templates/Callable.h"
 #include "Utility/Templates/Overload.h"
+#include "Utils/ConstantsAllocator.h"
 #include "JobSystem.h"
 
 #define SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME 0
@@ -33,23 +34,46 @@ namespace spt::rg
 
 class RenderGraphDebugDecorator;
 class RenderGraphResourcesPool;
+class RenderGraphBuilder;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// Descriptor Sets Helpers =======================================================================
+// Shader Params =================================================================================
 
-template<typename... TDescriptorSetStates>
-auto BindDescriptorSets(TDescriptorSetStates&&... descriptorSetStates)
+struct EmptyShaderParams {};
+
+template<typename... TParams>
+inline decltype(auto) ShaderParams(TParams&&... params)
 {
-	constexpr SizeType size = lib::ParameterPackSize<TDescriptorSetStates...>::Count;
-	return lib::StaticArray<lib::MTHandle<rg::RGDescriptorSetStateBase>, size>{ lib::MTHandle<rg::RGDescriptorSetStateBase>(std::forward<TDescriptorSetStates>(descriptorSetStates))... };
+	return std::forward_as_tuple(std::forward<TParams>(params)...);
 }
 
 
-inline decltype(auto) EmptyDescriptorSets()
+struct GenericShaderParamsPtr
 {
-	static lib::StaticArray<lib::MTHandle<rg::RGDescriptorSetStateBase>, 0> empty;
-	return empty;
-}
+public:
+
+	GenericShaderParamsPtr() = default;
+
+	template<typename TShaderParams>
+	GenericShaderParamsPtr(const rdr::GPUPtr<TShaderParams>& shaderParams);
+
+	GenericShaderParamsPtr(const GenericShaderParamsPtr& rhs) = default;
+	GenericShaderParamsPtr& operator=(const GenericShaderParamsPtr& rhs) = default;
+
+	void AssignToNode(RenderGraphBuilder& graphBuilder, RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, RGDependenciesBuilder& dependenciesBuilder) const;
+	void AssignToSubpass(RenderGraphBuilder& graphBuilder, RGSubpass& subpass, RGDependenciesBuilder& dependenciesBuilder) const;
+
+	Bool IsValid() const { return m_data.IsValid(); }
+
+private:
+
+	using NodeBinderType    = lib::RawCallable<void(RenderGraphBuilder&, RGNode&, const lib::SharedPtr<rdr::Pipeline>&, const rdr::GPUPtr<void>&, RGDependenciesBuilder&)>;
+	using SubpassBinderType = lib::RawCallable<void(RenderGraphBuilder&, RGSubpass&, const rdr::GPUPtr<void>&, RGDependenciesBuilder&)>;
+
+	rdr::GPUPtr<void> m_data;
+	NodeBinderType    m_nodeBinder;
+	SubpassBinderType m_subpassBinder;
+};
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Acceleration Structures =======================================================================
@@ -78,11 +102,6 @@ struct TLASBuildCommand
 	RGBufferViewHandle scratchBufferView;
 	Uint64             scratchBufferOffset = 0u;
 };
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// Shader Params =================================================================================
-
-struct EmptyShaderParams {};
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Render Graph ==================================================================================
@@ -151,9 +170,6 @@ public:
 
 	lib::MemoryArena& GetMemoryArena() { return m_memoryArena; }
 
-	template<typename TDSType>
-	lib::MTHandle<TDSType> CreateDescriptorSet(const rdr::RendererResourceName& name);
-
 	// Diagnostics ============================================
 
 #if RG_ENABLE_DIAGNOSTICS
@@ -163,43 +179,39 @@ public:
 	
 	// Commands ===============================================
 
-	/** Calls dispatch command with given descriptor sets (this version automatically creates pipeline from shader */
-	template<typename TDescriptorSetStatesRange, typename TShaderParams = EmptyShaderParams>
-	void Dispatch(const RenderGraphDebugName& dispatchName, rdr::ShaderID shader, const WorkloadResolution& groupCount, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams = TShaderParams{});
+	/** Calls dispatch command with given params */
+	template<typename TShaderParams = EmptyShaderParams>
+	void Dispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const WorkloadResolution& groupCount, const TShaderParams& params = TShaderParams{});
 
-	/** Calls dispatch command with given descriptor sets */
-	template<typename TDescriptorSetStatesRange, typename TShaderParams = EmptyShaderParams>
-	void Dispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const WorkloadResolution& groupCount, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams = TShaderParams{});
+	/** Calls dispatch indirect command with given shader params */
+	template<typename TShaderParams = EmptyShaderParams>
+	void DispatchIndirect(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, RGBufferViewHandle indirectArgsBuffer, Uint64 indirectArgsOffset, const TShaderParams& shaderParams = TShaderParams{});
 
-	/** Calls dispatch indirect command with given descriptor sets */
-	template<typename TDescriptorSetStatesRange, typename TShaderParams = EmptyShaderParams>
-	void DispatchIndirect(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, RGBufferViewHandle indirectArgsBuffer, Uint64 indirectArgsOffset, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams = TShaderParams{});
+	/** Creates render pass with given shader params and executes callable inside it */
+	template<typename TShaderParams, typename TCallable>
+	void RenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, const TShaderParams& shaderParams, TCallable&& callable);
 
-	/** Creates render pass with given descriptor sets and executes callable inside it */
-	template<typename TDescriptorSetStatesRange, typename TCallable>
-	void RenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
-
-	/** Creates render pass with given descriptor sets and executes callable inside it */
-	template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
-	void RenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable);
+	/** Creates render pass with given shader params and executes callable inside it */
+	template<typename TShaderParams, typename TPassParameters, typename TCallable>
+	void RenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, const TShaderParams& shaderParams, const TPassParameters& parameters, TCallable&& callable);
 
 	/** Creates render pass with given descriptor sets and executes full screen triangle draw call inside it */
-	template<typename TDescriptorSetStatesRange, typename TShaderParams = EmptyShaderParams>
-	void FullScreenPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, rdr::PipelineStateID pipelineID, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams = TShaderParams{});
+	template<typename TShaderParams = EmptyShaderParams>
+	void FullScreenPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, rdr::PipelineStateID pipelineID, const TShaderParams& shaderParams = TShaderParams{});
 
 	/** Appends callable with its dependencies to previous render pass (must be called after render pass) */
-	template<typename TDescriptorSetStatesRange, typename TCallable>
-	void AddSubpass(const RenderGraphDebugName& subpassName, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
+	template<typename TShaderParams, typename TCallable>
+	void AddSubpass(const RenderGraphDebugName& subpassName, const TShaderParams& shaderParams, TCallable&& callable);
 
 	/** Appends callable with its dependencies to previous render pass (must be called after render pass) */
-	template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
-	void AddSubpass(const RenderGraphDebugName& subpassName, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable);
+	template<typename TShaderParams, typename TPassParameters, typename TCallable>
+	void AddSubpass(const RenderGraphDebugName& subpassName, const TShaderParams& shaderParams, const TPassParameters& parameters, TCallable&& callable);
 
-	template<typename TDescriptorSetStatesRange, typename TShaderParams = EmptyShaderParams>
-	void TraceRays(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, const WorkloadResolution& traceCount, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams = TShaderParams{});
+	template<typename TShaderParams = EmptyShaderParams>
+	void TraceRays(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, const WorkloadResolution& traceCount, const TShaderParams& shaderParams = TShaderParams{});
 
-	template<typename TDescriptorSetStatesRange, typename TShaderParams = EmptyShaderParams>
-	void TraceRaysIndirect(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, RGBufferViewHandle indirectArgsBuffer, Uint64 indirectArgsOffset, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams = TShaderParams{});
+	template<typename TShaderParams = EmptyShaderParams>
+	void TraceRaysIndirect(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, RGBufferViewHandle indirectArgsBuffer, Uint64 indirectArgsOffset, const TShaderParams& shaderParams = TShaderParams{});
 
 	template<typename TPassParameters, typename TCallable>
 	void AddLambdaPass(const RenderGraphDebugName& passName, const TPassParameters& parameters, TCallable&& callable);
@@ -233,8 +245,19 @@ public:
 
 	void ClearTexture(const RenderGraphDebugName& clearName, RGTextureViewHandle textureView, const rhi::ClearColor& clearColor);
 
-	void BindDescriptorSetState(const lib::MTHandle<RGDescriptorSetStateBase>& dsState);
-	void UnbindDescriptorSetState(const lib::MTHandle<RGDescriptorSetStateBase>& dsState);
+	template<typename TDataType>
+	rdr::GPUPtr<TDataType> CreateGPUData(const TDataType& data);
+
+	template<typename TDataType>
+	rdr::GPUPtr<TDataType> CreateGPUData();
+
+	template<typename TShaderParam>
+	void BindShaderParam(const TShaderParam& param);;
+
+	template<typename TShaderParam>
+	void UnbindShaderParam();
+
+	void UnbindShaderParam(const lib::HashedString& paramType);
 
 	const js::Event& GetGPUFinishedEvent() const         { return m_onGraphExecutionFinished; }
 	const js::Event& GetPreGPUWorkSubmittedEvent() const { return m_preGPUWorkSubmittedEvent; }
@@ -243,11 +266,13 @@ public:
 
 private:
 
+	friend struct GenericShaderParamsPtr;
+
 	template<typename TNodeType, typename... TArgs>
 	TNodeType& AllocateNode(const RenderGraphDebugName& name, ERenderGraphNodeType type, TArgs&&... args);
 
-	template<typename TDescriptorSetStatesRange, typename TCallable>
-	RGNode& CreateRenderPassNodeInternal(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
+	template<typename TCallable>
+	RGNode& CreateRenderPassNodeInternal(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TCallable&& callable);
 
 	template<typename TParametersTuple>
 	void BuildParametersDependencies(const TParametersTuple& parametersStructs, RGDependenciesBuilder& dependenciesBuilder) const;
@@ -255,13 +280,17 @@ private:
 	template<typename TParameters>
 	void BuildParametersStructDependencies(const TParameters& parameters, RGDependenciesBuilder& dependenciesBuilder) const;
 
+	template<typename TShaderParam>
+	void AssignShaderParamToNode(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, const TShaderParam& shaderParam, RGDependenciesBuilder& dependenciesBuilder);
+
 	template<typename TShaderParams>
 	void AssignShaderParamsToNode(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, const TShaderParams& shaderParams, RGDependenciesBuilder& dependenciesBuilder);
 
-	void AssignDescriptorSetsToNode(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<lib::MTHandle<RGDescriptorSetStateBase> const> dsStatesRange, RGDependenciesBuilder& dependenciesBuilder);
-	void AssignDescriptorSetsToSubpass(RGSubpass& subpass, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<lib::MTHandle<RGDescriptorSetStateBase> const> dsStatesRange, RGDependenciesBuilder& dependenciesBuilder);
+	template<typename TShaderParam>
+	void AssignShaderParamToSubpass(RGSubpass& subpass, const TShaderParam& shaderParam, RGDependenciesBuilder& dependenciesBuilder);
 
-	Bool AssignShaderParamsToNodeInternal(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<const Byte> paramsData, const lib::HashedString& paramsType, RGDependenciesBuilder& dependenciesBuilder);
+	Bool AssignShaderParamToNodeInternal(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<const Byte> paramData, const lib::HashedString& paramType, RGDependenciesBuilder& dependenciesBuilder);
+	Bool AssignShaderParamToNodeInternal(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, const lib::SharedPtr<rdr::BindableBufferView>& bufferView, Uint32 offset, Uint32 size, const lib::HashedString& paramType, RGDependenciesBuilder& dependenciesBuilder);
 
 	void AddNodeInternal(RGNode& node, RGDependeciesContainer& dependencies);
 	void PostNodeAdded(RGNode& node, const RGDependeciesContainer& dependencies);
@@ -292,11 +321,12 @@ private:
 	void ResolveTextureProperties();
 	void ResolveBufferReleases();
 
+	rdr::ConstantBufferAllocation AllocateConstantBuffer(lib::Span<const Byte> data);
+	rdr::ConstantBufferAllocation AllocateConstantBuffer(Uint32 size);
+
 	rdr::PipelineStateID GetOrCreateComputePipelineStateID(rdr::ShaderID shader) const;
 
 	lib::SharedPtr<rdr::Pipeline> GetPipelineObject(rdr::PipelineStateID psoID) const;
-
-	rdr::DescriptorSetStateParams BuildDesctiptorSetStateParams();
 
 	lib::DynamicPushArray<RGTexture>     m_textures;
 	lib::DynamicPushArray<RGTextureView> m_textureViews;
@@ -312,7 +342,14 @@ private:
 	lib::DynamicPushArray<RGNodeHandle> m_nodes;
 	RGNodeID m_nodeCounter = 0u;
 
-	lib::InlineDynamicArray<lib::MTHandle<RGDescriptorSetStateBase>, 32u> m_boundDSStates;
+	struct BoundShaderParam
+	{
+		lib::HashedString paramType;
+		lib::Span<const Byte> data;
+		lib::RawCallable<void(rg::RenderGraphBuilder&, rg::RGNode&, const lib::SharedPtr<rdr::Pipeline>&, lib::Span<const Byte>, rg::RGDependenciesBuilder&)> binder;
+	};
+
+	lib::InlineDynamicArray<BoundShaderParam, 32u> m_boundShaderParams;
 
 	lib::InlineDynamicArray<lib::SharedPtr<RenderGraphDebugDecorator>, 4u> m_debugDecorators;
 
@@ -322,10 +359,6 @@ private:
 
 	lib::DynamicArray<RGTextureViewHandle> m_pendingGloballyReadableTransitions;
 
-#if SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME
-	lib::DynamicArray<lib::MTHandle<RGDescriptorSetStateBase>> m_allocatedDSStates;
-#endif // SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME
-
 	js::Event m_onGraphExecutionFinished;
 	js::Event m_preGPUWorkSubmittedEvent;
 
@@ -334,8 +367,6 @@ private:
 #if RG_ENABLE_DIAGNOSTICS
 	RGProfilerRecorder m_profilerRecorder;
 #endif // RG_ENABLE_DIAGNOSTICS
-
-	rdr::DescriptorStackAllocator m_dsAllocator;
 
 	RGAllocator m_allocator;
 
@@ -348,28 +379,10 @@ TType* RenderGraphBuilder::Allocate(TArgs&&... args)
 	return m_allocator.Allocate<TType>(std::forward<TArgs>(args)...);
 }
 
-template<typename TDSType>
-lib::MTHandle<TDSType> RenderGraphBuilder::CreateDescriptorSet(const rdr::RendererResourceName& name)
+template<typename TShaderParams /* = EmptyShaderParams */>
+void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const WorkloadResolution& groupCount, const TShaderParams& shaderParams /* = TShaderParams{} */)
 {
-	lib::MTHandle<TDSType> ds = m_allocator.AllocateUntracked<TDSType>(name, BuildDesctiptorSetStateParams());
-	ds->DisableDeleteOnZeroRefCount();
-#if SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME
-	m_allocatedDSStates.emplace_back(ds);
-#endif // SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME
-	return ds;
-}
-
-template<typename TDescriptorSetStatesRange, typename TShaderParams /* = EmptyShaderParams */>
-void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr::ShaderID shader, const WorkloadResolution& groupCount, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams /* = TShaderParams{} */)
-{
-	const rdr::PipelineStateID pipelineStateID = GetOrCreateComputePipelineStateID(shader);
-	Dispatch(dispatchName, pipelineStateID, groupCount, std::forward<TDescriptorSetStatesRange>(dsStatesRange), shaderParams);
-}
-
-template<typename TDescriptorSetStatesRange, typename TShaderParams /* = EmptyShaderParams */>
-void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const WorkloadResolution& groupCount, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams /* = TShaderParams{} */)
-{
-	const auto executeLambda = [computePipelineID, groupCount, dsStatesRange](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	const auto executeLambda = [computePipelineID, groupCount](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
 		recorder.BindComputePipeline(computePipelineID);
 		recorder.Dispatch(groupCount.AsVector());
@@ -389,18 +402,16 @@ void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr:
 
 	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::ComputeShader);
-	
-	AssignDescriptorSetsToNode(node, GetPipelineObject(computePipelineID), { dsStatesRange }, dependenciesBuilder);
 
 	AssignShaderParamsToNode(node, GetPipelineObject(computePipelineID), shaderParams, dependenciesBuilder);
 
 	AddNodeInternal(node, dependencies);
 }
 
-template<typename TDescriptorSetStatesRange, typename TShaderParams /* = EmptyShaderParams */>
-void RenderGraphBuilder::DispatchIndirect(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, RGBufferViewHandle indirectArgsBuffer, Uint64 indirectArgsOffset, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams /* = TShaderParams{} */)
+template<typename TShaderParams /* = EmptyShaderParams */>
+void RenderGraphBuilder::DispatchIndirect(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, RGBufferViewHandle indirectArgsBuffer, Uint64 indirectArgsOffset, const TShaderParams& shaderParams /* = TShaderParams{} */)
 {
-	const auto executeLambda = [computePipelineID, indirectArgsBuffer, indirectArgsOffset, dsStatesRange](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	const auto executeLambda = [computePipelineID, indirectArgsBuffer, indirectArgsOffset](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
 		recorder.BindComputePipeline(computePipelineID);
 		recorder.DispatchIndirect(*indirectArgsBuffer->GetResource(), indirectArgsOffset);
@@ -421,8 +432,6 @@ void RenderGraphBuilder::DispatchIndirect(const RenderGraphDebugName& dispatchNa
 	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::ComputeShader);
 
-	AssignDescriptorSetsToNode(node, GetPipelineObject(computePipelineID), { dsStatesRange }, dependenciesBuilder);
-
 	dependenciesBuilder.AddBufferAccess(indirectArgsBuffer, ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect);
 
 	AssignShaderParamsToNode(node, GetPipelineObject(computePipelineID), shaderParams, dependenciesBuilder);
@@ -430,30 +439,30 @@ void RenderGraphBuilder::DispatchIndirect(const RenderGraphDebugName& dispatchNa
 	AddNodeInternal(node, dependencies);
 }
 
-template<typename TDescriptorSetStatesRange, typename TCallable>
-void RenderGraphBuilder::RenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable)
+template<typename TShaderParams, typename TCallable>
+void RenderGraphBuilder::RenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, const TShaderParams& shaderParams, TCallable&& callable)
 {
-	RenderPass(renderPassName, renderPassDef, dsStatesRange, std::make_tuple(), callable);
+	RenderPass(renderPassName, renderPassDef, shaderParams, std::make_tuple(), callable);
 }
 
-template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
-void RenderGraphBuilder::RenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable)
+template<typename TShaderParams, typename TPassParameters, typename TCallable>
+void RenderGraphBuilder::RenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, const TShaderParams& shaderParams, const TPassParameters& parameters, TCallable&& callable)
 {
-	RGNode& node = CreateRenderPassNodeInternal(renderPassName, renderPassDef, dsStatesRange, std::forward<TCallable>(callable));
+	RGNode& node = CreateRenderPassNodeInternal(renderPassName, renderPassDef, std::forward<TCallable>(callable));
 
 	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::ALL_GRAPHICS_SHADERS);
 	
-	AssignDescriptorSetsToNode(node, nullptr, { dsStatesRange }, dependenciesBuilder);
-	
 	renderPassDef.BuildDependencies(dependenciesBuilder);
 	BuildParametersDependencies(parameters, dependenciesBuilder);
+
+	AssignShaderParamsToNode(node, nullptr, shaderParams, dependenciesBuilder);
 
 	AddNodeInternal(node, dependencies);
 }
 
-template<typename TDescriptorSetStatesRange, typename TShaderParams /* = EmptyShaderParams */>
-void RenderGraphBuilder::FullScreenPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, rdr::PipelineStateID pipelineID, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams /* = TShaderParams{} */)
+template<typename TShaderParams /* = EmptyShaderParams */>
+void RenderGraphBuilder::FullScreenPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, rdr::PipelineStateID pipelineID, const TShaderParams& shaderParams /* = TShaderParams{} */)
 {
 	const math::Vector2u resolution = renderPassDef.GetRenderAreaExtent();
 
@@ -469,14 +478,12 @@ void RenderGraphBuilder::FullScreenPass(const RenderGraphDebugName& renderPassNa
 
 	using CallableType = std::remove_cvref_t<decltype(callable)>;
 
-	RGNode& node = CreateRenderPassNodeInternal(renderPassName, renderPassDef, dsStatesRange, std::forward<CallableType>(callable));
+	RGNode& node = CreateRenderPassNodeInternal(renderPassName, renderPassDef, std::forward<CallableType>(callable));
 
 	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::ALL_GRAPHICS_SHADERS);
 
 	const lib::SharedPtr<rdr::Pipeline> pipeline = GetPipelineObject(pipelineID);
-	
-	AssignDescriptorSetsToNode(node, pipeline, { dsStatesRange }, dependenciesBuilder);
 
 	AssignShaderParamsToNode(node, pipeline, shaderParams, dependenciesBuilder);
 	
@@ -485,14 +492,14 @@ void RenderGraphBuilder::FullScreenPass(const RenderGraphDebugName& renderPassNa
 	AddNodeInternal(node, dependencies);
 }
 
-template<typename TDescriptorSetStatesRange, typename TCallable>
-void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable)
+template<typename TShaderParams, typename TCallable>
+void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, const TShaderParams& shaderParams, TCallable&& callable)
 {
-	AddSubpass(subpassName, dsStatesRange, std::make_tuple(), std::forward<TCallable>(callable));
+	AddSubpass(subpassName, shaderParams, std::make_tuple(), std::forward<TCallable>(callable));
 }
 
-template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
-void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable)
+template<typename TShaderParams, typename TPassParameters, typename TCallable>
+void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, const TShaderParams& shaderParams, const TPassParameters& parameters, TCallable&& callable)
 {
 	SPT_CHECK(!!m_lastRenderPassNode);
 
@@ -500,34 +507,35 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 	using SubpassType  = RGLambdaSubpass<CallableType>;
 	RGSubpassHandle subpass = m_memoryArena.AllocateType<SubpassType>(m_memoryArena, subpassName, std::forward<TCallable>(callable));
 
-	//for (const lib::MTHandle<rdr::DescriptorSetState>& dsState : dsStatesRange)
-	//{
-	//	if (dsState.IsValid())
-	//	{
-	//		subpass->BindDSState(dsState);
-	//	}
-	//}
-
-	//for (const lib::MTHandle<rdr::DescriptorSetState>& dsState : m_boundDSStates)
-	//{
-	//	subpass->BindDSState(dsState);
-	//}
-	
 	m_lastRenderPassNode->AppendSubpass(subpass);
 
 	RGDependeciesContainer subpassDependencies(m_memoryArena);
 	RGDependenciesBuilder subpassDependenciesBuilder(*this, subpassDependencies, rhi::EPipelineStage::ALL_GRAPHICS_SHADERS);
 	
 	BuildParametersDependencies(parameters, subpassDependenciesBuilder);
-	AssignDescriptorSetsToSubpass(*subpass, nullptr, { dsStatesRange }, subpassDependenciesBuilder);
+
+	if constexpr (!std::is_same_v<TShaderParams, EmptyShaderParams>)
+	{
+		if constexpr (lib::isTuple<TShaderParams>)
+		{
+			std::apply([&](const auto&... params)
+			{
+				(AssignShaderParamToSubpass(*subpass, params, subpassDependenciesBuilder), ...);
+			}, shaderParams);
+		}
+		else
+		{
+			AssignShaderParamToSubpass(subpass, shaderParams, subpassDependenciesBuilder);
+		}
+	}
 
 	ResolveNodeDependecies(*m_lastRenderPassNode, subpassDependencies);
 
 	PostSubpassAdded(*m_lastRenderPassNode, subpassDependencies);
 }
 
-	template<typename TDescriptorSetStatesRange, typename TShaderParams /* = EmptyShaderParams */>
-void RenderGraphBuilder::TraceRays(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, const WorkloadResolution& traceCount, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams /* = TShaderParams{} */)
+template<typename TShaderParams /* = EmptyShaderParams */>
+void RenderGraphBuilder::TraceRays(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, const WorkloadResolution& traceCount, const TShaderParams& shaderParams /* = TShaderParams{} */)
 {
 	const auto executeLambda = [ rayTracingPipelineID, traceCount ](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
@@ -543,16 +551,14 @@ void RenderGraphBuilder::TraceRays(const RenderGraphDebugName& traceName, rdr::P
 
 	RGDependeciesContainer dependencies(m_memoryArena);
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::RayTracingShader);
-	
-	AssignDescriptorSetsToNode(node, GetPipelineObject(rayTracingPipelineID), { dsStatesRange }, dependenciesBuilder);
 
 	AssignShaderParamsToNode(node, GetPipelineObject(rayTracingPipelineID), shaderParams, dependenciesBuilder);
 
 	AddNodeInternal(node, dependencies);
 }
 
-	template<typename TDescriptorSetStatesRange, typename TShaderParams /* = EmptyShaderParams */>
-void RenderGraphBuilder::TraceRaysIndirect(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, RGBufferViewHandle indirectArgsBuffer, Uint64 indirectArgsOffset, TDescriptorSetStatesRange&& dsStatesRange, const TShaderParams& shaderParams /* = TShaderParams{} */)
+template<typename TShaderParams /* = EmptyShaderParams */>
+void RenderGraphBuilder::TraceRaysIndirect(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, RGBufferViewHandle indirectArgsBuffer, Uint64 indirectArgsOffset, const TShaderParams& shaderParams /* = TShaderParams{} */)
 {
 	const auto executeLambda = [ rayTracingPipelineID, indirectArgsBuffer, indirectArgsOffset ](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
@@ -570,8 +576,6 @@ void RenderGraphBuilder::TraceRaysIndirect(const RenderGraphDebugName& traceName
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::RayTracingShader);
 
 	dependenciesBuilder.AddBufferAccess(indirectArgsBuffer, ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect);
-	
-	AssignDescriptorSetsToNode(node, GetPipelineObject(rayTracingPipelineID), { dsStatesRange }, dependenciesBuilder);
 
 	AssignShaderParamsToNode(node, GetPipelineObject(rayTracingPipelineID), shaderParams, dependenciesBuilder);
 
@@ -594,6 +598,88 @@ void RenderGraphBuilder::AddLambdaPass(const RenderGraphDebugName& passName, con
 	AddNodeInternal(node, dependencies);
 }
 
+template<typename TDataType>
+rdr::GPUPtr<TDataType> RenderGraphBuilder::CreateGPUData(const TDataType& data)
+{
+	const rdr::HLSLStorage<TDataType> hlslData = data;
+
+	const rdr::ConstantBufferAllocation cbAllocation = AllocateConstantBuffer(hlslData.GetHLSLDataSpan());
+
+	return rdr::GPUPtr<TDataType>(cbAllocation.buffer->GetFullView(), cbAllocation.offset);
+}
+
+template<typename TDataType>
+rdr::GPUPtr<TDataType> RenderGraphBuilder::CreateGPUData()
+{
+	const rdr::ConstantBufferAllocation cbAllocation = AllocateConstantBuffer(sizeof(rdr::HLSLStorage<TDataType>));
+	return rdr::GPUPtr<TDataType>(cbAllocation.buffer->GetFullView(), cbAllocation.offset);
+}
+
+template<typename TShaderParam>
+void RenderGraphBuilder::BindShaderParam(const TShaderParam& param)
+{
+	if constexpr (rdr::isGPUPtr<TShaderParam>)
+	{
+		using TShaderParamsStruct = typename TShaderParam::DataType;
+		
+		struct PtrWrapper
+		{
+			RGBufferViewHandle buffer;
+			Uint32 offset = 0u;
+		};
+
+		PtrWrapper* data = GetMemoryArena().AllocateType<PtrWrapper>();
+		data->buffer = AcquireExternalBufferView(param.GetBufferView());
+		data->offset = param.GetOffset();
+
+		BoundShaderParam boundParam;
+		boundParam.paramType = TShaderParamsStruct::GetStructName();
+		boundParam.data      = lib::Span<const Byte>(reinterpret_cast<const Byte*>(data), sizeof(PtrWrapper));
+		boundParam.binder    = [](rg::RenderGraphBuilder& graphBuilder, rg::RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<const Byte> data, rg::RGDependenciesBuilder& dependenciesBuilder)
+		{
+			const PtrWrapper& shaderParam = *reinterpret_cast<const PtrWrapper*>(data.data());
+			const rdr::GPUPtr<TShaderParamsStruct> gpuPtr(shaderParam.buffer->GetResource(), shaderParam.offset);
+			graphBuilder.AssignShaderParamToNode<rdr::GPUPtr<TShaderParamsStruct>>(node, pipeline, gpuPtr, dependenciesBuilder);
+		};
+
+		SPT_CHECK(lib::ContainsPred(m_boundShaderParams, [&](const BoundShaderParam& boundParam) { return boundParam.paramType.GetView() == TShaderParamsStruct::GetStructName(); }) == false);
+
+		m_boundShaderParams.EmplaceBack(std::move(boundParam));
+	}
+	else
+	{
+		rdr::HLSLStorage<TShaderParam>* data = GetMemoryArena().AllocateType<rdr::HLSLStorage<TShaderParam>>();
+		*data = param;
+
+		BoundShaderParam boundParam;
+		boundParam.paramType = TShaderParam::GetStructName();
+		boundParam.data      = data->GetHLSLDataSpan();
+		boundParam.binder    = [](rg::RenderGraphBuilder& graphBuilder, rg::RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<const Byte> data, rg::RGDependenciesBuilder& dependenciesBuilder)
+		{
+			const rdr::HLSLStorage<TShaderParam>& shaderParam = *reinterpret_cast<const rdr::HLSLStorage<TShaderParam>*>(data.data());
+			graphBuilder.AssignShaderParamToNode(node, pipeline, shaderParam, dependenciesBuilder);
+		};
+
+		SPT_CHECK(lib::ContainsPred(m_boundShaderParams, [&](const BoundShaderParam& boundParam) { return boundParam.paramType.GetView() == TShaderParam::GetStructName(); }) == false);
+
+		m_boundShaderParams.EmplaceBack(std::move(boundParam));
+	}
+}
+
+template<typename TShaderParam>
+void RenderGraphBuilder::UnbindShaderParam()
+{
+	if constexpr (rdr::isGPUPtr<TShaderParam>)
+	{
+		using TShaderParamsStruct = typename TShaderParam::DataType;
+		UnbindShaderParam<TShaderParamsStruct>();
+	}
+	else
+	{
+		UnbindShaderParam(TShaderParam::GetStructName());
+	}
+}
+
 template<typename TNodeType, typename... TArgs>
 TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& name, ERenderGraphNodeType type, TArgs&&... args)
 {
@@ -605,8 +691,8 @@ TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& name, ER
 	return *allocatedNode;
 }
 
-template<typename TDescriptorSetStatesRange, typename TCallable>
-RGNode& RenderGraphBuilder::CreateRenderPassNodeInternal(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable)
+template<typename TCallable>
+RGNode& RenderGraphBuilder::CreateRenderPassNodeInternal(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TCallable&& callable)
 {
 	using LambdaType = std::remove_cvref_t<TCallable>;
 	using NodeType = RGRenderPassNode<LambdaType>;
@@ -644,58 +730,211 @@ void RenderGraphBuilder::BuildParametersStructDependencies(const TParameters& pa
 										   }));
 }
 
+template<typename TShaderParam>
+void RenderGraphBuilder::AssignShaderParamToNode(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, const TShaderParam& shaderParam, RGDependenciesBuilder& dependenciesBuilder)
+{
+	if constexpr (!std::is_same_v<TShaderParam, EmptyShaderParams>)
+	{
+		if constexpr (std::is_same_v<TShaderParam, GenericShaderParamsPtr>)
+		{
+			if (shaderParam.IsValid())
+			{
+				shaderParam.AssignToNode(*this, node, pipeline, dependenciesBuilder);
+			}
+		}
+		else if constexpr (rdr::isGPUPtr<TShaderParam>)
+		{
+			using TShaderParamsStruct = typename TShaderParam::DataType;
+
+			if (shaderParam.IsValid())
+			{
+				const Bool assignedParams = AssignShaderParamToNodeInternal(node, pipeline, shaderParam.GetBufferView(), shaderParam.GetOffset(), shaderParam.GetSize(), TShaderParamsStruct::GetStructName(), dependenciesBuilder);
+
+				if (assignedParams)
+				{
+					rg::CollectStructDependencies<TShaderParamsStruct>(shaderParam.GetHLSLDataSpan(), dependenciesBuilder);
+				}
+			}
+		}
+		else if constexpr (rdr::isHLSLStorage<TShaderParam>)
+		{
+			using TShaderParamsStruct = typename TShaderParam::Struct;
+
+			const Bool assignedParams = AssignShaderParamToNodeInternal(node, pipeline, shaderParam.GetHLSLDataSpan(), TShaderParamsStruct::GetStructName(), dependenciesBuilder);
+
+			if (assignedParams)
+			{
+				rg::CollectStructDependencies<TShaderParamsStruct>(shaderParam.GetHLSLDataSpan(), dependenciesBuilder);
+			}
+		}
+		else
+		{
+			const rdr::HLSLStorage<TShaderParam> shaderParamHLSLData = shaderParam;
+
+			const Bool assignedParams = AssignShaderParamToNodeInternal(node, pipeline, shaderParamHLSLData.GetHLSLDataSpan(), TShaderParam::GetStructName(), dependenciesBuilder);
+
+			if (assignedParams)
+			{
+				rg::CollectStructDependencies<TShaderParam>(shaderParamHLSLData.GetHLSLDataSpan(), dependenciesBuilder);
+			}
+		}
+	}
+}
+
 template<typename TShaderParams>
 void RenderGraphBuilder::AssignShaderParamsToNode(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, const TShaderParams& shaderParams, RGDependenciesBuilder& dependenciesBuilder)
 {
 	if constexpr (!std::is_same_v<TShaderParams, EmptyShaderParams>)
 	{
-		const rdr::HLSLStorage<TShaderParams> shaderParamsHLSLData = shaderParams;
-
-		const Bool assignedParams = AssignShaderParamsToNodeInternal(node, pipeline, shaderParamsHLSLData.GetHLSLDataSpan(), TShaderParams::GetStructName(), dependenciesBuilder);
-
-		if (assignedParams)
+		if constexpr (lib::isTuple<TShaderParams>)
 		{
-			rg::CollectStructDependencies<TShaderParams>(shaderParamsHLSLData.GetHLSLDataSpan(), dependenciesBuilder);
+			std::apply([&](const auto&... params)
+			{
+				(AssignShaderParamToNode(node, pipeline, params, dependenciesBuilder), ...);
+			}, shaderParams);
+		}
+		else
+		{
+			AssignShaderParamToNode(node, pipeline, shaderParams, dependenciesBuilder);
+		}
+	}
+
+	for (const BoundShaderParam& boundShaderParam : m_boundShaderParams)
+	{
+		boundShaderParam.binder(*this, node, pipeline, boundShaderParam.data, dependenciesBuilder);
+	}
+}
+
+template<typename TShaderParam>
+void RenderGraphBuilder::AssignShaderParamToSubpass(RGSubpass& subpass, const TShaderParam& shaderParam, RGDependenciesBuilder& dependenciesBuilder)
+{
+	if constexpr (!std::is_same_v<TShaderParam, EmptyShaderParams>)
+	{
+		if constexpr (std::is_same_v<TShaderParam, GenericShaderParamsPtr>)
+		{
+			if (shaderParam.IsValid())
+			{
+				shaderParam.AssignToSubpass(*this, subpass, dependenciesBuilder);
+			}
+		}
+		else if constexpr (rdr::isGPUPtr<TShaderParam>)
+		{
+			using TShaderParamsStruct = typename TShaderParam::DataType;
+
+			if (shaderParam.IsValid())
+			{
+				subpass.AddShaderParam(TShaderParamsStruct::GetStructName(), shaderParam.GetDeviceAddress());
+
+				rg::CollectStructDependencies<TShaderParamsStruct>(shaderParam.GetHLSLDataSpan(), dependenciesBuilder);
+			}
+		}
+		else if constexpr (rdr::isHLSLStorage<TShaderParam>)
+		{
+			using TShaderParamsStruct = typename TShaderParam::Struct;
+
+			const rdr::GPUPtr<TShaderParam> shaderParamPtr = CreateGPUData(shaderParam);
+
+			subpass.AddShaderParam(TShaderParamsStruct::GetStructName(), shaderParamPtr.GetDeviceAddress());
+
+			rg::CollectStructDependencies<TShaderParamsStruct>(shaderParam.GetHLSLDataSpan(), dependenciesBuilder);
+		}
+		else
+		{
+			const rdr::HLSLStorage<TShaderParam> shaderParamHLSLData = shaderParam;
+
+			const rdr::GPUPtr<TShaderParam> shaderParamPtr = CreateGPUData(shaderParam);
+
+			subpass.AddShaderParam(TShaderParam::GetStructName(), shaderParamPtr.GetDeviceAddress());
+
+			rg::CollectStructDependencies<TShaderParam>(shaderParamHLSLData.GetHLSLDataSpan(), dependenciesBuilder);
 		}
 	}
 }
 
+template<typename TShaderParams>
+GenericShaderParamsPtr::GenericShaderParamsPtr(const rdr::GPUPtr<TShaderParams>& shaderParams)
+	: m_data(shaderParams)
+{
+	static_assert(!std::is_same_v<TShaderParams, void>);
+
+	m_nodeBinder = [](RenderGraphBuilder& graphBuilder, RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, const rdr::GPUPtr<void>& data, RGDependenciesBuilder& dependenciesBuilder)
+	{
+		const rdr::GPUPtr<TShaderParams> typedData(data.GetBufferView(), data.GetOffset());
+		graphBuilder.AssignShaderParamToNode(node, pipeline, typedData, dependenciesBuilder);
+	};
+
+	m_subpassBinder = [](RenderGraphBuilder& graphBuilder, RGSubpass& subpass, const rdr::GPUPtr<void>& data, RGDependenciesBuilder& dependenciesBuilder)
+	{
+		const rdr::GPUPtr<TShaderParams> typedData(data.GetBufferView(), data.GetOffset());
+		graphBuilder.AssignShaderParamToSubpass(subpass, typedData, dependenciesBuilder);
+	};
+}
+
+inline void GenericShaderParamsPtr::AssignToNode(RenderGraphBuilder& graphBuilder, RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, RGDependenciesBuilder& dependenciesBuilder) const
+{
+	SPT_CHECK(m_nodeBinder.IsValid());
+	m_nodeBinder(graphBuilder, node, pipeline, m_data, dependenciesBuilder);
+}
+
+inline void GenericShaderParamsPtr::AssignToSubpass(RenderGraphBuilder& graphBuilder, RGSubpass& subpass, RGDependenciesBuilder& dependenciesBuilder) const
+{
+	SPT_CHECK(m_subpassBinder.IsValid());
+	m_subpassBinder(graphBuilder, subpass, m_data, dependenciesBuilder);
+}
+
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Render Graph Utilities ========================================================================
 
-template<typename TDSRange>
-class BindDescriptorSetsScope
+template<typename ShaderParams>
+class BindShaderParamsScope
 {
 public:
 
-	BindDescriptorSetsScope(RenderGraphBuilder& graphBuilder, const TDSRange& descriptorSets)
+	BindShaderParamsScope(RenderGraphBuilder& graphBuilder, const ShaderParams& descriptorSets)
 		: m_graphBuilder(graphBuilder)
-		, m_descriptorSets(descriptorSets)
 	{
-		for (const lib::MTHandle<RGDescriptorSetStateBase>& ds : m_descriptorSets)
+		std::apply([this](const auto&... params)
 		{
-			if (ds.IsValid())
-			{
-				m_graphBuilder.BindDescriptorSetState(ds);
-			}
-		}
+			(m_graphBuilder.BindShaderParam(params), ...);
+		}, descriptorSets);
 	}
 
-	~BindDescriptorSetsScope()
+	~BindShaderParamsScope()
 	{
-		for (const lib::MTHandle<RGDescriptorSetStateBase>& ds : m_descriptorSets)
-		{
-			if (ds.IsValid())
-			{
-				m_graphBuilder.UnbindDescriptorSetState(ds);
-			}
-		}
+		UnbindHelper(std::make_index_sequence<std::tuple_size_v<ShaderParams>>{});
 	}
 
 private:
 
+	template<typename TShaderParam>
+	static lib::HashedString GetShaderParamTypeName()
+	{
+		if constexpr (rdr::isGPUPtr<TShaderParam>)
+		{
+			using TShaderParamsStruct = typename TShaderParam::DataType;
+			return TShaderParamsStruct::GetStructName();
+		}
+		else if constexpr (rdr::isHLSLStorage<TShaderParam>)
+		{
+			using TShaderParamsStruct = typename TShaderParam::Struct;
+			return TShaderParamsStruct::GetStructName();
+		}
+		else
+		{
+			return TShaderParam::GetStructName();
+		}
+	}
+
+	template<size_t... Is>
+	void UnbindHelper(std::index_sequence<Is...>)
+	{
+		(m_graphBuilder.UnbindShaderParam(
+			GetShaderParamTypeName<std::decay_t<std::tuple_element_t<Is, ShaderParams>>>()
+		), ...);
+	}
+
 	RenderGraphBuilder& m_graphBuilder;
-	TDSRange m_descriptorSets;
 };
 
 } // spt::rg

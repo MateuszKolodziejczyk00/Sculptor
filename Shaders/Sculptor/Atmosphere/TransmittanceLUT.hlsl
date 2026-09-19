@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderTransmittanceLUTDS, 0)]]
+[[shader_params(RenderTransmittanceLUTConstants, PARAMS_RENDER_TRANSMITTANCE_L_U_T)]]
 
 #include "Atmosphere/Atmosphere.hlsli"
 #include "Utils/Shapes.hlsli"
@@ -15,14 +15,14 @@ struct CS_INPUT
 float3 ComputeSunTransmittance(float3 location, float3 sunDirection, float stepsNum)
 {
 	const Ray rayToSun        = Ray::Create(location, sunDirection);
-	const Sphere groundSphere = Sphere::Create(ZERO_VECTOR, u_atmosphereParams.groundRadiusMM);
+	const Sphere groundSphere = Sphere::Create(ZERO_VECTOR, PARAMS_RENDER_TRANSMITTANCE_L_U_T->atmosphereParams->groundRadiusMM);
 
 	if(rayToSun.IntersectSphere(groundSphere).IsValid())
 	{
 		return 0.f;
 	}
 
-	const Sphere atmosphereSphere = Sphere::Create(ZERO_VECTOR, u_atmosphereParams.atmosphereRadiusMM);
+	const Sphere atmosphereSphere = Sphere::Create(ZERO_VECTOR, PARAMS_RENDER_TRANSMITTANCE_L_U_T->atmosphereParams->atmosphereRadiusMM);
 
 	const IntersectionResult atmosphereIntersection = rayToSun.IntersectSphere(atmosphereSphere);
 
@@ -39,7 +39,7 @@ float3 ComputeSunTransmittance(float3 location, float3 sunDirection, float steps
 
 		const float3 currentLocation = rayToSun.origin + rayToSun.direction * t;
 
-		const ScatteringValues scatteringValues = ComputeScatteringValues(u_atmosphereParams, currentLocation);
+		const ScatteringValues scatteringValues = ComputeScatteringValues(*PARAMS_RENDER_TRANSMITTANCE_L_U_T->atmosphereParams, currentLocation);
 
 		transmittance *= exp(-dt * scatteringValues.extinction);
 	}
@@ -53,8 +53,7 @@ void RenderTransmittanceLUTCS(CS_INPUT input)
 {
 	const uint2 pixel = input.globalID.xy;
 	
-	uint2 outputRes;
-	u_transmittanceLUT.GetDimensions(outputRes.x, outputRes.y);
+	uint2 outputRes = PARAMS_RENDER_TRANSMITTANCE_L_U_T->rwTransmittanceLUT.GetResolution();
 
 	if(pixel.x < outputRes.x && pixel.y < outputRes.y)
 	{
@@ -63,7 +62,7 @@ void RenderTransmittanceLUTCS(CS_INPUT input)
 		const float cosSunTheta = uv.x * 2.f - 1.f;
 		const float sinSunTheta = sqrt(1.f - Pow2(cosSunTheta));
 		
-		const float heightMM = lerp(u_atmosphereParams.groundRadiusMM, u_atmosphereParams.atmosphereRadiusMM, uv.y);
+		const float heightMM = lerp(PARAMS_RENDER_TRANSMITTANCE_L_U_T->atmosphereParams->groundRadiusMM, PARAMS_RENDER_TRANSMITTANCE_L_U_T->atmosphereParams->atmosphereRadiusMM, uv.y);
 
 		const float3 location = float3(0.f, 0.f, heightMM);
 
@@ -71,6 +70,6 @@ void RenderTransmittanceLUTCS(CS_INPUT input)
 
 		const uint stepsNum = 40;
 
-		u_transmittanceLUT[pixel] = ComputeSunTransmittance(location, sunDir, stepsNum);
+		PARAMS_RENDER_TRANSMITTANCE_L_U_T->rwTransmittanceLUT[pixel] = ComputeSunTransmittance(location, sunDir, stepsNum);
 	}
 }

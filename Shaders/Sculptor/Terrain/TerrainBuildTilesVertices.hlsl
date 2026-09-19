@@ -1,9 +1,10 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderSceneDS)]]
-[[shader_params(TerrainBuildTilesVerticesConstants, u_constants)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
+[[shader_params(TerrainBuildTilesVerticesConstants, PARAMS_TERRAIN_BUILD_TILES_VERTICES_CONSTANTS)]]
 
 #include "Terrain/SceneTerrain.hlsli"
+#include "SceneRendering/GPUScene.hlsli"
 
 
 struct CS_INPUT
@@ -18,17 +19,17 @@ void BuildTileVertexBufferCS(CS_INPUT input)
 	const TerrainInterface terrain = SceneTerrain();
 
 	const uint vertexIdx = input.globalID.x;
-	if (vertexIdx >= u_constants.verticesPerEdge * u_constants.verticesPerEdge)
+	if (vertexIdx >= PARAMS_TERRAIN_BUILD_TILES_VERTICES_CONSTANTS->verticesPerEdge * PARAMS_TERRAIN_BUILD_TILES_VERTICES_CONSTANTS->verticesPerEdge)
 	{
 		return;
 	}
 
-	const TerrainClipmapTileGPU tile = terrain.GetTile(u_constants.tileIdx);
+	const TerrainClipmapTileGPU tile = terrain.GetTile(PARAMS_TERRAIN_BUILD_TILES_VERTICES_CONSTANTS->tileIdx);
 
-	const uint2 localVertexCoord = uint2(vertexIdx % u_constants.verticesPerEdge, vertexIdx / u_constants.verticesPerEdge);
+	const uint2 localVertexCoord = uint2(vertexIdx % PARAMS_TERRAIN_BUILD_TILES_VERTICES_CONSTANTS->verticesPerEdge, vertexIdx / PARAMS_TERRAIN_BUILD_TILES_VERTICES_CONSTANTS->verticesPerEdge);
 	const float2 tileOffset      = float2(tile.tileCoordX, tile.tileCoordY) * terrain.tileSizeMeters;
-	const float2 locationXY      = tileOffset + localVertexCoord * u_constants.verticesSpacing;
+	const float2 locationXY      = tileOffset + localVertexCoord * PARAMS_TERRAIN_BUILD_TILES_VERTICES_CONSTANTS->verticesSpacing;
 	const float  height          = terrain.GetHeight(locationXY);
 
-	u_constants.rwVertexBuffer.Store(vertexIdx, float3(locationXY, height));
+	PARAMS_TERRAIN_BUILD_TILES_VERTICES_CONSTANTS->rwVertexBuffer.Store(vertexIdx, float3(locationXY, height));
 }

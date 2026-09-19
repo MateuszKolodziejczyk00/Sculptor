@@ -1,10 +1,8 @@
 #pragma once
 
-#include "DescriptorSetBindings/ConstantBufferRefBinding.h"
 #include "SceneRenderingTypes.h"
 #include "SceneRendererTypes.h"
 #include "View/RenderView.h"
-#include "RGResources/RGResourceHandles.h"
 #include "Delegates/MulticastDelegate.h"
 #include "Blackboard.h"
 
@@ -20,8 +18,8 @@ namespace spt::rsc
 class RenderScene;
 class ViewRenderingSpec;
 class DepthCullingDS;
-class ViewShadingInputDS;
-class SharcCacheDS;
+struct ViewShadingParams;
+struct SharcCacheParams;
 struct VolumetricFogParams;
 class RenderStageBase;
 class ViewRenderSystem;
@@ -29,7 +27,7 @@ class ViewRenderSystem;
 
 namespace clouds
 {
-class CloudscapeProbesDS;
+struct CloudscapeProbesParams;
 } // clouds
 
 
@@ -114,7 +112,6 @@ enum class ERenderViewEntry
 	RenderToShadowMap,
 	CreateGlobalLightsDS,
 	RenderGI,
-	FillShadingDS,
 	BuildLightsTiles,
 	RenderVolumetricClouds,
 	RenderVariableRateTexture,
@@ -131,11 +128,6 @@ namespace RenderViewEntryDelegates
 struct RenderAerialPerspectiveData
 {
 	const VolumetricFogParams* fogParams = nullptr;
-};
-
-struct FillShadingDSData
-{
-	lib::MTHandle<ViewShadingInputDS> ds;
 };
 
 struct RenderSceneDebugLayerData
@@ -189,6 +181,7 @@ struct ShadingViewContext
 	rg::RGTextureViewHandle historyDepthHalfRes;
 
 	lib::MTHandle<DepthCullingDS> depthCullingDS;
+	rdr::GPUPtr<DepthCullingData> depthCullingGPUData;
 
 	rg::RGTextureViewHandle motion;
 	rg::RGTextureViewHandle motionHalfRes;
@@ -223,13 +216,13 @@ struct ShadingViewContext
 	rg::RGTextureViewHandle volumetricClouds;
 	rg::RGTextureViewHandle volumetricCloudsDepth;
 
-	lib::MTHandle<clouds::CloudscapeProbesDS> cloudscapeProbesDS;
+	rdr::GPUPtr<clouds::CloudscapeProbesParams> cloudscapeProbesParams;
 
 	GBuffer gBuffer;
 
-	lib::MTHandle<ViewShadingInputDS> shadingInputDS;
+	rdr::GPUPtr<ViewShadingParams> viewShadingParams;
 
-	lib::MTHandle<SharcCacheDS> sharcCacheDS;
+	rdr::GPUPtr<SharcCacheParams> sharcCacheParams;
 
 	rg::RGTextureViewHandle luminance;
 
@@ -275,13 +268,13 @@ BEGIN_SHADER_STRUCT(RenderViewData)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(RenderViewDS, rg::RGDescriptorSetState<RenderViewDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewData>),               u_prevFrameSceneView)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewData>),               u_sceneView)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewCullingData>),        u_cullingData)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<RenderViewData>),              u_viewRenderingParams)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalConstantBufferRefBinding<ViewExposureData>), u_viewExposure)
-DS_END()
+BEGIN_SHADER_STRUCT(GPURenderView)
+	SHADER_STRUCT_FIELD(SceneViewData,                 prevFrameSceneView)
+	SHADER_STRUCT_FIELD(SceneViewData,                 sceneView)
+	SHADER_STRUCT_FIELD(SceneViewCullingData,          cullingData)
+	SHADER_STRUCT_FIELD(math::Vector2u,                renderingResolution)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<ViewExposureData>, viewExposure)
+END_SHADER_STRUCT();
 
 
 class ViewRenderingSpec
@@ -303,7 +296,7 @@ public:
 
 	Uint32 GetFrameIdx() const { return m_renderView->frameIdx; }
 
-	lib::MTHandle<RenderViewDS> GetRenderViewDS() const;
+	const rdr::GPUPtr<GPURenderView>& GetViewShaderParams() const { return m_gpuRenderView; }
 
 	template<typename TRenderSystem>
 	TRenderSystem* GetRenderSystem() const
@@ -347,8 +340,7 @@ private:
 	lib::StaticArray<RenderViewEntryDelegate, static_cast<SizeType>(ERenderViewEntry::NUM)> m_viewEntries;
 
 	lib::Blackboard m_blackboard;
-
-	lib::MTHandle<RenderViewDS> m_renderViewDS;
+	rdr::GPUPtr<GPURenderView> m_gpuRenderView;
 
 	RenderViewPrivate* m_renderView;
 

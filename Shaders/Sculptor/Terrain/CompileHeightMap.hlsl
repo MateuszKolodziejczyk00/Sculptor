@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[shader_params(CompileHeightMapConstants, u_constants)]]
+[[shader_params(CompileHeightMapConstants, PARAMS_COMPILE_HEIGHT_MAP_CONSTANTS)]]
 
 
 struct CS_INPUT
@@ -14,11 +14,11 @@ void CompileHeightMapCS(CS_INPUT input)
 {
 	const int2 coords = input.globalID.xy;
 
-	if (any(coords >= u_constants.rwHeightMap.GetResolution()))
+	if (any(coords >= PARAMS_COMPILE_HEIGHT_MAP_CONSTANTS->rwHeightMap.GetResolution()))
 	{
 		return;
 	}
 
-	const float height = u_constants.sourceHeightMap.Load(coords).r;
-	u_constants.rwHeightMap.Store(coords, height);
+	const float height = PARAMS_COMPILE_HEIGHT_MAP_CONSTANTS->sourceHeightMap.Load(coords).r;
+	PARAMS_COMPILE_HEIGHT_MAP_CONSTANTS->rwHeightMap.Store(coords, height);
 }

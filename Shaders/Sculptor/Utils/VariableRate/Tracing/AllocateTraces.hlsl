@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(AllocateTracesDS, 0)]]
+[[shader_params(AllocateTracesConstants, PARAMS_ALLOCATE_TRACES)]]
 
 #include "Utils/VariableRate/Tracing/TracesAllocator.hlsli"
 
@@ -21,10 +21,10 @@ void AllocateTracesCS(CS_INPUT input)
 	bool isHelperLane = false;
 	uint2 globalID = input.groupID.xy * uint2(TRACES_ALLOCATOR_GROUP_X, TRACES_ALLOCATOR_GROUP_Y) + localID;
 
-	if(any(globalID >= u_constants.resolution))
+	if(any(globalID >= PARAMS_ALLOCATE_TRACES->resolution))
 	{
 		isHelperLane = true;
-		globalID = min(globalID, u_constants.resolution - 1);
+		globalID = min(globalID, PARAMS_ALLOCATE_TRACES->resolution - 1);
 	}
 
 #if VR_USE_LARGE_TILE
@@ -33,13 +33,13 @@ void AllocateTracesCS(CS_INPUT input)
 	const uint2 variableRateCoords = globalID / 2;
 #endif // VR_USE_LARGE_TILE
 
-	const uint variableRate = LoadVariableRate(u_variableRateTexture, variableRateCoords);
+	const uint variableRate = LoadVariableRate(PARAMS_ALLOCATE_TRACES->variableRateTexture, variableRateCoords);
 
-	TracesAllocator tracesAllocator = TracesAllocator::Create(u_rayTracesCommands, u_commandsNum, u_rwVariableRateBlocksTexture);
+	TracesAllocator tracesAllocator = TracesAllocator::Create(PARAMS_ALLOCATE_TRACES->rayTracesCommands, PARAMS_ALLOCATE_TRACES->commandsNum, PARAMS_ALLOCATE_TRACES->rwVariableRateBlocksTexture);
 #if OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
-	tracesAllocator.SetTracesNumBuffers(u_tracesNum, u_tracesDispatchGroupsNum);
+	tracesAllocator.SetTracesNumBuffers(PARAMS_ALLOCATE_TRACES->tracesNum, PARAMS_ALLOCATE_TRACES->tracesDispatchGroupsNum);
 #endif // OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
 
 	const bool maskOutOutput = isHelperLane;
-	tracesAllocator.AllocateTraces(input.groupID.xy, localID, variableRate, u_constants.traceIdx, maskOutOutput);
+	tracesAllocator.AllocateTraces(input.groupID.xy, localID, variableRate, PARAMS_ALLOCATE_TRACES->traceIdx, maskOutOutput);
 }

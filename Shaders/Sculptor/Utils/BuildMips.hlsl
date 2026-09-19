@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(MipsBuildPassDS, 0)]]
+[[shader_params(MipsBuildPassParams, PARAMS_MIPS_BUILD_PASS)]]
 
 
 groupshared float4 groupValues[32][32];
@@ -28,16 +28,15 @@ struct CS_INPUT
 [numthreads(16, 16, 1)]
 void BuildMipsCS(CS_INPUT input)
 {
-    uint2 outputRes;
-    u_textureMip0.GetDimensions(outputRes.x, outputRes.y);
+    uint2 outputRes = PARAMS_MIPS_BUILD_PASS->textureMip0.GetResolution();
 
     const uint2 pixel = input.globalID.xy;
     const float2 uv = float2((float(pixel.x) + 0.5f) / float(outputRes.x), (float(pixel.y) + 0.5f) / float(outputRes.y));
     
-    float4 value = u_inputTexture.SampleLevel(u_inputSampler, uv, 0);
-    u_textureMip0[pixel] = value;
+    float4 value = PARAMS_MIPS_BUILD_PASS->inputTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0);
+    PARAMS_MIPS_BUILD_PASS->textureMip0[pixel] = value;
 
-    if(u_mipsBuildParams.downsampleMipsNum == 1)
+    if(PARAMS_MIPS_BUILD_PASS->downsampleMipsNum == 1)
     {
         return;
     }
@@ -53,10 +52,10 @@ void BuildMipsCS(CS_INPUT input)
     if(isRelevantInvocation)
     {
         value = GetAverageValue(localPixel);
-        u_textureMip1[pixel >> 1] = value;
+        PARAMS_MIPS_BUILD_PASS->textureMip1[pixel >> 1] = value;
     }
 
-    if(u_mipsBuildParams.downsampleMipsNum == 2)
+    if(PARAMS_MIPS_BUILD_PASS->downsampleMipsNum == 2)
     {
         return;
     }
@@ -75,10 +74,10 @@ void BuildMipsCS(CS_INPUT input)
     if(isRelevantInvocation)
     {
         value = GetAverageValue(localPixel);
-        u_textureMip2[pixel >> 2] = value;
+        PARAMS_MIPS_BUILD_PASS->textureMip2[pixel >> 2] = value;
     }
     
-    if(u_mipsBuildParams.downsampleMipsNum == 3)
+    if(PARAMS_MIPS_BUILD_PASS->downsampleMipsNum == 3)
     {
         return;
     }
@@ -97,10 +96,10 @@ void BuildMipsCS(CS_INPUT input)
     if(isRelevantInvocation)
     {
         value = GetAverageValue(localPixel);
-        u_textureMip3[pixel >> 3] = value;
+        PARAMS_MIPS_BUILD_PASS->textureMip3[pixel >> 3] = value;
     }
     
-    if(u_mipsBuildParams.downsampleMipsNum == 4)
+    if(PARAMS_MIPS_BUILD_PASS->downsampleMipsNum == 4)
     {
         return;
     }
@@ -119,6 +118,6 @@ void BuildMipsCS(CS_INPUT input)
     if(isRelevantInvocation)
     {
         value = GetAverageValue(localPixel);
-        u_textureMip4[pixel >> 4] = value;
+        PARAMS_MIPS_BUILD_PASS->textureMip4[pixel >> 4] = value;
     }
 }

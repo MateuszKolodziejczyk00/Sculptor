@@ -3,11 +3,11 @@
 #define SHARC_UPDATE 1
 #define RT_MATERIAL_TRACING
 
-[[descriptor_set(RenderSceneDS)]]
-[[descriptor_set(RenderViewDS)]]
-[[descriptor_set(SharcUpdateDS)]]
-[[descriptor_set(GlobalLightsDS)]]
-[[descriptor_set(CloudscapeProbesDS)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(SharcUpdateParams, PARAMS_SHARC_UPDATE)]]
+[[shader_params(GlobalLightsParams, PARAMS_GLOBAL_LIGHTS)]]
+[[shader_params(CloudscapeProbesParams, PARAMS_CLOUDSCAPE_PROBES)]]
 
 #include "SpecularReflections/RTGITracing.hlsli"
 
@@ -28,11 +28,11 @@
 float3 QueryLuminanceInPreviousCache(in float3 rayDirection, in float3 hitLocation, in const RayHitResult hitResult)
 {
 	SharcDef sharcDef;
-	sharcDef.cameraPosition = u_prevFrameSceneView.viewLocation;
+	sharcDef.cameraPosition = VIEW->prevFrameSceneView.viewLocation;
 	sharcDef.capacity       = 1u << 22;
-	sharcDef.hashEntries    = u_hashEntriesPrev;
-	sharcDef.voxelData      = u_voxelDataPrev;
-	sharcDef.exposure       = u_viewExposure.exposureLastFrame;
+	sharcDef.hashEntries    = PARAMS_SHARC_UPDATE->hashEntriesPrev.GetResource();
+	sharcDef.voxelData      = PARAMS_SHARC_UPDATE->voxelDataPrev.GetResource();
+	sharcDef.exposure       = VIEW->viewExposure->exposureLastFrame;
 
 	const SharcParameters sharcParams = CreateSharcParameters(sharcDef);
 
@@ -48,7 +48,7 @@ float3 QueryLuminanceInPreviousCache(in float3 rayDirection, in float3 hitLocati
 
 #if SHARC_DEMODULATE_MATERIALS
 	const float NdotV = dot(-rayDirection, hitResult.normal);
-	const float3 materialDemodulation = ComputeMaterialDemodulation(u_brdfIntegrationLUT, u_brdfIntegrationLUTSampler, diffuseColor, specularColor, NdotV, hitResult.roughness);
+	const float3 materialDemodulation = ComputeMaterialDemodulation(PARAMS_GLOBAL_LIGHTS->brdfIntegrationLUT, BindlessSamplers::LinearClampEdge(), diffuseColor, specularColor, NdotV, hitResult.roughness);
 	hitData.materialDemodulation = materialDemodulation;
 #endif // SHARC_DEMODULATE_MATERIALS
 
@@ -60,13 +60,13 @@ float3 QueryLuminanceInPreviousCache(in float3 rayDirection, in float3 hitLocati
 
 float3 ShadeMissRay(in float3 rayOrigin, in float3 rayDirection)
 {
-	const float3 locationInAtmoshpere = GetLocationInAtmosphere(u_atmosphereParams, rayOrigin);
-	float3 luminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, locationInAtmoshpere, rayDirection);
+	const float3 locationInAtmoshpere = GetLocationInAtmosphere(*PARAMS_SHARC_UPDATE->atmosphereParams, rayOrigin);
+	float3 luminance = GetLuminanceFromSkyViewLUT(*PARAMS_SHARC_UPDATE->atmosphereParams, PARAMS_SHARC_UPDATE->skyViewLUT, BindlessSamplers::LinearClampEdge(), locationInAtmoshpere, rayDirection);
 
 	const CloudscapeSample cloudscapeSample = SampleHighResCloudscape(rayDirection);
 	luminance = cloudscapeSample.inScattering + luminance * cloudscapeSample.transmittance;
 
-	const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(u_lightsParams.heightFog, rayOrigin, rayOrigin + rayDirection * 1000.f);
+	const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(PARAMS_GLOBAL_LIGHTS->heightFog, rayOrigin, rayOrigin + rayDirection * 1000.f);
 	luminance *= fogTransmittance;
 
 	return luminance;
@@ -96,11 +96,11 @@ float3 ShadeHitRay(in float3 hitLocation, in float3 rayDirection, in const RayHi
 [shader("raygeneration")]
 void SharcUpdateRTG()
 {
-	const uint2 coords = DispatchRaysIndex().xy * 5u + uint2(u_constants.frameIdx % 5u, (u_constants.frameIdx % 25u) / 5u);
+	const uint2 coords = DispatchRaysIndex().xy * 5u + uint2(PARAMS_SHARC_UPDATE->sharcConstants.frameIdx % 5u, (PARAMS_SHARC_UPDATE->sharcConstants.frameIdx % 25u) / 5u);
 
-	RngState rng = RngState::Create(coords, u_constants.seed);
+	RngState rng = RngState::Create(coords, PARAMS_SHARC_UPDATE->sharcConstants.seed);
 
-	const GBufferInterface gbuffer = GBufferInterface(u_constants.gpuGBuffer);
+	const GBufferInterface gbuffer = GBufferInterface(PARAMS_SHARC_UPDATE->sharcConstants.gpuGBuffer);
 
 	const SurfaceInfo mainSurface = gbuffer.GetSurfaceInfo(coords);
 
@@ -108,7 +108,7 @@ void SharcUpdateRTG()
 	float3 normal            = mainSurface.normal;
 	float  roughness         = mainSurface.roughness;
 	float4 baseColorMetallic = mainSurface.baseColorMetallic;
-	float3 fromDir           = normalize(u_sceneView.viewLocation - worldLocation);
+	float3 fromDir           = normalize(VIEW->sceneView.viewLocation - worldLocation);
 
 	float3 throughput = 1.f;
 	float3 luminance = 0.f;
@@ -117,12 +117,12 @@ void SharcUpdateRTG()
 	SharcInit(INOUT sharcState);
 
 	SharcDef sharcDef;
-	sharcDef.cameraPosition = u_sceneView.viewLocation;
-	sharcDef.capacity       = u_constants.sharcCapacity;
-	sharcDef.hashEntries    = u_hashEntries;
-	sharcDef.voxelData      = u_voxelData;
-	sharcDef.voxelDataPrev  = u_voxelDataPrev;
-	sharcDef.exposure       = u_viewExposure.exposure;
+	sharcDef.cameraPosition = VIEW->sceneView.viewLocation;
+	sharcDef.capacity       = PARAMS_SHARC_UPDATE->sharcConstants.sharcCapacity;
+	sharcDef.hashEntries    = PARAMS_SHARC_UPDATE->hashEntries.GetResource();
+	sharcDef.voxelData      = PARAMS_SHARC_UPDATE->voxelData.GetResource();
+	sharcDef.voxelDataPrev  = PARAMS_SHARC_UPDATE->voxelDataPrev.GetResource();
+	sharcDef.exposure       = VIEW->viewExposure->exposure;
 
 	SharcParameters sharcParams = CreateSharcParameters(sharcDef);
 
@@ -144,8 +144,8 @@ void SharcUpdateRTG()
 		hitRes.metallic    = baseColorMetallic.w;
 		hitRes.emissive    = 0.f;
 		hitRes.hitType     = RTGBUFFER_HIT_TYPE_VALID_HIT;
-		hitRes.hitDistance = distance(u_sceneView.viewLocation, worldLocation);
-		const float3 Li = ShadeHitRay(worldLocation, normalize(worldLocation - u_sceneView.viewLocation), hitRes, isLastBounce);
+		hitRes.hitDistance = distance(VIEW->sceneView.viewLocation, worldLocation);
+		const float3 Li = ShadeHitRay(worldLocation, normalize(worldLocation - VIEW->sceneView.viewLocation), hitRes, isLastBounce);
 
 		SharcHitData hitData;
 		hitData.positionWorld = worldLocation;
@@ -153,7 +153,7 @@ void SharcUpdateRTG()
 
 #if SHARC_DEMODULATE_MATERIALS
 		const float NdotV = saturate(dot(normal, fromDir));
-		const float3 materialDemodulation = ComputeMaterialDemodulation(u_brdfIntegrationLUT, u_brdfIntegrationLUTSampler, diffuseColor, specularColor, NdotV, roughness);
+		const float3 materialDemodulation = ComputeMaterialDemodulation(PARAMS_GLOBAL_LIGHTS->brdfIntegrationLUT, BindlessSamplers::LinearClampEdge(), diffuseColor, specularColor, NdotV, roughness);
 		hitData.materialDemodulation = materialDemodulation;
 #endif // SHARC_DEMODULATE_MATERIALS
 
@@ -182,8 +182,8 @@ void SharcUpdateRTG()
 		[branch]
 		if (it == 0u)
 		{
-			const float traceDist = u_constants.ssrTraceLength;
-			const SSTraceResultExtended ssResult = TraceScreenSpaceRay(u_constants.ssrTracer, u_sceneView, mainSurface.uv, mainSurface.depth, rayInfo.direction, traceDist, rng.Next());
+			const float traceDist = PARAMS_SHARC_UPDATE->sharcConstants.ssrTraceLength;
+			const SSTraceResultExtended ssResult = TraceScreenSpaceRay(PARAMS_SHARC_UPDATE->sharcConstants.ssrTracer, VIEW->sceneView, mainSurface.uv, mainSurface.depth, rayInfo.direction, traceDist, rng.Next());
 
 			if (ssResult.isHit)
 			{
@@ -253,7 +253,7 @@ void SharcUpdateRTG()
 
 #if SHARC_DEMODULATE_MATERIALS
 				const float NdotV = saturate(dot(normal, fromDir));
-				const float3 materialDemodulation = ComputeMaterialDemodulation(u_brdfIntegrationLUT, u_brdfIntegrationLUTSampler, diffuseColor, specularColor, NdotV, roughness);
+				const float3 materialDemodulation = ComputeMaterialDemodulation(PARAMS_GLOBAL_LIGHTS->brdfIntegrationLUT, BindlessSamplers::LinearClampEdge(), diffuseColor, specularColor, NdotV, roughness);
 				hitData.materialDemodulation = materialDemodulation;
 #endif // SHARC_DEMODULATE_MATERIALS
 

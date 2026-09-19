@@ -1,8 +1,8 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RTShadingDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
-[[descriptor_set(CloudscapeProbesDS, 2)]]
+[[shader_params(RTShadingConstants, PARAMS_R_T_SHADING)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(CloudscapeProbesParams, PARAMS_CLOUDSCAPE_PROBES)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Atmosphere/Atmosphere.hlsli"
@@ -27,50 +27,51 @@ void MissRaysShadingCS(CS_INPUT input)
 {
 	const uint missIdx = input.globalID.x;
 
-	const uint missRaysNum = u_tracesNum[0].missRaysNum;
+	const uint missRaysNum = PARAMS_R_T_SHADING->tracesNum[0].missRaysNum;
 
 	if(missIdx >= missRaysNum)
 	{
 		return;
 	}
 
-	const uint missRaysOffset = u_constants.rayCommandsBufferSize - missRaysNum;
+	const uint missRaysOffset = PARAMS_R_T_SHADING->rayCommandsBufferSize - missRaysNum;
 	const uint rayIdx = missRaysOffset + missIdx;
 
-	const uint traceCommandIndex = u_sortedTraces[rayIdx];
+	const uint traceCommandIndex = PARAMS_R_T_SHADING->sortedTraces[rayIdx];
 
-	const EncodedRayTraceCommand encodedTraceCommand = u_traceCommands[traceCommandIndex];
+	const EncodedRayTraceCommand encodedTraceCommand = PARAMS_R_T_SHADING->traceCommands[traceCommandIndex];
 	const RayTraceCommand traceCommand = DecodeTraceCommand(encodedTraceCommand);
 
 	const uint2 pixel = traceCommand.blockCoords + traceCommand.localOffset;
 
-	const float depth = u_depthTexture.Load(uint3(pixel, 0));
+	const float depth = PARAMS_R_T_SHADING->depthTexture.Load(uint3(pixel, 0));
 	if(depth > 0.f)
 	{
-		const float2 uv = (pixel + 0.5f) * u_constants.invResolution;
+		const float2 uv = (pixel + 0.5f) * PARAMS_R_T_SHADING->invResolution;
 		const float3 ndc = float3(uv * 2.f - 1.f, depth);
 
-		const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
+		const float3 worldLocation = NDCToWorldSpace(ndc, VIEW->sceneView);
 		
-		const RayHitResult hitResult = UnpackRTGBuffer(u_hitMaterialInfos[traceCommandIndex]);
+		const RayHitResult hitResult = UnpackRTGBuffer(PARAMS_R_T_SHADING->hitMaterialInfos[traceCommandIndex]);
 
 		if(hitResult.hitType == RTGBUFFER_HIT_TYPE_NO_HIT)
 		{
-			const uint encodedRayDirection = u_rayDirections[traceCommandIndex];
+			const uint encodedRayDirection = PARAMS_R_T_SHADING->rayDirections[traceCommandIndex];
 			const float3 rayDirection = OctahedronDecodeNormal(UnpackHalf2x16Norm(encodedRayDirection));
 
 			const float3 reservoirHitLocation = worldLocation + rayDirection * 2000.f;
 
-			const float3 locationInAtmoshpere = GetLocationInAtmosphere(u_atmosphereParams, worldLocation);
-			float3 luminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, locationInAtmoshpere, rayDirection);
+			const float3 locationInAtmoshpere = GetLocationInAtmosphere(*PARAMS_R_T_SHADING->atmosphereParams, worldLocation);
+			float3 luminance = GetLuminanceFromSkyViewLUT(*PARAMS_R_T_SHADING->atmosphereParams, PARAMS_R_T_SHADING->skyViewLUT, BindlessSamplers::LinearClampEdge(), locationInAtmoshpere, rayDirection);
 
-			const CloudscapeSample cloudscapeSample = SampleHighResCloudscape(rayDirection);
+			//const CloudscapeSample cloudscapeSample = SampleHighResCloudscape(rayDirection);
+			const CloudscapeSample cloudscapeSample = SampleCloudscape(worldLocation, rayDirection);
 			luminance = cloudscapeSample.inScattering + luminance * cloudscapeSample.transmittance;
 
-			const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(u_constants.heightFog, worldLocation, reservoirHitLocation);
+			const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(PARAMS_R_T_SHADING->heightFog, worldLocation, reservoirHitLocation);
 			luminance *= fogTransmittance;
 
-			const GeneratedRayPDF rayPdf = LoadGeneratedRayPDF(u_rayPdfs, traceCommandIndex);
+			const GeneratedRayPDF rayPdf = LoadGeneratedRayPDF(PARAMS_R_T_SHADING->rayPdfs, traceCommandIndex);
 
 			SRReservoir reservoir = SRReservoir::Create(reservoirHitLocation, 0.f, luminance, rayPdf.pdf);
 
@@ -84,7 +85,7 @@ void MissRaysShadingCS(CS_INPUT input)
 
 			reservoir.luminance = LuminanceToExposedLuminance(reservoir.luminance);
 
-			WriteReservoirToScreenBuffer(u_reservoirsBuffer, u_constants.reservoirsResolution, reservoir, traceCommand);
+			WriteReservoirToScreenBuffer(PARAMS_R_T_SHADING->reservoirsBuffer, PARAMS_R_T_SHADING->reservoirsResolution, reservoir, traceCommand);
 		}
 	}
 }

@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderBilateralGridDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
+[[shader_params(BilateralGridRenderingConstants, PARAMS_RENDER_BILATERAL_GRID)]]
+[[shader_params(GPURenderView, VIEW)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 
@@ -93,7 +93,7 @@ void AddPixelToLocalGrid(float3 linearColor)
 {
 	const float luminance = Luminance(linearColor);
 
-	const float binIdx = LuminanceToBinIdx(luminance, u_bilateralGridConstants.minLogLuminance, u_bilateralGridConstants.inverseLogLuminanceRange);
+	const float binIdx = LuminanceToBinIdx(luminance, PARAMS_RENDER_BILATERAL_GRID->minLogLuminance, PARAMS_RENDER_BILATERAL_GRID->inverseLogLuminanceRange);
 
 	const BinWeights weights = ComputeBinWeights(binIdx);
 
@@ -106,9 +106,9 @@ void WriteGridCell(in uint3 cellCoords)
 	if(cellCoords.z < GRID_DEPTH)
 	{
 		const float cellWeight = localGridCellWeights[cellCoords.z] * 0.0001f / GROUP_SIZE;
-		const float cellLogLuminance = ComputeGridDepthLogLuminance(cellCoords.z, u_bilateralGridConstants.minLogLuminance, u_bilateralGridConstants.logLuminanceRange);
+		const float cellLogLuminance = ComputeGridDepthLogLuminance(cellCoords.z, PARAMS_RENDER_BILATERAL_GRID->minLogLuminance, PARAMS_RENDER_BILATERAL_GRID->logLuminanceRange);
 		const float2 cellValue = float2(cellLogLuminance * cellWeight, cellWeight);
-		u_bilateralGridTexture[cellCoords] = cellValue;
+		PARAMS_RENDER_BILATERAL_GRID->bilateralGridTexture[cellCoords] = cellValue;
 	}
 }
 
@@ -118,14 +118,14 @@ void OutputAverageLogLuminance(in uint2 outputPixel, in uint pixelsNum)
 	const uint waveIdx = WaveGetLaneIndex();
 	const float2 cellWeights = float2(localGridCellWeights[2 * waveIdx], localGridCellWeights[2 * waveIdx + 1]) * 0.0001f / pixelsNum;
 	const float2 cellLogLuminance = float2(
-		ComputeGridDepthLogLuminance(2 * waveIdx, u_bilateralGridConstants.minLogLuminance, u_bilateralGridConstants.logLuminanceRange),
-		ComputeGridDepthLogLuminance(2 * waveIdx + 1, u_bilateralGridConstants.minLogLuminance, u_bilateralGridConstants.logLuminanceRange));
+		ComputeGridDepthLogLuminance(2 * waveIdx, PARAMS_RENDER_BILATERAL_GRID->minLogLuminance, PARAMS_RENDER_BILATERAL_GRID->logLuminanceRange),
+		ComputeGridDepthLogLuminance(2 * waveIdx + 1, PARAMS_RENDER_BILATERAL_GRID->minLogLuminance, PARAMS_RENDER_BILATERAL_GRID->logLuminanceRange));
 
 	const float averageLogLuminance = WaveActiveSum(dot(cellLogLuminance, cellWeights));
 
 	if(WaveIsFirstLane())
 	{
-		u_downsampledLogLuminanceTexture[outputPixel] = averageLogLuminance;
+		PARAMS_RENDER_BILATERAL_GRID->downsampledLogLuminanceTexture[outputPixel] = averageLogLuminance;
 	}
 }
 
@@ -140,9 +140,9 @@ void RenderBilateralGridCS(CS_INPUT input)
 	
 	const uint2 pixel = input.globalID.xy;
 
-	if(all(pixel < u_bilateralGridConstants.inputTextureResolution))
+	if(all(pixel < PARAMS_RENDER_BILATERAL_GRID->inputTextureResolution))
 	{
-		const float3 linearColor = u_inputTexture.Load(int3(pixel, 0)).xyz * rcp(GetViewExposure());
+		const float3 linearColor = PARAMS_RENDER_BILATERAL_GRID->inputTexture.Load(int3(pixel, 0)).xyz * rcp(GetViewExposure());
 
 		AddPixelToLocalGrid(linearColor);
 	}
@@ -154,8 +154,8 @@ void RenderBilateralGridCS(CS_INPUT input)
 
 	if(WaveActiveAnyTrue(localIdx == 0))
 	{
-		const int pixelsX = min(GROUP_SIZE_X, u_bilateralGridConstants.inputTextureResolution.x - input.groupID.x);
-		const int pixelsY = min(GROUP_SIZE_Y, u_bilateralGridConstants.inputTextureResolution.y - input.groupID.y);
+		const int pixelsX = min(GROUP_SIZE_X, PARAMS_RENDER_BILATERAL_GRID->inputTextureResolution.x - input.groupID.x);
+		const int pixelsY = min(GROUP_SIZE_Y, PARAMS_RENDER_BILATERAL_GRID->inputTextureResolution.y - input.groupID.y);
 		const uint pixelsNum = min(GROUP_SIZE, pixelsX * pixelsY);
 		OutputAverageLogLuminance(input.groupID.xy, pixelsNum);
 	}

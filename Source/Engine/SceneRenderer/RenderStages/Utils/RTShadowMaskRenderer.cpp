@@ -1,12 +1,6 @@
 #include "RTShadowMaskRenderer.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "RenderGraphBuilder.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/AccelerationStructureBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "Lights/LightTypes.h"
 #include "Utils/ScreenSpaceTracer.h"
 #include "EngineFrame.h"
@@ -137,7 +131,6 @@ static void TraceShadowRays(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 	graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SS Shadows"),
 								  params::enableScreenSpaceDebug ? ScreenSpaceShadowsPSO::debug : ScreenSpaceShadowsPSO::pso,
 								  tracesAllocation.dispatchIndirectArgs, 0u,
-								  rg::EmptyDescriptorSets(),
 								  constants);
 
 	tracesAllocation.rayTraceCommands     = rtTraceCommands;
@@ -152,17 +145,12 @@ namespace vrt_resolve
 {
 
 BEGIN_SHADER_STRUCT(VRTVisibilityResolveConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
+	SHADER_STRUCT_FIELD(math::Vector2u,            resolution)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>, inputTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>, outputTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Uint32>, vrBlocksTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>, linearDepthTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(VRTVisibilityResolveDS, rg::RGDescriptorSetState<VRTVisibilityResolveDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                          u_inputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                           u_outputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                          u_vrBlocksTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                          u_linearDepthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VRTVisibilityResolveConstants>), u_constants)
-DS_END();
 
 
 static rdr::PipelineStateID CreateResolveVRTVisibilityPipeline()
@@ -187,49 +175,41 @@ void ResolveVRTVisibility(rg::RenderGraphBuilder& graphBuilder, const VRTVisibil
 	SPT_PROFILER_FUNCTION();
 
 	VRTVisibilityResolveConstants constants;
-	constants.resolution = resolveParams.resolution;
-
-	const lib::MTHandle<VRTVisibilityResolveDS> resolveDS = graphBuilder.CreateDescriptorSet<VRTVisibilityResolveDS>(RENDERER_RESOURCE_NAME("Resolve VRT Visibility DS"));
-	resolveDS->u_inputTexture       = resolveParams.inputTexture;
-	resolveDS->u_outputTexture      = resolveParams.outputTexture;
-	resolveDS->u_vrBlocksTexture    = resolveParams.vrBlocksTexture;
-	resolveDS->u_linearDepthTexture = resolveParams.linearDepthTexture;
-	resolveDS->u_constants          = constants;
+	constants.resolution         = resolveParams.resolution;
+	constants.inputTexture       = resolveParams.inputTexture;
+	constants.outputTexture      = resolveParams.outputTexture;
+	constants.vrBlocksTexture    = resolveParams.vrBlocksTexture;
+	constants.linearDepthTexture = resolveParams.linearDepthTexture;
 
 	static const rdr::PipelineStateID resolvePipeline = CreateResolveVRTVisibilityPipeline();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Resolve VRT Visibility"),
 						  resolvePipeline,
 						  math::Utils::DivideCeil(resolveParams.resolution, math::Vector2u(8u, 4u)),
-						  rg::BindDescriptorSets(resolveDS));
+						  rg::ShaderParams(constants));
 }
 
 } // vrt_resolve
 
 BEGIN_SHADER_STRUCT(DirectionalLightShadowUpdateParams)
-	SHADER_STRUCT_FIELD(math::Vector3f,           lightDirection)
-	SHADER_STRUCT_FIELD(Real32,                   maxTraceDistance)
-	SHADER_STRUCT_FIELD(math::Vector2u,           resolution)
-	SHADER_STRUCT_FIELD(Real32,                   shadowRayBias)
-	SHADER_STRUCT_FIELD(Real32,                   time)
-	SHADER_STRUCT_FIELD(Real32,                   shadowRayConeAngle)
-	SHADER_STRUCT_FIELD(Bool,                     enableShadows)
-	SHADER_STRUCT_FIELD(gfx::TypedBuffer<Uint16>, rayContinuationDists)
-	SHADER_STRUCT_FIELD(Real32,                   ssTraceDistance)
+	SHADER_STRUCT_FIELD(math::Vector3f,            lightDirection)
+	SHADER_STRUCT_FIELD(Real32,                    maxTraceDistance)
+	SHADER_STRUCT_FIELD(math::Vector2u,            resolution)
+	SHADER_STRUCT_FIELD(Real32,                    shadowRayBias)
+	SHADER_STRUCT_FIELD(Real32,                    time)
+	SHADER_STRUCT_FIELD(Real32,                    shadowRayConeAngle)
+	SHADER_STRUCT_FIELD(Bool,                      enableShadows)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<Uint16>,  rayContinuationDists)
+	SHADER_STRUCT_FIELD(Real32,                    ssTraceDistance)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>, shadowMask)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(TraceShadowRaysDS, rg::RGDescriptorSetState<TraceShadowRaysDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                          u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                  u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<vrt::EncodedRayTraceCommand>), u_traceCommands)
-DS_END();
-
-
-DS_BEGIN(DirectionalLightShadowMaskDS, rg::RGDescriptorSetState<DirectionalLightShadowMaskDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                u_shadowMask)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DirectionalLightShadowUpdateParams>), u_params)
-DS_END();
+BEGIN_SHADER_STRUCT(TraceShadowRaysParams)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,                     depthTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>,             normalsTexture)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<vrt::EncodedRayTraceCommand>, traceCommands)
+END_SHADER_STRUCT();
 
 
 BEGIN_SHADER_STRUCT(ShadowsRayTracingPermutationDomain)
@@ -288,10 +268,10 @@ static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuil
 		screen_space::TraceShadowRays(graphBuilder, viewSpec, tracingContext, tracesAllocation, continuationDists, shadowMaskTexture);
 	}
 
-	const lib::MTHandle<TraceShadowRaysDS> traceShadowRaysDS = graphBuilder.CreateDescriptorSet<TraceShadowRaysDS>(RENDERER_RESOURCE_NAME("Trace Shadow Rays DS"));
-	traceShadowRaysDS->u_depthTexture    = tracingContext.depthTexture;
-	traceShadowRaysDS->u_normalsTexture  = tracingContext.normalsTexture;
-	traceShadowRaysDS->u_traceCommands   = tracesAllocation.rayTraceCommands;
+	TraceShadowRaysParams traceShadowRaysParams;
+	traceShadowRaysParams.depthTexture    = tracingContext.depthTexture;
+	traceShadowRaysParams.normalsTexture  = tracingContext.normalsTexture;
+	traceShadowRaysParams.traceCommands   = tracesAllocation.rayTraceCommands;
 
 	DirectionalLightShadowUpdateParams updateParams;
 	updateParams.lightDirection       = tracingContext.lightDirection;
@@ -303,16 +283,12 @@ static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuil
 	updateParams.resolution           = tracingContext.resolution;
 	updateParams.rayContinuationDists = continuationDists;
 	updateParams.ssTraceDistance      = params::screenSpaceShadowsDistance;
-
-	const lib::MTHandle<DirectionalLightShadowMaskDS> directionalLightShadowMaskDS = graphBuilder.CreateDescriptorSet<DirectionalLightShadowMaskDS>(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask DS"));
-	directionalLightShadowMaskDS->u_shadowMask = shadowMaskTexture;
-	directionalLightShadowMaskDS->u_params     = updateParams;
+	updateParams.shadowMask = shadowMaskTexture;
 
 	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("Directional Light Trace Shadow Rays"),
 								   params::enableScreenSpaceShadows ? ShadowsRayTracingPSO::continuation_pso : ShadowsRayTracingPSO::pso,
 								   tracesAllocation.tracingIndirectArgs, 0,
-								   rg::BindDescriptorSets(traceShadowRaysDS,
-														  directionalLightShadowMaskDS));
+								   rg::ShaderParams(traceShadowRaysParams, updateParams));
 
 	const rg::RGTextureViewHandle resolvedShadowMaskTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Directional Light Shadow Mask (Post VRT Resolve)"), rg::TextureDef(tracingContext.resolution, rhi::EFragmentFormat::R16_UN_Float));
 
@@ -335,19 +311,13 @@ namespace apply_clouds_shadows
 {
 
 BEGIN_SHADER_STRUCT(ApplyCloudsShadowsConstants)
-	SHADER_STRUCT_FIELD(math::Matrix4f, viewProjectionMatrix)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
-	SHADER_STRUCT_FIELD(math::Vector2f, rcpResolution)
+	SHADER_STRUCT_FIELD(math::Matrix4f,            viewProjectionMatrix)
+	SHADER_STRUCT_FIELD(math::Vector2u,            resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,            rcpResolution)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>, shadowMask)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>, cloudsTransmittanceMap)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>, depth)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(ApplyCloudsShadowsDS, rg::RGDescriptorSetState<ApplyCloudsShadowsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                    u_shadowMask)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_cloudsTransmittanceMap)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_depth)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<ApplyCloudsShadowsConstants>),            u_constants)
-DS_END();
 
 
 static rdr::PipelineStateID CreateApplyCloudsShadowsPipeline()
@@ -378,19 +348,16 @@ void ApplyCloudsShadows(rg::RenderGraphBuilder& graphBuilder, const ApplyCloudsS
 	shaderConstants.viewProjectionMatrix = params.transmittanceMap.viewProjectionMatrix;
 	shaderConstants.resolution           = resolution;
 	shaderConstants.rcpResolution        = resolution.cast<Real32>().cwiseInverse();
-
-	const lib::MTHandle<ApplyCloudsShadowsDS> ds = graphBuilder.CreateDescriptorSet<ApplyCloudsShadowsDS>(RENDERER_RESOURCE_NAME("ApplyCloudsShadowsDS"));
-	ds->u_shadowMask             = params.shadowMask;
-	ds->u_cloudsTransmittanceMap = params.transmittanceMap.cloudsTransmittanceTexture;
-	ds->u_depth                  = params.depth;
-	ds->u_constants              = shaderConstants;
+	shaderConstants.shadowMask             = params.shadowMask;
+	shaderConstants.cloudsTransmittanceMap = params.transmittanceMap.cloudsTransmittanceTexture;
+	shaderConstants.depth                  = params.depth;
 
 	static const rdr::PipelineStateID pipeline = CreateApplyCloudsShadowsPipeline();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Apply Clouds Shadows"),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(ds, params.renderViewDS));
+						  rg::ShaderParams(shaderConstants));
 }
 
 } // apply_clouds_shadows
@@ -491,7 +458,6 @@ rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& gra
 		applyCloudsShadowsParams.shadowMask       = shadowMaskTexture;
 		applyCloudsShadowsParams.depth            = viewContext.depth;
 		applyCloudsShadowsParams.transmittanceMap = cloudsTransmittanceMap;
-		applyCloudsShadowsParams.renderViewDS     = viewSpec.GetRenderViewDS();
 		apply_clouds_shadows::ApplyCloudsShadows(graphBuilder, applyCloudsShadowsParams);
 	}
 
@@ -506,7 +472,6 @@ rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& gra
 		upsampleParams.depth          = viewContext.depth;
 		upsampleParams.depthHalfRes   = viewContext.depthHalfRes;
 		upsampleParams.normalsHalfRes = viewContext.normalsHalfRes;
-		upsampleParams.renderViewDS   = viewSpec.GetRenderViewDS();
 		shadowMaskFullRes = upsampler::DepthBasedUpsample(graphBuilder, shadowMaskTexture, upsampleParams);
 	}
 	else

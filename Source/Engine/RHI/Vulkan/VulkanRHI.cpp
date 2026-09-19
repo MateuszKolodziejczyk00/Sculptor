@@ -8,7 +8,6 @@
 #include "VulkanTypes/RHISemaphore.h"
 #include "VulkanTypes/RHICommandBuffer.h"
 #include "VulkanUtils.h"
-#include "Pipeline/PipelineLayoutsManager.h"
 #include "Engine.h"
 
 #include "RHICore/RHIInitialization.h"
@@ -50,8 +49,6 @@ public:
 	VkDebugUtilsMessengerEXT    debugMessenger;
 
 	CommandPoolsManager         commandPoolsManager;
-
-	PipelineLayoutsManager      pipelineLayoutsManager;
 
 	rhi::RHISettings            rhiSettings;
 };
@@ -203,8 +200,6 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 
 #endif // SPT_RHI_DEBUG
 
-	priv::g_data->pipelineLayoutsManager.InitializeRHI();
-
 #if SPT_ENABLE_GPU_CRASH_DUMPS
 	if (GetSettings().AreGPUCrashDumpsEnabled())
 	{
@@ -234,8 +229,6 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 void VulkanRHI::Uninitialize()
 {
 	priv::g_data->commandPoolsManager.DestroyResources();
-
-	priv::g_data->pipelineLayoutsManager.ReleaseRHI();
 
 	if (priv::g_data->memoryManager.IsValid())
 	{
@@ -277,11 +270,6 @@ rhi::RHIModuleData* VulkanRHI::GetModuleData()
 	SPT_CHECK_MSG(!!priv::g_data, "VulkanRHI is not initialized!");
 
 	return reinterpret_cast<rhi::RHIModuleData*>(priv::g_data);
-}
-
-void VulkanRHI::FlushCaches()
-{
-	priv::g_data->pipelineLayoutsManager.FlushPendingPipelineLayouts();
 }
 
 rhi::ERHIType VulkanRHI::GetRHIType()
@@ -341,11 +329,6 @@ VkPhysicalDevice VulkanRHI::GetPhysicalDeviceHandle()
 CommandPoolsManager& VulkanRHI::GetCommandPoolsManager()
 {
 	return priv::g_data->commandPoolsManager;
-}
-
-PipelineLayoutsManager& VulkanRHI::GetPipelineLayoutsManager()
-{
-	return priv::g_data->pipelineLayoutsManager;
 }
 
 const LogicalDevice& VulkanRHI::GetLogicalDevice()

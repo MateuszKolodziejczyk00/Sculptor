@@ -16,5 +16,6 @@ struct CS_INPUT
 [numthreads(GROUP_SIZE_X * GROUP_SIZE_Y, 1, 1)]
 void CreateVariableRateTextureCS(CS_INPUT input)
 {
-	VariableRateBuilder::BuildVariableRateTexture<GenericVariableRateCallback>(input.groupID.xy, input.localID.x);
+	GenericVariableRateCallback callback;
+	VariableRateBuilder::BuildVariableRateTexture(input.groupID.xy, input.localID.x, callback);
 }

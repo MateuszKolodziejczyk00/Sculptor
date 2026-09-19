@@ -5,7 +5,6 @@
 #include "Utility/NamedType.h"
 #include "RHICore/RHIAllocationTypes.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "RGDescriptorSetState.h"
 #include "RenderSceneRegistry.h"
 
 namespace spt::rdr
@@ -64,7 +63,7 @@ public:
 
 	void Initialize(const DDGIConfig& config);
 
-	void Update(const SceneView& mainView);
+	void Update(rg::RenderGraphBuilder& graphBuilder, const SceneView& mainView);
 
 	void CollectZonesToRelit(DDGIZonesCollector& zonesCollector) const;
 
@@ -72,7 +71,7 @@ public:
 
 	const lib::DynamicArray<DDGIVolume*>& GetVolumes() const;
 
-	const lib::MTHandle<DDGISceneDS>& GetDDGIDS() const;
+	const rdr::GPUPtr<DDGIGPUScene>& GetDDGIGPUScene() const { return m_ddgiGPUScene; }
 
 	const Uint32   GetLODsNum() const;
 	const DDGILOD& GetLOD(Uint32 lod) const;
@@ -109,7 +108,7 @@ private:
 	DDGIVolumesDefinition m_ddgiVolumesDef;
 	DDGILODsDefinition    m_ddgiLODsDef;
 
-	lib::MTHandle<DDGISceneDS> m_ddgiSceneDS;
+	rdr::GPUPtr<DDGIGPUScene> m_ddgiGPUScene;
 
 	lib::DynamicArray<DDGIVolume*> m_volumes;
 

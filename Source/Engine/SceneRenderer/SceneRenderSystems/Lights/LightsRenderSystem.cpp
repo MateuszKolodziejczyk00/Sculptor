@@ -7,9 +7,6 @@
 #include "ResourcesManager.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "Utils/TextureUtils.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "RGResources/RGResourceHandles.h"
 #include "RenderGraphBuilder.h"
 #include "Common/ShaderCompilationInput.h"
@@ -58,44 +55,34 @@ END_SHADER_STRUCT();
 
 
 BEGIN_SHADER_STRUCT(BuildLightZClustersConstants)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<math::Vector2f>,   localLightsZRanges)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<LightsRenderingData>,      lightsData)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<math::Vector2u>, rwClusterRanges)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(BuildLightZClustersDS, rg::RGDescriptorSetState<BuildLightZClustersDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<math::Vector2f>),             u_localLightsZRanges)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LightsRenderingData>),          u_lightsData)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<BuildLightZClustersConstants>), u_constants)
-DS_END();
-
-
 BEGIN_SHADER_STRUCT(GenerateLightDrawCommandsConstants)
-	SHADER_STRUCT_FIELD(Uint32, pointLightProxyVerticesNum)
-	SHADER_STRUCT_FIELD(Uint32, spotLightProxyVerticesNum)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<LocalLightGPUData>,       localLights)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<LightsRenderingData>,             lightsData)
+	SHADER_STRUCT_FIELD(SceneViewCullingData,                         sceneViewCullingData)
+	SHADER_STRUCT_FIELD(Uint32,                                       pointLightProxyVerticesNum)
+	SHADER_STRUCT_FIELD(Uint32,                                       spotLightProxyVerticesNum)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<LightIndirectDrawCommand>, pointLightDraws)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,                   pointLightDrawsCount)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<LightIndirectDrawCommand>, spotLightDraws)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,                   spotLightDrawsCount)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(GenerateLightsDrawCommnadsDS, rg::RGDescriptorSetState<GenerateLightsDrawCommnadsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<LocalLightGPUData>),                  u_localLights)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LightsRenderingData>),                  u_lightsData)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewCullingData>),                 u_sceneViewCullingData)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<GenerateLightDrawCommandsConstants>),   u_constants)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<LightIndirectDrawCommand>), u_pointLightDraws)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<Uint32>),                   u_pointLightDrawsCount)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<LightIndirectDrawCommand>), u_spotLightDraws)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<Uint32>),                   u_spotLightDrawsCount)
-DS_END();
-
-
-DS_BEGIN(BuildLightTilesDS, rg::RGDescriptorSetState<BuildLightTilesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<LocalLightGPUData>),                u_localLights)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<LightIndirectDrawCommand>), u_pointLightDraws)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<LightIndirectDrawCommand>), u_spotLightDraws)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<math::Vector3f>),                   u_pointLightProxyVertices)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<math::Vector3f>),                   u_spotLightProxyVertices)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LightsRenderingData>),                u_lightsData)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                         u_tilesLightsMask)
-DS_END();
+BEGIN_SHADER_STRUCT(BuildLightTilesConstants)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<LocalLightGPUData>,        localLights)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<LightIndirectDrawCommand>, pointLightDraws)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<LightIndirectDrawCommand>, spotLightDraws)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<math::Vector3f>,        pointLightProxyVertices)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<math::Vector3f>,        spotLightProxyVertices)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<LightsRenderingData>,           lightsData)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<Uint32>,              tilesLightsMask)
+END_SHADER_STRUCT();
 
 
 
@@ -263,11 +250,12 @@ struct LightsRenderingDataPerView
 	math::Vector2u	tilesNum;
 	Uint32			zClustersNum;
 
-	lib::MTHandle<BuildLightZClustersDS>		buildZClustersDS;
-	lib::MTHandle<GenerateLightsDrawCommnadsDS>	generateLightsDrawCommnadsDS;
-	lib::MTHandle<BuildLightTilesDS>			buildLightTilesDS;
+	rdr::GPUPtr<BuildLightZClustersConstants>       buildZClustersConstants;
+	rdr::GPUPtr<GenerateLightDrawCommandsConstants> generateLightsDrawCommnadsConstants;
+	rdr::GPUPtr<BuildLightTilesConstants>           buildLightTilesConstants;
 
-	lib::MTHandle<ViewShadingInputDS> shadingInputDS;
+	ViewShadingParams              viewShadingParamsData;
+	rdr::GPUPtr<ViewShadingParams> viewShadingParams;
 
 	rg::RGBufferViewHandle pointLightDrawCommandsBuffer;
 	rg::RGBufferViewHandle pointLightDrawCommandsCountBuffer;
@@ -383,10 +371,14 @@ static LightsInfo CreateLocalLightsData(rg::RenderGraphBuilder& graphBuilder, co
 		rdr::UploadDataToBuffer(localLightsBuffer, 0, reinterpret_cast<const Byte*>(hlslLocalLights.data()), hlslLocalLights.size() * sizeof(rdr::HLSLStorage<LocalLightGPUData>));
 		localLightsRGBuffer = graphBuilder.AcquireExternalBufferView(localLightsBuffer->GetFullView());
 
+		graphBuilder.AcquireExternalBufferView(localLightsBuffer->GetFullView());
+
 		const rhi::BufferDefinition lightZRangesBufferDefinition(localLightsZRanges.size() * sizeof(math::Vector2f), rhi::EBufferUsage::Storage);
 		const lib::SharedRef<rdr::Buffer> lightZRangesBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("SceneLightZRanges"), lightZRangesBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
 		rdr::UploadDataToBuffer(lightZRangesBuffer, 0, reinterpret_cast<const Byte*>(localLightsZRanges.data()), localLightsZRanges.size() * sizeof(math::Vector2f));
 		lightZRangesRGBuffer = graphBuilder.AcquireExternalBufferView(lightZRangesBuffer->GetFullView());
+
+		graphBuilder.AcquireExternalBufferView(lightZRangesBuffer->GetFullView());
 	}
 
 	return LightsInfo
@@ -396,14 +388,14 @@ static LightsInfo CreateLocalLightsData(rg::RenderGraphBuilder& graphBuilder, co
 	};
 }
 
-static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const lib::MTHandle<ViewShadingInputDS>& shadingInputDS)
+static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, ViewShadingParams& viewShadingParams)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
 	SPT_CHECK(shadingViewContext.dirLightShadowMask.IsValid())
 
-	shadingInputDS->u_shadowMask = shadingViewContext.dirLightShadowMask;
+	viewShadingParams.shadowMask = shadingViewContext.dirLightShadowMask;
 
 	const AtmosphereRenderSystem& atmosphereSystem = rendererInterface.GetRenderSystemChecked<AtmosphereRenderSystem>();
 
@@ -416,7 +408,9 @@ static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, 
 	const lib::SharedRef<rdr::Buffer> directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("View Directional Lights Buffer"), directionalLightsBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
 	rdr::UploadDataToBuffer(directionalLightsBuffer, 0, reinterpret_cast<const Byte*>(&directionalLightData), directionalLightsBufferSize);
 
-	shadingInputDS->u_directionalLights = directionalLightsBuffer->GetFullView();
+	graphBuilder.AcquireExternalBufferView(directionalLightsBuffer->GetFullView());
+
+	viewShadingParams.directionalLights = directionalLightsBuffer->GetFullView();
 
 	return 1u;
 }
@@ -441,6 +435,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 	LightsRenderingDataPerView lightsRenderingDataPerView;
 
 	LightsRenderingData lightsData;
+	rdr::GPUPtr<LightsRenderingData> lightsDataPtr = graphBuilder.CreateGPUData<LightsRenderingData>();
 	
 	rg::RGBufferViewHandle localLightsBuffer;
 	rg::RGBufferViewHandle localLightsZRangesBuffer;
@@ -452,7 +447,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 
 	const ParticipatingMediaViewRenderSystem& pmSystem = viewSpec.GetRenderSystemChecked<ParticipatingMediaViewRenderSystem>();
 
-	const lib::MTHandle<ViewShadingInputDS> shadingInputDS = graphBuilder.CreateDescriptorSet<ViewShadingInputDS>(RENDERER_RESOURCE_NAME("ViewShadingInputDS"));
+	ViewShadingParams viewShadingParams;
 
 	lightsData.heightFog = pmSystem.GetHeightFogParams();
 
@@ -505,45 +500,39 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		graphBuilder.FillBuffer(RG_DEBUG_NAME("InitializeTilesLightsMask"), tilesLightsMask, 0, static_cast<Uint64>(tilesLightsMaskBufferSize), 0);
 
 		BuildLightZClustersConstants buildClustersConstants;
-		buildClustersConstants.rwClusterRanges = clustersRanges;
-
-		const lib::MTHandle<BuildLightZClustersDS> buildZClusters = graphBuilder.CreateDescriptorSet<BuildLightZClustersDS>(RENDERER_RESOURCE_NAME("BuildLightZClustersDS"));
-		buildZClusters->u_localLightsZRanges = localLightsZRangesBuffer;
-		buildZClusters->u_lightsData         = lightsData;
-		buildZClusters->u_constants          = buildClustersConstants;
+		buildClustersConstants.localLightsZRanges = localLightsZRangesBuffer;
+		buildClustersConstants.lightsData         = lightsDataPtr;
+		buildClustersConstants.rwClusterRanges    = clustersRanges;
 
 		const SceneViewCullingData& cullingData	= viewSpec.GetRenderView().GetCullingData();
 
-		GenerateLightDrawCommandsConstants generateDrawCommandsConstants;
-		generateDrawCommandsConstants.pointLightProxyVerticesNum = renderingParams.pointLightProxyVerticesNum;
-		generateDrawCommandsConstants.spotLightProxyVerticesNum  = renderingParams.spotLightProxyVerticesNum;
+		GenerateLightDrawCommandsConstants generateLightsDrawCommnadsConstants;
+		generateLightsDrawCommnadsConstants.localLights                = localLightsBuffer;
+		generateLightsDrawCommnadsConstants.lightsData                 = lightsDataPtr;
+		generateLightsDrawCommnadsConstants.pointLightProxyVerticesNum = renderingParams.pointLightProxyVerticesNum;
+		generateLightsDrawCommnadsConstants.spotLightProxyVerticesNum  = renderingParams.spotLightProxyVerticesNum;
+		generateLightsDrawCommnadsConstants.sceneViewCullingData       = cullingData;
+		generateLightsDrawCommnadsConstants.pointLightDraws            = pointLightDrawCommands;
+		generateLightsDrawCommnadsConstants.pointLightDrawsCount       = pointLightDrawCommandsCount;
+		generateLightsDrawCommnadsConstants.spotLightDraws             = spotLightDrawCommands;
+		generateLightsDrawCommnadsConstants.spotLightDrawsCount        = spotLightDrawCommandsCount;
 
-		const lib::MTHandle<GenerateLightsDrawCommnadsDS> generateLightsDrawCommnadsDS = graphBuilder.CreateDescriptorSet<GenerateLightsDrawCommnadsDS>(RENDERER_RESOURCE_NAME("GenerateLightsDrawCommnadsDS"));
-		generateLightsDrawCommnadsDS->u_localLights                 = localLightsBuffer;
-		generateLightsDrawCommnadsDS->u_lightsData                  = lightsData;
-		generateLightsDrawCommnadsDS->u_sceneViewCullingData        = cullingData;
-		generateLightsDrawCommnadsDS->u_constants                   = generateDrawCommandsConstants;
-		generateLightsDrawCommnadsDS->u_pointLightDraws             = pointLightDrawCommands;
-		generateLightsDrawCommnadsDS->u_pointLightDrawsCount        = pointLightDrawCommandsCount;
-		generateLightsDrawCommnadsDS->u_spotLightDraws              = spotLightDrawCommands;
-		generateLightsDrawCommnadsDS->u_spotLightDrawsCount         = spotLightDrawCommandsCount;
+		BuildLightTilesConstants buildLightTilesConstants;
+		buildLightTilesConstants.localLights              = localLightsBuffer;
+		buildLightTilesConstants.pointLightDraws          = pointLightDrawCommands;
+		buildLightTilesConstants.spotLightDraws           = spotLightDrawCommands;
+		buildLightTilesConstants.pointLightProxyVertices  = renderingParams.pointLightProxyVerticesBuffer->GetFullView();
+		buildLightTilesConstants.spotLightProxyVertices   = renderingParams.spotLightProxyVerticesBuffer->GetFullView();
+		buildLightTilesConstants.lightsData               = lightsDataPtr;
+		buildLightTilesConstants.tilesLightsMask          = tilesLightsMask;
 
-		const lib::MTHandle<BuildLightTilesDS> buildLightTilesDS = graphBuilder.CreateDescriptorSet<BuildLightTilesDS>(RENDERER_RESOURCE_NAME("BuildLightTilesDS"));
-		buildLightTilesDS->u_localLights              = localLightsBuffer;
-		buildLightTilesDS->u_pointLightDraws          = pointLightDrawCommands;
-		buildLightTilesDS->u_spotLightDraws           = spotLightDrawCommands;
-		buildLightTilesDS->u_pointLightProxyVertices  = renderingParams.pointLightProxyVerticesBuffer->GetFullView();
-		buildLightTilesDS->u_spotLightProxyVertices   = renderingParams.spotLightProxyVerticesBuffer->GetFullView();
-		buildLightTilesDS->u_lightsData               = lightsData;
-		buildLightTilesDS->u_tilesLightsMask          = tilesLightsMask;
+		viewShadingParams.localLights     = localLightsBuffer;
+		viewShadingParams.tilesLightsMask = tilesLightsMask;
+		viewShadingParams.clustersRanges  = clustersRanges;
 
-		shadingInputDS->u_localLights     = localLightsBuffer;
-		shadingInputDS->u_tilesLightsMask = tilesLightsMask;
-		shadingInputDS->u_clustersRanges  = clustersRanges;
-
-		lightsRenderingDataPerView.buildZClustersDS             = buildZClusters;
-		lightsRenderingDataPerView.generateLightsDrawCommnadsDS = generateLightsDrawCommnadsDS;
-		lightsRenderingDataPerView.buildLightTilesDS            = buildLightTilesDS;
+		lightsRenderingDataPerView.buildZClustersConstants             = graphBuilder.CreateGPUData(buildClustersConstants);
+		lightsRenderingDataPerView.generateLightsDrawCommnadsConstants = graphBuilder.CreateGPUData(generateLightsDrawCommnadsConstants);
+		lightsRenderingDataPerView.buildLightTilesConstants            = graphBuilder.CreateGPUData(buildLightTilesConstants);
 
 		lightsRenderingDataPerView.pointLightDrawCommandsBuffer      = pointLightDrawCommands;
 		lightsRenderingDataPerView.pointLightDrawCommandsCountBuffer = pointLightDrawCommandsCount;
@@ -552,24 +541,26 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		lightsRenderingDataPerView.spotLightDrawCommandsCountBuffer = spotLightDrawCommandsCount;
 	}
 
-	const Uint32 directionalLightsNum = CreateDirectionalLightsData(graphBuilder, rendererInterface, renderScene, viewSpec, INOUT shadingInputDS);
+	const Uint32 directionalLightsNum = CreateDirectionalLightsData(graphBuilder, rendererInterface, renderScene, viewSpec, INOUT viewShadingParams);
 	lightsData.directionalLightsNum = directionalLightsNum;
 
 	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
-	shadingInputDS->u_ambientOcclusionTexture = viewContext.ambientOcclusion;
+	viewShadingParams.ambientOcclusionTexture = viewContext.ambientOcclusion;
 
 	const AtmosphereRenderSystem& atmosphereSystem = rendererInterface.GetRenderSystemChecked<AtmosphereRenderSystem>();
 	const AtmosphereContext& atmosphereContext     = atmosphereSystem.GetAtmosphereContext();
 
-	shadingInputDS->u_transmittanceLUT = graphBuilder.AcquireExternalTextureView(atmosphereContext.transmittanceLUT);
-	shadingInputDS->u_atmosphereParams = atmosphereContext.atmosphereParamsBuffer->GetFullView();
+	viewShadingParams.transmittanceLUT = graphBuilder.AcquireExternalTextureView(atmosphereContext.transmittanceLUT);
+	viewShadingParams.atmosphereParams = atmosphereContext.atmosphereParams;
 	
-	shadingInputDS->u_lightsData = lightsData;
+	viewShadingParams.lightsData = lightsDataPtr;
 	
-	lightsRenderingDataPerView.shadingInputDS = shadingInputDS;
+	lightsRenderingDataPerView.viewShadingParams = graphBuilder.CreateGPUData(viewShadingParams);
 
 	lightsRenderingDataPerView.tilesNum		= lightsData.tilesNum;
 	lightsRenderingDataPerView.zClustersNum	= lightsData.zClustersNum;
+
+	lightsDataPtr.SetData(lightsData);
 
 	return lightsRenderingDataPerView;
 }
@@ -583,8 +574,6 @@ LightsRenderSystem::LightsRenderSystem(lib::MemoryArena& arena, RenderScene& own
 	: Super(arena, owningScene)
 {
 	m_supportedStages = lib::Flags(ERenderStage::ForwardOpaque, ERenderStage::DeferredShading);
-	
-	m_globalLightsDS = rdr::ResourcesManager::CreateDescriptorSetState<GlobalLightsDS>(RENDERER_RESOURCE_NAME("Global Lights DS"));
 
 	const lib::DynamicArray<math::Vector3f> spotLightProxyVertices = CreateSpotLightProxyVertices(12u);
 	rhi::BufferDefinition spotLightProxyVerticesBufferDef(spotLightProxyVertices.size() * sizeof(math::Vector3f), lib::Flags(rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::Storage));
@@ -631,11 +620,6 @@ void LightsRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, co
 	}
 }
 
-const lib::MTHandle<GlobalLightsDS>& LightsRenderSystem::GetGlobalLightsDS() const
-{
-	return m_globalLightsDS;
-}
-
 void LightsRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
 	SPT_PROFILER_FUNCTION();
@@ -663,13 +647,13 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("BuildLightsZClusters"),
 							  BuildLightZClustersPSO::pso,
 							  dispatchZClustersGroupsNum,
-							  rg::BindDescriptorSets(lightsRenderingData.buildZClustersDS));
+							  rg::ShaderParams(lightsRenderingData.buildZClustersConstants));
 
 		const math::Vector3u dispatchLightsGroupsNum = math::Vector3u(math::Utils::DivideCeil<Uint32>(lightsRenderingData.GetLocalLightsToRenderNum(), 32), 1, 1);
 		graphBuilder.Dispatch(RG_DEBUG_NAME("GenerateLightsDrawCommands"),
 							  GenerateLightsDrawCommandsPSO::pso,
 							  dispatchLightsGroupsNum,
-							  rg::BindDescriptorSets(lightsRenderingData.generateLightsDrawCommnadsDS, viewContext.depthCullingDS));
+							  rg::ShaderParams(lightsRenderingData.generateLightsDrawCommnadsConstants, viewContext.depthCullingGPUData));
 
 		const math::Vector2u renderingArea = lightsRenderingData.tilesNum;
 
@@ -687,7 +671,7 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 
 		graphBuilder.RenderPass(RG_DEBUG_NAME("Build Lights Tiles"),
 								lightsTilesRenderPassDef,
-								rg::BindDescriptorSets(lightsRenderingData.buildLightTilesDS),
+								rg::ShaderParams(lightsRenderingData.buildLightTilesConstants),
 								std::tie(passIndirectParams),
 								[this, passIndirectParams, maxPointLightDrawsCount, maxSpotLightDrawsCount, renderingArea](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 								{
@@ -714,16 +698,10 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 								});
 	}
 
-	viewContext.shadingInputDS = lightsRenderingData.shadingInputDS;
-
-	RenderViewEntryDelegates::FillShadingDSData delegateParams;
-	delegateParams.ds = viewContext.shadingInputDS;
-	RenderViewEntryContext entryContext;
-	entryContext.Bind<RenderViewEntryDelegates::FillShadingDSData>(std::move(delegateParams));
-	viewSpec.GetRenderViewEntry(ERenderViewEntry::FillShadingDS).Broadcast(graphBuilder, rendererInterface, renderScene, viewSpec, entryContext);
+	viewContext.viewShadingParams = lightsRenderingData.viewShadingParams;
 
 	ViewSpecShadingParameters shadingParams;
-	shadingParams.shadingInputDS = lightsRenderingData.shadingInputDS;
+	shadingParams.viewShadingParams = lightsRenderingData.viewShadingParams;
 	viewSpec.GetBlackboard().Create<ViewSpecShadingParameters>(shadingParams);
 }
 
@@ -741,6 +719,8 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 		const rhi::BufferDefinition localLightsDataBufferDef(localLightsDataSize, rhi::EBufferUsage::Storage);
 		localLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Local Lights Buffer"), localLightsDataBufferDef, rhi::EMemoryUsage::CPUToGPU);
 		rhi::RHIMappedBuffer<rdr::HLSLStorage<LocalLightGPUData>> localLightsData(localLightsBuffer->GetRHI());
+
+		graphBuilder.AcquireExternalBufferView(localLightsBuffer->GetFullView());
 
 		SizeType localLightIdx = 0;
 
@@ -784,6 +764,8 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 		directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Global Directional Lights Buffer"), directionalLightsDataBufferDef, rhi::EMemoryUsage::CPUToGPU);
 		rhi::RHIMappedBuffer<rdr::HLSLStorage<DirectionalLightGPUData>> directionalLightsData(directionalLightsBuffer->GetRHI());
 
+		graphBuilder.AcquireExternalBufferView(directionalLightsBuffer->GetFullView());
+
 		const AtmosphereRenderSystem& atmosphereSystem = rendererInterface.GetRenderSystemChecked<AtmosphereRenderSystem>();
 
 		const DirectionalLightData& directionalLight   = scene.lighting.GetDirectionalLight();
@@ -809,18 +791,18 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 
 		SPT_CHECK(!!cloudsTransmittanceMap.cloudsTransmittanceTexture);
 
-		m_globalLightsDS->u_cloudsTransmittanceMap = cloudsTransmittanceMap.cloudsTransmittanceTexture;
+		lightsParams.cloudsTransmittanceMap = cloudsTransmittanceMap.cloudsTransmittanceTexture;
 	}
 	else
 	{
 		lightsParams.hasValidCloudsTransmittanceMap = false;
-		m_globalLightsDS->u_cloudsTransmittanceMap.Reset();
 	}
 
-	m_globalLightsDS->u_lightsParams       = lightsParams;
-	m_globalLightsDS->u_localLights        = localLightsBuffer->GetFullView();
-	m_globalLightsDS->u_directionalLights  = directionalLightsBuffer->GetFullView();
-	m_globalLightsDS->u_brdfIntegrationLUT = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
+	lightsParams.localLights        = localLightsBuffer->GetFullView();
+	lightsParams.directionalLights  = directionalLightsBuffer->GetFullView();
+	lightsParams.brdfIntegrationLUT = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
+
+	m_globalLightsParams = graphBuilder.CreateGPUData(lightsParams);
 }
 
 } // spt::rsc

@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderViewDS, 0)]]
-[[descriptor_set(SREstimateVarianceDS, 1)]]
+[[shader_params(GPURenderView, VIEW)]]
+[[shader_params(SREstimateVarianceConstants, PARAMS_S_R_ESTIMATE_VARIANCE)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
@@ -60,16 +60,16 @@ void CacheSamplesToLDS(in uint2 groupID, in uint2 threadID)
 	for(uint sampleIdx = threadIdx; sampleIdx < SHARED_MEMORY_X * SHARED_MEMORY_Y; sampleIdx += GROUP_SIZE_X * GROUP_SIZE_Y)
 	{
 		const int2 localOffset   = int2(sampleIdx % SHARED_MEMORY_X, sampleIdx / SHARED_MEMORY_X);
-		const uint3 sampleCoords = uint3(clamp(int2(groupOffset + localOffset), 0, int2(u_constants.resolution - 1)), 0);
+		const uint3 sampleCoords = uint3(clamp(int2(groupOffset + localOffset), 0, int2(PARAMS_S_R_ESTIMATE_VARIANCE->resolution - 1)), 0);
 
 		SampleData sample;
-		sample.normal = half3(OctahedronDecodeNormal(u_normalsTexture.Load(sampleCoords).xy));
+		sample.normal = half3(OctahedronDecodeNormal(PARAMS_S_R_ESTIMATE_VARIANCE->normalsTexture.Load(sampleCoords).xy));
 
-		float2 variance = u_inVarianceTexture.Load(sampleCoords);
+		float2 variance = PARAMS_S_R_ESTIMATE_VARIANCE->inVarianceTexture.Load(sampleCoords);
 
 #if HORIZONTAL_PAS
-		const float specularSamplesNum = u_specularHistoryLengthTexture.Load(sampleCoords).x;
-		const float diffuseSamplesNum  = u_diffuseHistoryLengthTexture.Load(sampleCoords).x;
+		const float specularSamplesNum = PARAMS_S_R_ESTIMATE_VARIANCE->specularHistoryLengthTexture.Load(sampleCoords).x;
+		const float diffuseSamplesNum  = PARAMS_S_R_ESTIMATE_VARIANCE->diffuseHistoryLengthTexture.Load(sampleCoords).x;
 		variance = ApplyBesselsCorrection(variance, float2(specularSamplesNum, diffuseSamplesNum));
 #endif // HORIZONTAL_PASS
 
@@ -98,12 +98,11 @@ void SREstimateVarianceCS(CS_INPUT input)
 
 	const uint2 coords = input.globalID.xy;
 
-	uint2 outputRes;
-	u_rwVarianceEstimationTexture.GetDimensions(outputRes.x, outputRes.y);
+	uint2 outputRes = PARAMS_S_R_ESTIMATE_VARIANCE->rwVarianceEstimationTexture.GetResolution();
 
 	GroupMemoryBarrierWithGroupSync();
 
-	if(all(coords < u_constants.resolution))
+	if(all(coords < PARAMS_S_R_ESTIMATE_VARIANCE->resolution))
 	{
 #if HORIZONTAL_PASS
 		const int2 centerLDSCoords = int2(input.localID.x + KERNEL_RADIUS, input.localID.y);
@@ -150,6 +149,6 @@ void SREstimateVarianceCS(CS_INPUT input)
 			}
 		}
 
-		u_rwVarianceEstimationTexture[coords] = maxVariance;
+		PARAMS_S_R_ESTIMATE_VARIANCE->rwVarianceEstimationTexture[coords] = maxVariance;
 	}
 }

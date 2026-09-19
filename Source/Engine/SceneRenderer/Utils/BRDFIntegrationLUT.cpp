@@ -3,8 +3,6 @@
 #include "RenderGraphBuilder.h"
 #include "ResourcesManager.h"
 #include "GPUApi.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
 
 
 namespace spt::rsc
@@ -13,9 +11,9 @@ namespace spt::rsc
 namespace lut_generation
 {
 
-DS_BEGIN(BRDFIntegrationLUTGenerationDS, rg::RGDescriptorSetState<BRDFIntegrationLUTGenerationDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>), u_lut)
-DS_END();
+BEGIN_SHADER_STRUCT(BRDFIntegrationLUTGenerationConstants)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>, lut)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CreateLUTGenerationPipeline()
@@ -31,15 +29,15 @@ static void GenerateLUT(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewH
 
 	const math::Vector2u lutResolution = lutHandle->GetResolution2D();
 
-	lib::MTHandle<BRDFIntegrationLUTGenerationDS> ds = graphBuilder.CreateDescriptorSet<BRDFIntegrationLUTGenerationDS>(RENDERER_RESOURCE_NAME("BRDFIntegrationLUTGenerationDS"));
-	ds->u_lut = lutHandle;
+	BRDFIntegrationLUTGenerationConstants shaderConstants;
+	shaderConstants.lut = lutHandle;
 	
 	const rdr::PipelineStateID lutGenerationPipeline = CreateLUTGenerationPipeline();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Genrate BRDF Interation LUT"),
 						  lutGenerationPipeline,
 						  math::Utils::DivideCeil(lutResolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds)));
+						  rg::ShaderParams(shaderConstants));
 }
 
 } // lut_generation

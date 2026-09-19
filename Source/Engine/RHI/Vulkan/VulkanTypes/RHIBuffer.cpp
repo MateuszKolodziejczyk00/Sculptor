@@ -71,13 +71,13 @@ VkBufferUsageFlags GetVulkanBufferUsage(rhi::EBufferUsage bufferUsage)
 	{
 		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR);
 	}
-	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::SamplerDescriptorBuffer))
+	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::SamplerDescriptorHeap))
 	{
-		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT);
+		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT);
 	}
-	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::ResourceDescriptorBuffer))
+	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::ResourceDescriptorHeap))
 	{
-		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT);
+		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT);
 	}
 
 	SPT_CHECK(static_cast<Flags32>(bufferUsage) < (static_cast<Flags32>(rhi::EBufferUsage::LAST) - 1) << 1);
@@ -239,59 +239,69 @@ Bool RHIBuffer::IsValid() const
 	return m_bufferHandle != VK_NULL_HANDLE;
 }
 
-void RHIBuffer::CopySRVDescriptor(Uint64 offset, Uint64 range, Byte* dst) const
+void RHIBuffer::CopySRVDescriptor(Uint64 offset, Uint64 range, lib::Span<Byte> dst) const
 {
 	SPT_CHECK(IsValid());
 	SPT_CHECK(lib::HasAnyFlag(GetUsage(), rhi::EBufferUsage::DeviceAddress));
 	SPT_CHECK(lib::HasAnyFlag(GetUsage(), rhi::EBufferUsage::Uniform));
 	SPT_CHECK(offset + range <= GetSize());
 
-	VkDescriptorAddressInfoEXT addressInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
-	addressInfo.address = GetDeviceAddress() + offset;
-	addressInfo.range   = range;
+	VkDeviceAddressRangeEXT addressRange;
+	addressRange.address = GetDeviceAddress() + offset;
+	addressRange.size    = range;
 
-	VkDescriptorGetInfoEXT info{ VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
-	info.type                = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	info.data.pStorageBuffer = &addressInfo;
+	VkResourceDescriptorInfoEXT descriptorInfo{ VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT };
+	descriptorInfo.type               = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorInfo.data.pAddressRange = &addressRange;
 
-	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
+	VkHostAddressRangeEXT hostAddressRange;
+	hostAddressRange.address = dst.data();
+	hostAddressRange.size    = dst.size();
 
-	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().SizeOf(rhi::EDescriptorType::UniformBuffer), dst);
+	vkWriteResourceDescriptorsEXT(VulkanRHI::GetDeviceHandle(), 1u, &descriptorInfo, &hostAddressRange);
 }
 
-void RHIBuffer::CopyUAVDescriptor(Uint64 offset, Uint64 range, Byte* dst) const
+void RHIBuffer::CopyUAVDescriptor(Uint64 offset, Uint64 range, lib::Span<Byte> dst) const
 {
 	SPT_CHECK(IsValid());
 	SPT_CHECK(lib::HasAnyFlag(GetUsage(), rhi::EBufferUsage::DeviceAddress));
 	SPT_CHECK(lib::HasAnyFlag(GetUsage(), rhi::EBufferUsage::Storage));
 	SPT_CHECK(offset + range <= GetSize());
 
-	VkDescriptorAddressInfoEXT addressInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
-	addressInfo.address = GetDeviceAddress() + offset;
-	addressInfo.range   = range;
+	VkDeviceAddressRangeEXT addressRange;
+	addressRange.address = GetDeviceAddress() + offset;
+	addressRange.size    = range;
 
-	VkDescriptorGetInfoEXT info{ VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
-	info.type                = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	info.data.pStorageBuffer = &addressInfo;
+	VkResourceDescriptorInfoEXT descriptorInfo{ VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT };
+	descriptorInfo.type               = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	descriptorInfo.data.pAddressRange = &addressRange;
 
-	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
+	VkHostAddressRangeEXT hostAddressRange;
+	hostAddressRange.address = dst.data();
+	hostAddressRange.size    = dst.size();
 
-	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().SizeOf(rhi::EDescriptorType::StorageBuffer), dst);
+	vkWriteResourceDescriptorsEXT(VulkanRHI::GetDeviceHandle(), 1u, &descriptorInfo, &hostAddressRange);
 }
 
-void RHIBuffer::CopyTLASDescriptor(Byte* dst) const
+void RHIBuffer::CopyTLASDescriptor(lib::Span<Byte> dst) const
 {
 	SPT_CHECK(IsValid());
 	SPT_CHECK(lib::HasAnyFlag(GetUsage(), rhi::EBufferUsage::DeviceAddress));
 	SPT_CHECK(lib::HasAnyFlag(GetUsage(), rhi::EBufferUsage::AccelerationStructureStorage));
 
-	VkDescriptorGetInfoEXT info{ VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
-	info.type                       = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-	info.data.accelerationStructure = GetDeviceAddress();
+	VkDeviceAddressRangeEXT addressRange;
+	addressRange.address = GetDeviceAddress();
+	addressRange.size    = GetSize();
 
-	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
+	VkResourceDescriptorInfoEXT descriptorInfo{ VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT };
+	descriptorInfo.type               = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+	descriptorInfo.data.pAddressRange = &addressRange;
 
-	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().SizeOf(rhi::EDescriptorType::AccelerationStructure), dst);
+	VkHostAddressRangeEXT hostAddressRange;
+	hostAddressRange.address = dst.data();
+	hostAddressRange.size    = dst.size();
+
+	vkWriteResourceDescriptorsEXT(VulkanRHI::GetDeviceHandle(), 1u, &descriptorInfo, &hostAddressRange);
 }
 
 Uint64 RHIBuffer::GetSize() const
@@ -343,6 +353,11 @@ void RHIBuffer::Unmap() const
 	{
 		vmaUnmapMemory(VulkanRHI::GetAllocatorHandle(), GetAllocation());
 	}
+}
+
+Byte* RHIBuffer::GetPersistentlyMappedPtr() const
+{
+	return m_mappingStrategy == EMappingStrategy::PersistentlyMapped ? m_mappedPointer : nullptr;
 }
 
 DeviceAddress RHIBuffer::GetDeviceAddress() const

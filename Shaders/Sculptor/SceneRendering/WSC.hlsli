@@ -7,7 +7,7 @@
 #define CASCADES_NUM 2
 
 
-struct WSCInterface : WSCData
+extension WSCData
 {
 	float SampleShadows(in float3 worldPos)
 	{
@@ -47,13 +47,16 @@ struct WSCInterface : WSCData
 };
 
 
-#ifdef DS_RenderSceneDS
+typealias WSCInterface = WSCData;
+
+
+#ifdef PARAM_RenderSceneConstants
 
 WSCInterface WSC()
 {
-	return WSCInterface(u_renderSceneConstants.wsc);
+	return SCENE->wsc;
 }
 
-#endif // DS_RenderSceneDS
+#endif // PARAM_RenderSceneConstants
 
 #endif // WSC_HLSLI

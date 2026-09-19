@@ -104,9 +104,9 @@ public:
 
 	Bool						IsValid() const;
 
-	void						CopySRVDescriptor(Uint64 offset, Uint64 range, Byte* dst) const;
-	void						CopyUAVDescriptor(Uint64 offset, Uint64 range, Byte* dst) const;
-	void						CopyTLASDescriptor(Byte* dst) const;
+	void						CopySRVDescriptor(Uint64 offset, Uint64 range, lib::Span<Byte> dst) const;
+	void						CopyUAVDescriptor(Uint64 offset, Uint64 range, lib::Span<Byte> dst) const;
+	void						CopyTLASDescriptor(lib::Span<Byte> dst) const;
 
 	Uint64						GetSize() const;
 	rhi::EBufferUsage			GetUsage() const;
@@ -116,6 +116,7 @@ public:
 	Bool						CanMapMemory() const;
 	Byte*						MapPtr() const;
 	void						Unmap() const;
+	Byte*						GetPersistentlyMappedPtr() const;
 
 	DeviceAddress				GetDeviceAddress() const;
 

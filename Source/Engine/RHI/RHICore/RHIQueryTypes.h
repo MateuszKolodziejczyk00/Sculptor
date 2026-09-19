@@ -21,8 +21,10 @@ enum class EQueryStatisticsType
 	VSInvocations	= BIT(2),
 	FSInvocations	= BIT(3),
 	CSInvocations	= BIT(4),
+	TSInvocations	= BIT(5),
+	MSInvocations	= BIT(6),
 
-	All = IAVertices | IAPrimitives | VSInvocations | FSInvocations | CSInvocations
+	All = IAVertices | IAPrimitives | VSInvocations | FSInvocations | CSInvocations | TSInvocations | MSInvocations
 };;
 
 

@@ -1,11 +1,6 @@
 #include "DOFRenderer.h"
 #include "RenderGraphBuilder.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ResourcesManager.h"
 #include "Common/ShaderCompilationInput.h"
 #include "View/RenderView.h"
@@ -21,20 +16,13 @@ namespace coc_generation
 {
  
 BEGIN_SHADER_STRUCT(DOFShaderParameters)
-	SHADER_STRUCT_FIELD(Real32, nearFieldBegin)
-	SHADER_STRUCT_FIELD(Real32, nearFieldEnd)
-	
-	SHADER_STRUCT_FIELD(Real32, farFieldBegin)
-	SHADER_STRUCT_FIELD(Real32, farFieldEnd)
+	SHADER_STRUCT_FIELD(Real32,                            nearFieldBegin)
+	SHADER_STRUCT_FIELD(Real32,                            nearFieldEnd)
+	SHADER_STRUCT_FIELD(Real32,                            farFieldBegin)
+	SHADER_STRUCT_FIELD(Real32,                            farFieldEnd)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         depthTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>, cocTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(DOFGenerateCoCDS, rg::RGDescriptorSetState<DOFGenerateCoCDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DOFShaderParameters>),                     u_params)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_cocTexture)
-DS_END();
 
 
 static rdr::PipelineStateID CompileGenerateCoCPipeline()
@@ -57,18 +45,15 @@ static rg::RGTextureViewHandle DOFGenerateCoC(rg::RenderGraphBuilder& graphBuild
 	shaderParams.nearFieldBegin = shaderParams.nearFieldEnd - params.nearFocusIncreaseRange;
 	shaderParams.farFieldBegin	= params.focalPlane + (params.fullFocusRange * 0.5f);
 	shaderParams.farFieldEnd	= shaderParams.farFieldBegin + params.farFocusIncreaseRange;
-
-	lib::MTHandle<DOFGenerateCoCDS> cocDS = graphBuilder.CreateDescriptorSet<DOFGenerateCoCDS>(RENDERER_RESOURCE_NAME("DOFGenerateCoCDS"));
-	cocDS->u_params					= shaderParams;
-	cocDS->u_depthTexture			= params.depthTexture;
-	cocDS->u_cocTexture				= cocTexture;
+	shaderParams.depthTexture	= params.depthTexture;
+	shaderParams.cocTexture		= cocTexture;
 
 	static const rdr::PipelineStateID geenrateCoCPipeline = CompileGenerateCoCPipeline();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("DOF Generate CoC"),
 						  geenrateCoCPipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector3u(8u, 8u, 1u)),
-						  rg::BindDescriptorSets(cocDS));
+						  rg::ShaderParams(shaderParams));
 
 	return cocTexture;
 }
@@ -80,16 +65,10 @@ namespace downsample
 {
 
 BEGIN_SHADER_STRUCT(DOFNearCoCBlurParams)
-	SHADER_STRUCT_FIELD(Bool, isHorizontal)
+	SHADER_STRUCT_FIELD(Bool,                              isHorizontal)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, cocTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,         cocTextureBlurred)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(DOFNearCoCBlurDS, rg::RGDescriptorSetState<DOFNearCoCBlurDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_cocTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_cocTextureBlurred)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DOFNearCoCBlurParams>),                    u_params)
-DS_END();
 
 
 enum class ENearCoCBlurType
@@ -133,32 +112,26 @@ static rg::RGTextureViewHandle DOFBlurNearFieldCoC(rg::RenderGraphBuilder& graph
 	{
 		DOFNearCoCBlurParams params;
 		params.isHorizontal = true;
-
-		lib::MTHandle<DOFNearCoCBlurDS> cocDS = graphBuilder.CreateDescriptorSet<DOFNearCoCBlurDS>(RENDERER_RESOURCE_NAME("DOFNearCoCBlurDS"));
-		cocDS->u_cocTexture			= cocTexture;
-		cocDS->u_cocTextureBlurred	= tempTexture;
-		cocDS->u_params				= params;
+		params.cocTexture			= cocTexture;
+		params.cocTextureBlurred	= tempTexture;
 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("DOF Near Field CoC Max Blur Horizontal"),
 							  maxBlurPipeline,
 							  math::Utils::DivideCeil(resolution, math::Vector3u(8u, 8u, 1u)),
-							  rg::BindDescriptorSets(cocDS));
+							  rg::ShaderParams(params));
 	}
 
 	// Vertical max filter
 	{
 		DOFNearCoCBlurParams params;
 		params.isHorizontal = true;
-
-		lib::MTHandle<DOFNearCoCBlurDS> cocDS = graphBuilder.CreateDescriptorSet<DOFNearCoCBlurDS>(RENDERER_RESOURCE_NAME("DOFNearCoCBlurDS"));
-		cocDS->u_cocTexture			= tempTexture;
-		cocDS->u_cocTextureBlurred	= cocTextureBlurred;
-		cocDS->u_params				= params;
+		params.cocTexture			= tempTexture;
+		params.cocTextureBlurred	= cocTextureBlurred;
 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("DOF Near Field CoC Max Blur Horizontal"),
 							  maxBlurPipeline,
 							  math::Utils::DivideCeil(resolution, math::Vector3u(8u, 8u, 1u)),
-							  rg::BindDescriptorSets(cocDS));
+							  rg::ShaderParams(params));
 	}
 
 	static const rdr::PipelineStateID averageBlurPipeline = CompileNearFieldCoCBlur(ENearCoCBlurType::Average);
@@ -167,32 +140,26 @@ static rg::RGTextureViewHandle DOFBlurNearFieldCoC(rg::RenderGraphBuilder& graph
 	{
 		DOFNearCoCBlurParams params;
 		params.isHorizontal = true;
-
-		lib::MTHandle<DOFNearCoCBlurDS> cocDS = graphBuilder.CreateDescriptorSet<DOFNearCoCBlurDS>(RENDERER_RESOURCE_NAME("DOFNearCoCBlurDS"));
-		cocDS->u_cocTexture			= cocTextureBlurred;
-		cocDS->u_cocTextureBlurred	= tempTexture;
-		cocDS->u_params				= params;
+		params.cocTexture			= cocTextureBlurred;
+		params.cocTextureBlurred	= tempTexture;
 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("DOF Near Field CoC Average Blur Horizontal"),
 							  averageBlurPipeline,
 							  math::Utils::DivideCeil(resolution, math::Vector3u(8u, 8u, 1u)),
-							  rg::BindDescriptorSets(cocDS));
+							  rg::ShaderParams(params));
 	}
 
 	// Vertical average filter
 	{
 		DOFNearCoCBlurParams params;
 		params.isHorizontal = true;
-
-		lib::MTHandle<DOFNearCoCBlurDS> cocDS = graphBuilder.CreateDescriptorSet<DOFNearCoCBlurDS>(RENDERER_RESOURCE_NAME("DOFNearCoCBlurDS"));
-		cocDS->u_cocTexture			= tempTexture;
-		cocDS->u_cocTextureBlurred	= cocTextureBlurred;
-		cocDS->u_params				= params;
+		params.cocTexture			= tempTexture;
+		params.cocTextureBlurred	= cocTextureBlurred;
 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("DOF Near Field CoC Average Blur Horizontal"),
 							  averageBlurPipeline,
 							  math::Utils::DivideCeil(resolution, math::Vector3u(8u, 8u, 1u)),
-							  rg::BindDescriptorSets(cocDS));
+							  rg::ShaderParams(params));
 	}
 
 	return cocTextureBlurred;
@@ -200,20 +167,14 @@ static rg::RGTextureViewHandle DOFBlurNearFieldCoC(rg::RenderGraphBuilder& graph
 
 
 BEGIN_SHADER_STRUCT(DOFDownsampleParams)
-	SHADER_STRUCT_FIELD(math::Vector2f, inputPixelSize)
-	SHADER_STRUCT_FIELD(math::Vector2u, inputResolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,                    inputPixelSize)
+	SHADER_STRUCT_FIELD(math::Vector2u,                    inputResolution)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, linearColorTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, cocTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>, cocHalfTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector3f>, linearColorHalfTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector3f>, linearColorMulFarHalfTexture)
 END_SHADER_STRUCT();
-
-
-DS_BEGIN(DOFDownsampleDS, rg::RGDescriptorSetState<DOFDownsampleDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DOFDownsampleParams>),                     u_params)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_linearColorTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_cocTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_cocHalfTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_linearColorHalfTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_linearColorMulFarHalfTexture)
-DS_END();
 
 
 static rdr::PipelineStateID CompileDownsampleDOFPipeline()
@@ -249,21 +210,18 @@ static DOFDownsampleResult DOFDownsample(rg::RenderGraphBuilder& graphBuilder, c
 	DOFDownsampleParams downsampleParams;
 	downsampleParams.inputPixelSize		= math::Vector2f(1.f / resolution.x(), 1.f / resolution.y());
 	downsampleParams.inputResolution	= math::Vector2u(resolution.x(), resolution.y());
-
-	lib::MTHandle<DOFDownsampleDS> downsampleDS = graphBuilder.CreateDescriptorSet<DOFDownsampleDS>(RENDERER_RESOURCE_NAME("DOFDownsampleDS"));
-	downsampleDS->u_params							= downsampleParams;
-	downsampleDS->u_linearColorTexture				= params.linearColorTexture;
-	downsampleDS->u_cocTexture						= cocTexture;
-	downsampleDS->u_cocHalfTexture					= halfResCoC;
-	downsampleDS->u_linearColorHalfTexture			= halfLinearColor;
-	downsampleDS->u_linearColorMulFarHalfTexture	= halfLinearColorMulFar;
+	downsampleParams.linearColorTexture				= params.linearColorTexture;
+	downsampleParams.cocTexture						= cocTexture;
+	downsampleParams.cocHalfTexture					= halfResCoC;
+	downsampleParams.linearColorHalfTexture			= halfLinearColor;
+	downsampleParams.linearColorMulFarHalfTexture	= halfLinearColorMulFar;
 
 	static const rdr::PipelineStateID downsamplePipeline = CompileDownsampleDOFPipeline();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("DOF Downsample"),
 						  downsamplePipeline,
 						  math::Utils::DivideCeil(halfResolution, math::Vector3u(8u, 8u, 1u)),
-						  rg::BindDescriptorSets(downsampleDS));
+						  rg::ShaderParams(downsampleParams));
 
 	const rg::RGTextureViewHandle cocNearTextureBlurred = DOFBlurNearFieldCoC(graphBuilder, halfResCoC);
 
@@ -282,15 +240,14 @@ static DOFDownsampleResult DOFDownsample(rg::RenderGraphBuilder& graphBuilder, c
 namespace computation
 {
 
-DS_BEGIN(DOFFillPassDS, rg::RGDescriptorSetState<DOFFillPassDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_nearFieldDOFTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_farFieldDOFTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_cocTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_cocNearBlurredTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_nearFieldFilledDOFTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_farFieldFilledDOFTexture)
-DS_END();
+BEGIN_SHADER_STRUCT(DOFFillPassParams)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, nearFieldDOFTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, farFieldDOFTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, cocTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         cocNearBlurredTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector3f>, nearFieldFilledDOFTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector3f>, farFieldFilledDOFTexture)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CompileDOFFillPipeline()
@@ -318,20 +275,20 @@ static DOFFillResult DOFFill(rg::RenderGraphBuilder& graphBuilder, rg::RGTexture
 	const rg::RGTextureViewHandle nearFieldFilledDOFTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Near Field Filled DOF"), dofFilledTexturesDef);
 	const rg::RGTextureViewHandle farFieldFilledDOFTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Far Field Filled DOF"), dofFilledTexturesDef);
 
-	const lib::MTHandle<DOFFillPassDS> fillPassDS = graphBuilder.CreateDescriptorSet<DOFFillPassDS>(RENDERER_RESOURCE_NAME("DOFFillPassDS"));
-	fillPassDS->u_nearFieldDOFTexture			= nearFieldDOFTexture;
-	fillPassDS->u_farFieldDOFTexture			= farFieldDOFTexture;
-	fillPassDS->u_cocTexture					= downsampleResult.cocHalfTexture;
-	fillPassDS->u_cocNearBlurredTexture			= downsampleResult.cocNearTextureBlurred;
-	fillPassDS->u_nearFieldFilledDOFTexture		= nearFieldFilledDOFTexture;
-	fillPassDS->u_farFieldFilledDOFTexture		= farFieldFilledDOFTexture;
+	DOFFillPassParams fillPassParams;
+	fillPassParams.nearFieldDOFTexture			= nearFieldDOFTexture;
+	fillPassParams.farFieldDOFTexture			= farFieldDOFTexture;
+	fillPassParams.cocTexture					= downsampleResult.cocHalfTexture;
+	fillPassParams.cocNearBlurredTexture			= downsampleResult.cocNearTextureBlurred;
+	fillPassParams.nearFieldFilledDOFTexture		= nearFieldFilledDOFTexture;
+	fillPassParams.farFieldFilledDOFTexture		= farFieldFilledDOFTexture;
 
 	static const rdr::PipelineStateID fillPipeline = CompileDOFFillPipeline();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("DOF Fill"),
 						  fillPipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector3u(8u, 8u, 1u)),
-						  rg::BindDescriptorSets(fillPassDS));
+						  rg::ShaderParams(fillPassParams));
 
 	DOFFillResult result;
 	result.nearFieldFilledDOF	= nearFieldFilledDOFTexture;
@@ -341,16 +298,14 @@ static DOFFillResult DOFFill(rg::RenderGraphBuilder& graphBuilder, rg::RGTexture
 }
 
 
-DS_BEGIN(DOComputationPassDS, rg::RGDescriptorSetState<DOComputationPassDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_linearColorTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_linearColorMulFarTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_cocTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_cocNearBlurredTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_nearFieldDOFTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_farFieldDOFTexture)
-DS_END();
+BEGIN_SHADER_STRUCT(DOComputationPassParams)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, linearColorTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, linearColorMulFarTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, cocTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         cocNearBlurredTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector3f>, nearFieldDOFTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector3f>, farFieldDOFTexture)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CompileDOFComputationPipeline()
@@ -377,20 +332,20 @@ static DOFComputationResult DOFComputation(rg::RenderGraphBuilder& graphBuilder,
 	const rg::RGTextureViewHandle nearFieldDOFTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Near Field DOF"), rg::TextureDef(resolution, rhi::EFragmentFormat::B10G11R11_U_Float));
 	const rg::RGTextureViewHandle farFieldDOFTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Far Field DOF"), rg::TextureDef(resolution, rhi::EFragmentFormat::B10G11R11_U_Float));
 
-	const lib::MTHandle<DOComputationPassDS> computationPassDS = graphBuilder.CreateDescriptorSet<DOComputationPassDS>(RENDERER_RESOURCE_NAME("DOComputationPassDS"));
-	computationPassDS->u_linearColorTexture			= downsampleResult.linearColorHalfTexture;
-	computationPassDS->u_linearColorMulFarTexture	= downsampleResult.linearColorMulFarHalfTexture;
-	computationPassDS->u_cocTexture					= downsampleResult.cocHalfTexture;
-	computationPassDS->u_cocNearBlurredTexture		= downsampleResult.cocNearTextureBlurred;
-	computationPassDS->u_nearFieldDOFTexture		= nearFieldDOFTexture;
-	computationPassDS->u_farFieldDOFTexture			= farFieldDOFTexture;
+	DOComputationPassParams computationPassParams;
+	computationPassParams.linearColorTexture			= downsampleResult.linearColorHalfTexture;
+	computationPassParams.linearColorMulFarTexture	= downsampleResult.linearColorMulFarHalfTexture;
+	computationPassParams.cocTexture					= downsampleResult.cocHalfTexture;
+	computationPassParams.cocNearBlurredTexture		= downsampleResult.cocNearTextureBlurred;
+	computationPassParams.nearFieldDOFTexture		= nearFieldDOFTexture;
+	computationPassParams.farFieldDOFTexture			= farFieldDOFTexture;
 
 	static const rdr::PipelineStateID computationPipeline = CompileDOFComputationPipeline();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("DOF Computation"),
 						  computationPipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector3u(8u, 8u, 1u)),
-						  rg::BindDescriptorSets(computationPassDS));
+						  rg::ShaderParams(computationPassParams));
 
 	const DOFFillResult fillResult = DOFFill(graphBuilder, nearFieldDOFTexture, farFieldDOFTexture, downsampleResult);
 
@@ -407,15 +362,13 @@ static DOFComputationResult DOFComputation(rg::RenderGraphBuilder& graphBuilder,
 namespace composite
 {
 
-DS_BEGIN(DOFCompositeDS, rg::RGDescriptorSetState<DOFCompositeDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_nearFieldDOFTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_farFieldDOFTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_cocTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_nearCoCBlurredTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_resultTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
-DS_END();
+BEGIN_SHADER_STRUCT(DOFCompositeParams)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, nearFieldDOFTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, farFieldDOFTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, cocTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         nearCoCBlurredTexture)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector3f>, resultTexture)
+END_SHADER_STRUCT();
 
 
 static rdr::PipelineStateID CompileDOFCompositePipeline()
@@ -432,19 +385,19 @@ static void DOFComposite(rg::RenderGraphBuilder& graphBuilder, const GatherBased
 
 	const math::Vector3u resolution = params.linearColorTexture->GetResolution();
 
-	const lib::MTHandle<DOFCompositeDS> compositePassDS = graphBuilder.CreateDescriptorSet<DOFCompositeDS>(RENDERER_RESOURCE_NAME("DOCCompositePassDS"));
-	compositePassDS->u_nearFieldDOFTexture		= computationResult.nearFieldDOF;
-	compositePassDS->u_farFieldDOFTexture		= computationResult.farFieldDOF;
-	compositePassDS->u_cocTexture				= downsampleResult.cocHalfTexture;
-	compositePassDS->u_nearCoCBlurredTexture	= downsampleResult.cocNearTextureBlurred;
-	compositePassDS->u_resultTexture			= params.linearColorTexture;
+	DOFCompositeParams compositePassParams;
+	compositePassParams.nearFieldDOFTexture		= computationResult.nearFieldDOF;
+	compositePassParams.farFieldDOFTexture		= computationResult.farFieldDOF;
+	compositePassParams.cocTexture				= downsampleResult.cocHalfTexture;
+	compositePassParams.nearCoCBlurredTexture	= downsampleResult.cocNearTextureBlurred;
+	compositePassParams.resultTexture			= params.linearColorTexture;
 
 	static const rdr::PipelineStateID compositePipeline = CompileDOFCompositePipeline();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("DOF Composite"),
 						  compositePipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector3u(8u, 8u, 1u)),
-						  rg::BindDescriptorSets(compositePassDS));
+						  rg::ShaderParams(compositePassParams));
 }
 
 } // composite

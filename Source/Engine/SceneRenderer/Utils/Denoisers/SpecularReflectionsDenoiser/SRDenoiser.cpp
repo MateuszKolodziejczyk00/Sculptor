@@ -11,8 +11,6 @@
 #include "SRFireflySuppression.h"
 #include "ShaderStructs.h"
 #include "Bindless/BindlessTypes.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "SRDenoiserTypes.h"
 
 
@@ -40,11 +38,6 @@ BEGIN_SHADER_STRUCT(RTPackToSHConstants)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(RTPackToSHDS, rg::RGDescriptorSetState<RTPackToSHDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<RTPackToSHConstants>), u_constants)
-DS_END();
-
-
 static rdr::PipelineStateID CreateRTPackToSHPipeline()
 {
 	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/Denoiser/RTPackToSH.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "RTPackToSHCS"));
@@ -63,15 +56,12 @@ static void PackToSH(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHand
 	shaderConstants.rwSpecularY    = sh.specularY;
 	shaderConstants.rwDiffSpecCoCg = sh.diffSpecCoCg;
 
-	lib::MTHandle<RTPackToSHDS> ds = graphBuilder.CreateDescriptorSet<RTPackToSHDS>(RENDERER_RESOURCE_NAME("RT Pack To Spherical Basis DS"));
-	ds->u_constants = shaderConstants;
-
 	static const rdr::PipelineStateID pipeline = CreateRTPackToSHPipeline();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("RT Pack To Spherical Basis"),
 						  pipeline,
 						  math::Utils::DivideCeil(spec->GetResolution2D(), math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds)));
+						  rg::ShaderParams(shaderConstants));
 }
 
 } // utils
@@ -170,7 +160,6 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "RT Denoiser");
 
 	const RenderView& renderView = params.viewSpec.GetRenderView();
-	const ShadingViewContext& viewContext = params.viewSpec.GetShadingViewContext();
 
 	const rg::RGTextureViewHandle specularTexture = params.specularTexture;
 	const rg::RGTextureViewHandle diffuseTexture  = params.diffuseTexture;
@@ -241,7 +230,6 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 		temporalAccumulationParameters.fastHistoryDiffuseOutputTexture        = fastHistoryDiffuseOutputTexture;
 		temporalAccumulationParameters.enableStableHistoryBlend               = params.enableStableHistoryBlend;
 		temporalAccumulationParameters.baseColorMetallic                      = params.baseColorMetallicTexture;
-		temporalAccumulationParameters.sharcCacheDS                           = viewContext.sharcCacheDS;
 
 		ApplyTemporalAccumulation(graphBuilder, temporalAccumulationParameters);
 	}

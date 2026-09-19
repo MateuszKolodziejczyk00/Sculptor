@@ -1,8 +1,8 @@
 #ifndef SAMPLING_HLSLI
 #define SAMPLING_HLSLI
 
-template<typename TDataType>
-TDataType SampleCatmullRom(Texture2D<TDataType> texture, SamplerState textureSampler, float2 uv, float2 resolution)
+
+TDataType SampleCatmullRom<TDataType : ITexelElement & IWeightable>(in SRVTexture2D<TDataType> texture, SamplerState textureSampler, float2 uv, float2 resolution)
 {
 	// We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
 	// down the sample location to get the exact center of our "starting" texel. The starting texel will be at
@@ -36,19 +36,19 @@ TDataType SampleCatmullRom(Texture2D<TDataType> texture, SamplerState textureSam
 	texPos3 /= resolution;
 	texPos12 /= resolution;
 
-	TDataType result = 0.f;
+	TDataType result = Zero<TDataType>();
 	
-	result += texture.SampleLevel(textureSampler, float2(texPos0.x, texPos0.y), 0) * w0.x * w0.y;
-	result += texture.SampleLevel(textureSampler, float2(texPos12.x, texPos0.y), 0) * w12.x * w0.y;
-	result += texture.SampleLevel(textureSampler, float2(texPos3.x, texPos0.y), 0) * w3.x * w0.y;
+	result.Accumulate(texture.SampleLevel(textureSampler, float2(texPos0.x, texPos0.y), 0), w0.x * w0.y);
+	result.Accumulate(texture.SampleLevel(textureSampler, float2(texPos12.x, texPos0.y), 0), w12.x * w0.y);
+	result.Accumulate(texture.SampleLevel(textureSampler, float2(texPos3.x, texPos0.y), 0), w3.x * w0.y);
 	
-	result += texture.SampleLevel(textureSampler, float2(texPos0.x, texPos12.y), 0) * w0.x * w12.y;
-	result += texture.SampleLevel(textureSampler, float2(texPos12.x, texPos12.y), 0) * w12.x * w12.y;
-	result += texture.SampleLevel(textureSampler, float2(texPos3.x, texPos12.y), 0) * w3.x * w12.y;
+	result.Accumulate(texture.SampleLevel(textureSampler, float2(texPos0.x, texPos12.y), 0), w0.x * w12.y);
+	result.Accumulate(texture.SampleLevel(textureSampler, float2(texPos12.x, texPos12.y), 0), w12.x * w12.y);
+	result.Accumulate(texture.SampleLevel(textureSampler, float2(texPos3.x, texPos12.y), 0), w3.x * w12.y);
 
-	result += texture.SampleLevel(textureSampler, float2(texPos0.x, texPos3.y), 0) * w0.x * w3.y;
-	result += texture.SampleLevel(textureSampler, float2(texPos12.x, texPos3.y), 0) * w12.x * w3.y;
-	result += texture.SampleLevel(textureSampler, float2(texPos3.x, texPos3.y), 0) * w3.x * w3.y;
+	result.Accumulate(texture.SampleLevel(textureSampler, float2(texPos0.x, texPos3.y), 0), w0.x * w3.y);
+	result.Accumulate(texture.SampleLevel(textureSampler, float2(texPos12.x, texPos3.y), 0), w12.x * w3.y);
+	result.Accumulate(texture.SampleLevel(textureSampler, float2(texPos3.x, texPos3.y), 0), w3.x * w3.y);
 
 	return result;
 }
@@ -58,8 +58,7 @@ TDataType SampleCatmullRom(Texture2D<TDataType> texture, SamplerState textureSam
 // GPU Prefilter for Accurate Cubic B-Spline Interpolation, 
 // The Computer Journal, vol. 55, no. 1, pp. 15-20, January 2012.
 // http://dannyruijters.nl/docs/cudaPrefilter3.pdf
-template<typename TDataType>
-TDataType SampleTricubic(in Texture3D<TDataType> texture, in SamplerState textureSampler, in float3 uvw, in float3 resolution)
+TDataType SampleTricubic<TDataType : ITexelElement & IWeightable>(in SRVTexture3D<TDataType> texture, in SamplerState textureSampler, in float3 uvw, in float3 resolution)
 {
    // shift the coordinate from [0,1] to [-0.5, nrOfVoxels-0.5]
 	float3 nrOfVoxels = resolution;
@@ -83,56 +82,54 @@ TDataType SampleTricubic(in Texture3D<TDataType> texture, in SamplerState textur
    // weighting and fetching is interleaved for performance and stability reasons
 	TDataType tex000 = texture.SampleLevel(textureSampler, h0, 0.f);
 	TDataType tex100 = texture.SampleLevel(textureSampler, float3(h1.x, h0.y, h0.z), 0.f);
-	tex000 = lerp(tex100, tex000, g0.x);  //weigh along the x-direction
+	tex000 = TDataType.Lerp(tex100, tex000, g0.x);  //weigh along the x-direction
 	TDataType tex010 = texture.SampleLevel(textureSampler, float3(h0.x, h1.y, h0.z), 0.f);
 	TDataType tex110 = texture.SampleLevel(textureSampler, float3(h1.x, h1.y, h0.z), 0.f);
-	tex010 = lerp(tex110, tex010, g0.x);  //weigh along the x-direction
-	tex000 = lerp(tex010, tex000, g0.y);  //weigh along the y-direction
+	tex010 = TDataType.Lerp(tex110, tex010, g0.x);  //weigh along the x-direction
+	tex000 = TDataType.Lerp(tex010, tex000, g0.y);  //weigh along the y-direction
 	TDataType tex001 = texture.SampleLevel(textureSampler, float3(h0.x, h0.y, h1.z), 0.f);
 	TDataType tex101 = texture.SampleLevel(textureSampler, float3(h1.x, h0.y, h1.z), 0.f);
-	tex001 = lerp(tex101, tex001, g0.x);  //weigh along the x-direction
+	tex001 = TDataType.Lerp(tex101, tex001, g0.x);  //weigh along the x-direction
 	TDataType tex011 = texture.SampleLevel(textureSampler, float3(h0.x, h1.y, h1.z), 0.f);
 	TDataType tex111 = texture.SampleLevel(textureSampler, h1, 0.f);
-	tex011 = lerp(tex111, tex011, g0.x);  //weigh along the x-direction
-	tex001 = lerp(tex011, tex001, g0.y);  //weigh along the y-direction
+	tex011 = TDataType.Lerp(tex111, tex011, g0.x);  //weigh along the x-direction
+	tex001 = TDataType.Lerp(tex011, tex001, g0.y);  //weigh along the y-direction
 
-	return lerp(tex001, tex000, g0.z);  //weigh along the z-direction
+	return TDataType.Lerp(tex001, tex000, g0.z);  //weigh along the z-direction
 }
 
 
 // https://developer.nvidia.com/gpugems/gpugems2/part-iii-high-quality-rendering/chapter-20-fast-third-order-texture-filtering
-template<typename TDataType>
-TDataType SampleTricubicBSpline(in Texture2D<TDataType> texture, in SamplerState sampler, in float2 uv, in float2 resolution, in float2 rcpResolution)
+TDataType SampleTricubicBSpline<TDataType : ITexelElement & IWeightable>(in SRVTexture2D<TDataType> texture, in SamplerState sampler, in float2 uv, in float2 resolution, in float2 rcpResolution)
 {
-		const float2 coordGrid  = uv * resolution - 0.5f;
-		const float2 index      = floor(coordGrid);
-		const float2 fraction   = coordGrid - index;
-		const float2 oneFrac    = 1.f - fraction;
+	const float2 coordGrid  = uv * resolution - 0.5f;
+	const float2 index      = floor(coordGrid);
+	const float2 fraction   = coordGrid - index;
+	const float2 oneFrac    = 1.f - fraction;
 
-		const float2 w0 = (oneFrac * oneFrac * oneFrac) / 6.f;
-		const float2 w1 = (2.f / 3.f) - 0.5f * fraction * fraction * (2.f - fraction);
-		const float2 w2 = (2.f / 3.f) - 0.5f * oneFrac * oneFrac * (2.f - oneFrac);
-		const float2 w3 = (fraction * fraction * fraction) / 6.f;
+	const float2 w0 = (oneFrac * oneFrac * oneFrac) / 6.f;
+	const float2 w1 = (2.f / 3.f) - 0.5f * fraction * fraction * (2.f - fraction);
+	const float2 w2 = (2.f / 3.f) - 0.5f * oneFrac * oneFrac * (2.f - oneFrac);
+	const float2 w3 = (fraction * fraction * fraction) / 6.f;
 
-		const float2 g0 = w0 + w1;
-		const float2 g1 = w2 + w3;
+	const float2 g0 = w0 + w1;
+	const float2 g1 = w2 + w3;
 
-		const float2 h0 = ((w1 / g0) - 0.5f + index) * rcpResolution;
-		const float2 h1 = ((w3 / g1) + 1.5f + index) * rcpResolution;
+	const float2 h0 = ((w1 / g0) - 0.5f + index) * rcpResolution;
+	const float2 h1 = ((w3 / g1) + 1.5f + index) * rcpResolution;
 
-		const TDataType value  = texture.SampleLevel(sampler, h0, 0.f);
-		const TDataType valueX = texture.SampleLevel(sampler, float2(h1.x, h0.y), 0.f);
-		const TDataType value0 = lerp(valueX, value, g0.x);
+	const TDataType value  = texture.SampleLevel(sampler, h0, 0.f);
+	const TDataType valueX = texture.SampleLevel(sampler, float2(h1.x, h0.y), 0.f);
+	const TDataType value0 = TDataType.Lerp(valueX, value, g0.x);
 
-		const TDataType valueY  = texture.SampleLevel(sampler, float2(h0.x, h1.y), 0.f);
-		const TDataType valueXY = texture.SampleLevel(sampler, h1, 0.f);
-		const TDataType value1 = lerp(valueXY, valueY, g0.x);
+	const TDataType valueY  = texture.SampleLevel(sampler, float2(h0.x, h1.y), 0.f);
+	const TDataType valueXY = texture.SampleLevel(sampler, h1, 0.f);
+	const TDataType value1 = TDataType.Lerp(valueXY, valueY, g0.x);
 
-		return lerp(value1, value0, g0.y);
+	return TDataType.Lerp(value1, value0, g0.y);
 }
 
-template<typename TDataType>
-TDataType SampleSmoothIQ(in Texture2D<TDataType> texture, in SamplerState sampler, in float2 uv, in float2 resolution, in float2 rcpResolution)
+TDataType SampleSmoothIQ<TDataType : ITexelElement>(in SRVTexture2D<TDataType> texture, in SamplerState sampler, in float2 uv, in float2 resolution, in float2 rcpResolution)
 {
 	uv = uv * resolution + 0.5f;
 	const float2 iuv = floor(uv);

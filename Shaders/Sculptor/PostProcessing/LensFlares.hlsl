@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(LensFlaresPassDS, 0)]]
+[[shader_params(LensFlaresParams, PARAMS_LENS_FLARES_PASS)]]
 
 // Based on http://john-chapman-graphics.blogspot.com/2013/02/pseudo-lens-flare.html
 
@@ -16,8 +16,7 @@ void ComputeLensFlaresCS(CS_INPUT input)
 {
     const uint2 pixel = input.globalID.xy;
 
-    uint2 outputRes;
-    u_outputTexture.GetDimensions(outputRes.x, outputRes.y);
+    uint2 outputRes = PARAMS_LENS_FLARES_PASS->outputTexture.GetResolution();
 
     if(pixel.x < outputRes.x && pixel.y < outputRes.y)
     {
@@ -26,30 +25,30 @@ void ComputeLensFlaresCS(CS_INPUT input)
         const float2 outputUV = pixel * outputPixelSize + outputPixelSize * 0.5f;
         const float2 inputUV = -outputUV + 1.f;
 
-        const float2 ghostVector = (0.5f - inputUV) * u_lensFlaresParams.ghostsDispersal;
+        const float2 ghostVector = (0.5f - inputUV) * PARAMS_LENS_FLARES_PASS->ghostsDispersal;
 
         float4 ghosts = 0.f;
 
         const float maxDistToScreenCenter = length(float2(0.5f, 0.5f));
 
-        for (int i = 0; i < u_lensFlaresParams.ghostsNum; ++i)
+        for (int i = 0; i < PARAMS_LENS_FLARES_PASS->ghostsNum; ++i)
         {
             const float2 sampleUV = frac(inputUV + ghostVector * i);
 
             float weight = length(sampleUV - 0.5f) / maxDistToScreenCenter;
             weight = pow(1.f - weight, 10.f);
             
-            ghosts.r += u_inputTexture.SampleLevel(u_linearSampler, sampleUV + ghostVector * u_lensFlaresParams.ghostsDistortion.r, 0).r * weight;
-            ghosts.g += u_inputTexture.SampleLevel(u_linearSampler, sampleUV + ghostVector * u_lensFlaresParams.ghostsDistortion.g, 0).g * weight;
-            ghosts.b += u_inputTexture.SampleLevel(u_linearSampler, sampleUV + ghostVector * u_lensFlaresParams.ghostsDistortion.b, 0).b * weight;
+            ghosts.r += PARAMS_LENS_FLARES_PASS->inputTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), sampleUV + ghostVector * PARAMS_LENS_FLARES_PASS->ghostsDistortion.r, 0).r * weight;
+            ghosts.g += PARAMS_LENS_FLARES_PASS->inputTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), sampleUV + ghostVector * PARAMS_LENS_FLARES_PASS->ghostsDistortion.g, 0).g * weight;
+            ghosts.b += PARAMS_LENS_FLARES_PASS->inputTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), sampleUV + ghostVector * PARAMS_LENS_FLARES_PASS->ghostsDistortion.b, 0).b * weight;
             ghosts.w += weight;
         }
 
-        float4 result = ghosts * u_lensFlaresParams.ghostsIntensity;
+        float4 result = ghosts * PARAMS_LENS_FLARES_PASS->ghostsIntensity;
 
         if(length(ghostVector) > 0.01f)
         {
-            const float2 haloVector = normalize(ghostVector) * u_lensFlaresParams.haloWidth;
+            const float2 haloVector = normalize(ghostVector) * PARAMS_LENS_FLARES_PASS->haloWidth;
 
             const float2 haloSample = frac(inputUV + haloVector);
 
@@ -57,17 +56,17 @@ void ComputeLensFlaresCS(CS_INPUT input)
             weight = pow(1.f - weight, 10.f);
 
             float3 halo = 0.f;
-            halo.r = u_inputTexture.SampleLevel(u_linearSampler, haloSample + haloVector * u_lensFlaresParams.haloDistortion.r, 0).r;
-            halo.g = u_inputTexture.SampleLevel(u_linearSampler, haloSample + haloVector * u_lensFlaresParams.haloDistortion.g, 0).g;
-            halo.b = u_inputTexture.SampleLevel(u_linearSampler, haloSample + haloVector * u_lensFlaresParams.haloDistortion.b, 0).b;
+            halo.r = PARAMS_LENS_FLARES_PASS->inputTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), haloSample + haloVector * PARAMS_LENS_FLARES_PASS->haloDistortion.r, 0).r;
+            halo.g = PARAMS_LENS_FLARES_PASS->inputTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), haloSample + haloVector * PARAMS_LENS_FLARES_PASS->haloDistortion.g, 0).g;
+            halo.b = PARAMS_LENS_FLARES_PASS->inputTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), haloSample + haloVector * PARAMS_LENS_FLARES_PASS->haloDistortion.b, 0).b;
 
-            result += float4(halo * weight, weight) * u_lensFlaresParams.haloIntensity;
+            result += float4(halo * weight, weight) * PARAMS_LENS_FLARES_PASS->haloIntensity;
         }
 
         result.rgb /= max(result.w, 1.f);
         result.rgb = pow(result.rgb, 1.f / 1.8f);
-        result.rgb *= u_lensFlaresParams.lensFlaresColor;
+        result.rgb *= PARAMS_LENS_FLARES_PASS->lensFlaresColor;
 
-        u_outputTexture[pixel] = result.rgb;
+        PARAMS_LENS_FLARES_PASS->outputTexture[pixel] = result.rgb;
     }
 }

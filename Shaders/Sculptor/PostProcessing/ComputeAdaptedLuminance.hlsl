@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(ComputeAdaptedLuminanceDS, 0)]]
+[[shader_params(ComputeAdaptedLuminanceConstants, PARAMS_COMPUTE_ADAPTED_LUMINANCE)]]
 
 #include "Utils/Exposure.hlsli"
 
@@ -29,7 +29,7 @@ groupshared uint groupHistogramBinsPrefixGroup[GROUP_SIZE / 32];
 void AdaptedLuminanceCS(CS_INPUT input)
 {
 	const uint histogramLocalBinIdx = input.localID.x;
-	uint countForLocalBin = u_luminanceHistogram[histogramLocalBinIdx];
+	uint countForLocalBin = PARAMS_COMPUTE_ADAPTED_LUMINANCE->luminanceHistogram[histogramLocalBinIdx];
 	groupHistogramBins[histogramLocalBinIdx] = countForLocalBin;
 
 	if (input.localID.x == 0)
@@ -76,10 +76,10 @@ void AdaptedLuminanceCS(CS_INPUT input)
 
 	GroupMemoryBarrierWithGroupSync();
 
-	const float pixelsNum = float(u_exposureSettings.textureSize.x * u_exposureSettings.textureSize.y);
+	const float pixelsNum = float(PARAMS_COMPUTE_ADAPTED_LUMINANCE->exposureSettings->textureSize.x * PARAMS_COMPUTE_ADAPTED_LUMINANCE->exposureSettings->textureSize.y);
 
-	const float rejectedDarkPixelsNum   = pixelsNum * u_exposureSettings.rejectedDarkPixelsPercentage;
-	const float rejectedBrightPixelsNum = pixelsNum * u_exposureSettings.rejectedBrightPixelsPercentage;
+	const float rejectedDarkPixelsNum   = pixelsNum * PARAMS_COMPUTE_ADAPTED_LUMINANCE->exposureSettings->rejectedDarkPixelsPercentage;
+	const float rejectedBrightPixelsNum = pixelsNum * PARAMS_COMPUTE_ADAPTED_LUMINANCE->exposureSettings->rejectedBrightPixelsPercentage;
 	const float importantPixelsNum      = pixelsNum - rejectedDarkPixelsNum - rejectedBrightPixelsNum;
 
 	const uint prefix = groupHistogramBinsPrefix[histogramLocalBinIdx];
@@ -112,23 +112,23 @@ void AdaptedLuminanceCS(CS_INPUT input)
 		const float weightedLogAverage = (weightedSum / pixelsWithNonZeroLuminance) - 1.0;
 
 		// Map from our histogram space to actual luminance
-		const float averageLogLuminance = (weightedLogAverage / 254.0) * u_exposureSettings.logLuminanceRange + u_exposureSettings.minLogLuminance;
+		const float averageLogLuminance = (weightedLogAverage / 254.0) * PARAMS_COMPUTE_ADAPTED_LUMINANCE->exposureSettings->logLuminanceRange + PARAMS_COMPUTE_ADAPTED_LUMINANCE->exposureSettings->minLogLuminance;
 
 		const float weightedAvgLuminance = exp2(averageLogLuminance);
 
-		const float luminanceLastFrame = u_adaptedLuminance[0];
+		const float luminanceLastFrame = PARAMS_COMPUTE_ADAPTED_LUMINANCE->adaptedLuminance[0];
 
-		const float adaptationThisFrame = min(u_exposureSettings.deltaTime * u_exposureSettings.adaptationSpeed, 1.f);
+		const float adaptationThisFrame = min(PARAMS_COMPUTE_ADAPTED_LUMINANCE->exposureSettings->deltaTime * PARAMS_COMPUTE_ADAPTED_LUMINANCE->exposureSettings->adaptationSpeed, 1.f);
 		const float adaptedLuminance = luminanceLastFrame + (weightedAvgLuminance - luminanceLastFrame) * adaptationThisFrame;
 
-		u_adaptedLuminance[0] = adaptedLuminance;
+		PARAMS_COMPUTE_ADAPTED_LUMINANCE->adaptedLuminance[0] = adaptedLuminance;
 
 		float EV100 = ComputeEV100FromAvgLuminance(adaptedLuminance + 0.001f);
-		EV100 = EV100 + Remap(EV100, -2.f, 14.f, u_exposureSettings.ec0, u_exposureSettings.ec1);
+		EV100 = EV100 + Remap(EV100, -2.f, 14.f, PARAMS_COMPUTE_ADAPTED_LUMINANCE->exposureSettings->ec0, PARAMS_COMPUTE_ADAPTED_LUMINANCE->exposureSettings->ec1);
 
 		const float exposure = ConvertEV100ToExposure(EV100);
 
-		ViewExposureData viewExposureData = u_viewExposureData[0];
+		ViewExposureData viewExposureData = PARAMS_COMPUTE_ADAPTED_LUMINANCE->viewExposureData[0];
 
 		viewExposureData.exposureLastFrame    = viewExposureData.exposure;
 		viewExposureData.rcpExposureLastFrame = viewExposureData.rcpExposure;
@@ -137,6 +137,6 @@ void AdaptedLuminanceCS(CS_INPUT input)
 		viewExposureData.EV100                = EV100;
 		viewExposureData.averageLogLuminance  = averageLogLuminance;
 
-		u_viewExposureData[0] = viewExposureData;
+		PARAMS_COMPUTE_ADAPTED_LUMINANCE->viewExposureData[0] = viewExposureData;
 	}
 }

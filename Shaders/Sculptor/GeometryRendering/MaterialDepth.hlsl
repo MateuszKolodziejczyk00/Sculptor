@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderSceneDS, 0)]]
-[[descriptor_set(CreateMaterialDepthDS, 1)]]
+[[shader_params(RenderSceneConstants, SCENE)]]
+[[shader_params(MaterialDepthParams, PARAMS_CREATE_MATERIAL_DEPTH)]]
 
 #include "GeometryRendering/GeometryCommon.hlsli"
 
@@ -40,9 +40,9 @@ struct MATERIAL_DEPTH_OUTPUT
 
 MATERIAL_DEPTH_OUTPUT MaterialDepthFS(VS_OUTPUT vertexInput)
 {
-	const uint2 pixelCoord = u_materialDepthParams.screenResolution * vertexInput.uv;
+	const uint2 pixelCoord = PARAMS_CREATE_MATERIAL_DEPTH->screenResolution * vertexInput.uv;
 
-	const uint packedVisibilityInfo = u_visibilityTexture.Load(uint3(pixelCoord, 0u));
+	const uint packedVisibilityInfo = PARAMS_CREATE_MATERIAL_DEPTH->visibilityTexture.Load(uint3(pixelCoord, 0u));
 
 	uint visibleMeshletIdx = 0;
 	uint visibleTriangleIdx = 0;
@@ -51,16 +51,16 @@ MATERIAL_DEPTH_OUTPUT MaterialDepthFS(VS_OUTPUT vertexInput)
 	uint batchIdx = ~0u;
 	if (primType == VISIBLE_PRIMITIVE_TYPE_GEOMETRY)
 	{
-		const GPUVisibleMeshlet visibleMeshlet = u_visibleMeshlets[visibleMeshletIdx];
+		const GPUVisibleMeshlet visibleMeshlet = PARAMS_CREATE_MATERIAL_DEPTH->visibleMeshlets[visibleMeshletIdx];
 		batchIdx = visibleMeshlet.materialBatchIdx;
 	}
 	else if (primType == VISIBLE_PRIMITIVE_TYPE_TERRAIN)
 	{
-		batchIdx = u_materialDepthParams.terrainMaterialBatchIdx;
+		batchIdx = PARAMS_CREATE_MATERIAL_DEPTH->terrainMaterialBatchIdx;
 	}
 	else if (primType == VISIBLE_PRIMITIVE_TYPE_GRASS)
 	{
-		batchIdx = u_materialDepthParams.grassMaterialBatchIdx;
+		batchIdx = PARAMS_CREATE_MATERIAL_DEPTH->grassMaterialBatchIdx;
 	}
 
 	const float materialDepth = batchIdx != ~0u ? MaterialBatchIdxToMaterialDepth(batchIdx) : 1.f;

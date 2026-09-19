@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(SRClampHistoryDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
+[[shader_params(SRClampHistoryConstants, PARAMS_S_R_CLAMP_HISTORY)]]
+[[shader_params(GPURenderView, VIEW)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "SpecularReflections/RTGICommon.hlsli"
@@ -49,7 +49,7 @@ void PreloadSharedSamples(in uint2 groupID, in uint2 localID)
 
 	const uint sharedSamplesNum = SHARED_SAMPLES_RES * SHARED_SAMPLES_RES;
 
-	const int2 maxPixel = u_constants.resolution - 1;
+	const int2 maxPixel = PARAMS_S_R_CLAMP_HISTORY->resolution - 1;
 
 	for(uint pixelIdx = localThreadID; pixelIdx < sharedSamplesNum; pixelIdx += GROUP_SIZE * GROUP_SIZE)
 	{
@@ -59,8 +59,8 @@ void PreloadSharedSamples(in uint2 groupID, in uint2 localID)
 
 		const int2 samplePixel = clamp(groupOffset + localPixel, 0, maxPixel);
 
-		s_specularFastHistoryYCoCg[localPixel.x][localPixel.y] = half3(u_fastHistorySpecularTexture.Load(uint3(samplePixel, 0)).rgb);
-		s_diffuseFastHistoryYCoCg[localPixel.x][localPixel.y]  = half3(u_fastHistoryDiffuseTexture.Load(uint3(samplePixel, 0)).rgb);
+		s_specularFastHistoryYCoCg[localPixel.x][localPixel.y] = half3(PARAMS_S_R_CLAMP_HISTORY->fastHistorySpecularTexture.Load(uint3(samplePixel, 0)).rgb);
+		s_diffuseFastHistoryYCoCg[localPixel.x][localPixel.y]  = half3(PARAMS_S_R_CLAMP_HISTORY->fastHistoryDiffuseTexture.Load(uint3(samplePixel, 0)).rgb);
 	}
 }
 
@@ -74,29 +74,29 @@ void SRClampHistoryCS(CS_INPUT input)
 
 	GroupMemoryBarrierWithGroupSync();
 
-	if(all(pixel < u_constants.resolution))
+	if(all(pixel < PARAMS_S_R_CLAMP_HISTORY->resolution))
 	{
-		const float2 uv = (float2(pixel) + 0.5f) * u_constants.pixelSize;
+		const float2 uv = (float2(pixel) + 0.5f) * PARAMS_S_R_CLAMP_HISTORY->pixelSize;
 
-		const float3 normal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(pixel, 0)));
+		const float3 normal = OctahedronDecodeNormal(PARAMS_S_R_CLAMP_HISTORY->normalsTexture.Load(uint3(pixel, 0)));
 
 		const float kernel[3] = { 3.f / 8.f, 1.f / 4.f, 1.f / 16.f };
 
-		const float centerDepth = u_depthTexture.Load(uint3(pixel, 0));
+		const float centerDepth = PARAMS_S_R_CLAMP_HISTORY->depthTexture.Load(uint3(pixel, 0));
 		if(centerDepth == 0.f)
 		{
 			return;
 		}
 
-		const float roughness = u_roughnessTexture.Load(uint3(pixel, 0));
+		const float roughness = PARAMS_S_R_CLAMP_HISTORY->roughnessTexture.Load(uint3(pixel, 0));
 	
 		if(roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
 		{
 			return;
 		}
 
-		const uint specularHistoryLength = u_specularHistoryLength.Load(uint3(pixel, 0));
-		const uint diffuseHistoryLength  = u_diffuseHistoryLength.Load(uint3(pixel, 0));
+		const uint specularHistoryLength = PARAMS_S_R_CLAMP_HISTORY->specularHistoryLength.Load(uint3(pixel, 0));
+		const uint diffuseHistoryLength  = PARAMS_S_R_CLAMP_HISTORY->diffuseHistoryLength.Load(uint3(pixel, 0));
 
 		const bool clampSpecular = specularHistoryLength > 5u;
 		const bool clampDiffuse  = diffuseHistoryLength > 5u;
@@ -138,7 +138,7 @@ void SRClampHistoryCS(CS_INPUT input)
 
 		const float weightSumRcp = rcp(weightSum);
 
-		float4 diffSpecCoCg = u_diffSpecCoCg.Load(pixel);
+		float4 diffSpecCoCg = PARAMS_S_R_CLAMP_HISTORY->diffSpecCoCg.Load(pixel);
 
 		if(clampSpecular)
 		{
@@ -150,14 +150,14 @@ void SRClampHistoryCS(CS_INPUT input)
 			const float3 specularFastHistoryStdDev = sqrt(specularFastHistoryVariance);
 			const float3 specularClampWindow = 3.f * specularFastHistoryStdDev;
 
-			const RTSphericalBasis specularY_SH2 = RawToRTSphericalBasis(u_specularY_SH2.Load(pixel));
+			const RTSphericalBasis specularY_SH2 = RawToRTSphericalBasis(PARAMS_S_R_CLAMP_HISTORY->specularY_SH2.Load(pixel));
 			const float3 specularYCoCg = float3(specularY_SH2.Evaluate(normal), diffSpecCoCg.zw);
 			const float3 clampedSpecularYCoCg = ApplyHistoryFix(specularYCoCg, specularFastHistoryMean - specularClampWindow, specularFastHistoryMean + specularClampWindow);
 
 			if (specularYCoCg.x != clampedSpecularYCoCg.x)
 			{
 				const float ratio = specularYCoCg.x > 0.f ? clampedSpecularYCoCg.x / specularYCoCg.x : 1.f;
-				u_specularY_SH2[pixel] = RTSphericalBasisToRaw(specularY_SH2) * ratio;
+				PARAMS_S_R_CLAMP_HISTORY->specularY_SH2[pixel] = RTSphericalBasisToRaw(specularY_SH2) * ratio;
 			}
 			diffSpecCoCg.zw = clampedSpecularYCoCg.yz;
 		}
@@ -173,18 +173,18 @@ void SRClampHistoryCS(CS_INPUT input)
 			const float3 diffuseFastHistoryStdDev = sqrt(diffuseFastHistoryVariance);
 			const float3 diffuseClampWindow = 3.f * diffuseFastHistoryStdDev;
 
-			const RTSphericalBasis diffuseY_SH2 = RawToRTSphericalBasis(u_diffuseY_SH2.Load(pixel));
+			const RTSphericalBasis diffuseY_SH2 = RawToRTSphericalBasis(PARAMS_S_R_CLAMP_HISTORY->diffuseY_SH2.Load(pixel));
 			const float3 diffuseYCoCg = float3(diffuseY_SH2.Evaluate(normal), diffSpecCoCg.xy);
 			const float3 clampedDiffuseYCoCg = ApplyHistoryFix(diffuseYCoCg, diffuseFastHistoryMean - diffuseClampWindow, diffuseFastHistoryMean + diffuseClampWindow);
 
 			if (diffuseYCoCg.x != clampedDiffuseYCoCg.x)
 			{
 				const float ratio = diffuseYCoCg.x > 0.f ? clampedDiffuseYCoCg.x / diffuseYCoCg.x : 0.f;
-				u_diffuseY_SH2[pixel] = RTSphericalBasisToRaw(diffuseY_SH2) * ratio;
+				PARAMS_S_R_CLAMP_HISTORY->diffuseY_SH2[pixel] = RTSphericalBasisToRaw(diffuseY_SH2) * ratio;
 			}
 			diffSpecCoCg.xy = clampedDiffuseYCoCg.yz;
 		}
 
-		u_diffSpecCoCg[pixel] = diffSpecCoCg;
+		PARAMS_S_R_CLAMP_HISTORY->diffSpecCoCg[pixel] = diffSpecCoCg;
 	}
 }

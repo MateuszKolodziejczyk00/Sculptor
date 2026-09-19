@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(SharcResolveDS)]]
-[[descriptor_set(RenderViewDS)]]
+[[shader_params(SharcResolveParams, PARAMS_SHARC_RESOLVE)]]
+[[shader_params(GPURenderView, VIEW)]]
 
 
 #include "SpecularReflections/SculptorSharc.hlsli"
@@ -17,20 +17,20 @@ struct CS_INPUT
 void SharcResolveCS(CS_INPUT input)
 {
 	SharcDef sharcDef;
-    sharcDef.cameraPosition = u_constants.viewLocation;
-    sharcDef.capacity       = u_constants.sharcCapacity;
-    sharcDef.hashEntries    = u_hashEntries;
-    sharcDef.voxelData      = u_voxelData;
-    sharcDef.voxelDataPrev  = u_voxelDataPrev;
-    sharcDef.exposure       = u_viewExposure.exposure;
+    sharcDef.cameraPosition = PARAMS_SHARC_RESOLVE->sharcConstants.viewLocation;
+    sharcDef.capacity       = PARAMS_SHARC_RESOLVE->sharcConstants.sharcCapacity;
+    sharcDef.hashEntries    = PARAMS_SHARC_RESOLVE->hashEntries.GetResource();
+    sharcDef.voxelData      = PARAMS_SHARC_RESOLVE->voxelData.GetResource();
+    sharcDef.voxelDataPrev  = PARAMS_SHARC_RESOLVE->voxelDataPrev.GetResource();
+    sharcDef.exposure       = VIEW->viewExposure->exposure;
 
     SharcParameters sharcParams = CreateSharcParameters(sharcDef);
 
     SharcResolveParameters resolveParams;
-    resolveParams.cameraPositionPrev      = u_constants.prevViewLocation;
+    resolveParams.cameraPositionPrev      = PARAMS_SHARC_RESOLVE->sharcConstants.prevViewLocation;
     resolveParams.accumulationFrameNum    = 32u;
     resolveParams.staleFrameNumMax        = 64u;
     resolveParams.enableAntiFireflyFilter = true;
-    resolveParams.exposurePrev            = u_viewExposure.exposureLastFrame;
+    resolveParams.exposurePrev            = VIEW->viewExposure->exposureLastFrame;
     SharcResolveEntry(input.globalID.x, sharcParams, resolveParams);
 }

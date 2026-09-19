@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(DOFCompositeDS, 0)]]
+[[shader_params(DOFCompositeParams, PARAMS_D_O_F_COMPOSITE)]]
 
 
 struct CS_INPUT
@@ -14,8 +14,7 @@ void DOFCompositeCS(CS_INPUT input)
 {
     const uint2 pixel = input.globalID.xy;
     
-    uint2 outputRes;
-    u_resultTexture.GetDimensions(outputRes.x, outputRes.y);
+    uint2 outputRes = PARAMS_D_O_F_COMPOSITE->resultTexture.GetResolution();
 
     if(pixel.x < outputRes.x && pixel.y < outputRes.y)
     {
@@ -30,14 +29,14 @@ void DOFCompositeCS(CS_INPUT input)
         const float2 uv01 = uv + float2(0.f, pixelSize.y);
         const float2 uv11 = uv + pixelSize.x;
 
-        const float cocFar          = u_cocTexture.SampleLevel(u_nearestSampler, uv, 0).y;
-        const float4 cocFar4        = u_cocTexture.GatherGreen(u_nearestSampler, uv).wzxy;
+        const float cocFar          = PARAMS_D_O_F_COMPOSITE->cocTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0).y;
+        const float4 cocFar4        = PARAMS_D_O_F_COMPOSITE->cocTexture.GatherGreen(BindlessSamplers::NearestClampEdge(), uv).wzxy;
         const float4 cocFarDiffs    = abs(cocFar4 - cocFar);
 
-        const float3 dofFar00 = u_farFieldDOFTexture.SampleLevel(u_nearestSampler, uv00, 0).xyz;
-        const float3 dofFar10 = u_farFieldDOFTexture.SampleLevel(u_nearestSampler, uv10, 0).xyz;
-        const float3 dofFar01 = u_farFieldDOFTexture.SampleLevel(u_nearestSampler, uv01, 0).xyz;
-        const float3 dofFar11 = u_farFieldDOFTexture.SampleLevel(u_nearestSampler, uv11, 0).xyz;
+        const float3 dofFar00 = PARAMS_D_O_F_COMPOSITE->farFieldDOFTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv00, 0).xyz;
+        const float3 dofFar10 = PARAMS_D_O_F_COMPOSITE->farFieldDOFTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv10, 0).xyz;
+        const float3 dofFar01 = PARAMS_D_O_F_COMPOSITE->farFieldDOFTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv01, 0).xyz;
+        const float3 dofFar11 = PARAMS_D_O_F_COMPOSITE->farFieldDOFTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv11, 0).xyz;
         
         const float a = 0.25f;
         const float b = 0.25f;
@@ -67,18 +66,18 @@ void DOFCompositeCS(CS_INPUT input)
 
         const float blend = 1.0f;
 
-        float3 result = u_resultTexture[pixel.xy];
+        float3 result = PARAMS_D_O_F_COMPOSITE->resultTexture[pixel.xy];
 
         result = lerp(dofFar, result, Pow2(1.f - saturate(cocFar * blend)));
 
         // Near
 
-        const float cocNear = u_nearCoCBlurredTexture.SampleLevel(u_linearSampler, uv, 0.f);
+        const float cocNear = PARAMS_D_O_F_COMPOSITE->nearCoCBlurredTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0.f);
 
-        const float3 dofNear = u_nearFieldDOFTexture.SampleLevel(u_linearSampler, uv, 0).xyz;
+        const float3 dofNear = PARAMS_D_O_F_COMPOSITE->nearFieldDOFTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0).xyz;
 
         result = lerp(result, dofNear, saturate(cocNear * blend));
 
-        u_resultTexture[pixel.xy] = result;
+        PARAMS_D_O_F_COMPOSITE->resultTexture[pixel.xy] = result;
     }
 }

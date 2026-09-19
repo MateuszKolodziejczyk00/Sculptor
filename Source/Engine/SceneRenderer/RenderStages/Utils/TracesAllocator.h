@@ -5,8 +5,6 @@
 #include "RGResources/RGResourceHandles.h"
 #include "VariableRateTexture.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
 
 
 namespace spt::rg
