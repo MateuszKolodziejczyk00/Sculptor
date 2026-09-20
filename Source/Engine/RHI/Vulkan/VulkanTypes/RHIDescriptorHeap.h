@@ -35,17 +35,15 @@ public:
 
 	rhi::EDescriptorHeapType GetType() const;
 
-	rhi::RHIDescriptorRange AllocateRange(Uint64 size);
-	void DeallocateRange(rhi::RHIDescriptorRange range);
+	Uint64 GetHeapSize() const;
 
-	Uint32 GetDescriptorSize() const { return m_descriptorSize; }
-	Uint32 GetDescriptorsNum() const { return m_descriptorsNum; }
+	lib::Span<Byte> GetBufferDescriptorData(Uint32 idx) const;
+	lib::Span<Byte> GetTextureDescriptorData(Uint32 idx) const;
+	lib::Span<Byte> GetSamplerDescriptorData(Uint32 idx) const;
 
-	lib::Span<Byte> GetDescriptorData(Uint32 idx) const
-	{
-		SPT_CHECK(idx < m_descriptorsNum);
-		return m_mappedBuffer.Get().GetSpan().subspan(idx * m_descriptorSize, m_descriptorSize);
-	}
+	Uint32 GetBufferDescriptorsNum() const;
+	Uint32 GetTextureDescriptorsNum() const;
+	Uint32 GetSamplerDescriptorsNum() const;
 
 	void						SetName(const lib::HashedString& name);
 	const lib::HashedString&	GetName() const;
@@ -59,10 +57,6 @@ public:
 private:
 
 	RHIBuffer m_buffer;
-	lib::Lock m_lock;
-
-	Uint32 m_descriptorSize = 0u;
-	Uint32 m_descriptorsNum = 0u;
 
 	lib::TypeStorage<RHIMappedByteBuffer> m_mappedBuffer;
 };

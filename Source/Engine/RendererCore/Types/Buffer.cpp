@@ -60,14 +60,14 @@ BindableBufferView::~BindableBufferView()
 		GPUApi::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda(
 		[uavDescriptor = std::move(m_uavDescriptor)]() mutable
 		{
-			GPUApi::GetDescriptorManager().FreeResourceDescriptor(std::move(uavDescriptor));
+			GPUApi::GetDescriptorManager().FreeBufferDescriptor(std::move(uavDescriptor));
 		}));
 	}
 }
 
 ResourceDescriptorIdx BindableBufferView::GetUAVDescriptor() const
 {
-	return ResourceDescriptorIdx(m_uavDescriptor.Get() * rhi::RHI::GetDescriptorProps().bufferDescriptorIdxFactor);
+	return m_uavDescriptor.Get();
 }
 
 lib::SharedPtr<BindableBufferView> BindableBufferView::AsSharedPtr()
@@ -88,7 +88,7 @@ void BindableBufferView::CreateDescriptors(BufferViewDescriptorsAllocation exter
 
 	if (lib::HasAnyFlag(rhiBuffer.GetUsage(), rhi::EBufferUsage::Storage))
 	{
-		m_uavDescriptor = externalDescriptorsAllocation.uavDescriptor.IsValid() ? std::move(externalDescriptorsAllocation.uavDescriptor) : descriptorManager.AllocateResourceDescriptor();
+		m_uavDescriptor = externalDescriptorsAllocation.uavDescriptor.IsValid() ? std::move(externalDescriptorsAllocation.uavDescriptor) : descriptorManager.AllocateBufferDescriptor();
 		descriptorManager.UploadUAVDescriptor(m_uavDescriptor.Get(), *this);
 	}
 }

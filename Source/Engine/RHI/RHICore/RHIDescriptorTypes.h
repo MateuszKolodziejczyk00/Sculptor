@@ -45,11 +45,9 @@ enum class EDescriptorSetFlags
 
 struct DescriptorProps
 {
-	Uint32 resourceDescriptorSize = 0u;
+	Uint32 bufferDescriptorSize   = 0u;
+	Uint32 textureDescriptorSize  = 0u;
 	Uint32 samplerDescriptorSize  = 0u;
-
-	Uint32 bufferDescriptorIdxFactor = 1u;
-	Uint32 textureDescriptorIdxFactor = 1u;
 
 	Uint32 reservedResourceHeapSize = 0u;
 	Uint32 reservedSamplerHeapSize  = 0u;

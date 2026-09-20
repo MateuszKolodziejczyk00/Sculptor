@@ -44,16 +44,10 @@ public:
 
 	const lib::SharedPtr<Buffer>& GetTLASDataBuffer() const { return m_accelerationStructureBuffer; }
 
-	ResourceDescriptorIdx GetSRVDescriptor() const;
-
 private:
-
-	void InitializeSRVDescriptor();
 
 	lib::SharedPtr<Buffer> m_accelerationStructureBuffer;
 	Uint64 m_accelerationStructureOffset;
-
-	ResourceDescriptorHandle m_srvDescriptor;
 };
 
 

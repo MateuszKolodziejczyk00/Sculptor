@@ -401,11 +401,11 @@ public:
 		rdr::DescriptorManager& descriptorManager = rdr::GPUApi::GetDescriptorManager();
 		if (m_textureViewDescriptors.uavDescriptor.IsValid())
 		{
-			descriptorManager.FreeResourceDescriptor(std::move(m_textureViewDescriptors.uavDescriptor));
+			descriptorManager.FreeTextureDescriptor(std::move(m_textureViewDescriptors.uavDescriptor));
 		}
 		if (m_textureViewDescriptors.srvDescriptor.IsValid())
 		{
-			descriptorManager.FreeResourceDescriptor(std::move(m_textureViewDescriptors.srvDescriptor));
+			descriptorManager.FreeTextureDescriptor(std::move(m_textureViewDescriptors.srvDescriptor));
 		}
 	}
 
@@ -497,12 +497,12 @@ public:
 
 	rdr::ResourceDescriptorIdx GetUAVDescriptor() const
 	{
-		return IsExternal() ? m_textureView->GetUAVDescriptor() : rdr::ResourceDescriptorIdx(m_textureViewDescriptors.uavDescriptor.Get() * rhi::RHI::GetDescriptorProps().textureDescriptorIdxFactor);
+		return IsExternal() ? m_textureView->GetUAVDescriptor() : m_textureViewDescriptors.uavDescriptor.Get();
 	}
 
 	rdr::ResourceDescriptorIdx GetSRVDescriptor() const
 	{
-		return IsExternal() ? m_textureView->GetSRVDescriptor() : rdr::ResourceDescriptorIdx(m_textureViewDescriptors.srvDescriptor.Get() * rhi::RHI::GetDescriptorProps().textureDescriptorIdxFactor);
+		return IsExternal() ? m_textureView->GetSRVDescriptor() : m_textureViewDescriptors.srvDescriptor.Get();
 	}
 
 	rdr::ResourceDescriptorIdx GetUAVDescriptorChecked() const
@@ -553,10 +553,10 @@ private:
 		{
 			rdr::DescriptorManager& descriptorManager = rdr::GPUApi::GetDescriptorManager();
 
-			m_textureViewDescriptors.srvDescriptor = descriptorManager.AllocateResourceDescriptor();
+			m_textureViewDescriptors.srvDescriptor = descriptorManager.AllocateTextureDescriptor();
 			descriptorManager.SetCustomDescriptorInfo(m_textureViewDescriptors.srvDescriptor, this);
 
-			m_textureViewDescriptors.uavDescriptor = descriptorManager.AllocateResourceDescriptor();
+			m_textureViewDescriptors.uavDescriptor = descriptorManager.AllocateTextureDescriptor();
 			descriptorManager.SetCustomDescriptorInfo(m_textureViewDescriptors.uavDescriptor, this);
 		}
 	}
@@ -659,7 +659,7 @@ public:
 
 	rdr::ResourceDescriptorIdx GetUAVDescriptor() const
 	{
-		return IsExternal() || IsAcquired() ? m_bufferInstance->GetFullView()->GetUAVDescriptor() : rdr::ResourceDescriptorIdx(m_descriptorsAllocation.uavDescriptor.Get() * rhi::RHI::GetDescriptorProps().bufferDescriptorIdxFactor);
+		return IsExternal() || IsAcquired() ? m_bufferInstance->GetFullView()->GetUAVDescriptor() : m_descriptorsAllocation.uavDescriptor.Get();
 	}
 
 	rdr::ResourceDescriptorIdx GetUAVDescriptorChecked() const
@@ -787,7 +787,7 @@ public:
 		if (requiresDescriptorsAllocation && lib::HasAnyFlag(buffer->GetUsageFlags(), rhi::EBufferUsage::Storage))
 		{
 			rdr::DescriptorManager& descriptorManager = rdr::GPUApi::GetDescriptorManager();
-			m_descriptorsAllocation.uavDescriptor = descriptorManager.AllocateResourceDescriptor();
+			m_descriptorsAllocation.uavDescriptor = descriptorManager.AllocateBufferDescriptor();
 			descriptorManager.SetCustomDescriptorInfo(m_descriptorsAllocation.uavDescriptor, this);
 
 			if (IsFullView())
@@ -815,7 +815,7 @@ public:
 			if (m_descriptorsAllocation.uavDescriptor.IsValid())
 			{
 				rdr::DescriptorManager& descriptorManager = rdr::GPUApi::GetDescriptorManager();
-				descriptorManager.FreeResourceDescriptor(std::move(m_descriptorsAllocation.uavDescriptor));
+				descriptorManager.FreeBufferDescriptor(std::move(m_descriptorsAllocation.uavDescriptor));
 			}
 		}
 	}

@@ -37,42 +37,15 @@ TopLevelAS::TopLevelAS(const RendererResourceName& name, const rhi::TLASDefiniti
 	SPT_CHECK(accelrationStructureBuffer.IsValid());
 
 	m_accelerationStructureBuffer = ResourcesManager::CreateBuffer(name, accelrationStructureBuffer);
-
-	InitializeSRVDescriptor();
 }
 
 TopLevelAS::~TopLevelAS()
 {
-	if (m_srvDescriptor.IsValid())
-	{
-		GPUApi::GetDescriptorManager().ClearDescriptorInfo(m_srvDescriptor.Get());
-	}
-
 	GPUApi::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda(
-	[releaseTicket = GetRHI().DeferredReleaseRHI(), srvDescriptor = std::move(m_srvDescriptor)]() mutable
+	[releaseTicket = GetRHI().DeferredReleaseRHI()]() mutable
 	{
-		if (srvDescriptor.IsValid())
-		{
-			GPUApi::GetDescriptorManager().FreeResourceDescriptor(std::move(srvDescriptor));
-		}
-
 		releaseTicket.ExecuteReleaseRHI();
 	}));
-}
-
-ResourceDescriptorIdx TopLevelAS::GetSRVDescriptor() const
-{
-	return ResourceDescriptorIdx(m_srvDescriptor.Get() * rhi::RHI::GetDescriptorProps().bufferDescriptorIdxFactor);
-}
-
-void TopLevelAS::InitializeSRVDescriptor()
-{
-	rdr::DescriptorManager& descriptorManager = rdr::GPUApi::GetDescriptorManager();
-
-	m_srvDescriptor = descriptorManager.AllocateResourceDescriptor();
-	SPT_CHECK(m_srvDescriptor.IsValid());
-
-	descriptorManager.UploadSRVDescriptor(m_srvDescriptor, *this);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

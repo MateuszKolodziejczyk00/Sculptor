@@ -31,16 +31,12 @@ void RHIDescriptorHeap::InitializeRHI(const rhi::DescriptorHeapDefinition& defin
 	rhi::BufferDefinition bufferDef;
 	bufferDef.size  = definition.size + (definition.type == rhi::EDescriptorHeapType::Sampler ? descriptorProps.reservedSamplerHeapSize : descriptorProps.reservedResourceHeapSize);
 	bufferDef.usage = definition.type == rhi::EDescriptorHeapType::Sampler ? rhi::EBufferUsage::SamplerDescriptorHeap : rhi::EBufferUsage::ResourceDescriptorHeap;
-	bufferDef.flags = rhi::EBufferFlags::WithVirtualSuballocations;
 
 	rhi::RHICommittedAllocationDefinition allocationDef;
 	allocationDef.allocationInfo.memoryUsage     = rhi::EMemoryUsage::CPUToGPU;
 	allocationDef.allocationInfo.allocationFlags = rhi::EAllocationFlags::CreateMapped;
 	allocationDef.alignment                      = VulkanRHI::GetLogicalDevice().GetDescriptorProps().descriptorsAlignment;
 	m_buffer.InitializeRHI(bufferDef, allocationDef);
-
-	m_descriptorSize = definition.type == rhi::EDescriptorHeapType::Sampler ? descriptorProps.samplerDescriptorSize : descriptorProps.resourceDescriptorSize;
-	m_descriptorsNum = static_cast<Uint32>(definition.size / m_descriptorSize);
 
 	m_mappedBuffer.Construct(m_buffer);
 }
@@ -72,34 +68,47 @@ rhi::EDescriptorHeapType RHIDescriptorHeap::GetType() const
 	return lib::HasAnyFlag(m_buffer.GetUsage(), rhi::EBufferUsage::SamplerDescriptorHeap) ? rhi::EDescriptorHeapType::Sampler : rhi::EDescriptorHeapType::Resource;
 }
 
-rhi::RHIDescriptorRange RHIDescriptorHeap::AllocateRange(Uint64 size)
+Uint64 RHIDescriptorHeap::GetHeapSize() const
 {
 	SPT_CHECK(IsValid());
 
-	const lib::LockGuard lockGuard(m_lock);
-
-	rhi::VirtualAllocationDefinition allocationDef;
-	allocationDef.size      = size;
-	allocationDef.alignment = VulkanRHI::GetLogicalDevice().GetDescriptorProps().descriptorsAlignment;
-	const rhi::RHIVirtualAllocation allocation = m_buffer.CreateSuballocation(allocationDef);
-
-	SPT_CHECK(allocation.IsValid());
-
-	const rhi::RHIDescriptorRange range
-	{
-		.data             = lib::Span<Byte>{m_buffer.MapPtr() + allocation.GetOffset(), size},
-		.allocationHandle = allocation.GetHandle(),
-		.heapOffset       = static_cast<Uint32>(allocation.GetOffset()),
-	};
-
-	return range;
+	return m_mappedBuffer.Get().GetSize();
 }
 
-void RHIDescriptorHeap::DeallocateRange(rhi::RHIDescriptorRange range)
+lib::Span<Byte> RHIDescriptorHeap::GetBufferDescriptorData(Uint32 idx) const
 {
-	const lib::LockGuard lockGuard(m_lock);
+	const rhi::DescriptorProps& descriptorProps = VulkanRHI::GetLogicalDevice().GetDescriptorProps();
+	return m_mappedBuffer.Get().GetSpan().subspan(idx * descriptorProps.bufferDescriptorSize, descriptorProps.bufferDescriptorSize);
+}
 
-	m_buffer.DestroySuballocation(range.allocationHandle);
+lib::Span<Byte> RHIDescriptorHeap::GetTextureDescriptorData(Uint32 idx) const
+{
+	const rhi::DescriptorProps& descriptorProps = VulkanRHI::GetLogicalDevice().GetDescriptorProps();
+	return m_mappedBuffer.Get().GetSpan().subspan(idx * descriptorProps.textureDescriptorSize, descriptorProps.textureDescriptorSize);
+}
+
+lib::Span<Byte> RHIDescriptorHeap::GetSamplerDescriptorData(Uint32 idx) const
+{
+	const rhi::DescriptorProps& descriptorProps = VulkanRHI::GetLogicalDevice().GetDescriptorProps();
+	return m_mappedBuffer.Get().GetSpan().subspan(idx * descriptorProps.samplerDescriptorSize, descriptorProps.samplerDescriptorSize);
+}
+
+Uint32 RHIDescriptorHeap::GetBufferDescriptorsNum() const
+{
+	const rhi::DescriptorProps& descriptorProps = VulkanRHI::GetLogicalDevice().GetDescriptorProps();
+	return static_cast<Uint32>(m_mappedBuffer.Get().GetSize()) / descriptorProps.bufferDescriptorSize;
+}
+
+Uint32 RHIDescriptorHeap::GetTextureDescriptorsNum() const
+{
+	const rhi::DescriptorProps& descriptorProps = VulkanRHI::GetLogicalDevice().GetDescriptorProps();
+	return static_cast<Uint32>(m_mappedBuffer.Get().GetSize()) / descriptorProps.textureDescriptorSize;
+}
+
+Uint32 RHIDescriptorHeap::GetSamplerDescriptorsNum() const
+{
+	const rhi::DescriptorProps& descriptorProps = VulkanRHI::GetLogicalDevice().GetDescriptorProps();
+	return static_cast<Uint32>(m_mappedBuffer.Get().GetSize()) / descriptorProps.samplerDescriptorSize;
 }
 
 void RHIDescriptorHeap::SetName(const lib::HashedString& name)

@@ -229,7 +229,7 @@ struct HLSLStructDependenciesBuider<gfx::NamedBuffer<TType, name>>
 			accessInfo.namedBuffer    = name.Get();
 #endif // DEBUG_RENDER_GRAPH
 
-			dependenciesBuilder.AddBufferAccess(rdr::ResourceDescriptorIdx(hlslData[0] / rhi::RHI::GetDescriptorProps().bufferDescriptorIdxFactor), accessInfo);
+			dependenciesBuilder.AddBufferAccess(rdr::ResourceDescriptorIdx(hlslData[0]), accessInfo);
 		}
 	}
 };

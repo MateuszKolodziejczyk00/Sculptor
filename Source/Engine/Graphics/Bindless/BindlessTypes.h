@@ -364,12 +364,6 @@ public:
 		return *this;
 	}
 
-	Uint32 GetDescriptorIdx() const
-	{
-		SPT_CHECK_MSG(m_tlas, "Invalid TLAS in TLASDescriptor");
-		return m_tlas->GetSRVDescriptor();
-	}
-
 	rhi::DeviceAddress GetDeviceAddress() const
 	{
 		SPT_CHECK_MSG(m_tlas, "Invalid TLAS in TLASDescriptor");
@@ -873,7 +867,7 @@ struct HLSLStructDependenciesBuider<gfx::TextureDescriptor<metadata, TType>>
 			{
 				constexpr rg::ERGTextureAccess access = metadata.isUAV ? ERGTextureAccess::ShaderWrite : ERGTextureAccess::ShaderRead;
 
-				dependenciesBuilder.AddTextureAccess(rdr::ResourceDescriptorIdx(hlslData[0] / rhi::RHI::GetDescriptorProps().textureDescriptorIdxFactor), access);
+				dependenciesBuilder.AddTextureAccess(rdr::ResourceDescriptorIdx(hlslData[0]), access);
 			}
 		}
 	}
@@ -906,7 +900,7 @@ struct HLSLStructDependenciesBuider<gfx::BufferDescriptor<metadata, TType>>
 				}
 #endif // DEBUG_RENDER_GRAPH
 
-				dependenciesBuilder.AddBufferAccess(rdr::ResourceDescriptorIdx(hlslData[0] / rhi::RHI::GetDescriptorProps().bufferDescriptorIdxFactor), accessInfo);
+				dependenciesBuilder.AddBufferAccess(rdr::ResourceDescriptorIdx(hlslData[0]), accessInfo);
 			}
 		}
 	}

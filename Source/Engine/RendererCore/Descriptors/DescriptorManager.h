@@ -27,7 +27,9 @@ class DescriptorAllocator
 {
 public:
 
-	explicit DescriptorAllocator(const DescriptorHeap& descriptorHeap);
+	DescriptorAllocator() = default;
+
+	void Initialize(Uint32 descriptorsNum);
 
 	Uint32 AllocateDescriptor();
 	void   FreeDescriptor(Uint32 idx);
@@ -49,9 +51,9 @@ public:
 private:
 
 	Uint32 m_descriptorsNum = 0u;
+	Uint32 m_freeDescriptorsNum = 0u;
 
 	lib::Spinlock m_lock;
-	Uint32 m_freeDescriptorsNum = 0u;
 
 	lib::DynamicArray<Uint32> m_freeStack;
 
@@ -67,7 +69,6 @@ class DescriptorInfo
 	{
 		TextureView = 0,
 		Buffer,
-		TLAS,
 		CustomPtr
 	};
 
@@ -82,7 +83,6 @@ class DescriptorInfo
 		void*               m_ptr;
 		TextureView*        m_textureView;
 		BindableBufferView* m_buffer;
-		TopLevelAS*         m_tlas;
 	};
 
 public:
@@ -105,12 +105,6 @@ public:
 	{
 		m_buffer = inBuffer;
 		m_ptrValue += static_cast<Uint64>(EDescriptorInfoType::Buffer);
-	}
-
-	void Encode(TopLevelAS* inTLAS)
-	{
-		m_tlas = inTLAS;
-		m_ptrValue += static_cast<Uint64>(EDescriptorInfoType::TLAS);
 	}
 
 	void EncodeCustomPtr(void* inPtr)
@@ -138,11 +132,6 @@ public:
 	BindableBufferView* GetBufferView() const
 	{
 		return Contains(EDescriptorInfoType::Buffer) ? reinterpret_cast<BindableBufferView*>(m_ptrValue & ~0x3ull) : nullptr;
-	}
-
-	TopLevelAS* GetTLAS() const
-	{
-		return Contains(EDescriptorInfoType::TLAS) ? reinterpret_cast<TopLevelAS*>(m_ptrValue & ~0x3ull) : nullptr;
 	}
 
 	void* GetCustomPtr() const
@@ -177,16 +166,17 @@ public:
 	DescriptorManager(DescriptorHeap& resourceDescriptorHeap, DescriptorHeap& samplerDescriptorHeap);
 	~DescriptorManager();
 
-	ResourceDescriptorHandle AllocateResourceDescriptor();
-	void                     FreeResourceDescriptor(ResourceDescriptorHandle&& handle);
+	ResourceDescriptorHandle AllocateBufferDescriptor();
+	void                     FreeBufferDescriptor(ResourceDescriptorHandle&& handle);
+
+	ResourceDescriptorHandle AllocateTextureDescriptor();
+	void                     FreeTextureDescriptor(ResourceDescriptorHandle&& handle);
 
 	void UploadSRVDescriptor(ResourceDescriptorIdx idx, TextureView& textureView);
 	void UploadUAVDescriptor(ResourceDescriptorIdx idx, TextureView& textureView);
 
 	void UploadSRVDescriptor(ResourceDescriptorIdx idx, BindableBufferView& bufferView);
 	void UploadUAVDescriptor(ResourceDescriptorIdx idx, BindableBufferView& bufferView);
-
-	void UploadSRVDescriptor(ResourceDescriptorIdx idx, TopLevelAS& tlas);
 
 	void SetCustomDescriptorInfo(ResourceDescriptorIdx idx, void* customDataPtr);
 
@@ -202,12 +192,22 @@ public:
 
 private:
 
+	DescriptorInfo&       GetDescriptorInfo(ResourceDescriptorIdx idx);
+	const DescriptorInfo& GetDescriptorInfo(ResourceDescriptorIdx idx) const;
+
 	DescriptorHeap& m_resourceDescriptorHeap;
 	DescriptorHeap& m_samplerDescriptorHeap;
 
-	DescriptorAllocator m_resourceDescriptorAllocator;
+	DescriptorAllocator m_bufferDescriptorAllocator;
+	DescriptorAllocator m_textureDescriptorAllocator;
+
+	Uint32 m_bufferDescriptorOffset = 0u;
+	Uint32 m_textureDescriptorOffset = 0u;
 
 	lib::DynamicArray<DescriptorInfo> m_resourceDescriptorInfos;
+
+	lib::Span<DescriptorInfo> m_bufferDescriptorInfos;
+	lib::Span<DescriptorInfo> m_textureDescriptorInfos;
 };
 
 } // spt::rdr

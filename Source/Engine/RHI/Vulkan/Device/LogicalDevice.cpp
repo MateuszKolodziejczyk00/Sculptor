@@ -226,11 +226,9 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 
 	vkGetPhysicalDeviceProperties2(physicalDevice, &physicalDeviceProps);
 
-	m_descriptorProps.resourceDescriptorSize = static_cast<Uint32>(std::max(descriptorHeapProps.bufferDescriptorSize, descriptorHeapProps.imageDescriptorSize));
+	m_descriptorProps.bufferDescriptorSize = static_cast<Uint32>(descriptorHeapProps.bufferDescriptorSize);
+	m_descriptorProps.textureDescriptorSize = static_cast<Uint32>(descriptorHeapProps.imageDescriptorSize);
 	m_descriptorProps.samplerDescriptorSize  = static_cast<Uint32>(descriptorHeapProps.samplerDescriptorSize);
-
-	m_descriptorProps.bufferDescriptorIdxFactor  = m_descriptorProps.resourceDescriptorSize / static_cast<Uint32>(descriptorHeapProps.bufferDescriptorSize);
-	m_descriptorProps.textureDescriptorIdxFactor = m_descriptorProps.resourceDescriptorSize / static_cast<Uint32>(descriptorHeapProps.imageDescriptorSize);
 
 	m_descriptorProps.reservedResourceHeapSize = static_cast<Uint32>(descriptorHeapProps.minResourceHeapReservedRange);
 	m_descriptorProps.reservedSamplerHeapSize  = static_cast<Uint32>(descriptorHeapProps.minSamplerHeapReservedRange);

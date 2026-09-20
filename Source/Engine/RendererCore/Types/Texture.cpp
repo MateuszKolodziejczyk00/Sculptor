@@ -126,11 +126,11 @@ TextureView::~TextureView()
 
 			if (srvDescriptor.IsValid())
 			{
-				descriptorManager.FreeResourceDescriptor(std::move(srvDescriptor));
+				descriptorManager.FreeTextureDescriptor(std::move(srvDescriptor));
 			}
 			if (uavDescriptor.IsValid())
 			{
-				descriptorManager.FreeResourceDescriptor(std::move(uavDescriptor));
+				descriptorManager.FreeTextureDescriptor(std::move(uavDescriptor));
 			}
 
 			releaseTicket.ExecuteReleaseRHI();
@@ -154,12 +154,12 @@ math::Vector2u TextureView::GetResolution2D() const
 
 ResourceDescriptorIdx TextureView::GetSRVDescriptor() const
 {
-	return ResourceDescriptorIdx(m_srvDescriptor.Get() * rhi::RHI::GetDescriptorProps().textureDescriptorIdxFactor);
+	return m_srvDescriptor.Get();
 }
 
 ResourceDescriptorIdx TextureView::GetUAVDescriptor() const
 {
-	return ResourceDescriptorIdx(m_uavDescriptor.Get() * rhi::RHI::GetDescriptorProps().textureDescriptorIdxFactor);
+	return m_uavDescriptor.Get();
 }
 
 void TextureView::CreateDescriptors(TextureViewDescriptorsAllocation externalDescriptorsAllocation)
@@ -168,22 +168,22 @@ void TextureView::CreateDescriptors(TextureViewDescriptorsAllocation externalDes
 
 	if (GetRHI().GetTexture()->HasUsage(rhi::ETextureUsage::SampledTexture))
 	{
-		m_srvDescriptor = externalDescriptorsAllocation.srvDescriptor.IsValid() ? std::move(externalDescriptorsAllocation.srvDescriptor) : descriptorManager.AllocateResourceDescriptor();
+		m_srvDescriptor = externalDescriptorsAllocation.srvDescriptor.IsValid() ? std::move(externalDescriptorsAllocation.srvDescriptor) : descriptorManager.AllocateTextureDescriptor();
 		descriptorManager.UploadSRVDescriptor(m_srvDescriptor, *this);
 	}
 	else if (externalDescriptorsAllocation.srvDescriptor.IsValid()) // Free descriptor if it's allocated externally (f.e. by render graph) but can't be used
 	{
-		descriptorManager.FreeResourceDescriptor(std::move(externalDescriptorsAllocation.srvDescriptor));
+		descriptorManager.FreeTextureDescriptor(std::move(externalDescriptorsAllocation.srvDescriptor));
 	}
 
 	if (GetRHI().GetTexture()->HasUsage(rhi::ETextureUsage::StorageTexture))
 	{
-		m_uavDescriptor = externalDescriptorsAllocation.uavDescriptor.IsValid() ? std::move(externalDescriptorsAllocation.uavDescriptor) : descriptorManager.AllocateResourceDescriptor();
+		m_uavDescriptor = externalDescriptorsAllocation.uavDescriptor.IsValid() ? std::move(externalDescriptorsAllocation.uavDescriptor) : descriptorManager.AllocateTextureDescriptor();
 		descriptorManager.UploadUAVDescriptor(m_uavDescriptor, *this);
 	}
 	else if (externalDescriptorsAllocation.uavDescriptor.IsValid()) // Free descriptor if it's allocated externally (f.e. by render graph) but can't be used
 	{
-		descriptorManager.FreeResourceDescriptor(std::move(externalDescriptorsAllocation.uavDescriptor));
+		descriptorManager.FreeTextureDescriptor(std::move(externalDescriptorsAllocation.uavDescriptor));
 	}
 }
 
