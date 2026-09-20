@@ -18,7 +18,7 @@ class RenderScene;
 namespace spt::gf
 {
 
-struct PrefabSpawnParams
+struct SpawnParams
 {
 	math::Vector3f location = math::Vector3f::Zero();
 	math::Vector3f rotation = math::Vector3f::Zero();
@@ -40,7 +40,7 @@ public:
 
 	void BeginFrame(engn::FrameContext& frame);
 
-	PrefabInstanceHandle SpawnPrefab(const as::PrefabAssetHandle& prefab, const PrefabSpawnParams& params);
+	PrefabInstanceHandle SpawnPrefab(const as::PrefabAssetHandle& prefab, const SpawnParams& params);
 	void                 DestroyPrefabInstance(PrefabInstanceHandle instanceHandle);
 
 	void                  SetBiome(const rsc::BiomeDefinition& biome, lib::DynamicArray<as::PrefabAssetHandle> placementAssets);

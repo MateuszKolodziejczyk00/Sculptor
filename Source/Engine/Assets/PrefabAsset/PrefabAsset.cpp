@@ -111,7 +111,7 @@ void GLTFPrefabDataInitializer::InitializeNewAsset(AssetInstance& asset)
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // PrefabAsset ===================================================================================
 
-void PrefabAsset::Spawn(const void* context)
+void PrefabAsset::Spawn(void* context)
 {
 	SPT_PROFILER_FUNCTION();
 

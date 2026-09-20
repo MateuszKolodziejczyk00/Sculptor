@@ -37,7 +37,7 @@ void World::BeginFrame(engn::FrameContext& frame)
 			   js::JobDef().ExecuteBefore(frame.GetStageBeginEvent(engn::EFrameStage::RenderingBegin)));
 }
 
-PrefabInstanceHandle World::SpawnPrefab(const as::PrefabAssetHandle& prefab, const PrefabSpawnParams& params)
+PrefabInstanceHandle World::SpawnPrefab(const as::PrefabAssetHandle& prefab, const SpawnParams& params)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -118,8 +118,10 @@ void World::UpdateRenderScene(engn::FrameContext& frame)
 
 			if (!mesh.render.instance.IsValid())
 			{
+				const math::Affine3f transform =  mesh.def.transform.GetAffineTransform();
+
 				rsc::RenderInstanceDef instanceDef;
-				instanceDef.transform = mesh.def.owningPrefab->transform.GetAffineTransform() * mesh.def.transform.GetAffineTransform();
+				instanceDef.transform = mesh.def.owningPrefab ? mesh.def.owningPrefab->transform.GetAffineTransform() * transform : transform;
 
 				mesh.render.instance = renderScene.CreateInstance(instanceDef);
 			}

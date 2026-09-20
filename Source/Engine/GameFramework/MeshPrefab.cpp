@@ -47,7 +47,7 @@ lib::DynamicArray<Byte> PrefabMeshEntityDefinition::Compile(as::PrefabCompiler& 
 	return compiledData;
 }
 
-void PrefabMeshEntityDefinition::Spawn(const SpawnContext& context, lib::Span<const Byte> compiledData)
+void PrefabMeshEntityDefinition::Spawn(SpawnContext& context, lib::Span<const Byte> compiledData)
 {
 	const CompiledMeshEntity& compiledMesh = *reinterpret_cast<const CompiledMeshEntity*>(compiledData.data());
 
@@ -74,7 +74,6 @@ void PrefabMeshEntityDefinition::Spawn(const SpawnContext& context, lib::Span<co
 	}
 
 	SPT_STATIC_CHECK(MeshesChunk::MaxMeshesNum == 1u);
-	MeshesChunkHandle prevChunk = context.prefabInstance.meshesChunk;
 	MeshesChunk newChunk;
 	newChunk.meshes[0] = MeshEntity
 	{
@@ -86,9 +85,18 @@ void PrefabMeshEntityDefinition::Spawn(const SpawnContext& context, lib::Span<co
 			.owningPrefab  = &context.prefabInstance
 		}
 	};
-	newChunk.next = prevChunk;
-	
-	context.prefabInstance.meshesChunk = context.world.meshes.chunks.Add(newChunk);
+
+	MeshesChunkHandle newChunkHandle = context.world.meshes.chunks.Add(newChunk);
+
+	if (context.lastMeshesChunk)
+	{
+		context.lastMeshesChunk->next = newChunkHandle;
+	}
+	else
+	{
+		context.prefabInstance.meshesChunk = newChunkHandle;
+		context.lastMeshesChunk = &context.world.meshes.chunks.GetRef(newChunkHandle);
+	}
 }
 
 } // spt::gf

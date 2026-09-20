@@ -40,6 +40,10 @@ struct PrefabEntityDefinitionEntry
 			{
 				entity = typeMetaData->factory();
 			}
+			else
+			{
+				SPT_LOG_ERROR(Assertions, "Failed to deserialize PrefabEntityDefinitionEntry - type {} is not registered!", entityType.name.data());
+			}
 		}
 
 		if (entity)
@@ -124,7 +128,7 @@ public:
 
 	using AssetInstance::AssetInstance;
 
-	void Spawn(const void* context);
+	void Spawn(void* context);
 
 protected:
 

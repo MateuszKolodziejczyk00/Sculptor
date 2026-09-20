@@ -27,7 +27,7 @@ struct PrefabSpawningContext
 };
 
 
-using PrefabEntitySpawner = lib::RawCallable<void(const void* context, lib::Span<const Byte> /* compiledData */)>;
+using PrefabEntitySpawner = lib::RawCallable<void(void* context, lib::Span<const Byte> /* compiledData */)>;
 
 
 struct PrefabEntityDefinition

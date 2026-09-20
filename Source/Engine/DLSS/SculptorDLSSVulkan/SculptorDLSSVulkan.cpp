@@ -365,8 +365,8 @@ void EvaluateDLSSRR(rdr::CommandRecorder& commandRecorder, const DLSSRenderingPa
 	dlssEvalParams.pInRoughness           = &roughnessResource;
 	dlssEvalParams.pInSpecularHitDistance = &specularHitDistanceResource;
 
-	dlssEvalParams.pInColor    = &inputResouce;
-	dlssEvalParams.pInOutput   = &outputResouce;
+	dlssEvalParams.pInColor  = &inputResouce;
+	dlssEvalParams.pInOutput = &outputResouce;
 
 	const rhi::RHICommandBuffer& rhiCmdBuffer = commandRecorder.GetCommandBuffer()->GetRHI();
 

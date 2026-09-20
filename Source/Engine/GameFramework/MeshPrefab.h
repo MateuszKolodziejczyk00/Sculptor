@@ -20,7 +20,7 @@ struct PrefabMeshEntityDefinition : public GamePrefabEntityDefinition
 	virtual lib::RuntimeTypeInfo    GetType() const override { return lib::TypeInfo<PrefabMeshEntityDefinition>(); }
 	virtual lib::DynamicArray<Byte> Compile(as::PrefabCompiler& compiler) const override;
 
-	static void Spawn(const SpawnContext& context, lib::Span<const Byte> compiledData);
+	static void Spawn(SpawnContext& context, lib::Span<const Byte> compiledData);
 
 	virtual void Serialize(srl::Serializer& serializer) override
 	{

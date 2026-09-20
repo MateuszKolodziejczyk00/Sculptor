@@ -64,8 +64,7 @@ void MissRaysShadingCS(CS_INPUT input)
 			const float3 locationInAtmoshpere = GetLocationInAtmosphere(*PARAMS_R_T_SHADING->atmosphereParams, worldLocation);
 			float3 luminance = GetLuminanceFromSkyViewLUT(*PARAMS_R_T_SHADING->atmosphereParams, PARAMS_R_T_SHADING->skyViewLUT, BindlessSamplers::LinearClampEdge(), locationInAtmoshpere, rayDirection);
 
-			//const CloudscapeSample cloudscapeSample = SampleHighResCloudscape(rayDirection);
-			const CloudscapeSample cloudscapeSample = SampleCloudscape(worldLocation, rayDirection);
+			const CloudscapeSample cloudscapeSample = SampleHighResCloudscape(worldLocation, rayDirection);
 			luminance = cloudscapeSample.inScattering + luminance * cloudscapeSample.transmittance;
 
 			const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(PARAMS_R_T_SHADING->heightFog, worldLocation, reservoirHitLocation);

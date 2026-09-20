@@ -9,6 +9,7 @@ namespace spt::gf
 
 class World;
 struct PrefabInstance;
+struct MeshesChunk;
 
 
 struct SpawnContext
@@ -17,7 +18,9 @@ struct SpawnContext
 	World&            world;
 	PrefabInstance&   prefabInstance;
 
-	Transform         transform;
+	const Transform   transform;
+
+	MeshesChunk*      lastMeshesChunk = nullptr;
 };
 
 
@@ -26,14 +29,14 @@ struct GamePrefabEntityDefinition : public as::PrefabEntityDefinition
 	template<typename TEntityType>
 	static as::PrefabEntitySpawner RegisterSpawner()
 	{
-		return as::PrefabEntitySpawner([](const void* context, lib::Span<const Byte> compiledData)
+		return as::PrefabEntitySpawner([](void* context, lib::Span<const Byte> compiledData)
 		{
-			const SpawnContext& spawnContext = *static_cast<const SpawnContext*>(context);
+			SpawnContext& spawnContext = *static_cast<SpawnContext*>(context);
 			TEntityType::Spawn(spawnContext, compiledData);
 		});
 	}
 	
-	static void Spawn(const SpawnContext& context, lib::Span<const Byte> compiledData) {}
+	static void Spawn(SpawnContext& context, lib::Span<const Byte> compiledData) {}
 };
 
 } // spt::gf w w

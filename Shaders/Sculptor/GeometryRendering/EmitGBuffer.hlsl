@@ -355,10 +355,6 @@ FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 		gBufferData.tangent   = vertexData.tangent;
 		gBufferData.bitangent = vertexData.bitangent;
 		gBufferData.roughness = evaluatedMaterial.roughness;
-		if (gBufferData.roughness == 0.f)
-		{
-			gBufferData.roughness = 0.6f;
-		}
 		gBufferData.emissive  = evaluatedMaterial.emissiveColor;
 
 		const GBufferOutput gBufferOutput = EncodeGBuffer(gBufferData);

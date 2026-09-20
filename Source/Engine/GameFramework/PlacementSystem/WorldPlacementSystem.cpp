@@ -55,7 +55,7 @@ void WorldPlacementSystem::ProcessPlacements(gf::World& world, rsc::SceneRendere
 			{
 				const as::PrefabAssetHandle& prefabHandle = data.placementSystem.m_placementAssets[placement.prefabIdx];
 				entryState.prefabInstance = data.world.SpawnPrefab(prefabHandle,
-																   gf::PrefabSpawnParams
+																   gf::SpawnParams
 																   {
 																	   .location = placement.location,
 																	   .scale = math::Vector3f::Constant(placement.scale),

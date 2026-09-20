@@ -2,6 +2,7 @@
 #define CLOUDSCAPE_HLSLI
 
 #include "Utils/Packing.hlsli"
+#include "Utils/Shapes.hlsli"
 
 float3 ComputeCloudscapeProbeRayDirection(in uint rayIdx, in uint raysNum)
 {
@@ -95,6 +96,36 @@ CloudscapeSample SampleHighResCloudscape(in float3 direction)
     result.transmittance = probesData.w;
 
     return result;
+}
+
+
+CloudscapeSample SampleHighResCloudscape(in float3 location, in float3 direction)
+{
+    CloudscapeSample result;
+
+    if(direction.z <= 0.f)
+    {
+        result.inScattering = 0.f;
+        result.transmittance = 1.f;
+        return result;
+    }
+
+	const float3 cloudsAtmosphereCenter = PARAM_CloudscapeProbesParams->cloudscapeConstants->cloudsAtmosphereCenter;
+	const float cloudsAtmosphereInnerRadius = PARAM_CloudscapeProbesParams->cloudscapeConstants->cloudsAtmosphereInnerRadius;
+
+	const Sphere cloudscapeSphere = Sphere::Create(cloudsAtmosphereCenter, cloudsAtmosphereInnerRadius);
+	const Ray ray = Ray::Create(location, direction);
+
+	const IntersectionResult intersection = ray.IntersectSphere(cloudscapeSphere);
+	if (intersection.IsValid())
+	{
+		const float3 rayEnd = location + direction * intersection.GetTime();
+		return SampleHighResCloudscape(normalize(rayEnd));
+	}
+
+	result.inScattering = 0.f;
+	result.transmittance = 1.f;
+	return result;
 }
 
 #endif // PARAM_CloudscapeProbesParams
