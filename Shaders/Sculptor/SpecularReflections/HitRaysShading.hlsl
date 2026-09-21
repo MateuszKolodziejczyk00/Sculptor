@@ -109,6 +109,11 @@ void HitRaysShadingRTG()
 #if SHARC_MATERIAL_DEMODULATION
 		query.materialDemodulation = ComputeMaterialDemodulation(PARAMS_GLOBAL_LIGHTS->brdfIntegrationLUT, BindlessSamplers::LinearClampEdge(), surface.diffuseColor, surface.specularColor, NdotV, surface.roughness);
 #endif // SHARC_MATERIAL_DEMODULATION
+
+		// We don't want to include emissive in the secondary bounce, because it will be handled by stochastic DI
+#if SHARC_SEPARATE_EMISSIVE
+		query.emissive = 0.f;
+#endif // SHARC_SEPARATE_EMISSIVE
 		if (!QueryCachedLuminance(VIEW->sceneView.viewLocation, VIEW->viewExposure->exposure, query, OUT luminance))
 		{
 			luminance = 0.f;

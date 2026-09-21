@@ -52,6 +52,10 @@ float3 QueryLuminanceInPreviousCache(in float3 rayDirection, in float3 hitLocati
 	hitData.materialDemodulation = materialDemodulation;
 #endif // SHARC_DEMODULATE_MATERIALS
 
+#if SHARC_SEPARATE_EMISSIVE
+	hitData.emissive = hitResult.emissive;
+#endif // SHARC_SEPARATE_EMISSIVE
+
 	const bool success = SharcGetCachedRadiance(sharcParams, hitData, OUT luminance, false);
 
 	return luminance;
@@ -88,6 +92,10 @@ float3 ShadeHitRay(in float3 hitLocation, in float3 rayDirection, in const RayHi
 	ComputeSurfaceColor(hitResult.baseColor, hitResult.metallic, surface.diffuseColor, surface.specularColor);
 
 	float3 luminance = CalcReflectedLuminance_Direct(surface, -rayDirection);
+
+#if !SHARC_SEPARATE_EMISSIVE
+	luminance += hitResult.emissive;
+#endif
 
 	return luminance;
 }
@@ -142,7 +150,7 @@ void SharcUpdateRTG()
 		hitRes.roughness   = roughness;
 		hitRes.baseColor   = baseColorMetallic.xyz;
 		hitRes.metallic    = baseColorMetallic.w;
-		hitRes.emissive    = 0.f;
+		hitRes.emissive    = mainSurface.emissive;
 		hitRes.hitType     = RTGBUFFER_HIT_TYPE_VALID_HIT;
 		hitRes.hitDistance = distance(VIEW->sceneView.viewLocation, worldLocation);
 		const float3 Li = ShadeHitRay(worldLocation, normalize(worldLocation - VIEW->sceneView.viewLocation), hitRes, isLastBounce);
@@ -192,7 +200,7 @@ void SharcUpdateRTG()
 				hitRes.roughness   = hitSurfaceInfo.roughness;
 				hitRes.baseColor   = hitSurfaceInfo.baseColorMetallic.rgb;
 				hitRes.metallic    = hitSurfaceInfo.baseColorMetallic.w;
-				hitRes.emissive    = 0.f;
+				hitRes.emissive    = hitSurfaceInfo.emissive;
 				hitRes.hitType     = RTGBUFFER_HIT_TYPE_VALID_HIT;
 				hitRes.hitDistance = traceDist * ssResult.hitT;
 

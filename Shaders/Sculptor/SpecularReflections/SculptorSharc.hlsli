@@ -3,6 +3,7 @@
 
 #define SHARC_ENABLE_64_BIT_ATOMICS 1
 #define SHARC_MK_CHANGES 1
+#define SHARC_SEPARATE_EMISSIVE 1
 
 #ifndef SHARC_DEMODULATE_MATERIALS 
 #error "SculptorSharc.hlsli should only be included in shaders that use SharcShadersPermutation as part of their permutation domain"

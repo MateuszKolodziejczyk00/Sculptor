@@ -35,6 +35,9 @@ void SharcDebugViewCS(CS_INPUT input)
 #if SHARC_MATERIAL_DEMODULATION
 		query.materialDemodulation = 1.f;
 #endif // SHARC_MATERIAL_DEMODULATION
+#if SHARC_SEPARATE_EMISSIVE
+		query.emissive = 0.f;
+#endif // SHARC_SEPARATE_EMISSIVE
 		if (!QueryCachedLuminance(VIEW->sceneView.viewLocation, VIEW->viewExposure->exposure, query, OUT luminance))
 		{
 			luminance = 0.f;

@@ -332,27 +332,37 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterfa
 							   rg::ShaderParams(shaderConstants));
 	}
 
-	sr_denoiser::Denoiser::Params denoiserParams(viewSpec);
-	denoiserParams.currentDepthTexture      = viewContext.depth;
-	denoiserParams.historyDepthTexture      = viewContext.historyDepth;
-	denoiserParams.linearDepthTexture       = viewContext.linearDepth;
-	denoiserParams.motionTexture            = viewContext.motion;
-	denoiserParams.normalsTexture           = viewContext.octahedronNormals;
-	denoiserParams.historyNormalsTexture    = viewContext.historyOctahedronNormals;
-	denoiserParams.roughnessTexture         = viewContext.gBuffer[GBuffer::Texture::Roughness];
-	denoiserParams.historyRoughnessTexture  = viewContext.historyRoughness;
-	denoiserParams.specularTexture          = specularHitDist;
-	denoiserParams.diffuseTexture           = diffuse;
-	denoiserParams.baseColorMetallicTexture = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
-	denoiserParams.lightDirection           = lightDirection;
-	denoiserParams.resetAccumulation        = false;
-	denoiserParams.blurVarianceEstimate     = false;
-	const sr_denoiser::Denoiser::Result denoiserResult = m_denoiser.Denoise(graphBuilder, denoiserParams);
+	rg::RGTextureViewHandle diffusePostDenoise  = diffuse;
+	rg::RGTextureViewHandle specularPostDenoise = specularHitDist;
+
+	const ShadingViewRenderingSystemsInfo& viewSystemsInfo = viewSpec.GetBlackboard().Get<ShadingViewRenderingSystemsInfo>();
+	if (!viewSystemsInfo.useUnifiedDenoising)
+	{
+		sr_denoiser::Denoiser::Params denoiserParams(viewSpec);
+		denoiserParams.currentDepthTexture      = viewContext.depth;
+		denoiserParams.historyDepthTexture      = viewContext.historyDepth;
+		denoiserParams.linearDepthTexture       = viewContext.linearDepth;
+		denoiserParams.motionTexture            = viewContext.motion;
+		denoiserParams.normalsTexture           = viewContext.octahedronNormals;
+		denoiserParams.historyNormalsTexture    = viewContext.historyOctahedronNormals;
+		denoiserParams.roughnessTexture         = viewContext.gBuffer[GBuffer::Texture::Roughness];
+		denoiserParams.historyRoughnessTexture  = viewContext.historyRoughness;
+		denoiserParams.specularTexture          = specularHitDist;
+		denoiserParams.diffuseTexture           = diffuse;
+		denoiserParams.baseColorMetallicTexture = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
+		denoiserParams.lightDirection           = lightDirection;
+		denoiserParams.resetAccumulation        = false;
+		denoiserParams.blurVarianceEstimate     = false;
+		const sr_denoiser::Denoiser::Result denoiserResult = m_denoiser.Denoise(graphBuilder, denoiserParams);
+
+		diffusePostDenoise  = denoiserResult.denoisedDiffuse;
+		specularPostDenoise = denoiserResult.denoisedSpecular;
+	}
 
 	{
 		ResolveStochasticDIConstants shaderConstants;
-		shaderConstants.specular           = denoiserResult.denoisedSpecular;
-		shaderConstants.diffuse            = denoiserResult.denoisedDiffuse;
+		shaderConstants.specular           = specularPostDenoise;
+		shaderConstants.diffuse            = diffusePostDenoise;
 		shaderConstants.lightDirection     = lightDirection;
 		shaderConstants.rwLuminance        = diParams.outputLuminance;
 		shaderConstants.brdfIntegrationLUT = brdfIntegrationLUT;

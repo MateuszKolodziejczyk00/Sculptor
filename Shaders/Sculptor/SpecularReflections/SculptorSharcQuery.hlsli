@@ -25,6 +25,9 @@ struct SharcQuery
 #endif // SHARC_MATERIAL_DEMODULATION
 	float3 location;
 	float3 normal;
+#if SHARC_SEPARATE_EMISSIVE
+	float  emissive;
+#endif // SHARC_SEPARATE_EMISSIVE
 };
 
 
@@ -36,6 +39,9 @@ bool QueryCachedLuminance(in SharcParameters sharcParams, in SharcQuery query, o
 #if SHARC_MATERIAL_DEMODULATION
     hitData.materialDemodulation = query.materialDemodulation;
 #endif // SHARC_MATERIAL_DEMODULATION
+#if SHARC_SEPARATE_EMISSIVE
+	hitData.emissive             = query.emissive;
+#endif // SHARC_SEPARATE_EMISSIVE
     const bool success = SharcGetCachedRadiance(sharcParams, hitData, OUT luminance, false);
 
     return success;
