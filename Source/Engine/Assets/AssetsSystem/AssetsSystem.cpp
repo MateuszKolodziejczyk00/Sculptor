@@ -107,81 +107,15 @@ CreateResult AssetsSystem::CreateAsset(const AssetInitializer& initializer)
 		}
 	}
 
-	ScheduleAssetInitialization(assetInstance);
+	const Bool forceRecompile = true;
+	ScheduleAssetInitialization(assetInstance, forceRecompile);
 
 	return CreateResult(std::move(assetInstance));
 }
 
 LoadResult<> AssetsSystem::LoadAsset(ResourcePathID pathID)
 {
-	SPT_PROFILER_FUNCTION();
-
-	if (pathID == InvalidResourcePathID)
-	{
-		return LoadResult(ELoadError::DoesNotExist);
-	}
-
-	AssetHandle assetInstance;
-
-	{
-		lib::LockGuard lock(m_assetsSystemLock);
-
-		{
-			const auto it = m_loadedAssets.find(pathID);
-			if (it != m_loadedAssets.end())
-			{
-				return LoadResult(AssetHandle(it->second));
-			}
-		}
-	
-		AssetInstanceData assetData;
-		if (IsCompiledOnlyMode())
-		{
-			const std::optional<AssetDescriptor> descriptor = m_assetsDB.GetAssetDescriptor(pathID);
-			if (!descriptor)
-			{
-				return LoadResult(ELoadError::DoesNotExist);
-			}
-	
-			assetData.type = AssetFactory::GetInstance().GetAssetTypeByKey(descriptor->assetTypeKey);
-		}
-		else
-		{
-			const ResourcePath path = ResolvePath(pathID);
-			SPT_CHECK(path.IsValid());
-
-			const lib::Path fullPath = m_contentPath / path.GetPath();
-	
-			if (!std::filesystem::exists(fullPath))
-			{
-				return LoadResult(ELoadError::DoesNotExist);
-			}
-	
-			assetData = ReadAssetData(fullPath);
-		}
-	
-		assetInstance = CreateAssetInstance(AssetInstanceDefinition
-											{
-												.type   = assetData.type,
-												.name   = CreateAssetName(pathID),
-												.pathID = pathID,
-											});
-	
-		if (!assetInstance.IsValid())
-		{
-			return ELoadError::FailedToCreateInstance;
-		}
-	
-		m_loadedAssets[pathID] = assetInstance.Get();
-	
-		assetInstance->AssignData(std::move(assetData));
-	}
-
-	SPT_CHECK(assetInstance.IsValid());
-
-	ScheduleAssetInitialization(assetInstance);
-
-	return LoadResult(AssetHandle(std::move(assetInstance)));
+	return LoadAssetImpl(pathID, LoadAssetOption{});
 }
 
 AssetHandle AssetsSystem::LoadAssetChecked(ResourcePathID pathID)
@@ -398,6 +332,29 @@ void AssetsSystem::RemoveAllAssetsCompiledData()
 	}
 }
 
+void AssetsSystem::RecompileAssetByType(AssetType type)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!IsCompiledOnlyMode());
+
+	m_compilationInputCache.OnCompilationStarted();
+
+	const lib::DynamicArray<AssetMetaData> assets = m_assetsDB.GetAllAssetsDescriptors();
+	for (const AssetMetaData& assetMeta : assets)
+	{
+		if (assetMeta.descriptor.assetTypeKey == type.id)
+		{
+			SPT_LOG_INFO(AssetsSystem, "Begin recompiling asset: {}", ResolvePath(assetMeta.pathID).GetPath().string());
+			LoadResult<> result = LoadAssetImpl(assetMeta.pathID, LoadAssetOption{ .forceRecompile = true });
+			result.GetValue()->AwaitInitialization();
+			SPT_LOG_INFO(AssetsSystem, "Finished recompiling asset: {}", ResolvePath(assetMeta.pathID).GetPath().string());
+		}
+	}
+
+	m_compilationInputCache.OnCompilationFinished();
+}
+
 lib::DynamicArray<AssetHandle> AssetsSystem::GetLoadedAssetsList() const
 {
 	SPT_PROFILER_FUNCTION();
@@ -497,12 +454,13 @@ AssetHandle AssetsSystem::CreateAssetInstance(const AssetInstanceDefinition& def
 	return factory.CreateAsset(*this, definition);
 }
 
-void AssetsSystem::ScheduleAssetInitialization(const AssetHandle& assetInstance)
+void AssetsSystem::ScheduleAssetInitialization(const AssetHandle& assetInstance, Bool forceRecompile)
 {
 	Bool isCompiled = false;
 
 	if (IsCompiledOnlyMode())
 	{
+		SPT_CHECK(!forceRecompile);
 		SPT_CHECK(IsAssetCompiled(assetInstance->GetResourcePathID()));
 		isCompiled = true;
 	}
@@ -510,7 +468,7 @@ void AssetsSystem::ScheduleAssetInitialization(const AssetHandle& assetInstance)
 	{
 		const ResourcePath path = ResolvePath(assetInstance->GetResourcePathID());
 		SPT_CHECK(path.IsValid());
-		isCompiled = IsAssetCompiled(assetInstance->GetResourcePathID()) && IsAssetUpToDate(path);
+		isCompiled = !forceRecompile && IsAssetCompiled(assetInstance->GetResourcePathID()) && IsAssetUpToDate(path);
 	}
 
 	js::Job initJob = js::LaunchDeferred(SPT_GENERIC_JOB_NAME,
@@ -625,6 +583,78 @@ void AssetsSystem::ReloadAssetImpl(const AssetHandle& assetInstance)
 		CompileAssetImpl(assetInstance);
 	}
 	assetInstance->Reload();
+}
+
+LoadResult<> AssetsSystem::LoadAssetImpl(ResourcePathID pathID, const LoadAssetOption& options)
+{
+	SPT_PROFILER_FUNCTION();
+
+	if (pathID == InvalidResourcePathID)
+	{
+		return LoadResult(ELoadError::DoesNotExist);
+	}
+
+	AssetHandle assetInstance;
+
+	{
+		lib::LockGuard lock(m_assetsSystemLock);
+
+		{
+			const auto it = m_loadedAssets.find(pathID);
+			if (it != m_loadedAssets.end())
+			{
+				return LoadResult(AssetHandle(it->second));
+			}
+		}
+	
+		AssetInstanceData assetData;
+		if (IsCompiledOnlyMode())
+		{
+			const std::optional<AssetDescriptor> descriptor = m_assetsDB.GetAssetDescriptor(pathID);
+			if (!descriptor)
+			{
+				return LoadResult(ELoadError::DoesNotExist);
+			}
+	
+			assetData.type = AssetFactory::GetInstance().GetAssetTypeByKey(descriptor->assetTypeKey);
+		}
+		else
+		{
+			const ResourcePath path = ResolvePath(pathID);
+			SPT_CHECK(path.IsValid());
+
+			const lib::Path fullPath = m_contentPath / path.GetPath();
+	
+			if (!std::filesystem::exists(fullPath))
+			{
+				return LoadResult(ELoadError::DoesNotExist);
+			}
+	
+			assetData = ReadAssetData(fullPath);
+		}
+	
+		assetInstance = CreateAssetInstance(AssetInstanceDefinition
+											{
+												.type   = assetData.type,
+												.name   = CreateAssetName(pathID),
+												.pathID = pathID,
+											});
+	
+		if (!assetInstance.IsValid())
+		{
+			return ELoadError::FailedToCreateInstance;
+		}
+	
+		m_loadedAssets[pathID] = assetInstance.Get();
+	
+		assetInstance->AssignData(std::move(assetData));
+	}
+
+	SPT_CHECK(assetInstance.IsValid());
+
+	ScheduleAssetInitialization(assetInstance, options.forceRecompile);
+
+	return LoadResult(AssetHandle(std::move(assetInstance)));
 }
 
 } // spt::as

@@ -257,7 +257,7 @@ float3 ComputeGroundLuminance()
 
     const float NoL = dot(groundNormal, -directionalLight.direction);
 
-    return Diffuse_Lambert(groundAlbedo) * NoL * directionalLight.illuminance;
+    return brdf_utils::lambert::Evaluate(groundAlbedo) * NoL * directionalLight.illuminance;
 }
 
 

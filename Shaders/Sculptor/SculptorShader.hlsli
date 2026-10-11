@@ -24,7 +24,7 @@
 
 #define SMALL_NUMBER 1.e-6f
 
-#define POM_MAX_DEPTH_OFFSET_CM 10.f
+#define POM_MAX_DEPTH_OFFSET_CM 6.f
 
 
 // Offset due to 16.8 fixed point rounding in texture fetches
@@ -50,6 +50,7 @@
 
 
 #include "BindlessTypes.hlsli"
+#include "GlobalShaderResources.hlsli"
 
 
 #if defined(SPT_META_PARAM_DEBUG_FEATURES)
@@ -437,6 +438,21 @@ float3x3 Diag(float3 v)
 float4 BlendOver(float4 src, float4 dst)
 {
 	return float4(src.rgb * src.a + dst.rgb * (1.f - src.a), (1.f - (1.f - src.a) * (1.f - dst.a)));
+}
+
+
+float3x3 WorldToTangentFrame(in float3 normal)
+{
+	const float3 tangent   = normalize(abs(dot(normal, UP_VECTOR)) > 0.9f ? cross(normal, RIGHT_VECTOR) : cross(normal, UP_VECTOR));
+	const float3 bitangent = cross(normal, tangent);
+
+	return float3x3(tangent, bitangent, normal);
+}
+
+
+float3x3 TangentFrameToWorld(in float3 normal)
+{
+	return transpose(WorldToTangentFrame(normal));
 }
 
 #endif // SCULPTOR_SHADER_HLSLI

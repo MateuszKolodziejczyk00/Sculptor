@@ -4,7 +4,6 @@
 [[shader_params(GPURenderView, VIEW)]]
 
 #include "Utils/SceneViewUtils.hlsli"
-#include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 #include "Utils/ColorSpaces.hlsli"
 #include "Utils/Packing.hlsli"
@@ -90,7 +89,7 @@ void SRClampHistoryCS(CS_INPUT input)
 
 		const float roughness = PARAMS_S_R_CLAMP_HISTORY->roughnessTexture.Load(uint3(pixel, 0));
 	
-		if(roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
+		if(roughness <= RTClosure::RoughnessDeltaThreshold)
 		{
 			return;
 		}

@@ -3,7 +3,7 @@
 [[shader_params(RenderSceneConstants, SCENE)]]
 [[shader_params(GPURenderView, VIEW)]]
 
-[[shader_params(StochasticDIInitialSamplingConstants, PARAMS_STOCHASTIC_D_I_INITIAL_SAMPLING_CONSTANTS)]]
+[[shader_params(StochasticDIInitialSamplingConstants, CONSTS)]]
 
 [[shader_struct(EmissiveMaterialData)]]
 
@@ -85,7 +85,7 @@ void InitialSamplingRTG()
 {
 	const uint2 coords = DispatchRaysIndex().xy;
 
-	const GBufferInterface gBuffer = GBufferInterface(PARAMS_STOCHASTIC_D_I_INITIAL_SAMPLING_CONSTANTS->gBuffer);
+	const GBufferInterface gBuffer = GBufferInterface(CONSTS->gBuffer);
 
 	const SurfaceInfo surface = gBuffer.GetSurfaceInfo(coords);
 
@@ -95,9 +95,9 @@ void InitialSamplingRTG()
 
 	DIReservoir reservoir = DIReservoir::Create();
 
-	for (uint i = 0u; i < PARAMS_STOCHASTIC_D_I_INITIAL_SAMPLING_CONSTANTS->risSamplesNum; ++i)
+	for (uint i = 0u; i < CONSTS->risSamplesNum; ++i)
 	{
-		const EmissiveSample sample = GenerateSample(rngState, PARAMS_STOCHASTIC_D_I_INITIAL_SAMPLING_CONSTANTS->emissivesSampler);
+		const EmissiveSample sample = GenerateSample(rngState, CONSTS->emissivesSampler);
 
 		const float p_hat = Luminance(UnshadowedPathContribution(surface, V, sample));
 
@@ -106,32 +106,32 @@ void InitialSamplingRTG()
 
 	if (reservoir.IsValid())
 	{
-		const float ssLenght = PARAMS_STOCHASTIC_D_I_INITIAL_SAMPLING_CONSTANTS->ssrtRange;
-		if (!PerformDIVisibilityTest(PARAMS_STOCHASTIC_D_I_INITIAL_SAMPLING_CONSTANTS->ssTracer, VIEW->sceneView, surface, reservoir.sample, ssLenght, rngState.Next()))
+		const float ssLenght = CONSTS->ssrtRange;
+		if (!PerformDIVisibilityTest(CONSTS->ssTracer, VIEW->sceneView, surface, reservoir.sample, ssLenght, rngState.Next()))
 		{
 			reservoir.weightSum = 0.f;
 		}
 	}
 
-	if (PARAMS_STOCHASTIC_D_I_INITIAL_SAMPLING_CONSTANTS->historyReservoirs.IsValid() && PARAMS_STOCHASTIC_D_I_INITIAL_SAMPLING_CONSTANTS->enableTemporalResampling)
+	if (CONSTS->historyReservoirs.IsValid() && CONSTS->enableTemporalResampling)
 	{
-		const float2 uv = (float2(coords) + 0.5f) * PARAMS_STOCHASTIC_D_I_INITIAL_SAMPLING_CONSTANTS->gBuffer.pixelSize;
+		const float2 uv = (float2(coords) + 0.5f) * CONSTS->gBuffer.pixelSize;
 
-		const float2 motion = PARAMS_STOCHASTIC_D_I_INITIAL_SAMPLING_CONSTANTS->motion.Load(uint3(coords, 0u));
+		const float2 motion = CONSTS->motion.Load(uint3(coords, 0u));
 		float2 reprojectedUV = uv - motion;
 		if (all(saturate(reprojectedUV) == reprojectedUV))
 		{
-			const uint2 reprojectedCoords = uint2(reprojectedUV * PARAMS_STOCHASTIC_D_I_INITIAL_SAMPLING_CONSTANTS->gBuffer.resolution);
+			const uint2 reprojectedCoords = uint2(reprojectedUV * CONSTS->gBuffer.resolution);
 
-			const float historyDepth = PARAMS_STOCHASTIC_D_I_INITIAL_SAMPLING_CONSTANTS->historyDepth.Load(reprojectedCoords);
+			const float historyDepth = CONSTS->historyDepth.Load(reprojectedCoords);
 			const float3 historyLocation = NDCToWorldSpace(float3(reprojectedUV * 2.f - 1.f, historyDepth), VIEW->prevFrameSceneView);
-			const float3 historyNormal   = OctahedronDecodeNormal(PARAMS_STOCHASTIC_D_I_INITIAL_SAMPLING_CONSTANTS->historyNormal.Load(reprojectedCoords));
+			const float3 historyNormal   = OctahedronDecodeNormal(CONSTS->historyNormal.Load(reprojectedCoords));
 
 			if (CanResampleSurface(surface, historyLocation, historyNormal))
 			{
-				const uint historyReservoirIdx = GetScreenReservoirIdx(reprojectedCoords, PARAMS_STOCHASTIC_D_I_INITIAL_SAMPLING_CONSTANTS->reservoirsResolution);
+				const uint historyReservoirIdx = GetScreenReservoirIdx(reprojectedCoords, CONSTS->reservoirsResolution);
 
-				DIReservoir historyReservoir = UnpackDIReservoir(PARAMS_STOCHASTIC_D_I_INITIAL_SAMPLING_CONSTANTS->historyReservoirs.Load(historyReservoirIdx));
+				DIReservoir historyReservoir = UnpackDIReservoir(CONSTS->historyReservoirs.Load(historyReservoirIdx));
 
 				if (historyReservoir.IsValid() && historyReservoir.age < 16u)
 				{
@@ -152,6 +152,6 @@ void InitialSamplingRTG()
 	reservoir.age += 1u;
 	reservoir.M = 1u;
 
-	const uint reservoirIdx = GetScreenReservoirIdx(coords, PARAMS_STOCHASTIC_D_I_INITIAL_SAMPLING_CONSTANTS->reservoirsResolution);
-	PARAMS_STOCHASTIC_D_I_INITIAL_SAMPLING_CONSTANTS->outReservoirs.Store(reservoirIdx, PackDIReservoir(reservoir));
+	const uint reservoirIdx = GetScreenReservoirIdx(coords, CONSTS->reservoirsResolution);
+	CONSTS->outReservoirs.Store(reservoirIdx, PackDIReservoir(reservoir));
 }

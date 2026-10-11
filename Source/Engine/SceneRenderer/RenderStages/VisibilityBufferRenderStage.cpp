@@ -48,7 +48,7 @@ END_SHADER_STRUCT();
 
 GRAPHICS_PSO(ApplyPOMOffsetPSO)
 {
-	FULLSCREEN_VS();
+	FULLSCREEN_VS("Sculptor/GeometryRendering/ApplyPOMOffset.hlsl");
 	FRAGMENT_SHADER("Sculptor/GeometryRendering/ApplyPOMOffset.hlsl", ApplyPOMOffsetFS);
 
 	PRESET(pso);

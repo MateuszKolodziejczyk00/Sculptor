@@ -5,7 +5,6 @@
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "SceneRenderSystems/DDGI/DDGIRenderSystem.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "GlobalResources/GlobalResources.h"
 #include "RenderScene.h"
 #include "ResourcesManager.h"
 #include "SceneRenderSystems/Lights/ViewShadingInput.h"
@@ -29,7 +28,7 @@ RendererFloatParameter constantFogExtinction("Constant Fog Extinction", { "Volum
 RendererFloat3Parameter consantFogAlbedo("Constant Fox Albedo", { "Volumetric Fog" }, math::Vector3f::Constant(1.f), 0.f, 1.f);
 
 RendererFloatParameter fogHeightFalloff("Fog Height Falloff", { "Volumetric Fog" }, 0.0042f, 0.f, 10.f);
-RendererFloatParameter fogHeightAbsorptionPercentage("Fog Height Absorption %", { "Volumetric Fog" }, 0.2f, 0.f, 1.f);
+RendererFloatParameter fogHeightAbsorptionPercentage("Fog Height Absorption %", { "Volumetric Fog" }, 1.f, 0.f, 1.f);
 
 RendererFloatParameter phaseFunctionAnisotrophy("Phase Function Aniso", { "Volumetric Fog" }, 0.84f, 0.f, 1.f);
 
@@ -46,7 +45,6 @@ RendererBoolParameter fogBlurEnableTonemap("Fog Blur Enable Tonemap", { "Volumet
 } // parameters
 
 BEGIN_SHADER_STRUCT(VolumetricFogConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u,                    blueNoiseResMask)
 	SHADER_STRUCT_FIELD(math::Vector3u,                    fogGridRes)
 	SHADER_STRUCT_FIELD(Real32,                            fogNearPlane)
 	SHADER_STRUCT_FIELD(math::Vector3f,                    fogGridInvRes)
@@ -54,7 +52,6 @@ BEGIN_SHADER_STRUCT(VolumetricFogConstants)
 	SHADER_STRUCT_FIELD(Uint32,                            localLightsScatteringMaxDepth)
 	SHADER_STRUCT_FIELD(Real32,                            localLightsScatteringWNormalization)
 	SHADER_STRUCT_FIELD(Uint32,                            frameIdx)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, blueNoiseTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         depthTexture)
 END_SHADER_STRUCT();
 
@@ -281,8 +278,6 @@ BEGIN_SHADER_STRUCT(VolumetricFogInScatteringParams)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<Real32>,         directionalLightShadowTerm)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture3D<math::Vector4f>, inScatteringTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector3f>, indirectInScatteringTexture)
-	SHADER_STRUCT_FIELD(gfx::UAVTexture3D<math::Vector4f>, localLightsInScatteringTexture)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector4f>, historyLocalLightsInScatteringTexture)
 END_SHADER_STRUCT();
 
 
@@ -309,8 +304,6 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	inScatteringParams.participatingMediaTexture             = fogParams.participatingMediaTextureView;
 	inScatteringParams.directionalLightShadowTerm            = fogParams.directionalLightShadowTerm;
 	inScatteringParams.inScatteringTexture                   = fogParams.inScatteringTextureView;
-	inScatteringParams.localLightsInScatteringTexture        = fogParams.localLightsInScattering;
-	inScatteringParams.historyLocalLightsInScatteringTexture = fogParams.historyLocalLightsInScattering;
 	inScatteringParams.indirectInScatteringTexture           = fogParams.indirectInScatteringTextureView;
 
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(4u, 4u, 4u));
@@ -362,21 +355,14 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 
 } // integrate_in_scattering
 
-
 ParticipatingMediaViewRenderSystem::ParticipatingMediaViewRenderSystem(RenderView& inRenderView)
 	: Super(inRenderView)
 	, m_directionalLightShadowTerm(RENDERER_RESOURCE_NAME("Directional Light Shadow Term"))
-	, m_localLightsInScattering(RENDERER_RESOURCE_NAME("Local Lights In Scattering"))
 {
 	rhi::TextureDefinition shadowTermDef;
 	shadowTermDef.format = rhi::EFragmentFormat::R16_UN_Float;
 	shadowTermDef.usage = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
 	m_directionalLightShadowTerm.SetDefinition(shadowTermDef);
-
-	rhi::TextureDefinition localLightsInScatteringDef;
-	localLightsInScatteringDef.format = rhi::EFragmentFormat::RGBA16_S_Float;
-	localLightsInScatteringDef.usage  = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
-	m_localLightsInScattering.SetDefinition(localLightsInScatteringDef);
 }
 
 void ParticipatingMediaViewRenderSystem::BeginFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
@@ -425,7 +411,6 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 	const math::Vector3u localInScatteringRes(volumetricTilesNum.x(), volumetricTilesNum.y(), volumetricFogLocalLightsZRes);
 
 	m_directionalLightShadowTerm.Update(volumetricFogRes);
-	m_localLightsInScattering.Update(localInScatteringRes);
 
 	rg::TextureDef participatingMediaTextureDef;
 	participatingMediaTextureDef.resolution = volumetricFogRes;
@@ -454,18 +439,10 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 	const math::Vector2f jitterValue = (jitterSequence - math::Vector2f::Constant(0.5f)).cwiseProduct(math::Vector2f::Constant(0.5f));
 	const math::Vector2f jitter = jitterValue.cwiseProduct(volumetricFogRes.head<2>().cast<Real32>().cwiseInverse());
 
-	const rg::RGTextureViewHandle blueNoiseTexture = graphBuilder.AcquireExternalTextureView(gfx::global::Resources::Get().blueNoise256.GetView());
-	SPT_CHECK(!!blueNoiseTexture);
-	SPT_CHECK(math::Utils::IsPowerOf2(blueNoiseTexture->GetResolution().x()));
-	SPT_CHECK(math::Utils::IsPowerOf2(blueNoiseTexture->GetResolution().y()));
-
-	const math::Vector2u blueNoiseResolutionMask = blueNoiseTexture->GetResolution2D() - math::Vector2u::Ones();
-
 	VolumetricFogConstants fogConstants;
 	fogConstants.fogNearPlane                        = renderView.GetNearPlane();
 	fogConstants.fogFarPlane                         = parameters::fogFarPlane;
 	fogConstants.frameIdx                            = viewSpec.GetFrameIdx();
-	fogConstants.blueNoiseResMask                    = blueNoiseResolutionMask;
 	fogConstants.fogGridRes                          = volumetricFogRes;
 	fogConstants.fogGridInvRes                       = volumetricFogRes.cast<Real32>().cwiseInverse();
 	fogConstants.localLightsScatteringMaxDepth       = volumetricFogLocalLightsZRes;
@@ -484,8 +461,6 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 	m_volumetricFogParams.volumetricFogResolution           = volumetricFogRes;
 	m_volumetricFogParams.directionalLightShadowTerm        = dirLightShadowTerm;
 	m_volumetricFogParams.historyDirectionalLightShadowTerm = graphBuilder.TryAcquireExternalTextureView(m_directionalLightShadowTerm.GetHistory());
-	m_volumetricFogParams.localLightsInScattering           = graphBuilder.AcquireExternalTextureView(m_localLightsInScattering.GetCurrent());
-	m_volumetricFogParams.historyLocalLightsInScattering    = graphBuilder.TryAcquireExternalTextureView(m_localLightsInScattering.GetHistory());
 	m_volumetricFogParams.nearPlane                         = renderView.GetNearPlane();
 	m_volumetricFogParams.farPlane                          = parameters::fogFarPlane;
 

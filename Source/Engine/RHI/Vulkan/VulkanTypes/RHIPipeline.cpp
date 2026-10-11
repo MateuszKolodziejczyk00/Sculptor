@@ -189,6 +189,12 @@ static void SetVulkanBlendType(rhi::ERenderTargetBlendType blendType, VkBlendFac
 		outDstBlendFactor = VK_BLEND_FACTOR_ONE;
 		outBlendOp = VK_BLEND_OP_ADD;
 		break;
+
+	case rhi::ERenderTargetBlendType::AlphaBlend:
+		outSrcBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		outDstBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		outBlendOp = VK_BLEND_OP_ADD;
+		break;
 	
 	default:
 

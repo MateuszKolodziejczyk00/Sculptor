@@ -27,7 +27,7 @@ void RenderCirrusCloudsCS(CS_INPUT input)
 		return;
 	}
 
-	const float noise = frac(PARAMS_RENDER_CIRRUS_CLOUDS_CONSTANTS->blueNoise.Load(coords & 255u) + ((PARAMS_RENDER_CIRRUS_CLOUDS_CONSTANTS->frameIdx) & 255u) * SPT_GOLDEN_RATIO);
+	const float noise = frac(GLOBALS->blueNoise256.Load(coords & 255u) + ((PARAMS_RENDER_CIRRUS_CLOUDS_CONSTANTS->frameIdx) & 255u) * SPT_GOLDEN_RATIO);
 
     const Ray viewRay = CreateViewRayWSNoJitter(VIEW->sceneView, uv);
 

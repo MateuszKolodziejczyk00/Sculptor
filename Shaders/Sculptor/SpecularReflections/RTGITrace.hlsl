@@ -6,9 +6,8 @@
 [[shader_params(GPURenderView, VIEW)]]
 [[shader_params(SpecularReflectionsTraceConstants, PARAMS_SPECULAR_REFLECTIONS_TRACE)]]
 
-#include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/RTGBuffer.hlsli"
-#include "SpecularReflections/RTGITracing.hlsli"
+#include "SpecularReflections/RTGITracingUtils.hlsli"
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Wave.hlsli"
@@ -62,13 +61,13 @@ void GenerateRTGIRaysRTG()
 			const GBufferInterface gbuffer = GBufferInterface(PARAMS_SPECULAR_REFLECTIONS_TRACE->gpuGBuffer);
 
 			const SurfaceInfo hitSurfaceInfo = gbuffer.GetSurfaceInfo(ssResult.hitUV);
-			hitResult.normal      = hitSurfaceInfo.normal;
-			hitResult.roughness   = hitSurfaceInfo.roughness;
-			hitResult.baseColor   = hitSurfaceInfo.baseColorMetallic.rgb;
-			hitResult.metallic    = hitSurfaceInfo.baseColorMetallic.w;
-			hitResult.emissive    = 0.f;
-			hitResult.hitType     = RTGBUFFER_HIT_TYPE_VALID_HIT;
-			hitResult.hitDistance = traceLength * ssResult.hitT;
+			hitResult.normal            = hitSurfaceInfo.normal;
+			hitResult.roughness         = hitSurfaceInfo.roughness;
+			hitResult.baseColor         = hitSurfaceInfo.baseColorMetallic.rgb;
+			hitResult.metallic          = hitSurfaceInfo.baseColorMetallic.a;
+			hitResult.emissive          = 0.f;
+			hitResult.hitType           = RTGBUFFER_HIT_TYPE_VALID_HIT;
+			hitResult.hitDistance       = traceLength * ssResult.hitT;
 
 			isRayFinished = true;
 		}

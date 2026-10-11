@@ -6,7 +6,6 @@
 #include "SpecularReflections/SRReservoir.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 #include "Shading/Shading.hlsli"
-#include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/SRResamplingCommon.hlsli"
 #include "Utils/Random.hlsli"
 #include "Utils/MortonCode.hlsli"
@@ -160,7 +159,7 @@ void ResampleSpatiallyCS(CS_INPUT input)
 	gBuffer.depthTexture             = PARAMS_S_R_SPATIAL_RESAMPLING->depthTexture;
 	gBuffer.normalsTexture           = PARAMS_S_R_SPATIAL_RESAMPLING->normalsTexture;
 	gBuffer.baseColorMetallicTexture = PARAMS_S_R_SPATIAL_RESAMPLING->baseColorTexture;
-	gBuffer.roughnessTexture         = PARAMS_S_R_SPATIAL_RESAMPLING->roughnessTexture;
+	gBuffer.propsTexture             = PARAMS_S_R_SPATIAL_RESAMPLING->propsTexture;
 
 	const MinimalSurfaceInfo centerPixelSurface = GetMinimalSurfaceInfo(gBuffer, pixel, PARAMS_S_R_SPATIAL_RESAMPLING->resamplingConstants->pixelSize, VIEW->sceneView);
 
@@ -173,7 +172,7 @@ void ResampleSpatiallyCS(CS_INPUT input)
 		return;
 	}
 
-	if(centerPixelSurface.roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
+	if(centerPixelSurface.roughness <= RTClosure::RoughnessDeltaThreshold)
 	{
 		PARAMS_S_R_SPATIAL_RESAMPLING->outReservoirsBuffer[reservoirIdx] = packedReservoir;
 		return;

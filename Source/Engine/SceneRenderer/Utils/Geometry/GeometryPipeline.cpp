@@ -82,11 +82,11 @@ static rdr::GPUPtr<GeometryCullingParams> CreateCullingParams(rg::RenderGraphBui
 	const Bool hasHistoryHiZ = historyHiZ.IsValid();
 
 	GeometryCullingParams visCullingParams;
-	visCullingParams.hiZResolution        = hiZ->GetResolution2D().cast<Real32>();
+	visCullingParams.hiZResolution        = hiZ ? hiZ->GetResolution2D().cast<Real32>() : math::Vector2f{};
 	visCullingParams.historyHiZResolution = hasHistoryHiZ ? historyHiZ->GetResolution2D().cast<Real32>() : math::Vector2f{};
 	visCullingParams.hasHistoryHiZ        = hasHistoryHiZ;
-	visCullingParams.hiZTexture        = hiZ;
-	visCullingParams.historyHiZTexture = historyHiZ;
+	visCullingParams.hiZTexture           = hiZ;
+	visCullingParams.historyHiZTexture    = historyHiZ;
 
 	return graphBuilder.CreateGPUData(visCullingParams);
 }

@@ -295,7 +295,7 @@ struct FS_Output
 {
 	float4 gBuffer0  : SV_TARGET0;
 	float4 gBuffer1  : SV_TARGET1;
-	float  gBuffer2  : SV_TARGET2;
+	float4 gBuffer2  : SV_TARGET2;
 	float3 gBuffer3  : SV_TARGET3;
 	uint   gBuffer4  : SV_TARGET4;
 	float  occlusion : SV_TARGET5;
@@ -349,13 +349,15 @@ FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 		const MaterialEvaluationOutput evaluatedMaterial = EvaluateMaterial(materialEvalParams, materialData);
 
 		GBufferData gBufferData;
-		gBufferData.baseColor = evaluatedMaterial.baseColor;
-		gBufferData.metallic  = evaluatedMaterial.metallic;
-		gBufferData.normal    = evaluatedMaterial.shadingNormal;
-		gBufferData.tangent   = vertexData.tangent;
-		gBufferData.bitangent = vertexData.bitangent;
-		gBufferData.roughness = evaluatedMaterial.roughness;
-		gBufferData.emissive  = evaluatedMaterial.emissiveColor;
+		gBufferData.baseColor          = evaluatedMaterial.baseColor;
+		gBufferData.metallic           = evaluatedMaterial.metallic;
+		gBufferData.normal             = evaluatedMaterial.shadingNormal;
+		gBufferData.tangent            = vertexData.tangent;
+		gBufferData.bitangent          = vertexData.bitangent;
+		gBufferData.roughness          = evaluatedMaterial.roughness;
+		gBufferData.clearCoatWeight    = evaluatedMaterial.clearCoatWeight;
+		gBufferData.clearCoatRoughness = evaluatedMaterial.clearCoatRoughness;
+		gBufferData.emissive           = evaluatedMaterial.emissiveColor;
 
 		const GBufferOutput gBufferOutput = EncodeGBuffer(gBufferData);
 
@@ -490,13 +492,15 @@ FS_Output EmitGrassGBuffer_FS(in OutputVertex vertexInput)
 	const EvaluatedGrassMaterial grassMaterial = EvaluateGrassMaterial(bladeHeightAlpha, grassProcessor.bladeRng, grassProcessor.clumpRng);
 	
 	GBufferData gBufferData;
-	gBufferData.baseColor = grassMaterial.baseColor;
-	gBufferData.metallic  = 0.f;
-	gBufferData.normal    = triangleNormal;
-	gBufferData.tangent   = triangleTangent;
-	gBufferData.bitangent = triangleBitangent;
-	gBufferData.roughness = grassMaterial.roughness;
-	gBufferData.emissive  = 0.f;
+	gBufferData.baseColor          = grassMaterial.baseColor;
+	gBufferData.metallic           = 0.f;
+	gBufferData.normal             = triangleNormal;
+	gBufferData.tangent            = triangleTangent;
+	gBufferData.bitangent          = triangleBitangent;
+	gBufferData.roughness          = grassMaterial.roughness;
+	gBufferData.emissive           = 0.f;
+	gBufferData.clearCoatWeight    = 0.f;
+	gBufferData.clearCoatRoughness = 0.f;
 
 	const GBufferOutput gBufferOutput = EncodeGBuffer(gBufferData);
 

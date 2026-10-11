@@ -310,6 +310,9 @@ struct PBRMaterialCompilationInput
 	lib::SharedPtr<rdr::TextureView> depthTex;
 	Real32 maxDepthCm = 0.f;
 
+	Real32 clearCoatWeight    = 0.f;
+	Real32 clearCoatRoughness = 0.f;
+
 	lib::SharedPtr<rdr::TextureView> displacementTex;
 	Real32 displacementScale = 1.f;
 
@@ -326,14 +329,16 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 	lib::MemoryArena tempArena("PBR Material Compilation Arena", 1024u * 1024u, 512u * 1024u * 1024u);
 
 	PBRMaterialDataHeader headerData;
-	headerData.baseColorFactor = compilationInput.baseColorFactor;
-	headerData.metallicFactor  = compilationInput.metallicFactor;
-	headerData.roughnessFactor = compilationInput.roughnessFactor;
-	headerData.emissionFactor  = compilationInput.emissionFactor;
-	headerData.maxDepthCm      = compilationInput.maxDepthCm;
-	headerData.doubleSided     = compilationInput.doubleSided   ? 1u : 0u;
-	headerData.customOpacity   = compilationInput.customOpacity ? 1u : 0u;
-	headerData.transparent     = compilationInput.transparent   ? 1u : 0u;
+	headerData.baseColorFactor    = compilationInput.baseColorFactor;
+	headerData.metallicFactor     = compilationInput.metallicFactor;
+	headerData.roughnessFactor    = compilationInput.roughnessFactor;
+	headerData.emissionFactor     = compilationInput.emissionFactor;
+	headerData.clearCoatWeight    = compilationInput.clearCoatWeight;
+	headerData.clearCoatRoughness = compilationInput.clearCoatRoughness;
+	headerData.maxDepthCm         = compilationInput.maxDepthCm;
+	headerData.doubleSided        = compilationInput.doubleSided   ? 1u : 0u;
+	headerData.customOpacity      = compilationInput.customOpacity ? 1u : 0u;
+	headerData.transparent        = compilationInput.transparent   ? 1u : 0u;
 
 	lib::DynamicArray<Byte> compiledData;
 	compiledData.resize(sizeof(PBRMaterialDataHeader));
@@ -682,6 +687,8 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 	compilationInput.metallicFactor       = definition.metallicFactor;
 	compilationInput.roughnessFactor      = definition.roughnessFactor;
 	compilationInput.emissionFactor       = definition.emissionFactor;
+	compilationInput.clearCoatWeight      = definition.clearCoatWeight;
+	compilationInput.clearCoatRoughness   = definition.clearCoatRoughness;
 	compilationInput.maxDepthCm           = definition.maxDepthCm;
 	compilationInput.doubleSided          = definition.doubleSided;
 	compilationInput.customOpacity        = definition.customOpacity;

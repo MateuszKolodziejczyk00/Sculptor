@@ -78,6 +78,14 @@ struct SRVTexture3D<T : ITexelElement>
 		return texture.SampleLevel(s, uvw, level);
 	}
 
+	uint3 GetResolution()
+	{
+		Texture3D<T> texture = GetResource();
+		uint3 resolution;
+		texture.GetDimensions(resolution.x, resolution.y, resolution.z);
+		return resolution;
+	}
+
 	bool IsValid()
 	{
 		return descriptorIdx != IDX_NONE_32;
@@ -275,6 +283,14 @@ struct UAVTexture3D<T : ITexelElement>
 	bool IsValid()
 	{
 		return descriptorIdx != IDX_NONE_32;
+	}
+
+	uint3 GetResolution()
+	{
+		RWTexture3D<T> texture = GetResource();
+		uint3 resolution;
+		texture.GetDimensions(resolution.x, resolution.y, resolution.z);
+		return resolution;
 	}
 
 	__subscript(int3 idx) -> T

@@ -72,7 +72,8 @@ enum class ERenderTargetBlendType : Uint8
 {
 	Disabled,
 	Copy,
-	Add
+	Add,
+	AlphaBlend
 };
 
 

@@ -23,7 +23,6 @@
 #include "DeviceQueues/GPUWorkload.h"
 #include "Utils/GPUWaitableEvent.h"
 #include "EditorFrame.h"
-#include "GlobalResources/GlobalResourcesRegistry.h"
 #include "Pipelines/PSOsLibrary.h"
 
 
@@ -70,8 +69,6 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 	windowInitInfo.framebufferSize = math::Vector2u(1920, 1080);
 	windowInitInfo.enableVSync     = false;
 	m_window = rdr::ResourcesManager::CreateRenderWindow("SculptorEd", windowInitInfo);
-
-	gfx::global::GlobalResourcesRegistry::Get().InitializeAll();
 
 	engn::EngineGlobals engineGlobals;
 	engineGlobals.profiler           = prf::ProfilerCore::GetInstance().GetProfiler();

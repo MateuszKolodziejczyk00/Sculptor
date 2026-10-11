@@ -14,8 +14,6 @@
 #include "SceneRenderSystems/Atmosphere/Clouds/VolumetricCloudsTypes.h"
 #include "SceneRenderSystems/Atmosphere/AtmosphereRenderSystem.h"
 #include "Bindless/BindlessTypes.h"
-#include "GlobalResources/GlobalResources.h"
-
 
 namespace spt::rsc
 {
@@ -66,7 +64,6 @@ BEGIN_SHADER_STRUCT(ScreenSpaceShadowsConstants)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,                       depth)
 	SHADER_STRUCT_FIELD(SSTracerData,                                       ssTracerData)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>,               normal)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,                       blueNoise256)
 	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<Uint32>,                        inCommandsNum)
 	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<vrt::EncodedRayTraceCommand>,   inCommands)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<Uint32>,                      outRTTraceIndirectArgs)
@@ -115,7 +112,6 @@ static void TraceShadowRays(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 	constants.outShadows             = outTexture;
 	constants.depth                  = tracingContext.depthTexture;
 	constants.normal                 = tracingContext.normalsTexture;
-	constants.blueNoise256           = gfx::global::Resources::Get().blueNoise256.GetView();
 	constants.inCommandsNum          = tracesAllocation.tracesNum;
 	constants.inCommands             = tracesAllocation.rayTraceCommands;
 	constants.outRTTraceIndirectArgs = rtTraceIndirectArgs;

@@ -11,64 +11,64 @@
 
 CustomOpacityOutput EvaluateCustomOpacity<TSampler : IMaterialSampler>(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
 {
-    CustomOpacityOutput output;
+	CustomOpacityOutput output;
 
-    if(materialData.alphaTexture.IsValid())
-    {
-        float opacity = 1.f;
-        opacity = sampler.SPT_MATERIAL_SAMPLE(materialData.alphaTexture, BindlessSamplers::MaterialLinear(), evalParams.uv);
-        output.shouldDiscard = opacity < 0.8f;
-    }
-    else
-    {
-        output.shouldDiscard = false;
-    }
+	if(materialData.alphaTexture.IsValid())
+	{
+		float opacity = 1.f;
+		opacity = sampler.SPT_MATERIAL_SAMPLE(materialData.alphaTexture, BindlessSamplers::MaterialLinear(), evalParams.uv);
+		output.shouldDiscard = opacity < 0.8f;
+	}
+	else
+	{
+		output.shouldDiscard = false;
+	}
 
-    return output;
+	return output;
 }
 
 
 MaterialEvaluationOutput EvaluateMaterial<TSampler : IMaterialSampler>(TSampler sampler, MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
 {
-    float3 baseColor = 1.f;
-    
+	float3 baseColor = 1.f;
+	
 	if (materialData.baseColorTexture.IsValid())
-    {
-        baseColor = sampler.SPT_MATERIAL_SAMPLE(materialData.baseColorTexture, SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv).rgb;
-    }
+	{
+		baseColor = sampler.SPT_MATERIAL_SAMPLE(materialData.baseColorTexture, SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv).rgb;
+	}
 
-    baseColor *= materialData.baseColorFactor;
+	baseColor *= materialData.baseColorFactor;
 
-    float metallic = materialData.metallicFactor;
-    float roughness = materialData.roughnessFactor;
+	float metallic = materialData.metallicFactor;
+	float roughness = materialData.roughnessFactor;
 
-    if(materialData.metallicRoughnessTexture.IsValid())
-    {
+	if(materialData.metallicRoughnessTexture.IsValid())
+	{
 		const float2 metallicRoughness = sampler.SPT_MATERIAL_SAMPLE(materialData.metallicRoughnessTexture, SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
 		metallic *= metallicRoughness.x;
 		roughness *= metallicRoughness.y;
-    }
+	}
 
-    float3 shadingNormal;
-    const float3 geometryNormal = normalize(evalParams.normal);
-    if(evalParams.hasTangent && materialData.normalsTexture.IsValid())
-    {
+	float3 shadingNormal;
+	const float3 geometryNormal = normalize(evalParams.normal);
+	if(evalParams.hasTangent && materialData.normalsTexture.IsValid())
+	{
 		const float2 textureNormal = sampler.SPT_MATERIAL_SAMPLE(materialData.normalsTexture, SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
 
 		const float3 tangentNormal = UnpackTangentNormalFromXY(textureNormal);
-        const float3x3 TBN = transpose(float3x3(normalize(evalParams.tangent), normalize(evalParams.bitangent), geometryNormal));
-        shadingNormal = normalize(mul(TBN, tangentNormal));
-    }
-    else
-    {
-        shadingNormal = geometryNormal;
-    }
+		const float3x3 TBN = transpose(float3x3(normalize(evalParams.tangent), normalize(evalParams.bitangent), geometryNormal));
+		shadingNormal = normalize(mul(TBN, tangentNormal));
+	}
+	else
+	{
+		shadingNormal = geometryNormal;
+	}
 
-    float3 emissiveColor = materialData.emissiveData.emissiveFactor;
+	float3 emissiveColor = materialData.emissiveData.emissiveFactor;
 	if (materialData.emissiveData.emissiveTexture.IsValid())
-    {
-        emissiveColor *= sampler.SPT_MATERIAL_SAMPLE(materialData.emissiveData.emissiveTexture, SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
-    }
+	{
+		emissiveColor *= sampler.SPT_MATERIAL_SAMPLE(materialData.emissiveData.emissiveTexture, SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
+	}
 
 	float occlusion = 1.f;
 	if (materialData.occlusionTexture.IsValid())
@@ -76,17 +76,19 @@ MaterialEvaluationOutput EvaluateMaterial<TSampler : IMaterialSampler>(TSampler 
 		occlusion = sampler.SPT_MATERIAL_SAMPLE(materialData.occlusionTexture, SPT_SAMPLER_ANISO_IF_NOT_EXPLICIT_LEVEL, evalParams.uv);
 	}
 
-    MaterialEvaluationOutput output;
+	MaterialEvaluationOutput output;
 
-    output.shadingNormal  = shadingNormal;
-    output.geometryNormal = geometryNormal;
-    output.roughness      = roughness;
-    output.baseColor      = baseColor;
-    output.metallic       = metallic;
-    output.emissiveColor  = emissiveColor;
-	output.occlusion      = occlusion;
+	output.shadingNormal      = shadingNormal;
+	output.geometryNormal     = geometryNormal;
+	output.roughness          = roughness;
+	output.clearCoatWeight    = materialData.clearCoatWeight;
+	output.clearCoatRoughness = materialData.clearCoatRoughness;
+	output.baseColor          = baseColor;
+	output.metallic           = metallic;
+	output.emissiveColor      = emissiveColor;
+	output.occlusion          = occlusion;
 
-    return output;
+	return output;
 }
 
 #endif // DEFAULT_PBR_HLSLI

@@ -24,6 +24,9 @@ struct PBRMaterialDefinition
 	Real32 roughnessFactor         = 1.f;
 	math::Vector3f emissionFactor  = math::Vector3f::Zero();
 
+	Real32 clearCoatWeight    = 0.f;
+	Real32 clearCoatRoughness = 0.f;
+
 	lib::Path depthTexPath;
 	Real32 maxDepthCm = s_defultMaxDepthCm;
 
@@ -50,6 +53,9 @@ struct PBRMaterialDefinition
 		serializer.Serialize("RoughnessFactor", roughnessFactor);
 		serializer.Serialize("EmissionFactor",  emissionFactor);
 		serializer.Serialize("MaxDepthCm",      maxDepthCm);
+
+		serializer.Serialize("ClearCoatWeight",    clearCoatWeight);
+		serializer.Serialize("ClearCoatRoughness", clearCoatRoughness);
 
 		serializer.Serialize("DoubleSided",   doubleSided);
 		serializer.Serialize("CustomOpacity", customOpacity);

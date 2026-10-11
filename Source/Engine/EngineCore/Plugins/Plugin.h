@@ -15,6 +15,8 @@ class ENGINE_CORE_API Plugin
 {
 public:
 
+	virtual ~Plugin() = default;
+
 	void PostEngineInit();
 
 	void BeginFrame(FrameContext& frameContext);
@@ -55,4 +57,4 @@ struct PluginRegistrator : public GenericPluginRegistrator
 
 
 #define SPT_DEFINE_PLUGIN(Type) \
-engn::PluginRegistrator<Type> g_pluginRegistrator;
+static engn::PluginRegistrator<Type> g_pluginRegistrator_##Type;

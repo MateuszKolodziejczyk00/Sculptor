@@ -122,27 +122,19 @@ void ShadowMapRenderStage::RenderDepth(rg::RenderGraphBuilder& graphBuilder, Sce
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector2u renderingRes = viewSpec.GetRenderingRes();
+	const StaticMeshesRenderSystem& staticMeshesSystem = rendererInterface.GetRenderSystemChecked<StaticMeshesRenderSystem>();
+	const GeometryPassDataCollection& cachedGeometryPassData = staticMeshesSystem.GetCachedOpaqueGeometryPassData();
 
-	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), renderingRes);
+	const rg::RGTextureViewHandle shadowMapView = graphBuilder.CreateTextureMipView(depthRenderTargetView, 0u);
 
-	rg::RGRenderTargetDef depthRTDef;
-	depthRTDef.textureView		= depthRenderTargetView;
-	depthRTDef.loadOperation	= rhi::ERTLoadOperation::Clear;
-	depthRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
-	depthRTDef.clearColor		= rhi::ClearColor(0.f);
-	renderPassDef.SetDepthRenderTarget(depthRTDef);
+	gp::GeometryPassParams geometryPassParams(viewSpec, cachedGeometryPassData);
+	geometryPassParams.depth = shadowMapView;
 
-	graphBuilder.RenderPass(RG_DEBUG_NAME("Shadow Map (Depth)"),
-							renderPassDef,
-							rg::ShaderParams(),
-							[renderingRes](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
-							{
-								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingRes.cast<Real32>()), 0.f, 1.f);
-								recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), renderingRes));
-							});
+	gp::GeometryPipelineExecutor* depthOnlyExecutor = depth_only::CreatePipelineExecutor(graphBuilder, geometryPassParams);
 
-	viewSpec.GetRenderViewEntry(ERenderViewEntry::RenderToShadowMap).Broadcast(graphBuilder, rendererInterface, renderScene, viewSpec, RenderViewEntryContext{});
+	gp::ExecuteFirstPass(graphBuilder, *depthOnlyExecutor);
+
+	depth_only::FinishPipelineExecution(graphBuilder, depthOnlyExecutor);
 }
 
 void ShadowMapRenderStage::RenderCSM(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext, const rg::RGTextureHandle shadowMap)

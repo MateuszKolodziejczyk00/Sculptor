@@ -23,6 +23,8 @@ BEGIN_SHADER_STRUCT(MaterialPBRData)
 	SHADER_STRUCT_FIELD(Real32,                                 metallicFactor)
 	SHADER_STRUCT_FIELD(math::Vector3f,                         baseColorFactor)
 	SHADER_STRUCT_FIELD(Real32,                                 roughnessFactor)
+	SHADER_STRUCT_FIELD(Real32,                                 clearCoatWeight)
+	SHADER_STRUCT_FIELD(Real32,                                 clearCoatRoughness)
 END_SHADER_STRUCT();
 
 

@@ -26,19 +26,6 @@ struct CS_INPUT
 };
 
 
-GBufferData LoadGBuffer(uint3 pixel)
-{
-	GBufferInput gbufferInput;
-	gbufferInput.gBuffer0 = PARAMS_DEFERRED_SHADING->gBuffer0Texture;
-	gbufferInput.gBuffer1 = PARAMS_DEFERRED_SHADING->gBuffer1Texture;
-	gbufferInput.gBuffer2 = PARAMS_DEFERRED_SHADING->gBuffer2Texture;
-	gbufferInput.gBuffer3 = PARAMS_DEFERRED_SHADING->gBuffer3Texture;
-	gbufferInput.gBuffer4 = PARAMS_DEFERRED_SHADING->gBuffer4Texture;
-
-	return DecodeGBuffer(gbufferInput, pixel);
-}
-
-
 [numthreads(8, 8, 1)]
 void DeferredShadingCS(CS_INPUT input)
 {
@@ -48,35 +35,27 @@ void DeferredShadingCS(CS_INPUT input)
 
 	if(all(pixel.xy < PARAMS_DEFERRED_SHADING->resolution))
 	{
-		const float depth = PARAMS_DEFERRED_SHADING->depthTexture.Load(pixel).x;
+		const SurfaceInfo surfaceInfo = PARAMS_DEFERRED_SHADING->gBuffer.GetSurfaceInfo(pixel.xy);
 
-		if(depth > 0.f)
+		if(surfaceInfo.depth > 0.f)
 		{
-			const float2 screenUV = (float2(pixel.xy) + 0.5f) * PARAMS_DEFERRED_SHADING->pixelSize;
-			const float3 ndc = float3(screenUV * 2.f - 1.f, depth);
+			SurfaceGeometry surfaceGeometry;
+			surfaceGeometry.location  = surfaceInfo.location;
+			surfaceGeometry.geoNormal = surfaceInfo.normal;
 
-			const float3 worldLocation = NDCToWorldSpace(ndc, VIEW->sceneView);
+			const ShadedSurface surface = surfaceInfo.GetShadingSurface();
 
-			const GBufferData gBufferData = LoadGBuffer(pixel);
+			ClusterInfo cluster;
+			cluster.uv          = surfaceInfo.uv;
+			cluster.linearDepth = ComputeLinearDepth(surfaceInfo.depth, VIEW->sceneView);
 
-			ShadedSurface surface;
-			surface.location       = worldLocation;
-			surface.shadingNormal  = gBufferData.normal;
-			surface.geometryNormal = gBufferData.normal;
-			surface.roughness      = gBufferData.roughness;
-			surface.uv             = screenUV;
-			surface.linearDepth    = ComputeLinearDepth(depth, VIEW->sceneView);
-			
-			ComputeSurfaceColor(gBufferData.baseColor, gBufferData.metallic, OUT surface.diffuseColor, OUT surface.specularColor);
-
-			const float3 toView = normalize(VIEW->sceneView.viewLocation - worldLocation);
+			const float3 toView = normalize(VIEW->sceneView.viewLocation - surfaceInfo.location);
 
 			ViewLightingAccumulator lightingAccumulator = ViewLightingAccumulator::Create();
-			CalcReflectedLuminance(surface, toView, INOUT lightingAccumulator);
-
+			CalcReflectedLuminance(surface, surfaceGeometry, cluster, toView, INOUT lightingAccumulator);
 
 #if TILED_SHADING_DEBUG
-			TiledShadingDebug(pixel.xy, surface);
+			TiledShadingDebug(pixel.xy, surface, surfaceGeometry, cluster);
 #endif // TILED_SHADING_DEBUG
 
 			float3 indirectIlluminance = 0.f;
@@ -89,19 +68,20 @@ void DeferredShadingCS(CS_INPUT input)
 				ambientOcclusion = PARAMS_VIEW_SHADING_INPUT->ambientOcclusionTexture.Load(pixel);
 			}
 
-			DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(worldLocation, surface.geometryNormal, toView);
-			ddgiSampleParams.sampleDirection = surface.shadingNormal;
+			DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(surfaceInfo.location, surfaceGeometry.geoNormal, toView);
+			ddgiSampleParams.sampleDirection = surface.normal;
 
-			const float random = PARAMS_DEFERRED_SHADING->blueNoise256Texture.Load(uint3(pixel.xy & 255, 0)).x;
+			const float random = GLOBALS->blueNoise256.Load(uint3(pixel.xy & 255, 0));
 
 			// Use blue noise to blend between the two volumes. This way we can sample only one volume per pixel.
 			indirectIlluminance = DDGISampleIlluminanceBlended(ddgiSampleParams, random, DDGISampleContext::Create()) * ambientOcclusion;
 #endif // ENABLE_DDGI
 
-			const float3 indirectDiffuse = Diffuse_Lambert(indirectIlluminance);
-			lightingAccumulator.Accumulate(LightingContribution::Create(surface.diffuseColor * indirectDiffuse, indirectDiffuse));
+			// Albedo is applied when creating lighting contribution
+			const float3 indirectDiffuse = brdf_utils::lambert::Evaluate(1.f) * indirectIlluminance;
+			lightingAccumulator.Accumulate(LightingContribution::Create(surface.albedo * indirectDiffuse, indirectDiffuse));
 
-			lightingAccumulator.Accumulate(LightingContribution::Create(gBufferData.emissive));
+			lightingAccumulator.Accumulate(LightingContribution::Create(surfaceInfo.emissive));
 
 			luminance = LuminanceToExposedLuminance(lightingAccumulator.GetLuminance());
 		}

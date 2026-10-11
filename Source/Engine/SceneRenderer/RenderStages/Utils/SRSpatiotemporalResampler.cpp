@@ -10,6 +10,7 @@
 #include "Pipelines/PSOsLibraryTypes.h"
 #include "MaterialsSubsystem.h"
 #include "Utils/ViewRenderingSpec.h"
+#include <ViewRenderSystems/ParticipatingMedia/ParticipatingMediaTypes.h>
 
 
 namespace spt::rsc::sr_restir
@@ -154,12 +155,12 @@ BEGIN_SHADER_STRUCT(TemporalResamplingConstants)
 	SHADER_STRUCT_FIELD(Uint32,                                   reservoirMaxAge)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,             depthTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>,     normalsTexture)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,             roughnessTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>,     propsTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>,     baseColorTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>,     motionTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,             historyDepthTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>,     historyNormalsTexture)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,             historyRoughnessTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>,     historyPropsTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>,     historyBaseColorTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,                historySpecularHitDist)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<SRPackedReservoir>, initialResservoirsBuffer)
@@ -228,21 +229,21 @@ static vrt::TracesAllocation ResampleTemporally(rg::RenderGraphBuilder& graphBui
 	passConstants.variableRateTileSizeBitOffset = params.variableRateTileSizeBitOffset;
 	passConstants.enableHitDistanceBasedMaxAge  = params.enableHitDistanceBasedMaxAge;
 	passConstants.reservoirMaxAge               = params.reservoirMaxAge;
-	passConstants.depthTexture                = params.depthTexture;
-	passConstants.normalsTexture              = params.normalsTexture;
-	passConstants.roughnessTexture            = params.roughnessTexture;
-	passConstants.baseColorTexture            = params.baseColorTexture;
-	passConstants.motionTexture               = params.motionTexture;
-	passConstants.historyDepthTexture         = params.historyDepthTexture;
-	passConstants.historyNormalsTexture       = params.historyNormalsTexture;
-	passConstants.historyRoughnessTexture     = params.historyRoughnessTexture;
-	passConstants.historyBaseColorTexture     = params.historyBaseColorTexture;
-	passConstants.historySpecularHitDist      = params.historySpecularHitDist;
-	passConstants.initialResservoirsBuffer    = params.initialReservoirBuffer;
-	passConstants.historyReservoirsBuffer     = reservoirsState.ReadReservoirs();
-	passConstants.outReservoirsBuffer         = reservoirsState.WriteReservoirs();
-	passConstants.rwVariableRateBlocksTexture = params.tracesAllocation.variableRateBlocksTexture;
-	passConstants.resamplingConstants         = resamplingConstants;
+	passConstants.depthTexture                  = params.depthTexture;
+	passConstants.normalsTexture                = params.normalsTexture;
+	passConstants.propsTexture                  = params.propsTexture;
+	passConstants.baseColorTexture              = params.baseColorTexture;
+	passConstants.motionTexture                 = params.motionTexture;
+	passConstants.historyDepthTexture           = params.historyDepthTexture;
+	passConstants.historyNormalsTexture         = params.historyNormalsTexture;
+	passConstants.historyPropsTexture           = params.historyPropsTexture;
+	passConstants.historyBaseColorTexture       = params.historyBaseColorTexture;
+	passConstants.historySpecularHitDist        = params.historySpecularHitDist;
+	passConstants.initialResservoirsBuffer      = params.initialReservoirBuffer;
+	passConstants.historyReservoirsBuffer       = reservoirsState.ReadReservoirs();
+	passConstants.outReservoirsBuffer           = reservoirsState.WriteReservoirs();
+	passConstants.rwVariableRateBlocksTexture   = params.tracesAllocation.variableRateBlocksTexture;
+	passConstants.resamplingConstants           = resamplingConstants;
 
 	vrt::TracesAllocation additionalTracesAllocation;
 	rdr::GPUPtr<SRAdditionalPassesAllocatorParams> additionalPassesAllocatorConstants;
@@ -321,7 +322,7 @@ BEGIN_SHADER_STRUCT(SpatialResamplingPassConstants)
 	SHADER_STRUCT_FIELD(Uint32,                                   resampleOnlyFromTracedPixels)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,             depthTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>,     normalsTexture)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,             roughnessTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>,     propsTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Uint32>,             variableRateBlocksTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>,     baseColorTexture)
 	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<SRPackedReservoir>,   inReservoirsBuffer)
@@ -352,14 +353,14 @@ static void ResampleSpatially(rg::RenderGraphBuilder& graphBuilder, const Resamp
 	passConstants.seed                         = lib::rnd::RandomFromTypeDomain<Uint32>();
 	passConstants.resamplingRangeMultiplier    = passParams.resamplingRangeMultiplier;
 	passConstants.resampleOnlyFromTracedPixels = passParams.resampleOnlyFromTracedPixels;
-	passConstants.depthTexture              = params.depthTexture;
-	passConstants.normalsTexture            = params.normalsTexture;
-	passConstants.roughnessTexture          = params.roughnessTexture;
-	passConstants.baseColorTexture          = params.baseColorTexture;
-	passConstants.variableRateBlocksTexture = params.tracesAllocation.variableRateBlocksTexture;
-	passConstants.inReservoirsBuffer        = reservoirsState.ReadReservoirs();
-	passConstants.outReservoirsBuffer       = reservoirsState.WriteReservoirs();
-	passConstants.resamplingConstants       = resamplingConstants;
+	passConstants.depthTexture                 = params.depthTexture;
+	passConstants.normalsTexture               = params.normalsTexture;
+	passConstants.propsTexture                 = params.propsTexture;
+	passConstants.baseColorTexture             = params.baseColorTexture;
+	passConstants.variableRateBlocksTexture    = params.tracesAllocation.variableRateBlocksTexture;
+	passConstants.inReservoirsBuffer           = reservoirsState.ReadReservoirs();
+	passConstants.outReservoirsBuffer          = reservoirsState.WriteReservoirs();
+	passConstants.resamplingConstants          = resamplingConstants;
 
 	reservoirsState.RollBuffers();
 
@@ -450,7 +451,7 @@ namespace resolve
 BEGIN_SHADER_STRUCT(ResolveReservoirsParams)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,           depthTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>,   normalsTexture)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,           roughnessTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>,   propsTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>,   baseColorTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Uint32>,           variableRateBlocksTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>,   brdfIntegrationLUT)
@@ -459,6 +460,7 @@ BEGIN_SHADER_STRUCT(ResolveReservoirsParams)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector2f>,   lightDirectionTexture)
 	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<SRPackedReservoir>, reservoirsBuffer)
 	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<SRPackedReservoir>, initialReservoirsBuffer)
+	SHADER_STRUCT_FIELD(HeightFogParams ,                       heightFogParams)
 	SHADER_STRUCT_FIELD(rdr::GPUPtr<SRResamplingConstants>,     resamplingConstants)
 END_SHADER_STRUCT();
 
@@ -475,7 +477,7 @@ static void ResolveReservoirs(rg::RenderGraphBuilder& graphBuilder, const Resamp
 	ResolveReservoirsParams shaderConstants;
 	shaderConstants.depthTexture                  = params.depthTexture;
 	shaderConstants.normalsTexture                = params.normalsTexture;
-	shaderConstants.roughnessTexture              = params.roughnessTexture;
+	shaderConstants.propsTexture                  = params.propsTexture;
 	shaderConstants.baseColorTexture              = params.baseColorTexture;
 	shaderConstants.variableRateBlocksTexture     = params.tracesAllocation.variableRateBlocksTexture;
 	shaderConstants.brdfIntegrationLUT            = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
@@ -484,6 +486,7 @@ static void ResolveReservoirs(rg::RenderGraphBuilder& graphBuilder, const Resamp
 	shaderConstants.lightDirectionTexture         = params.outLightDirectionTexture;
 	shaderConstants.reservoirsBuffer              = reservoirsState.ReadReservoirs();
 	shaderConstants.initialReservoirsBuffer       = params.initialReservoirBuffer;
+	shaderConstants.heightFogParams               = params.heightFogParams;
 	shaderConstants.resamplingConstants           = resamplingConstants;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Resolve Reservoirs"),
@@ -560,7 +563,7 @@ InitialResamplingResult SpatiotemporalResampler::ExecuteInitialResampling(rg::Re
 	if (params.enableTemporalResampling && HasValidTemporalData(params))
 	{
 		SPT_CHECK(params.historyDepthTexture.IsValid());
-		SPT_CHECK(params.historyRoughnessTexture.IsValid());
+		SPT_CHECK(params.historyPropsTexture.IsValid());
 		SPT_CHECK(params.historyBaseColorTexture.IsValid());
 		SPT_CHECK(params.historyNormalsTexture.IsValid());
 

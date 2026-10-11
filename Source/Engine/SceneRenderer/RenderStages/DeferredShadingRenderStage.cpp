@@ -2,7 +2,6 @@
 #include "RenderGraphBuilder.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "RenderScene.h"
-#include "GlobalResources/GlobalResources.h"
 #include "SceneRenderSystems/DDGI/DDGIRenderSystem.h"
 #include "ViewRenderSystems/ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 #include "Pipelines/PSOsLibraryTypes.h"
@@ -32,12 +31,7 @@ BEGIN_SHADER_STRUCT(DeferredShadingContstants)
 	SHADER_STRUCT_FIELD(math::Vector2f,                    pixelSize)
 	SHADER_STRUCT_FIELD(Bool,                              isAmbientOcclusionEnabled)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         depthTexture)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         blueNoise256Texture)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, gBuffer0Texture)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, gBuffer1Texture)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         gBuffer2Texture)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, gBuffer3Texture)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Uint32>,         gBuffer4Texture)
+	SHADER_STRUCT_FIELD(GPUGBuffer,                        gBuffer)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, luminanceTexture)
 END_SHADER_STRUCT();
 
@@ -95,12 +89,7 @@ void ExecuteDeferredShading(rg::RenderGraphBuilder& graphBuilder, const Deferred
 	shaderConstants.pixelSize                 = math::Vector2f::Ones().cwiseQuotient(resolution.cast<Real32>());
 	shaderConstants.isAmbientOcclusionEnabled = viewContext.ambientOcclusion.IsValid();
 	shaderConstants.depthTexture             = viewContext.depth;
-	shaderConstants.blueNoise256Texture      = gfx::global::Resources::Get().blueNoise256.GetView();
-	shaderConstants.gBuffer0Texture          = gBuffer[0];
-	shaderConstants.gBuffer1Texture          = gBuffer[1];
-	shaderConstants.gBuffer2Texture          = gBuffer[2];
-	shaderConstants.gBuffer3Texture          = gBuffer[3];
-	shaderConstants.gBuffer4Texture          = gBuffer[4];
+	shaderConstants.gBuffer                  = gBuffer.GetGPUGBuffer(viewContext.depth);
 	shaderConstants.luminanceTexture         = shadingParams.outputLuminance;
 
 	DeferredShadingPermutation permutation;

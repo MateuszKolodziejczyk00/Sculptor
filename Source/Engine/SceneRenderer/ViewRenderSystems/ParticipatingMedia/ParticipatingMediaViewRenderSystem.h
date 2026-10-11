@@ -49,8 +49,6 @@ private:
 
 	TextureWithHistory m_directionalLightShadowTerm;
 
-	TextureWithHistory m_localLightsInScattering;
-
 	VolumetricFogParams m_volumetricFogParams;
 };
 

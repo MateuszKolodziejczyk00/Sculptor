@@ -107,8 +107,6 @@ extension LocalLightGPUData
 typealias LocalLightInterface = LocalLightGPUData;
 
 
-// Clamped inverse-square falloff function from:
-// Real Shading in Unreal Engine 4 by Brian Karis
 float ComputeLightDistanceAttenuationAtLocation(LocalLightInterface localLight, float3 location)
 {
 #if VOLUMETRIC_FOG_LIGHTING
@@ -118,6 +116,7 @@ float ComputeLightDistanceAttenuationAtLocation(LocalLightInterface localLight, 
 	const float biasMeters = 0.01f;
 #endif // VOLUMETRIC_FOG_LIGHTING
 
+	// (26) from https://seblagarde.wordpress.com/wp-content/uploads/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
 	const float dist2 = Dist2(localLight.location, location);
 	return saturate(Pow2(1.f - Pow2(dist2) / Pow4(localLight.range))) / (dist2 + biasMeters);
 }
@@ -181,7 +180,7 @@ float3 GetLightIlluminanceAtLocation(LocalLightInterface localLight, float3 loca
 
 LightingContribution CalcLighting(ShadedSurface surface, float3 lightDir, float3 viewDir, float3 peakIlluminance)
 {
-	return DoShading(surface, lightDir, viewDir, peakIlluminance);
+	return OpaqueClosure::EvaluateContribution<false>(surface, viewDir, lightDir, peakIlluminance);
 }
 
 

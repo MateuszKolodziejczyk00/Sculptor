@@ -36,14 +36,7 @@ void DDGIProbeRaysRTG()
 	rayDesc.Origin      = probeWorldLocation;
 	rayDesc.Direction   = rayDirection;
 
-	rayDesc.TMin        = 0.001f;
-	rayDesc.TMax        = 0.002f;
-	rayDesc.Origin      = 9999.f;
-	rayDesc.Direction   = 1.f;
-
-	RayPayloadData traceResult;
-	traceResult.visibility.isValidHit = false;
-	traceResult.visibility.isMiss = RTScene().VisibilityTest(rayDesc);
+	const RayPayloadData traceResult = RTScene().TraceMaterialRay(rayDesc);
 
 	float3 luminance = 0.f;
 
@@ -60,16 +53,15 @@ void DDGIProbeRaysRTG()
 		const float locationBias = 0.03f;
 		const float3 worldLocation = probeWorldLocation + rayDirection * traceResult.material.distance + hitNormal * locationBias;
 
-		ShadedSurface surface;
-		surface.location        = worldLocation;
-		surface.shadingNormal   = hitNormal;
-		surface.geometryNormal  = hitNormal;
-		surface.roughness       = traceResult.material.roughness;
-		ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, surface.diffuseColor, surface.specularColor);
+		SurfaceGeometry surfaceGeometry;
+		surfaceGeometry.location  = worldLocation;
+		surfaceGeometry.geoNormal = hitNormal;
+
+		const ShadedSurface surface = traceResult.material.AsShadedSurface();
 
 		const float recursionMultiplier = 0.9f;
 		
-		luminance = CalcReflectedLuminance(surface, -rayDirection, DDGISampleContext::Create(), recursionMultiplier);
+		luminance = CalcReflectedLuminance(surface, surfaceGeometry, -rayDirection, DDGISampleContext::Create(), recursionMultiplier);
 
 		luminance += traceResult.material.emissive;
 
@@ -99,6 +91,11 @@ void DDGIProbeRaysRTG()
 	{
 		const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(PARAMS_GLOBAL_LIGHTS->heightFog, probeWorldLocation, traceEndLocation);
 		luminance *= fogTransmittance;
+	}
+
+	if (traceResult.visibility.isMiss)
+	{
+		luminance += SampleCloudscapeInScattering(probeWorldLocation, rayDirection);
 	}
 
 	CONSTS->traceRaysResultTexture[dispatchIdx] = float4(luminance, distanceTraveled);

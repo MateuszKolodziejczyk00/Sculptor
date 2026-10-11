@@ -9,7 +9,7 @@
 [[shader_params(GlobalLightsParams, PARAMS_GLOBAL_LIGHTS)]]
 [[shader_params(CloudscapeProbesParams, PARAMS_CLOUDSCAPE_PROBES)]]
 
-#include "SpecularReflections/RTGITracing.hlsli"
+#include "SpecularReflections/RTGITracingUtils.hlsli"
 
 #include "SpecularReflections/SculptorSharc.hlsli"
 
@@ -25,7 +25,7 @@
 #include "Utils/GBuffer/GBuffer.hlsli"
 
 
-float3 QueryLuminanceInPreviousCache(in float3 rayDirection, in float3 hitLocation, in const RayHitResult hitResult)
+float3 QueryLuminanceInPreviousCache(in float3 rayDirection, in float3 hitLocation, in const RayHitResult hitResult, in const ShadedSurface surface)
 {
 	SharcDef sharcDef;
 	sharcDef.cameraPosition = VIEW->prevFrameSceneView.viewLocation;
@@ -38,17 +38,13 @@ float3 QueryLuminanceInPreviousCache(in float3 rayDirection, in float3 hitLocati
 
 	float3 luminance = 0.f;
 
-	float3 diffuseColor;
-	float3 specularColor;
-	ComputeSurfaceColor(hitResult.baseColor.rgb, hitResult.metallic, OUT diffuseColor, OUT specularColor);
-
 	SharcHitData hitData;
 	hitData.positionWorld        = hitLocation;
 	hitData.normalWorld          = hitResult.normal;
 
 #if SHARC_DEMODULATE_MATERIALS
 	const float NdotV = dot(-rayDirection, hitResult.normal);
-	const float3 materialDemodulation = ComputeMaterialDemodulation(PARAMS_GLOBAL_LIGHTS->brdfIntegrationLUT, BindlessSamplers::LinearClampEdge(), diffuseColor, specularColor, NdotV, hitResult.roughness);
+	const float3 materialDemodulation = ComputeMaterialDemodulation(PARAMS_GLOBAL_LIGHTS->brdfIntegrationLUT, BindlessSamplers::LinearClampEdge(), surface.albedo, surface.f0, NdotV, hitResult.roughness);
 	hitData.materialDemodulation = materialDemodulation;
 #endif // SHARC_DEMODULATE_MATERIALS
 
@@ -73,25 +69,24 @@ float3 ShadeMissRay(in float3 rayOrigin, in float3 rayDirection)
 	const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(PARAMS_GLOBAL_LIGHTS->heightFog, rayOrigin, rayOrigin + rayDirection * 1000.f);
 	luminance *= fogTransmittance;
 
+	luminance += SampleCloudscapeInScattering(rayOrigin, rayDirection);
+
 	return luminance;
 }
 
 
-float3 ShadeHitRay(in float3 hitLocation, in float3 rayDirection, in const RayHitResult hitResult, in bool isLastBounce)
+float3 ShadeHitRay(in float3 hitLocation, in float3 rayDirection, in const RayHitResult hitResult, in const ShadedSurface surface, in bool isLastBounce)
 {
 	if(isLastBounce)
 	{
-		return QueryLuminanceInPreviousCache(rayDirection, hitLocation, hitResult);
+		return QueryLuminanceInPreviousCache(rayDirection, hitLocation, hitResult, surface);
 	}
 
-	ShadedSurface surface;
-	surface.location       = hitLocation;
-	surface.shadingNormal  = hitResult.normal;
-	surface.geometryNormal = hitResult.normal;
-	surface.roughness      = hitResult.roughness;
-	ComputeSurfaceColor(hitResult.baseColor, hitResult.metallic, surface.diffuseColor, surface.specularColor);
+	SurfaceGeometry surfaceGeometry;
+	surfaceGeometry.location  = hitLocation;
+	surfaceGeometry.geoNormal = hitResult.normal;
 
-	float3 luminance = CalcReflectedLuminance_Direct(surface, -rayDirection);
+	float3 luminance = CalcReflectedLuminance_Direct(surface, surfaceGeometry, -rayDirection);
 
 #if !SHARC_SEPARATE_EMISSIVE
 	luminance += hitResult.emissive;
@@ -134,26 +129,26 @@ void SharcUpdateRTG()
 
 	SharcParameters sharcParams = CreateSharcParameters(sharcDef);
 
-	float3 diffuseColor;
-	float3 specularColor;
+	ShadedSurface shadedSurface;
 
 	{
 		const bool isLastBounce = false;
 
-		ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, OUT diffuseColor, OUT specularColor);
-		diffuseColor  = min(diffuseColor, 0.9f);
-		specularColor = min(specularColor, 0.9f);
-
 		// Primary ray
 		RayHitResult hitRes;
-		hitRes.normal      = normal;
-		hitRes.roughness   = roughness;
-		hitRes.baseColor   = baseColorMetallic.xyz;
-		hitRes.metallic    = baseColorMetallic.w;
-		hitRes.emissive    = mainSurface.emissive;
-		hitRes.hitType     = RTGBUFFER_HIT_TYPE_VALID_HIT;
-		hitRes.hitDistance = distance(VIEW->sceneView.viewLocation, worldLocation);
-		const float3 Li = ShadeHitRay(worldLocation, normalize(worldLocation - VIEW->sceneView.viewLocation), hitRes, isLastBounce);
+		hitRes.normal             = normal;
+		hitRes.roughness          = roughness;
+		hitRes.clearCoatWeight    = mainSurface.clearCoatWeight;
+		hitRes.clearCoatRoughness = mainSurface.clearCoatRoughness;
+		hitRes.baseColor          = baseColorMetallic.rgb;
+		hitRes.metallic           = baseColorMetallic.w;
+		hitRes.emissive           = mainSurface.emissive;
+		hitRes.hitType            = RTGBUFFER_HIT_TYPE_VALID_HIT;
+		hitRes.hitDistance        = distance(VIEW->sceneView.viewLocation, worldLocation);
+
+		shadedSurface = hitRes.AsShadedSurface();
+
+		const float3 Li = ShadeHitRay(worldLocation, normalize(worldLocation - VIEW->sceneView.viewLocation), hitRes, shadedSurface, isLastBounce);
 
 		SharcHitData hitData;
 		hitData.positionWorld = worldLocation;
@@ -161,7 +156,7 @@ void SharcUpdateRTG()
 
 #if SHARC_DEMODULATE_MATERIALS
 		const float NdotV = saturate(dot(normal, fromDir));
-		const float3 materialDemodulation = ComputeMaterialDemodulation(PARAMS_GLOBAL_LIGHTS->brdfIntegrationLUT, BindlessSamplers::LinearClampEdge(), diffuseColor, specularColor, NdotV, roughness);
+		const float3 materialDemodulation = ComputeMaterialDemodulation(PARAMS_GLOBAL_LIGHTS->brdfIntegrationLUT, BindlessSamplers::LinearClampEdge(), shadedSurface.albedo, shadedSurface.f0, NdotV, roughness);
 		hitData.materialDemodulation = materialDemodulation;
 #endif // SHARC_DEMODULATE_MATERIALS
 
@@ -183,7 +178,7 @@ void SharcUpdateRTG()
 	for(uint it = 0u; it < bouncesNum; ++it)
 	{
 		hitsNum++;
-		const RayDirectionInfo rayInfo = GenerateReflectionRayDir(diffuseColor, specularColor, normal, roughness, fromDir, rng);
+		const ShadingSample sample = RTClosure::Sample(shadedSurface, fromDir, rng);
 
 		RayHitResult hitRes;
 		bool isScreenSpaceHit = false;
@@ -191,28 +186,32 @@ void SharcUpdateRTG()
 		if (it == 0u)
 		{
 			const float traceDist = PARAMS_SHARC_UPDATE->sharcConstants.ssrTraceLength;
-			const SSTraceResultExtended ssResult = TraceScreenSpaceRay(PARAMS_SHARC_UPDATE->sharcConstants.ssrTracer, VIEW->sceneView, mainSurface.uv, mainSurface.depth, rayInfo.direction, traceDist, rng.Next());
+			const SSTraceResultExtended ssResult = TraceScreenSpaceRay(PARAMS_SHARC_UPDATE->sharcConstants.ssrTracer, VIEW->sceneView, mainSurface.uv, mainSurface.depth, sample.direction, traceDist, rng.Next());
 
 			if (ssResult.isHit)
 			{
-				const SurfaceInfo hitSurfaceInfo = gbuffer.GetSurfaceInfo(ssResult.hitUV);
-				hitRes.normal      = hitSurfaceInfo.normal;
-				hitRes.roughness   = hitSurfaceInfo.roughness;
-				hitRes.baseColor   = hitSurfaceInfo.baseColorMetallic.rgb;
-				hitRes.metallic    = hitSurfaceInfo.baseColorMetallic.w;
-				hitRes.emissive    = hitSurfaceInfo.emissive;
-				hitRes.hitType     = RTGBUFFER_HIT_TYPE_VALID_HIT;
-				hitRes.hitDistance = traceDist * ssResult.hitT;
+				const SurfaceInfo hitSurfaceInfo = gbuffer.GetSurfaceInfo(uint2(ssResult.hitUV * gbuffer.resolution));
+				hitRes.normal             = hitSurfaceInfo.normal;
+				hitRes.roughness          = hitSurfaceInfo.roughness;
+				hitRes.clearCoatWeight    = hitSurfaceInfo.clearCoatWeight;
+				hitRes.clearCoatRoughness = hitSurfaceInfo.clearCoatRoughness;
+				hitRes.baseColor          = hitSurfaceInfo.baseColorMetallic.rgb;
+				hitRes.metallic           = hitSurfaceInfo.baseColorMetallic.w;
+				hitRes.emissive           = hitSurfaceInfo.emissive;
+				hitRes.hitType            = RTGBUFFER_HIT_TYPE_VALID_HIT;
+				hitRes.hitDistance        = traceDist * ssResult.hitT;
 
 				isScreenSpaceHit = true;
 			}
-
-			worldLocation += rayInfo.direction * ssResult.unoccludedDistance * 0.9f;
+			else
+			{
+				worldLocation += sample.direction * ssResult.unoccludedDistance * 0.9f;
+			}
 		}
 
 		if (!isScreenSpaceHit)
 		{
-			hitRes = RTGITraceRay(worldLocation, rayInfo.direction);
+			hitRes = RTGITraceRay(worldLocation, sample.direction);
 		}
 
 		if (hitRes.hitType == RTGBUFFER_HIT_TYPE_BACKFACE)
@@ -221,34 +220,31 @@ void SharcUpdateRTG()
 			break;
 		}
 
-		hitRes.roughness = max(hitRes.roughness, 0.4f);
-
-		const float nDotL = dot(normal, rayInfo.direction);
-		const RTBRDF brdf = RT_EvaluateBRDF(normal, fromDir, rayInfo.direction, roughness, specularColor, diffuseColor);
+		const BRDFLobes brdf = RTClosure::RTEvaluate(shadedSurface, fromDir, sample.direction);
 
 		const float3 evaluatedBrdf = brdf.diffuse + brdf.specular;
 
-		const float3 segmentThroughput = evaluatedBrdf * nDotL / rayInfo.pdf;
+		const float3 segmentThroughput = evaluatedBrdf / sample.pdf;
 
 		SharcSetThroughput(sharcState, segmentThroughput);
+
+		hitRes.roughness = max(hitRes.roughness, 0.4f);
+		shadedSurface = hitRes.AsShadedSurface();
 
 		if (hitRes.hitType == RTGBUFFER_HIT_TYPE_VALID_HIT)
 		{
 			const bool isLastBounce = (it == (bouncesNum - 1u));
 
-			const float3 hitLocation = worldLocation + rayInfo.direction * hitRes.hitDistance;
+			const float3 hitLocation = worldLocation + sample.direction * hitRes.hitDistance;
 
-			const float3 Li = ShadeHitRay(hitLocation, rayInfo.direction, hitRes, isLastBounce);
+			const float3 Li = ShadeHitRay(hitLocation, sample.direction, hitRes, shadedSurface, isLastBounce);
 
-			worldLocation = worldLocation + rayInfo.direction * hitRes.hitDistance;
+			worldLocation = hitLocation;
 			normal        = hitRes.normal;
 			roughness     = max(hitRes.roughness, 0.4f);
-			fromDir       = -rayInfo.direction;
+			fromDir       = -sample.direction;
 
 			baseColorMetallic = float4(hitRes.baseColor, hitRes.metallic);
-			ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, OUT diffuseColor, OUT specularColor);
-			diffuseColor = min(diffuseColor, 0.9f);
-			specularColor = min(specularColor, 0.9f);
 
 			const uint  gridLevel = HashGridGetLevel(hitLocation, sharcParams.gridParameters);
 			const float voxelSize = HashGridGetVoxelSize(gridLevel, sharcParams.gridParameters);
@@ -261,7 +257,7 @@ void SharcUpdateRTG()
 
 #if SHARC_DEMODULATE_MATERIALS
 				const float NdotV = saturate(dot(normal, fromDir));
-				const float3 materialDemodulation = ComputeMaterialDemodulation(PARAMS_GLOBAL_LIGHTS->brdfIntegrationLUT, BindlessSamplers::LinearClampEdge(), diffuseColor, specularColor, NdotV, roughness);
+				const float3 materialDemodulation = ComputeMaterialDemodulation(PARAMS_GLOBAL_LIGHTS->brdfIntegrationLUT, BindlessSamplers::LinearClampEdge(), shadedSurface.albedo, shadedSurface.f0, NdotV, roughness);
 				hitData.materialDemodulation = materialDemodulation;
 #endif // SHARC_DEMODULATE_MATERIALS
 
@@ -280,7 +276,7 @@ void SharcUpdateRTG()
 		}
 		else if(hitRes.hitType == RTGBUFFER_HIT_TYPE_NO_HIT)
 		{
-			const float3 Li = ShadeMissRay(worldLocation, rayInfo.direction);
+			const float3 Li = ShadeMissRay(worldLocation, sample.direction);
 
 			SharcUpdateMiss(sharcParams, sharcState, Li);
 			break;

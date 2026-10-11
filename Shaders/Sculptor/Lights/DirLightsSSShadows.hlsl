@@ -60,7 +60,7 @@ void TraceSSShadowsCS(CS_INPUT input)
 
 	const float2 startUV = (coords + 0.5f) * PARAMS_SCREEN_SPACE_SHADOWS_CONSTANTS->pixelSize;
 
-	const float noise = frac(PARAMS_SCREEN_SPACE_SHADOWS_CONSTANTS->blueNoise256.Load(uint3(coords & 255u, 0)).r + PARAMS_SCREEN_SPACE_SHADOWS_CONSTANTS->frameIdx * SPT_GOLDEN_RATIO);
+	const float noise = frac(GLOBALS->blueNoise256.Load(uint3(coords & 255u, 0)).r + PARAMS_SCREEN_SPACE_SHADOWS_CONSTANTS->frameIdx * SPT_GOLDEN_RATIO);
 
 	const SSTraceResultExtended traceResult = TraceScreenSpaceRay(PARAMS_SCREEN_SPACE_SHADOWS_CONSTANTS->ssTracerData, VIEW->sceneView, startUV, depth, L, PARAMS_SCREEN_SPACE_SHADOWS_CONSTANTS->traceDistance, noise);
 

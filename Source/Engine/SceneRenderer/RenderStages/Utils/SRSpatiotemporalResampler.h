@@ -4,6 +4,7 @@
 #include "RGResources/RGResourceHandles.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "SceneRenderer/RenderStages/Utils/TracesAllocator.h"
+#include "ViewRenderSystems/ParticipatingMedia/ParticipatingMediaTypes.h"
 
 
 namespace spt::rdr
@@ -64,7 +65,7 @@ struct ResamplingParams
 
 	rg::RGTextureViewHandle depthTexture;
 	rg::RGTextureViewHandle normalsTexture;
-	rg::RGTextureViewHandle roughnessTexture;
+	rg::RGTextureViewHandle propsTexture;
 	rg::RGTextureViewHandle baseColorTexture;
 
 	vrt::TracesAllocation   tracesAllocation;
@@ -72,7 +73,7 @@ struct ResamplingParams
 
 	rg::RGTextureViewHandle historyDepthTexture;
 	rg::RGTextureViewHandle historyNormalsTexture;
-	rg::RGTextureViewHandle historyRoughnessTexture;
+	rg::RGTextureViewHandle historyPropsTexture;
 	rg::RGTextureViewHandle historyBaseColorTexture;
 
 	rg::RGTextureViewHandle outSpecularLuminanceDistTexture;
@@ -84,6 +85,8 @@ struct ResamplingParams
 	rg::RGTextureViewHandle historySpecularHitDist;
 
 	rg::RGTextureViewHandle preintegratedBRDFLUT;
+
+	HeightFogParams heightFogParams;
 
 	lib::Span<const SpatialResamplingPassParams> spatialResamplingPasses;
 

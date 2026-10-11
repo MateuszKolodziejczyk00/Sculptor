@@ -2,6 +2,7 @@
 #define RTGBUFFER_HLSLI
 
 #include "Utils/Packing.hlsli"
+#include "RayTracing/RayTracingPayload.hlsli"
 
 [[shader_struct(RTHitMaterialInfo)]]
 
@@ -15,20 +16,44 @@ struct RayHitResult
 	static RayHitResult CreateEmpty()
 	{
 		RayHitResult result;
-		result.normal      = 0.f;
-		result.roughness   = 0.f;
-		result.baseColor   = 0.f;
-		result.metallic    = 0.f;
-		result.hitType     = RTGBUFFER_HIT_TYPE_INVALID;
-		result.hitDistance = 0.f;
+		result.hitType = RTGBUFFER_HIT_TYPE_INVALID;
 		return result;
 	}
 
-	float3 normal;
-	float roughness;
-	float3 baseColor;
-	float metallic;
+	[mutating] void SetHitMaterial(in MaterialPayload material)
+	{
+		const float4 baseColorMetallic = UnpackFloat4x8(material.baseColorMetallic);
 
+		hitType = RTGBUFFER_HIT_TYPE_VALID_HIT;
+		baseColor          = baseColorMetallic.rgb;
+		metallic           = baseColorMetallic.w;
+		normal             = material.normal;
+		roughness          = material.roughness;
+		clearCoatWeight    = material.clearCoatWeight;
+		clearCoatRoughness = material.clearCoatRoughness;
+		emissive           = material.emissive;
+		hitDistance        = material.distance;
+	}
+
+	ShadedSurface AsShadedSurface()
+	{
+		ShadedSurface surface;
+		surface.normal             = normal;
+		surface.roughness          = roughness;
+		surface.clearCoatWeight    = clearCoatWeight;
+		surface.clearCoatRoughness = clearCoatRoughness;
+
+		ComputeSurfaceColor(baseColor, metallic, OUT surface.albedo, OUT surface.f0);
+
+		return surface;
+	}
+
+	float3 baseColor;
+	float  metallic;
+	float3 normal;
+	float  roughness;
+	float  clearCoatWeight;
+	float  clearCoatRoughness;
 	float3 emissive;
 	
 	uint hitType;
@@ -100,12 +125,14 @@ RayHitResult UnpackRTGBuffer(in RTHitMaterialInfo data)
 	{
 		const float4 baseColorMetallic = UnpackFloat4x8(data.baseColorMetallic);
 
-		hitResult.normal    = UnpackHitNormal(data.normal);
-		hitResult.baseColor = baseColorMetallic.rgb;
-		hitResult.metallic  = baseColorMetallic.w;
-		hitResult.roughness = UnpackFloatNorm(data.roughness);
-		hitResult.hitType   = RTGBUFFER_HIT_TYPE_VALID_HIT;
-		hitResult.emissive  = UnpackEmissive(data.emissive);
+		hitResult.baseColor          = baseColorMetallic.rgb;
+		hitResult.metallic           = baseColorMetallic.w;
+		hitResult.normal             = UnpackHitNormal(data.normal);
+		hitResult.roughness          = UnpackFloatNorm(data.roughness);
+		hitResult.emissive           = UnpackEmissive(data.emissive);
+		hitResult.clearCoatWeight    = 0.f;
+		hitResult.clearCoatRoughness = 0.f;
+		hitResult.hitType            = RTGBUFFER_HIT_TYPE_VALID_HIT;
 	}
 	else
 	{

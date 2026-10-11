@@ -1,7 +1,6 @@
 #include "TracesAllocator.h"
 #include "RenderGraphBuilder.h"
 #include "ShaderStructs/ShaderStructs.h"
-#include "GlobalResources/GlobalResources.h"
 #include "ResourcesManager.h"
 
 

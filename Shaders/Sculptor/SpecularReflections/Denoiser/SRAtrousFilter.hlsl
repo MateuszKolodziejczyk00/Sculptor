@@ -6,7 +6,6 @@
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
 #include "Utils/Wave.hlsli"
-#include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 #include "SpecularReflections/Denoiser/RTDenoising.hlsli"
 
@@ -124,7 +123,7 @@ void SRATrousFilterCS(CS_INPUT input)
 
 		const float roughness = PARAMS_S_R_A_TROUS_FILTER->roughnessTexture.Load(uint3(pixel, 0));
 
-		if(roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
+		if(roughness <= RTClosure::RoughnessDeltaThreshold)
 		{
 			const RTSphericalBasis outSpecularY_SH = RawToRTSphericalBasis(PARAMS_S_R_A_TROUS_FILTER->inSpecularY.Load(uint3(pixel, 0)));
 			const RTSphericalBasis outDiffuseY_SH = RawToRTSphericalBasis(PARAMS_S_R_A_TROUS_FILTER->inDiffuseY.Load(uint3(pixel, 0)));

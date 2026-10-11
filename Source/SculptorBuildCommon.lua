@@ -73,6 +73,7 @@ EProjectType =
 {
     Engine              = "Engine",
     Editor              = "Editor",
+    Tools               = "Tools",
     ThirdParty          = "ThirdParty"
 }
 
@@ -319,7 +320,7 @@ function Project:BuildConfiguration(configuration, platform)
     end
 
     -- add additional includes in case if for example we want to include only headers from some project, without linking it's dll
-    if self.projectType == EProjectType.Editor or self.projectType == EProjectType.Engine then
+    if self.projectType == EProjectType.Editor or self.projectType == EProjectType.Engine or self.projectType == EProjectType.Tools then
         self:AddIncludePathInternal(self:GetEngineSourceRelativePath() .. "Engine")
     end
 

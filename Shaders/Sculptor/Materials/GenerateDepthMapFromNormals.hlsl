@@ -72,7 +72,7 @@ void GenerateCS(CS_INPUT input)
 		}
 	}
 
-	const float strength = 0.5f;
+	const float strength = 0.2f;
 
 	float finalDepth = -(heightSum / samplesNum);
 	finalDepth /= PARAMS_GENERATE_DEPTH_MAP_FROM_NORMALS_CONSTANTS->maxDepthCm;

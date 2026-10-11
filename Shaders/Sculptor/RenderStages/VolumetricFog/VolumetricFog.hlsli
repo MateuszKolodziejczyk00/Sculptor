@@ -26,6 +26,11 @@ float EvaluateHeightBasedDensityAtLocation(float globalDensity, float3 location,
 	return 0.f;
 }
 
+float EvaluateHeightFogDensityAtLocation(in HeightFogParams fogParams, in float3 location)
+{
+	return EvaluateHeightBasedDensityAtLocation(fogParams.density, location, fogParams.heightFalloff);
+}
+
 
 float3 ClipVolumetricFogSegmentEndLocation(in float3 start, inout float3 end, inout float3 segment, inout float segmentLength)
 {
@@ -127,8 +132,7 @@ float2 ComputeFogFroxelDepthBounds(in VolumetricFogConstants fogConstants, in ui
 
 float ComputeFogDepthJitter(in VolumetricFogConstants fogConstants, in uint2 pixel)
 {
-	const uint2 blueNoiseTexturePixel = pixel & fogConstants.blueNoiseResMask;
-	const float blueNoise = PARAM_VolumetricFogConstants->blueNoiseTexture.Load(uint3(blueNoiseTexturePixel, 0)).x;
+	const float blueNoise = GLOBALS->blueNoise256.Load(uint3(pixel & 255u, 0));
 	const float goldenRationSequence = (fogConstants.frameIdx & 7u) * SPT_GOLDEN_RATIO;
 	return (frac(blueNoise + goldenRationSequence) - 0.5f);
 }

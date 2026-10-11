@@ -19,7 +19,7 @@ void UpsampleVolumetricCloudsCS(CS_INPUT input)
     const float2 inputPixelSize = 2.f * PARAMS_UPSAMPLE_VOLUMETRIC_CLOUDS->rcpResolution;
 
     const uint2 noiseCoords = coords & 255u;
-    const float noise = frac(PARAMS_UPSAMPLE_VOLUMETRIC_CLOUDS->blueNoise256.Load(uint3(noiseCoords, 0u)) + PARAMS_UPSAMPLE_VOLUMETRIC_CLOUDS->frameIdx * SPT_GOLDEN_RATIO);
+    const float noise = frac(GLOBALS->blueNoise256.Load(uint3(noiseCoords, 0u)) + PARAMS_UPSAMPLE_VOLUMETRIC_CLOUDS->frameIdx * SPT_GOLDEN_RATIO);
     const float2 noiseOffset = float2(frac(noise * 2.f), noise) * 2.f - 1.f;
 
     const float2 noiseOffsetUV = noiseOffset * inputPixelSize * 0.4f;

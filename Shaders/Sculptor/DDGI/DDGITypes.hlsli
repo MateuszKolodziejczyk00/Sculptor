@@ -149,7 +149,11 @@ DDGISampleParams CreateDDGISampleParams(in float3 worldLocation, in float3 surfa
 
 float3 ComputeDDGIBiasedSampleLocation(in const DDGIVolumeGPUParams volumeParams, in DDGISampleParams sampleParams)
 {
-	const float3 biasVector = normalize(sampleParams.surfaceNormal + sampleParams.viewNormal * 4.0f) * volumeParams.probesSpacing * sampleParams.sampleLocationBiasMultiplier;
+	float3 biasVector = normalize(sampleParams.surfaceNormal + sampleParams.viewNormal * 4.0f) * volumeParams.probesSpacing * sampleParams.sampleLocationBiasMultiplier;
+	if (any(isnan(biasVector)))
+	{
+		biasVector = 0.f;
+	}
 
 	const float3 minWorldLocation = volumeParams.probesOriginWorldLocation + volumeParams.probesSpacing * 0.02f;
 	const float3 maxWorldLocation = volumeParams.probesEndWorldLocation - volumeParams.probesSpacing * 0.02f;

@@ -95,7 +95,7 @@ void SandboxUIView::DrawUI()
 				   },
 				   js::JobDef()
 				   .SetPriority(js::EJobPriority::High)
-				   .ExecuteBefore(frame.GetStageFinishedEvent(engn::EFrameStage::UpdatingEnd)));
+				   .ExecuteBefore(frame.GetStageBeginEvent(engn::EFrameStage::TransferDataForRendering)));
 
 
 		js::Launch(SPT_GENERIC_JOB_NAME,

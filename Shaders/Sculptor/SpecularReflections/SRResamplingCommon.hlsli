@@ -1,7 +1,6 @@
 #ifndef SRRESAMPLING_COMMON_HLSLI
 #define SRRESAMPLING_COMMON_HLSLI
 
-#include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/SRReservoir.hlsli"
 #include "Utils/Shapes.hlsli"
 #include "Utils/Packing.hlsli"
@@ -12,6 +11,8 @@ struct MinimalSurfaceInfo
 	float3 location;
 	float3 n;
 	float  roughness;
+	float  clearCoatWeight;
+	float  clearCoatRoughness;
 	float3 v;
 	half3  f0;
 	half3  diffuseColor;
@@ -23,7 +24,7 @@ struct MinimalGBuffer
 	SRVTexture2D<float>  depthTexture;
 	SRVTexture2D<float2> normalsTexture;
 	SRVTexture2D<float4> baseColorMetallicTexture;
-	SRVTexture2D<float>  roughnessTexture;
+	SRVTexture2D<float4> propsTexture;
 };
 
 
@@ -37,19 +38,21 @@ MinimalSurfaceInfo GetMinimalSurfaceInfo(in MinimalGBuffer minimalGBuffer, in ui
 	const float3 sampleNormal = OctahedronDecodeNormal(minimalGBuffer.normalsTexture.Load(uint3(pixel, 0)));
 	const float3 toView = normalize(sceneView.viewLocation - sampleLocation);
 
-	const float roughness = minimalGBuffer.roughnessTexture.Load(uint3(pixel, 0));
+	const float4 props = minimalGBuffer.propsTexture.Load(uint3(pixel, 0));
 	const float4 baseColorMetallic = minimalGBuffer.baseColorMetallicTexture.Load(uint3(pixel, 0));
 	float3 f0;
 	float3 diffuseColor;
 	ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, OUT diffuseColor, OUT f0);
 
 	MinimalSurfaceInfo pixelSurface;
-	pixelSurface.location     = sampleLocation;
-	pixelSurface.n            = sampleNormal;
-	pixelSurface.v            = toView;
-	pixelSurface.f0           = half3(f0);
-	pixelSurface.diffuseColor = half3(diffuseColor);
-	pixelSurface.roughness    = roughness;
+	pixelSurface.location           = sampleLocation;
+	pixelSurface.n                  = sampleNormal;
+	pixelSurface.v                  = toView;
+	pixelSurface.f0                 = half3(f0);
+	pixelSurface.diffuseColor       = half3(diffuseColor);
+	pixelSurface.roughness          = props.x;
+	pixelSurface.clearCoatWeight    = props.y;
+	pixelSurface.clearCoatRoughness = props.z;
 
 	return pixelSurface;
 }
@@ -61,13 +64,21 @@ float EvaluateTargetFunction(in MinimalSurfaceInfo surface, in float3 sampleLoca
 
 	const float dotNL = saturate(dot(surface.n, l));
 
-	const RTBRDF brdf = RT_EvaluateBRDF(surface.n, surface.v, l, max(surface.roughness, 0.05f), surface.f0, surface.diffuseColor);
+	ShadedSurface shadedSurface;
+	shadedSurface.normal             = surface.n;
+	shadedSurface.f0                 = float3(surface.f0);
+	shadedSurface.albedo             = float3(surface.diffuseColor);
+	shadedSurface.roughness          = surface.roughness;
+	shadedSurface.clearCoatWeight    = surface.clearCoatWeight;
+	shadedSurface.clearCoatRoughness = surface.clearCoatRoughness;
+
+	const BRDFLobes brdf = RTClosure::RTEvaluate(shadedSurface, surface.v, l);
 	if(any(isnan(brdf.specular)))
 	{
 		return 0.f;
 	}
 
-	const float3 Lo = dotNL * sampleLuminance * (brdf.specular + brdf.diffuse);
+	const float3 Lo = sampleLuminance * (brdf.specular + brdf.diffuse);
 
 	return Luminance(Lo);
 }

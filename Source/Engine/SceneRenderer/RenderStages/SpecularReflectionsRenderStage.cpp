@@ -84,10 +84,7 @@ BEGIN_SHADER_STRUCT(GenerateRayDirectionsConstants)
 	SHADER_STRUCT_FIELD(Uint32,                                        seed)
 	SHADER_STRUCT_FIELD(gfx::TypedBuffer<Uint32>,                      tracesNum)
 	SHADER_STRUCT_FIELD(gfx::TypedBuffer<vrt::EncodedRayTraceCommand>, traceCommands)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>,             normalsTexture)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>,             baseColorMetallicTexture)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,                     depthTexture)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,                     roughnessTexture)
+	SHADER_STRUCT_FIELD(GPUGBuffer,                                    gpuGBuffer)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Uint32>,                    rwRaysDirections)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Real32>,                    rwRaysPdfs)
 END_SHADER_STRUCT()
@@ -111,6 +108,8 @@ RayDirections GenerateRayDirections(rg::RenderGraphBuilder& graphBuilder, const 
 {
 	SPT_PROFILER_FUNCTION();
 
+	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
+
 	const math::Vector2u resolution = params.resolution;
 
 	rhi::BufferDefinition rayDirectionsBufferDef;
@@ -129,10 +128,7 @@ RayDirections GenerateRayDirections(rg::RenderGraphBuilder& graphBuilder, const 
 	shaderConstants.seed                     = lib::rnd::RandomFromTypeDomain<Uint32>();
 	shaderConstants.tracesNum                = tracesAllocation.tracesNum;
 	shaderConstants.traceCommands            = tracesAllocation.rayTraceCommands;
-	shaderConstants.normalsTexture           = params.normalsTexture;
-	shaderConstants.baseColorMetallicTexture = params.baseColorTexture;
-	shaderConstants.depthTexture             = params.depthTexture;
-	shaderConstants.roughnessTexture         = params.roughnessTexture;
+	shaderConstants.gpuGBuffer               = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
 	shaderConstants.rwRaysDirections         = rayDirectionsBuffer;
 	shaderConstants.rwRaysPdfs               = rayPdfsBuffer;
 
@@ -339,17 +335,17 @@ static void ShadeRays(rg::RenderGraphBuilder& graphBuilder, const SceneRendererI
 	rtShadingConstants.heightFog             = pmSystem.GetHeightFogParams();
 	rtShadingConstants.rayCommandsBufferSize = static_cast<Uint32>(shadingParams.sortedTraces->GetSize() / sizeof(vrt::EncodedRayTraceCommand));
 	rtShadingConstants.frameIdx              = viewSpec.GetFrameIdx();
-	rtShadingConstants.skyViewLUT         = srParams.skyViewLUT;
-	rtShadingConstants.transmittanceLUT   = atmosphereContext.transmittanceLUT;
-	rtShadingConstants.atmosphereParams   = atmosphereContext.atmosphereParams;
-	rtShadingConstants.hitMaterialInfos   = shadingParams.rtGBuffer.hitMaterialInfos;
-	rtShadingConstants.rayDirections      = shadingParams.rtGBuffer.rayDirections;
-	rtShadingConstants.rayPdfs            = shadingParams.rtGBuffer.rayPdfs;
-	rtShadingConstants.depthTexture       = srParams.depthTexture;
-	rtShadingConstants.reservoirsBuffer   = shadingParams.reservoirsBuffer;
-	rtShadingConstants.traceCommands      = shadingParams.tracesAllocation.rayTraceCommands;
-	rtShadingConstants.sortedTraces       = shadingParams.sortedTraces;
-	rtShadingConstants.tracesNum          = shadingParams.raysShadingCounts;
+	rtShadingConstants.skyViewLUT            = srParams.skyViewLUT;
+	rtShadingConstants.transmittanceLUT      = atmosphereContext.transmittanceLUT;
+	rtShadingConstants.atmosphereParams      = atmosphereContext.atmosphereParams;
+	rtShadingConstants.hitMaterialInfos      = shadingParams.rtGBuffer.hitMaterialInfos;
+	rtShadingConstants.rayDirections         = shadingParams.rtGBuffer.rayDirections;
+	rtShadingConstants.rayPdfs               = shadingParams.rtGBuffer.rayPdfs;
+	rtShadingConstants.depthTexture          = srParams.depthTexture;
+	rtShadingConstants.reservoirsBuffer      = shadingParams.reservoirsBuffer;
+	rtShadingConstants.traceCommands         = shadingParams.tracesAllocation.rayTraceCommands;
+	rtShadingConstants.sortedTraces          = shadingParams.sortedTraces;
+	rtShadingConstants.tracesNum             = shadingParams.raysShadingCounts;
 
 	const rdr::GPUPtr<RTShadingConstants> shadingConstants = graphBuilder.CreateGPUData(rtShadingConstants);
 
@@ -680,9 +676,9 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		const vrt::TracesAllocation tracesAllocation = AllocateTraces(graphBuilder, tracesAllocationDefinition);
 
 		SpecularReflectionsParams params;
-		params.resolution        = resolution;
-		params.skyViewLUT        = viewContext.skyViewLUT;
-		params.resetAccumulation = stageContext.rendererSettings.resetAccumulation;
+		params.resolution         = resolution;
+		params.skyViewLUT         = viewContext.skyViewLUT;
+		params.resetAccumulation  = stageContext.rendererSettings.resetAccumulation;
 
 		if (isHalfRes)
 		{
@@ -750,11 +746,11 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		resamplingParams.initialReservoirBuffer          = reservoirsBuffer;
 		resamplingParams.depthTexture                    = params.depthTexture;
 		resamplingParams.normalsTexture                  = params.normalsTexture;
-		resamplingParams.roughnessTexture                = params.roughnessTexture;
+		resamplingParams.propsTexture                    = params.roughnessTexture;
 		resamplingParams.baseColorTexture                = params.baseColorTexture;
 		resamplingParams.historyDepthTexture             = params.depthHistoryTexture;
 		resamplingParams.historyNormalsTexture           = params.historyNormalsTexture;
-		resamplingParams.historyRoughnessTexture         = params.historyRoughnessTexture;
+		resamplingParams.historyPropsTexture             = params.historyRoughnessTexture;
 		resamplingParams.historyBaseColorTexture         = isHalfRes ? viewContext.historyBaseColorHalfRes : viewContext.historyBaseColor;
 		resamplingParams.outSpecularLuminanceDistTexture = specularLuminanceHitDistanceTexture;
 		resamplingParams.outDiffuseLuminanceDistTexture  = diffuseLuminanceHitDistanceTexture;
@@ -774,6 +770,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		resamplingParams.resamplingRangeStep             = renderer_params::resamplingRangeStep;
 		resamplingParams.ssrStepsNum                     = renderer_params::ssrtStepsNum;
 		resamplingParams.ssrTraceLength                  = renderer_params::ssrtTraceLenght;
+		resamplingParams.heightFogParams                 = viewSpec.GetRenderSystemChecked<ParticipatingMediaViewRenderSystem>().GetHeightFogParams();
 
 		const sr_restir::InitialResamplingResult initialResamplingResult = m_resampler.ExecuteInitialResampling(graphBuilder, resamplingParams);
 

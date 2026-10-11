@@ -29,7 +29,7 @@ void UpdateCloudscapeHighResProbeCS(CS_INPUT input)
 
     const float3 skyAvgLuminance = PARAMS_UPDATE_CLOUDSCAPE_HIGH_RES_PROBE->skyViewProbe.Load(0u);
 
-    const float noise = frac(PARAMS_UPDATE_CLOUDSCAPE_HIGH_RES_PROBE->blueNoise256.Load(uint3(coords & 255u, 0u)) + SPT_GOLDEN_RATIO * (PARAMS_UPDATE_CLOUDSCAPE_HIGH_RES_PROBE->updateLoopIdx & 31u));
+    const float noise = frac(GLOBALS->blueNoise256.Load(uint3(coords & 255u, 0u)) + SPT_GOLDEN_RATIO * (PARAMS_UPDATE_CLOUDSCAPE_HIGH_RES_PROBE->updateLoopIdx & 31u));
 
     CloudscapeRaymarchParams raymarchParams = CloudscapeRaymarchParams::Create();
     raymarchParams.ray = ray;

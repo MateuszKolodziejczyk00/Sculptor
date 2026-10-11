@@ -77,8 +77,8 @@ private:
 	void SetPointLightShadowMapsBeginIdx(PointLightHandle pointLightEntity, Uint32 shadowMapBeginIdx);
 	Uint32 ResetPointLightShadowMap(PointLightHandle pointLightEntity);
 
-	EShadowMapQuality GetShadowMapQuality(SizeType pointLightIdx) const;
-	EShadowMapQuality GetShadowMapQuality(PointLightHandle light) const;
+	EShadowMapQuality GetTargetShadowMapQuality(SizeType pointLightIdx) const;
+	EShadowMapQuality GetCurrentShadowMapQuality(PointLightHandle light) const;
 
 	void ReleaseShadowMap(EShadowMapQuality quality, Uint32 shadowMapIdx);
 	Uint32 AcquireAvaialableShadowMap(EShadowMapQuality quality);

@@ -81,6 +81,11 @@ inline const char* AssetLoadErrorToString(ELoadError error)
 }
 
 
+struct LoadAssetOption
+{
+	Bool forceRecompile = false;
+};
+
 
 class ASSETS_SYSTEM_API AssetsSystem
 {
@@ -156,6 +161,8 @@ public:
 	void RemoveAssetsCompiledDataByType(AssetType type);
 	void RemoveAllAssetsCompiledData();
 
+	void RecompileAssetByType(AssetType type);
+
 	lib::DynamicArray<AssetHandle> GetLoadedAssetsList() const;
 
 	const lib::Path& GetContentPath() const { return m_contentPath; }
@@ -178,7 +185,7 @@ private:
 
 	AssetHandle CreateAssetInstance(const AssetInstanceDefinition& initializer);
 
-	void ScheduleAssetInitialization(const AssetHandle& assetInstance);
+	void ScheduleAssetInitialization(const AssetHandle& assetInstance, Bool forceRecompile);
 
 	lib::DynamicArray<AssetHandle> GetLoadedAssetsList_Locked() const;
 
@@ -193,6 +200,8 @@ private:
 	void ReloadAssetImpl(const AssetHandle& assetInstance);
 
 	Bool IsCompiledOnlyMode() const { return lib::HasAnyFlag(m_flags, EAssetsSystemFlags::CompiledOnly); }
+
+	LoadResult<> LoadAssetImpl(ResourcePathID pathID, const LoadAssetOption& options);
 
 	lib::Path m_contentPath;
 

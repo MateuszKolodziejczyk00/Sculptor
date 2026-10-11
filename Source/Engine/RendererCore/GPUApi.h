@@ -30,7 +30,17 @@ class DescriptorSetStateLayoutsRegistry;
 struct GPUApiData;
 
 
-using OnRendererCleanupDelegate = lib::ThreadSafeMulticastDelegate<void()>;
+using OnRendererInitializedDelegate = lib::ThreadSafeMulticastDelegate<void()>;
+using OnRendererCleanupDelegate     = lib::ThreadSafeMulticastDelegate<void()>;
+
+
+struct GlobalShaderParam
+{
+	Bool IsValid() const { return type.IsValid() && address != 0u; }
+
+	lib::HashedString  type;
+	rhi::DeviceAddress address = 0u;
+};
 
 
 enum class EDeferredReleasesFlushFlags : Flags32
@@ -76,7 +86,12 @@ public:
 
 	static void									WaitIdle(Bool releaseRuntimeResources = true);
 
+	// Can be used before GPUApi is initialized. Broadcasted at the end of Initialize()
+	static OnRendererInitializedDelegate&		GetOnRendererInitializedDelegate();
 	static OnRendererCleanupDelegate&			GetOnRendererCleanupDelegate();
+
+	static void									SetGlobalShaderParam(const GlobalShaderParam& param);
+	static const GlobalShaderParam&				GetGlobalShaderParam();
 
 	static Bool IsRayTracingEnabled();
 

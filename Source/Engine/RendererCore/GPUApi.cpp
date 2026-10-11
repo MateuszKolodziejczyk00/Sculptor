@@ -26,6 +26,8 @@ struct GPUApiData
 	TransfersManager* transfersManager;
 	
 	OnRendererCleanupDelegate cleanupDelegate;
+
+	GlobalShaderParam globalShaderParam;
 	
 	DeviceQueuesManager deviceQueuesManager;
 	
@@ -118,6 +120,8 @@ void GPUApi::Initialize()
 
 	g_GPUApiData->rhiModuleData = rhi::RHI::GetModuleData();
 	g_GPUApiData->shaderStructsRegistryData = ShaderStructsRegistry::GetRegistryData();
+
+	GetOnRendererInitializedDelegate().Broadcast();
 }
 
 void GPUApi::Uninitialize()
@@ -289,9 +293,25 @@ void GPUApi::WaitIdle(Bool releaseRuntimeResources /*= true*/)
 	}
 }
 
+OnRendererInitializedDelegate& GPUApi::GetOnRendererInitializedDelegate()
+{
+	static OnRendererInitializedDelegate initializedDelegate;
+	return initializedDelegate;
+}
+
 OnRendererCleanupDelegate& GPUApi::GetOnRendererCleanupDelegate()
 {
 	return g_GPUApiData->cleanupDelegate;
+}
+
+void GPUApi::SetGlobalShaderParam(const GlobalShaderParam& param)
+{
+	g_GPUApiData->globalShaderParam = param;
+}
+
+const GlobalShaderParam& GPUApi::GetGlobalShaderParam()
+{
+	return g_GPUApiData->globalShaderParam;
 }
 
 Bool GPUApi::IsRayTracingEnabled()

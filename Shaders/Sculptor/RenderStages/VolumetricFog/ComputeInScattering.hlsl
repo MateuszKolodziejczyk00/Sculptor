@@ -59,21 +59,6 @@ void ComputeInScatteringCS(CS_INPUT input)
 		if (isWithinLocalLightsScatteringRange)
 		{
 			localLightsInScattering = ComputeLocalLightsInScattering(inScatteringParams);
-
-			if(PARAMS_COMPUTE_IN_SCATTERING->hasValidHistory)
-			{
-				const float3 historyNDC = WorldSpaceToNDCNoJitter(fogFroxelWorldLocation, VIEW->prevFrameSceneView);
-				const float historyLinearDepth = ComputeLinearDepth(historyNDC.z, VIEW->prevFrameSceneView);
-				float3 historyUVW = ComputeFogFroxelUVW(historyNDC.xy * 0.5f + 0.5f, historyLinearDepth, fogNearPlane, fogFarPlane);
-				historyUVW.z *= PARAMS_RENDER_VOLUMETRIC_FOG->localLightsScatteringWNormalization;
-
-				if(all(abs(historyNDC.xy) < 1.f) && historyNDC.z > 0.f && historyNDC.z < 1.f)
-				{
-					const float3 localLightsInScatteringHistory = PARAMS_COMPUTE_IN_SCATTERING->historyLocalLightsInScatteringTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), historyUVW, 0.f).xyz;
-
-					localLightsInScattering = lerp(localLightsInScatteringHistory, localLightsInScattering, 0.25f);
-				}
-			}
 		}
 		
 		float3 inScattering = ComputeDirectionalLightsInScattering(inScatteringParams) + localLightsInScattering;
@@ -90,10 +75,5 @@ void ComputeInScatteringCS(CS_INPUT input)
 		inScatteringExtinction.rgb = LuminanceToExposedLuminance(inScatteringExtinction.rgb);
 
 		PARAMS_COMPUTE_IN_SCATTERING->inScatteringTexture[input.globalID] = inScatteringExtinction;
-
-		if (isWithinLocalLightsScatteringRange)
-		{
-			PARAMS_COMPUTE_IN_SCATTERING->localLightsInScatteringTexture[input.globalID] = float4(localLightsInScattering, 0.f);
-		}
 	}
 }

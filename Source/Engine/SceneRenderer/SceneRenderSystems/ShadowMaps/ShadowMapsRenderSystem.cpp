@@ -12,7 +12,7 @@
 #include "EngineFrame.h"
 #include "SceneRenderer/SceneRenderer.h"
 
-
+#pragma optimize("", off)
 namespace spt::rsc
 {
 
@@ -203,7 +203,7 @@ Uint32 ShadowMapsRenderSystem::ResetPointLightShadowMap(PointLightHandle pointLi
 	return shadowMapFirstFaceIdx;
 }
 
-EShadowMapQuality ShadowMapsRenderSystem::GetShadowMapQuality(SizeType pointLightIdx) const
+EShadowMapQuality ShadowMapsRenderSystem::GetTargetShadowMapQuality(SizeType pointLightIdx) const
 {
 	if (pointLightIdx < m_highQualityShadowMapLightEndIdx)
 	{
@@ -217,7 +217,7 @@ EShadowMapQuality ShadowMapsRenderSystem::GetShadowMapQuality(SizeType pointLigh
 	return EShadowMapQuality::Low;
 }
 
-EShadowMapQuality ShadowMapsRenderSystem::GetShadowMapQuality(PointLightHandle light) const
+EShadowMapQuality ShadowMapsRenderSystem::GetCurrentShadowMapQuality(PointLightHandle light) const
 {
 	const auto foundPriority = m_localLightsShadowMaps.find(light);
 	return foundPriority != std::cend(m_localLightsShadowMaps) ? foundPriority->second.quality : EShadowMapQuality::None;
@@ -367,8 +367,6 @@ void ShadowMapsRenderSystem::AssignShadowMaps(const RenderView& mainView)
 	// current quality -> release info
 	lib::HashMap<EShadowMapQuality, lib::DynamicArray<ShadowMapReleaseInfo>> shadowMapsToRelease;
 
-	const auto pointLightsWithAssignedShadowMapsPrevFrame = std::move(m_localLightsShadowMaps);
-
 	lib::HashSet<PointLightHandle> lightsVisibleCurrentFrame;
 	lightsVisibleCurrentFrame.reserve(shadowMapsInUse);
 
@@ -380,9 +378,8 @@ void ShadowMapsRenderSystem::AssignShadowMaps(const RenderView& mainView)
 
 		lightsVisibleCurrentFrame.emplace(lightEntity);
 
-		const auto foundCurrentQuality = pointLightsWithAssignedShadowMapsPrevFrame.find(lightEntity);
-		const EShadowMapQuality currentQuality = foundCurrentQuality != std::cend(pointLightsWithAssignedShadowMapsPrevFrame) ? foundCurrentQuality->second.quality : EShadowMapQuality::None;
-		const EShadowMapQuality desiredQuality = GetShadowMapQuality(lightIdx);
+		const EShadowMapQuality currentQuality = GetCurrentShadowMapQuality(lightEntity);
+		const EShadowMapQuality desiredQuality = GetTargetShadowMapQuality(lightIdx);
 
 		if (static_cast<Uint32>(currentQuality) < static_cast<Uint32>(desiredQuality))
 		{
@@ -396,36 +393,29 @@ void ShadowMapsRenderSystem::AssignShadowMaps(const RenderView& mainView)
 
 				shadowMapsToUpgrade.emplace_back(std::make_pair(lightEntity, desiredQuality));
 			}
-			else if (currentQuality != EShadowMapQuality::None)
-			{
-				// this shadow map should be upgraded but we're out of update budget
-				// Because of that we're just marking this shadow map as "shadowMapsToRelease"
-				// This will allow using this shadow map for other lights if necessary, and if not, it will stay with same quality
-				shadowMapsToRelease[currentQuality].emplace_back(ShadowMapReleaseInfo{ lightEntity, desiredQuality });
-			}
 		}
 		else if (static_cast<Uint32>(currentQuality) > static_cast<Uint32>(desiredQuality))
 		{
 			// This shadow map should be downgraded
 			shadowMapsToRelease[currentQuality].emplace_back(ShadowMapReleaseInfo{ lightEntity, desiredQuality });
 		}
-		else
-		{
-			// This light use shadow map of proper quality
-			m_localLightsShadowMaps[lightEntity].quality = desiredQuality;
-		}
 	}
 
 	lib::DynamicArray<PointLightHandle> releasedShadowMaps;
 
-	// release all shadow maps that are not visible
-	for (const auto [entity, sm] : pointLightsWithAssignedShadowMapsPrevFrame)
+	for (const auto& [entity, sm] : m_localLightsShadowMaps)
 	{
 		if (!lightsVisibleCurrentFrame.contains(entity))
 		{
-			ReleaseShadowMap(sm.quality, ResetPointLightShadowMap(entity));
 			releasedShadowMaps.emplace_back(entity);
 		}
+	}
+
+	// release all shadow maps that are not visible
+	for (const PointLightHandle entity : releasedShadowMaps)
+	{
+		const EShadowMapQuality releasedQuality = GetCurrentShadowMapQuality(entity);
+		ReleaseShadowMap(releasedQuality, ResetPointLightShadowMap(entity));
 	}
 
 	// later we treat this array as stack. Reverse it to start upgrading from lowest quality
@@ -454,22 +444,10 @@ void ShadowMapsRenderSystem::AssignShadowMaps(const RenderView& mainView)
 		}
 	
 		SetPointLightShadowMapsBeginIdx(acquireLightEntity, shadowMapIdx);
-		m_localLightsShadowMaps[acquireLightEntity].quality = acquireDesiredQuality;
+		m_localLightsShadowMaps.At(acquireLightEntity).quality = acquireDesiredQuality;
 	}
 
-	// Some lights had shadow maps that should be downgraded but there were no other lights to acquire their shadow maps
-	// In this case we just leave shadow maps that they currently use, event though quality is too high
-	// As these lights were not assigned to any shadow map this frame, we need to do this here, when we're sure that this light will still use same shadow map
-	for (const auto [releasedQuality, releaseInfos] : shadowMapsToRelease)
-	{
-		for (const ShadowMapReleaseInfo& releaseInfo : releaseInfos)
-		{
-			if (lightsVisibleCurrentFrame.contains(releaseInfo.entity))
-			{
-				m_localLightsShadowMaps[releaseInfo.entity].quality = releasedQuality;
-			}
-		}
-	}
+	// Lights left in shadowMapsToRelease weren't needed by other lights, so they keep their current shadow maps (even if quality is too high)
 }
 
 void ShadowMapsRenderSystem::UpdateShadowMapRenderViews(PointLightHandle owningLight, const PointLightData& pointLight, Uint32 shadowMapBeginIdx)
@@ -621,7 +599,7 @@ Real32 ShadowMapsRenderSystem::ComputeLocalLightShadowMapPriority(const SceneVie
 	const Real32 intensityMultiplier		= 0.7f;
 	const Real32 inRadiusPriority			= 10.f;
 
-	const EShadowMapQuality currentQuality = GetShadowMapQuality(light);
+	const EShadowMapQuality currentQuality = GetCurrentShadowMapQuality(light);
 
 	Real32 priority = 0.f;
 

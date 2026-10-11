@@ -59,6 +59,7 @@ private:
 	RHIBuffer m_buffer;
 
 	lib::TypeStorage<RHIMappedByteBuffer> m_mappedBuffer;
+	lib::Span<Byte>                       m_usableDescriptorData;
 };
 
 } // spt::vulkan

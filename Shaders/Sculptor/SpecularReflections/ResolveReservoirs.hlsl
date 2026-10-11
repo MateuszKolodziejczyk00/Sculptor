@@ -7,8 +7,8 @@
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
 #include "Shading/Shading.hlsli"
-#include "SpecularReflections/RTGICommon.hlsli"
 #include "Utils/VariableRate/VariableRate.hlsli"
+#include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
 
 struct CS_INPUT
 {
@@ -58,7 +58,10 @@ void ResolveReservoirsCS(CS_INPUT input)
 	
 			const float3 toView = normalize(VIEW->sceneView.viewLocation - sampleLocation);
 	
-			const float roughness = PARAMS_RESOLVE_RESERVOIRS->roughnessTexture.Load(uint3(reservoirCoords, 0));
+			const float4 props = PARAMS_RESOLVE_RESERVOIRS->propsTexture.Load(uint3(reservoirCoords, 0));
+			const float roughness = props.x;
+			const float clearCoatWeight = props.y;
+			const float clearCoatRoughness = props.z;
 
 			const float4 baseColorMetallic = PARAMS_RESOLVE_RESERVOIRS->baseColorTexture.Load(uint3(reservoirCoords, 0));
 
@@ -71,10 +74,25 @@ void ResolveReservoirsCS(CS_INPUT input)
 
 			const float NdotL = saturate(dot(sampleNormal, lightDir));
 	
-			const float3 luminance = reservoir.luminance * reservoir.weightSum;
-	
-			const RTBRDF brdf = RT_EvaluateBRDF(sampleNormal, toView, lightDir, roughness, f0, diffuseColor);
-			specularLo = NdotL * brdf.specular * luminance;
+			float3 luminance = reservoir.luminance;
+
+			if (!reservoir.HasFlag(SR_RESERVOIR_FLAGS_MISS))
+			{
+				luminance *= EvaluateHeightBasedTransmittanceForSegment(PARAMS_RESOLVE_RESERVOIRS->heightFogParams, sampleLocation, reservoir.hitLocation);
+			}
+
+			luminance *= reservoir.weightSum;
+
+			ShadedSurface surface;
+			surface.normal             = sampleNormal;
+			surface.roughness          = roughness;
+			surface.clearCoatWeight    = clearCoatWeight;
+			surface.clearCoatRoughness = clearCoatRoughness;
+			surface.f0                 = f0;
+			surface.albedo             = diffuseColor;
+
+			const BRDFLobes lobes = RTClosure::RTEvaluate(surface, toView, lightDir);
+			specularLo = lobes.specular * luminance;
 	
 			const float NdotV = saturate(dot(sampleNormal, toView));
 			const float2 integratedBRDF = PARAMS_RESOLVE_RESERVOIRS->brdfIntegrationLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), float2(NdotV, roughness), 0);
@@ -87,7 +105,7 @@ void ResolveReservoirsCS(CS_INPUT input)
 			// demodulate specular
 			specularLo /= max((f0 * integratedBRDF.x + integratedBRDF.y), 0.01f);
 
-			diffuseLo = luminance * NdotL; // demodulated without lambertian term for denoise
+			diffuseLo = luminance * lobes.diffuse / brdf_utils::lambert::Evaluate(max(surface.albedo, 0.001f));
 		}
 
 		PARAMS_RESOLVE_RESERVOIRS->specularLumHitDistanceTexture[pixel] = float4(specularLo, hitDistance);

@@ -11,7 +11,6 @@
 #include "SpecularReflections/SRReservoir.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 #include "Shading/Shading.hlsli"
-#include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/SRResamplingCommon.hlsli"
 #include "Utils/Random.hlsli"
 #include "Utils/VariableRate/VariableRate.hlsli"
@@ -62,7 +61,7 @@ struct SRTemporalResampler
 		resampler.historyGBuffer.depthTexture             = PARAMS_S_R_TEMPORAL_RESAMPLING->historyDepthTexture;
 		resampler.historyGBuffer.normalsTexture           = PARAMS_S_R_TEMPORAL_RESAMPLING->historyNormalsTexture;
 		resampler.historyGBuffer.baseColorMetallicTexture = PARAMS_S_R_TEMPORAL_RESAMPLING->historyBaseColorTexture;
-		resampler.historyGBuffer.roughnessTexture         = PARAMS_S_R_TEMPORAL_RESAMPLING->historyRoughnessTexture;
+		resampler.historyGBuffer.propsTexture             = PARAMS_S_R_TEMPORAL_RESAMPLING->historyPropsTexture;
 
 		const float p_hat = EvaluateTargetFunction(resampler.centerPixelSurface, initialReservoir.hitLocation, initialReservoir.luminance);
 
@@ -323,7 +322,7 @@ void ResampleTemporallyCS(CS_INPUT input)
 		currentGBuffer.depthTexture             = PARAMS_S_R_TEMPORAL_RESAMPLING->depthTexture;
 		currentGBuffer.normalsTexture           = PARAMS_S_R_TEMPORAL_RESAMPLING->normalsTexture;
 		currentGBuffer.baseColorMetallicTexture = PARAMS_S_R_TEMPORAL_RESAMPLING->baseColorTexture;
-		currentGBuffer.roughnessTexture         = PARAMS_S_R_TEMPORAL_RESAMPLING->roughnessTexture;
+		currentGBuffer.propsTexture             = PARAMS_S_R_TEMPORAL_RESAMPLING->propsTexture;
 
 		const MinimalSurfaceInfo centerPixelSurface = GetMinimalSurfaceInfo(currentGBuffer, pixel, PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->pixelSize, VIEW->sceneView);
 
@@ -345,7 +344,7 @@ void ResampleTemporallyCS(CS_INPUT input)
 			resampler = SRTemporalResampler::Create(centerPixelSurface, reservoir, wasSampleTraced);
 		}
 
-		if (centerPixelSurface.roughness >= SPECULAR_TRACE_MAX_ROUGHNESS)
+		if (centerPixelSurface.roughness >= RTClosure::RoughnessDeltaThreshold)
 		{
 			const float2 uv = (float2(pixel) + 0.5f) * PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->pixelSize;
 			

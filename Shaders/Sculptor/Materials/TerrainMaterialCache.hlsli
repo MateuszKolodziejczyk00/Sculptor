@@ -88,13 +88,16 @@ MaterialEvaluationOutput EvaluateMaterial<TSampler : IMaterialSampler>(TSampler 
 	}
 #endif // !SPT_RAY_TRACING_SHADER
 
-	output.shadingNormal  = normal;
-	output.geometryNormal = normal;
-	output.roughness      = roughness;
-	output.baseColor      = baseColor;
-	output.metallic       = metallic;
-	output.emissiveColor  = 0.f;
-	output.occlusion      = occlusion;
+	output.shadingNormal      = normal;
+	output.geometryNormal     = normal;
+	output.roughness          = roughness;
+	output.clearCoatWeight    = 0.f;
+	output.clearCoatRoughness = 0.1f;
+	output.roughness          = roughness;
+	output.baseColor          = baseColor;
+	output.metallic           = metallic;
+	output.emissiveColor      = 0.f;
+	output.occlusion          = occlusion;
 
 	return output;
 }

@@ -50,6 +50,8 @@ public:
 
 	virtual lib::Span<const Byte> GetSurfaceData(Uint32 mipLevel, Uint32 arrayLayer) const = 0;
 
+	rhi::ETextureType type = rhi::ETextureType::Auto;
+
 	rhi::EFragmentFormat format = rhi::EFragmentFormat::None;
 
 	math::Vector3u resolution = {};
@@ -115,6 +117,41 @@ Bool LoadTextureImpl(TCallback&& callback, lib::StringView path)
 	stbi_image_free(imageData);
 
 	return true;
+}
+
+
+Bool SaveTextureImpl(math::Vector3u resolution, rhi::EFragmentFormat format, lib::Span<const Byte> dataLinear, const lib::String& path)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(resolution.z() == 1u); // 2D texture
+
+	const Bool isHDR = format == rhi::EFragmentFormat::RGBA32_S_Float;
+	const int componentsNum = 4;
+
+	std::ofstream stream = lib::File::OpenOutputStream(path, lib::Flags(lib::EFileOpenFlags::ForceCreate, lib::EFileOpenFlags::DiscardContent, lib::EFileOpenFlags::Binary));
+	SPT_CHECK(stream.is_open());
+
+	const auto writer = [](void* context, void* data, int size)
+	{
+		std::ostream& stream = *reinterpret_cast<std::ostream*>(context);
+		stream.write(reinterpret_cast<const char*>(data), size);
+	};
+
+	int result = 0;
+
+	if (isHDR)
+	{
+		result = stbi_write_hdr_to_func(writer, &stream, resolution.x(), resolution.y(), componentsNum, reinterpret_cast<const Real32*>(dataLinear.data()));
+	}
+	else
+	{
+		result = stbi_write_png_to_func(writer, &stream, resolution.x(), resolution.y(), componentsNum, dataLinear.data(), resolution.x() * componentsNum);
+	}
+
+	stream.close();
+
+	return result != 0;
 }
 
 
@@ -235,6 +272,18 @@ Bool LoadTextureImpl(TCallback&& callback, lib::StringView path)
 	dataView.arrayLayersNum = header.array_size();
 	dataView.data           = { fileData };
 	dataView.header         = &header;
+	if (header.is_1d())
+	{
+		dataView.type = rhi::ETextureType::Texture1D;
+	}
+	else if (header.is_3d())
+	{
+		dataView.type = rhi::ETextureType::Texture3D;
+	}
+	else
+	{
+		dataView.type = rhi::ETextureType::Texture2D;
+	}
 
 	callback(dataView);
 
@@ -707,6 +756,7 @@ lib::SharedPtr<rdr::Texture> TextureLoader::LoadTexture(lib::StringView path, co
 		textureDefinition.mipLevels   = dataView.mipLevelsNum;
 		textureDefinition.arrayLayers = dataView.arrayLayersNum;
 		textureDefinition.flags       = rhi::ETextureFlags::GloballyReadable;
+		textureDefinition.type        = dataView.type;
 
 		if (params.forceTiling)
 		{
@@ -771,9 +821,7 @@ Bool TextureWriter::SaveTexture(math::Vector3u resolution, rhi::EFragmentFormat 
 
 	if (extension == "png")
 	{
-		SPT_CHECK_NO_ENTRY_MSG("Not implemented yet");
-
-		return false;
+		return png_jpg::SaveTextureImpl(resolution, format, dataLinear, path);
 	}
 	else if (extension == "dds")
 	{
@@ -815,14 +863,17 @@ js::JobWithResult<Bool> TextureWriter::SaveTexture(rg::RenderGraphBuilder& graph
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::SharedRef<rdr::Texture> textureData = graphBuilder.DownloadTexture(RG_DEBUG_NAME("Texture Download"), textureView);
+	//const lib::SharedRef<rdr::Texture> textureData = graphBuilder.DownloadTexture(RG_DEBUG_NAME("Texture Download"), textureView);
+	const lib::SharedRef<rdr::Buffer> textureData = graphBuilder.DownloadTextureToBuffer(RG_DEBUG_NAME("Texture Download"), textureView);
 
-	const math::Vector2u resolution   = textureView->GetResolution2D();
+	const math::Vector3u resolution   = textureView->GetResolution();
+	const rhi::EFragmentFormat format = textureView->GetFormat();
 
 	return js::Launch(SPT_GENERIC_JOB_NAME,
-					  [textureData, filePath = std::move(path)]
+					  [textureData, resolution, format, filePath = std::move(path)]()
 					  {
-						  return TextureWriter::SaveTexture(textureData, filePath);
+						  const rhi::RHIMappedByteBuffer mappedBuffer(textureData->GetRHI());
+						  return TextureWriter::SaveTexture(resolution, format, mappedBuffer.GetSpan(), filePath);
 					  },
 					  js::Prerequisites(graphBuilder.GetGPUFinishedEvent()));
 }

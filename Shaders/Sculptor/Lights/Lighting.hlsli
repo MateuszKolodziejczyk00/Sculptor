@@ -23,7 +23,13 @@ uint ClusterMaskRange(uint mask, uint2 range, uint startIdx)
 	return mask & uint(rangeMask);
 }
 
-void CalcReflectedLuminance<TLightingAccumulator : ILightingAccumulator>(in ShadedSurface surface, in float3 viewDir, inout TLightingAccumulator accumulator)
+struct ClusterInfo
+{
+	float2 uv;
+	float  linearDepth;
+};
+
+void CalcReflectedLuminance<TLightingAccumulator : ILightingAccumulator>(in ShadedSurface surface, in SurfaceGeometry geometry, in ClusterInfo cluster, in float3 viewDir, inout TLightingAccumulator accumulator)
 {
 	// Directional Lights
 
@@ -34,13 +40,13 @@ void CalcReflectedLuminance<TLightingAccumulator : ILightingAccumulator>(in Shad
 
 			const float3 illuminance = directionalLight.illuminance;
 
-			if (any(illuminance > 0.f) && dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
+			if (any(illuminance > 0.f) && dot(-directionalLight.direction, surface.normal) > 0.f)
 			{
-				float visibility = PARAM_ViewShadingParams->shadowMask.SampleLevel(BindlessSamplers::NearestClampEdge(), surface.uv, 0).x;
+				float visibility = PARAM_ViewShadingParams->shadowMask.SampleLevel(BindlessSamplers::NearestClampEdge(), cluster.uv, 0).x;
 
 				if(visibility > 0.f)
 				{
-					const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(PARAM_ViewShadingParams->lightsData->heightFog, surface.location, surface.location - directionalLight.direction * 1500.f);
+					const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(PARAM_ViewShadingParams->lightsData->heightFog, geometry.location, geometry.location - directionalLight.direction * 1500.f);
 
 					const float attenuation = fogTransmittance * visibility;
 					const LightingContribution shadingRes = CalcLighting(surface, -directionalLight.direction, viewDir, illuminance) * attenuation;
@@ -51,13 +57,14 @@ void CalcReflectedLuminance<TLightingAccumulator : ILightingAccumulator>(in Shad
 	}
 
 	// Point lights
-	const uint2 lightsTileCoords = GetLightsTile(surface.uv, PARAM_ViewShadingParams->lightsData->tileSize);
+	const uint2 lightsTileCoords = GetLightsTile(cluster.uv, PARAM_ViewShadingParams->lightsData->tileSize);
 	const uint tileLightsDataOffset = GetLightsTileDataOffset(lightsTileCoords, PARAM_ViewShadingParams->lightsData->tilesNum, PARAM_ViewShadingParams->lightsData->localLights32Num);
 	
-	const uint clusterIdx = surface.linearDepth / PARAM_ViewShadingParams->lightsData->zClusterLength;
+	const uint clusterIdx = cluster.linearDepth / PARAM_ViewShadingParams->lightsData->zClusterLength;
 	const uint2 clusterRange = clusterIdx < PARAM_ViewShadingParams->lightsData->zClustersNum ? PARAM_ViewShadingParams->clustersRanges[clusterIdx] : uint2(0u, 0u);
 	
 	{
+
 		for(uint i = 0; i < PARAM_ViewShadingParams->lightsData->localLights32Num; ++i)
 		{
 			uint lightsMask = PARAM_ViewShadingParams->tilesLightsMask[tileLightsDataOffset + i];
@@ -70,23 +77,23 @@ void CalcReflectedLuminance<TLightingAccumulator : ILightingAccumulator>(in Shad
 				const uint lightIdx = i * 32 + maskBitIdx;
 				const LocalLightInterface localLight = PARAM_ViewShadingParams->localLights[lightIdx];
 			  
-				const float3 toLight = localLight.location - surface.location;
+				const float3 toLight = localLight.location - geometry.location;
 
-				if (dot(toLight, surface.shadingNormal) > 0.f)
+				if (dot(toLight, surface.normal) > 0.f)
 				{
 					const float distToLight = length(toLight);
 
 					if (distToLight < localLight.range)
 					{
 						const float3 lightDir = toLight / distToLight;
-						const float3 illuminance = GetLightIlluminanceAtLocation(localLight, surface.location);
+						const float3 illuminance = GetLightIlluminanceAtLocation(localLight, geometry.location);
 
 						if(any(illuminance > 0.f))
 						{
 							float visibility = 1.f;
 							if (localLight.shadowMapFirstFaceIdx != IDX_NONE_32)
 							{
-								visibility = EvaluatePointLightShadows(surface, localLight.location, localLight.range, localLight.shadowMapFirstFaceIdx);
+								visibility = EvaluatePointLightShadows(surface, geometry, localLight.location, localLight.range, localLight.shadowMapFirstFaceIdx);
 							}
 					
 							if (visibility > 0.f)
@@ -106,12 +113,12 @@ void CalcReflectedLuminance<TLightingAccumulator : ILightingAccumulator>(in Shad
 
 
 #if SPT_META_PARAM_DEBUG_FEATURES
-void TiledShadingDebug(in uint2 pixelCoords, in ShadedSurface surface)
+void TiledShadingDebug(in uint2 pixelCoords, in ShadedSurface surface, in SurfaceGeometry geometry, in ClusterInfo cluster)
 {
-	const uint2 lightsTileCoords = GetLightsTile(surface.uv, PARAM_ViewShadingParams->lightsData->tileSize);
+	const uint2 lightsTileCoords = GetLightsTile(cluster.uv, PARAM_ViewShadingParams->lightsData->tileSize);
 	const uint tileLightsDataOffset = GetLightsTileDataOffset(lightsTileCoords, PARAM_ViewShadingParams->lightsData->tilesNum, PARAM_ViewShadingParams->lightsData->localLights32Num);
 	
-	const uint clusterIdx = surface.linearDepth / PARAM_ViewShadingParams->lightsData->zClusterLength;
+	const uint clusterIdx = cluster.linearDepth / PARAM_ViewShadingParams->lightsData->zClusterLength;
 	const uint2 clusterRange = clusterIdx < PARAM_ViewShadingParams->lightsData->zClustersNum ? PARAM_ViewShadingParams->clustersRanges[clusterIdx] : uint2(0u, 0u);
 
 	uint lightsNum = 0u;
@@ -121,7 +128,7 @@ void TiledShadingDebug(in uint2 pixelCoords, in ShadedSurface surface)
 		uint lightsMask = PARAM_ViewShadingParams->tilesLightsMask[tileLightsDataOffset + i];
 		lightsMask = ClusterMaskRange(lightsMask, clusterRange, i << 5u);
 
-		while(lightsMask)
+		while(lightsMask != 0u)
 		{
 			const uint maskBitIdx = firstbitlow(lightsMask);
 
@@ -246,7 +253,7 @@ struct ShadowRayPayload
 };
 
 
-float3 CalcReflectedLuminance_Direct(in ShadedSurface surface, in float3 viewDir)
+float3 CalcReflectedLuminance_Direct(in ShadedSurface surface, in SurfaceGeometry geometry, in float3 viewDir)
 {
 	float3 luminance = 0.f;
 
@@ -262,7 +269,7 @@ float3 CalcReflectedLuminance_Direct(in ShadedSurface surface, in float3 viewDir
 			float cloudsTransmittance = 1.f;
 			if(i == 0u && PARAM_GlobalLightsParams->hasValidCloudsTransmittanceMap)
 			{
-				const float4 ctmCS = mul(PARAM_GlobalLightsParams->cloudsTransmittanceViewProj, float4(surface.location, 1.f));
+				const float4 ctmCS = mul(PARAM_GlobalLightsParams->cloudsTransmittanceViewProj, float4(geometry.location, 1.f));
 				if(all(ctmCS.xy <= ctmCS.w) && all(ctmCS.xy >= -ctmCS.w))
 				{
 					const float2 ctmUV = (ctmCS.xy / ctmCS.w) *	0.5f + 0.5f;
@@ -272,18 +279,18 @@ float3 CalcReflectedLuminance_Direct(in ShadedSurface surface, in float3 viewDir
 
 			lightIlluminance *= cloudsTransmittance;
 
-			const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(PARAM_GlobalLightsParams->heightFog, surface.location, surface.location - directionalLight.direction * 1500.f);
+			const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(PARAM_GlobalLightsParams->heightFog, geometry.location, geometry.location - directionalLight.direction * 1500.f);
 			lightIlluminance *= fogTransmittance;
 
-			if (any(lightIlluminance > 0.f) && dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
+			if (any(lightIlluminance > 0.f) && dot(-directionalLight.direction, surface.normal) > 0.f)
 			{
 				RayDesc rayDesc;
 				rayDesc.TMin        = 0.00f;
 				rayDesc.TMax        = 50.f;
-				rayDesc.Origin      = surface.location + surface.geometryNormal * 0.03f;
+				rayDesc.Origin      = geometry.location + geometry.geoNormal * 0.03f;
 				rayDesc.Direction   = -directionalLight.direction;
 
-				const float visibility = WSC().SampleShadows(surface.location, surface.geometryNormal);
+				const float visibility = WSC().SampleShadows(geometry.location, geometry.geoNormal);
 				if (visibility > 0.f)
 				{
 					luminance += CalcLighting(surface, -directionalLight.direction, viewDir, lightIlluminance).sceneLuminance * visibility;
@@ -299,24 +306,24 @@ float3 CalcReflectedLuminance_Direct(in ShadedSurface surface, in float3 viewDir
 		{
 			const LocalLightInterface localLight = PARAM_GlobalLightsParams->localLights[lightIdx];
 			
-			const float3 toLight = localLight.location - surface.location;
+			const float3 toLight = localLight.location - geometry.location;
 
-			if (dot(toLight, surface.shadingNormal) > 0.f)
+			if (dot(toLight, surface.normal) > 0.f)
 			{
 				const float distToLight = length(toLight);
 
 				if (distToLight < localLight.range)
 				{
 					const float3 lightDir = toLight / distToLight;
-					const float3 illuminance = GetLightIlluminanceAtLocation(localLight, surface.location);
+					const float3 illuminance = GetLightIlluminanceAtLocation(localLight, geometry.location);
 
 					if(any(illuminance > 0.f))
 					{
 						float visibility = 1.f;
 						if (localLight.shadowMapFirstFaceIdx != IDX_NONE_32)
 						{
-							const float3 biasedLocation  = surface.location + surface.shadingNormal * 0.02f;
-							visibility = EvaluatePointLightShadowsAtLocation(surface.location, biasedLocation, localLight.range, localLight.shadowMapFirstFaceIdx);
+							const float3 biasedLocation  = geometry.location + surface.normal * 0.02f;
+							visibility = EvaluatePointLightShadowsAtLocation(geometry.location, biasedLocation, localLight.range, localLight.shadowMapFirstFaceIdx);
 						}
 				
 						if (visibility > 0.f)
@@ -333,43 +340,43 @@ float3 CalcReflectedLuminance_Direct(in ShadedSurface surface, in float3 viewDir
 }
 
 #ifdef PARAM_DDGIGPUScene
-float3 CalcReflectedLuminance_Indirect<TDDGISampleContext : IDDGISampleContext>(in ShadedSurface surface, in float3 viewDir, in TDDGISampleContext ddgiSampleContext, in float indirectMultiplier)
+float3 CalcReflectedLuminance_Indirect<TDDGISampleContext : IDDGISampleContext>(in ShadedSurface surface, in SurfaceGeometry geometry, in float3 viewDir, in TDDGISampleContext ddgiSampleContext, in float indirectMultiplier)
 #else
-float3 CalcReflectedLuminance_Indirect(in ShadedSurface surface, in float3 viewDir)
+float3 CalcReflectedLuminance_Indirect(in ShadedSurface surface, in SurfaceGeometry geometry, in float3 viewDir)
 #endif // PARAM_DDGIGPUScene
 {
 	float3 luminance = 0.f;
 
 #if defined(PARAM_DDGIGPUScene)
-	const float3 specularDominantDirection = GetSpecularDominantDirection(surface.geometryNormal, reflect(-viewDir, surface.geometryNormal), surface.roughness);
-	const float specularWeight = Luminance(surface.specularColor) / Luminance(surface.specularColor + surface.diffuseColor);
-	const float3 sampleDirection = normalize(lerp(surface.shadingNormal, specularDominantDirection, specularWeight));
+	const float3 specularDominantDirection = GetSpecularDominantDirection(geometry.geoNormal, reflect(-viewDir, geometry.geoNormal), surface.roughness);
+	const float specularWeight = Luminance(surface.f0) / Luminance(surface.f0 + surface.albedo);
+	const float3 sampleDirection = normalize(lerp(surface.normal, specularDominantDirection, specularWeight));
 
-	DDGISampleParams diffuseSampleParams = CreateDDGISampleParams(surface.location, surface.geometryNormal, viewDir);
-	diffuseSampleParams.sampleDirection = surface.shadingNormal;
+	DDGISampleParams diffuseSampleParams = CreateDDGISampleParams(geometry.location, geometry.geoNormal, viewDir);
+	diffuseSampleParams.sampleDirection = surface.normal;
 	diffuseSampleParams.sampleLocationBiasMultiplier = 1.0f;
 
 	const float3 indirectLuminance = DDGISampleLuminance(diffuseSampleParams, ddgiSampleContext);
 	const float3 indirectIlluminance = indirectLuminance * 2.f * PI;
-	luminance += Diffuse_Lambert(indirectIlluminance) * surface.diffuseColor * indirectMultiplier;
+	luminance += brdf_utils::lambert::Evaluate(indirectIlluminance) * surface.albedo * indirectMultiplier;
 
-	const float NdotL = dot(surface.shadingNormal, specularDominantDirection);
-	const float NdotV = saturate(dot(surface.shadingNormal, viewDir));
+	const float NdotL = dot(surface.normal, specularDominantDirection);
+	const float NdotV = saturate(dot(surface.normal, viewDir));
 	const float2 integratedBRDF = PARAM_GlobalLightsParams->brdfIntegrationLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), float2(NdotV, surface.roughness), 0);
-	luminance += indirectLuminance * (surface.specularColor * integratedBRDF.x + integratedBRDF.y) * indirectMultiplier * NdotL;
+	luminance += indirectLuminance * (surface.f0 * integratedBRDF.x + integratedBRDF.y) * indirectMultiplier * NdotL;
 #endif // defined(PARAM_DDGIGPUScene)
 
 	return luminance;
 }
 
 #ifdef PARAM_DDGIGPUScene
-float3 CalcReflectedLuminance<TDDGISampleContext : IDDGISampleContext>(in ShadedSurface surface, in float3 viewDir, in TDDGISampleContext ddgiSampleContext, in float indirectMultiplier)
+float3 CalcReflectedLuminance<TDDGISampleContext : IDDGISampleContext>(in ShadedSurface surface, in SurfaceGeometry geometry, in float3 viewDir, in TDDGISampleContext ddgiSampleContext, in float indirectMultiplier)
 #else
-float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir)
+float3 CalcReflectedLuminance(in ShadedSurface surface, in SurfaceGeometry geometry, in float3 viewDir)
 #endif // PARAM_DDGIGPUScene
 {
-	return CalcReflectedLuminance_Direct(surface, viewDir) +
-		   CalcReflectedLuminance_Indirect(surface, viewDir
+	return CalcReflectedLuminance_Direct(surface, geometry, viewDir) +
+		   CalcReflectedLuminance_Indirect(surface, geometry, viewDir
 #ifdef PARAM_DDGIGPUScene
 			, ddgiSampleContext, indirectMultiplier
 #endif // PARAM_DDGIGPUScene

@@ -19,7 +19,7 @@ struct GBufferOutput
 {
 	float4 gBuffer0;
 	float4 gBuffer1;
-	float  gBuffer2;
+	float4 gBuffer2;
 	float3 gBuffer3;
 	uint   gBuffer4;
 };
@@ -29,7 +29,7 @@ struct GBufferInput
 {
 	SRVTexture2D<float4> gBuffer0;
 	SRVTexture2D<float4> gBuffer1;
-	SRVTexture2D<float>  gBuffer2;
+	SRVTexture2D<float4> gBuffer2;
 	SRVTexture2D<float3> gBuffer3;
 	SRVTexture2D<uint>   gBuffer4;
 };
@@ -43,6 +43,8 @@ struct GBufferData
 	float3 tangent;
 	float3 bitangent;
 	float  roughness;
+	float  clearCoatWeight;
+	float  clearCoatRoughness;
 	float3 emissive;
 };
 
@@ -60,13 +62,17 @@ GBufferData DecodeGBuffer(in GBufferInput input, in uint3 pixel)
 
 	const float4 baseColorMetallic = input.gBuffer0.Load(pixel);
 
-	data.baseColor = baseColorMetallic.rgb;
-	data.metallic  = baseColorMetallic.a;
-	data.normal    = tangentFrameMatrix[2];
-	data.tangent   = tangentFrameMatrix[0];
-	data.bitangent = tangentFrameMatrix[1];
-	data.roughness = input.gBuffer2.Load(pixel);
-	data.emissive  = input.gBuffer3.Load(pixel);
+	const float4 gbuffer2 = input.gBuffer2.Load(pixel);
+
+	data.baseColor          = baseColorMetallic.rgb;
+	data.metallic           = baseColorMetallic.a;
+	data.normal             = tangentFrameMatrix[2];
+	data.tangent            = tangentFrameMatrix[0];
+	data.bitangent          = tangentFrameMatrix[1];
+	data.roughness          = gbuffer2.x;
+	data.clearCoatWeight    = gbuffer2.y;
+	data.clearCoatRoughness = gbuffer2.z;
+	data.emissive           = input.gBuffer3.Load(pixel);
 
 	return data;
 }
@@ -98,7 +104,7 @@ GBufferOutput EncodeGBuffer(in GBufferData data)
 
 	output.gBuffer0 = float4(data.baseColor, data.metallic);
 	output.gBuffer1 = packedTangentFrame;
-	output.gBuffer2 = data.roughness;
+	output.gBuffer2 = float4(data.roughness, data.clearCoatWeight, data.clearCoatRoughness, 0.f);
 	output.gBuffer3 = data.emissive;
 	output.gBuffer4 = flags;
 
@@ -118,7 +124,22 @@ struct SurfaceInfo
 	float3 tangent;
 	float3 bitangent;
 	float  roughness;
+	float  clearCoatWeight;
+	float  clearCoatRoughness;
 	float3 emissive;
+
+	ShadedSurface GetShadingSurface()
+	{
+		ShadedSurface surface;
+		surface.normal             = normal;
+		surface.roughness          = roughness;
+		surface.clearCoatWeight    = clearCoatWeight;
+		surface.clearCoatRoughness = clearCoatRoughness;
+		surface.albedo             = diffuseColor;
+		surface.f0                 = specularColor;
+
+		return surface;
+	}
 };
 
 
@@ -168,15 +189,17 @@ extension GPUGBuffer
 		const float3 location = NDCToWorldSpace(ndc, VIEW->sceneView);
 
 		SurfaceInfo surfaceInfo;
-		surfaceInfo.location          = location;
-		surfaceInfo.uv                = uv;
-		surfaceInfo.depth             = d;
-		surfaceInfo.baseColorMetallic = float4(gBufferData.baseColor, gBufferData.metallic);
-		surfaceInfo.normal            = gBufferData.normal;
-		surfaceInfo.tangent           = gBufferData.tangent;
-		surfaceInfo.bitangent         = gBufferData.bitangent;
-		surfaceInfo.roughness         = gBufferData.roughness;
-		surfaceInfo.emissive          = gBufferData.emissive;
+		surfaceInfo.location           = location;
+		surfaceInfo.uv                 = uv;
+		surfaceInfo.depth              = d;
+		surfaceInfo.baseColorMetallic  = float4(gBufferData.baseColor, gBufferData.metallic);
+		surfaceInfo.normal             = gBufferData.normal;
+		surfaceInfo.tangent            = gBufferData.tangent;
+		surfaceInfo.bitangent          = gBufferData.bitangent;
+		surfaceInfo.roughness          = gBufferData.roughness;
+		surfaceInfo.clearCoatWeight    = gBufferData.clearCoatWeight;
+		surfaceInfo.clearCoatRoughness = gBufferData.clearCoatRoughness;
+		surfaceInfo.emissive           = gBufferData.emissive;
 
 		ComputeSurfaceColor(gBufferData.baseColor, gBufferData.metallic, OUT surfaceInfo.diffuseColor, OUT surfaceInfo.specularColor);
 

@@ -38,9 +38,12 @@ struct MaterialEvaluationOutput
 	float3  baseColor;
 	float   metallic;
 
-	float occlusion;
+	float   clearCoatWeight;
+	float   clearCoatRoughness;
 
-	float3 emissiveColor;
+	float   occlusion;
+
+	float3  emissiveColor;
 };
 
 #endif // SPT_MATERIAL_TYPES_HLSLI

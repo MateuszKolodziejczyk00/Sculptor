@@ -192,8 +192,11 @@ void EngineFramesManager::Shutdown()
 {
 	EngineFramesManager& manager = GetInstance();
 
-	manager.m_lastFrame->WaitFrameFinished();
-	manager.m_lastFrame.reset();
+	if (manager.m_lastFrame)
+	{
+		manager.m_lastFrame->WaitFrameFinished();
+		manager.m_lastFrame.reset();
+	}
 }
 
 void EngineFramesManager::DispatchTickFrame(const FrameContext& context)

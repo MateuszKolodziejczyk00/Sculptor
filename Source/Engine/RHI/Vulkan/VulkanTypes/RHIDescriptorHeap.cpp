@@ -39,6 +39,8 @@ void RHIDescriptorHeap::InitializeRHI(const rhi::DescriptorHeapDefinition& defin
 	m_buffer.InitializeRHI(bufferDef, allocationDef);
 
 	m_mappedBuffer.Construct(m_buffer);
+
+	m_usableDescriptorData = m_mappedBuffer.Get().GetSpan().subspan(0u, definition.size);
 }
 
 void RHIDescriptorHeap::ReleaseRHI()
@@ -72,43 +74,43 @@ Uint64 RHIDescriptorHeap::GetHeapSize() const
 {
 	SPT_CHECK(IsValid());
 
-	return m_mappedBuffer.Get().GetSize();
+	return m_usableDescriptorData.size();
 }
 
 lib::Span<Byte> RHIDescriptorHeap::GetBufferDescriptorData(Uint32 idx) const
 {
 	const rhi::DescriptorProps& descriptorProps = VulkanRHI::GetLogicalDevice().GetDescriptorProps();
-	return m_mappedBuffer.Get().GetSpan().subspan(idx * descriptorProps.bufferDescriptorSize, descriptorProps.bufferDescriptorSize);
+	return m_usableDescriptorData.subspan(idx * descriptorProps.bufferDescriptorSize, descriptorProps.bufferDescriptorSize);
 }
 
 lib::Span<Byte> RHIDescriptorHeap::GetTextureDescriptorData(Uint32 idx) const
 {
 	const rhi::DescriptorProps& descriptorProps = VulkanRHI::GetLogicalDevice().GetDescriptorProps();
-	return m_mappedBuffer.Get().GetSpan().subspan(idx * descriptorProps.textureDescriptorSize, descriptorProps.textureDescriptorSize);
+	return m_usableDescriptorData.subspan(idx * descriptorProps.textureDescriptorSize, descriptorProps.textureDescriptorSize);
 }
 
 lib::Span<Byte> RHIDescriptorHeap::GetSamplerDescriptorData(Uint32 idx) const
 {
 	const rhi::DescriptorProps& descriptorProps = VulkanRHI::GetLogicalDevice().GetDescriptorProps();
-	return m_mappedBuffer.Get().GetSpan().subspan(idx * descriptorProps.samplerDescriptorSize, descriptorProps.samplerDescriptorSize);
+	return m_usableDescriptorData.subspan(idx * descriptorProps.samplerDescriptorSize, descriptorProps.samplerDescriptorSize);
 }
 
 Uint32 RHIDescriptorHeap::GetBufferDescriptorsNum() const
 {
 	const rhi::DescriptorProps& descriptorProps = VulkanRHI::GetLogicalDevice().GetDescriptorProps();
-	return static_cast<Uint32>(m_mappedBuffer.Get().GetSize()) / descriptorProps.bufferDescriptorSize;
+	return static_cast<Uint32>(GetHeapSize()) / descriptorProps.bufferDescriptorSize;
 }
 
 Uint32 RHIDescriptorHeap::GetTextureDescriptorsNum() const
 {
 	const rhi::DescriptorProps& descriptorProps = VulkanRHI::GetLogicalDevice().GetDescriptorProps();
-	return static_cast<Uint32>(m_mappedBuffer.Get().GetSize()) / descriptorProps.textureDescriptorSize;
+	return static_cast<Uint32>(GetHeapSize()) / descriptorProps.textureDescriptorSize;
 }
 
 Uint32 RHIDescriptorHeap::GetSamplerDescriptorsNum() const
 {
 	const rhi::DescriptorProps& descriptorProps = VulkanRHI::GetLogicalDevice().GetDescriptorProps();
-	return static_cast<Uint32>(m_mappedBuffer.Get().GetSize()) / descriptorProps.samplerDescriptorSize;
+	return static_cast<Uint32>(GetHeapSize()) / descriptorProps.samplerDescriptorSize;
 }
 
 void RHIDescriptorHeap::SetName(const lib::HashedString& name)

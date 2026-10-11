@@ -29,7 +29,6 @@
 #include "SpecularReflections/SRReservoir.hlsli"
 #include "SpecularReflections/RTGBuffer.hlsli"
 #include "SpecularReflections/RTReflectionsShadingCommon.hlsli"
-#include "SpecularReflections/RTGICommon.hlsli"
 
 #include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
 #include "Utils/VariableRate/VariableRate.hlsli"
@@ -74,18 +73,17 @@ void HitRaysShadingRTG()
 
 		const float minSecondaryRoughness = 0.6f;
 
-		ShadedSurface surface;
-		surface.location       = hitLocation;
-		surface.shadingNormal  = hitResult.normal;
-		surface.geometryNormal = hitResult.normal;
-		surface.roughness      = max(hitResult.roughness, minSecondaryRoughness);
-		ComputeSurfaceColor(hitResult.baseColor, hitResult.metallic, surface.diffuseColor, surface.specularColor);
+		SurfaceGeometry surfaceGeometry;
+		surfaceGeometry.location  = hitLocation;
+		surfaceGeometry.geoNormal = hitResult.normal;
+
+		const ShadedSurface surface = hitResult.AsShadedSurface();
 
 		const float3 primaryHitToView = normalize(VIEW->sceneView.viewLocation - worldLocation);
 
 		float3 luminance;
 #if USE_DDGI
-		luminance = CalcReflectedLuminance(surface, -rayDirection, DDGISecondaryBounceSampleContext::Create(worldLocation, primaryHitToView), 1.f);
+		luminance = CalcReflectedLuminance(surface, surfaceGeometry, -rayDirection, DDGISecondaryBounceSampleContext::Create(worldLocation, primaryHitToView), 1.f);
 #else
         const float3 tangent = abs(dot(hitResult.normal, UP_VECTOR)) > 0.9f ? cross(hitResult.normal, RIGHT_VECTOR) : cross(hitResult.normal, UP_VECTOR);
         const float3 bitangent = cross(hitResult.normal, tangent);
@@ -107,7 +105,7 @@ void HitRaysShadingRTG()
 		query.location = sampledLocation;
 		query.normal   = hitResult.normal;
 #if SHARC_MATERIAL_DEMODULATION
-		query.materialDemodulation = ComputeMaterialDemodulation(PARAMS_GLOBAL_LIGHTS->brdfIntegrationLUT, BindlessSamplers::LinearClampEdge(), surface.diffuseColor, surface.specularColor, NdotV, surface.roughness);
+		query.materialDemodulation = ComputeMaterialDemodulation(PARAMS_GLOBAL_LIGHTS->brdfIntegrationLUT, BindlessSamplers::LinearClampEdge(), surface.albedo, surface.f0, NdotV, surface.roughness);
 #endif // SHARC_MATERIAL_DEMODULATION
 
 		// We don't want to include emissive in the secondary bounce, because it will be handled by stochastic DI

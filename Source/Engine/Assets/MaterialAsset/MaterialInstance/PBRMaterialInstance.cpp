@@ -116,6 +116,9 @@ void PBRMaterialInstance::Load(const AssetInstance& asset, lib::MTHandle<DDCLoad
 	m_materialData.depthData.maxDepthCm   = materialDataHeader.maxDepthCm;
 	m_materialData.depthData.depthTexture = initTexture(RENDERER_RESOURCE_NAME_FORMATTED("{} ({})", asset.GetName().GetData(), "Depth"), materialDataHeader.depthTexture);
 
+	m_materialData.clearCoatWeight    = materialDataHeader.clearCoatWeight;
+	m_materialData.clearCoatRoughness = materialDataHeader.clearCoatRoughness;
+
 	const Bool isEmissive = materialDataHeader.emissionFactor.x() > 0.f || materialDataHeader.emissionFactor.y() > 0.f || materialDataHeader.emissionFactor.z() > 0.f;
 
 	mat::MaterialDefinition materialDefinition;

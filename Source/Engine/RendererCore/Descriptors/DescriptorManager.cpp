@@ -87,7 +87,7 @@ DescriptorManager::DescriptorManager(DescriptorHeap& resourceDescriptorHeap, Des
 {
 	const rhi::DescriptorProps& descriptorProps = rhi::RHI::GetDescriptorProps();
 
-	const Uint32 heapHalfSize = static_cast<Uint32>(m_resourceDescriptorHeap.GetRHI().GetHeapSize()) / 2u;
+	const Uint32 heapHalfSize          = static_cast<Uint32>(m_resourceDescriptorHeap.GetRHI().GetHeapSize()) / 2u;
 	const Uint32 bufferDescriptorsNum  = heapHalfSize / descriptorProps.bufferDescriptorSize;
 	const Uint32 textureDescriptorsNum = heapHalfSize / descriptorProps.textureDescriptorSize;
 

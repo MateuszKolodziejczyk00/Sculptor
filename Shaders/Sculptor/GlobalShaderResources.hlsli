@@ -1,0 +1,6 @@
+#ifndef GLOBAL_SHADER_RESOURCES_HLSLI
+#define GLOBAL_SHADER_RESOURCES_HLSLI
+
+[[shader_params(GlobalShaderResources, GLOBALS)]]
+
+#endif // GLOBAL_SHADER_RESOURCES_HLSLI

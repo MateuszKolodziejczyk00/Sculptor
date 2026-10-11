@@ -26,6 +26,12 @@ CommandRecorder::CommandRecorder(const rdr::RendererResourceName& name, const li
 	BindDescriptorHeap(GPUApi::GetResourceDescriptorHeap());
 	BindDescriptorHeap(GPUApi::GetSamplerDescriptorHeap());
 
+	const GlobalShaderParam& globalShaderParam = GPUApi::GetGlobalShaderParam();
+	if (globalShaderParam.IsValid())
+	{
+		BindShaderParams(globalShaderParam.type, globalShaderParam.address);
+	}
+
 	m_canReuseCommandBuffer = !lib::HasAnyFlag(commandBufferUsage.beginFlags, rhi::ECommandBufferBeginFlags::OneTimeSubmit);
 }
 

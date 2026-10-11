@@ -41,6 +41,8 @@ struct PBRMaterialDataHeader
 	Real32 roughnessFactor         = 0.f;
 	math::Vector3f emissionFactor  = math::Vector3f::Zero();
 	Real32 maxDepthCm              = 0.f;
+	Real32 clearCoatWeight         = 0.f;
+	Real32 clearCoatRoughness      = 0.f;
 
 	Uint8 doubleSided   = 0u;
 	Uint8 customOpacity = 0u;

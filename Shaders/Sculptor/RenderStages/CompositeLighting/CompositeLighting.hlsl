@@ -260,7 +260,7 @@ RTReflections ComputeRTReflectionsLuminance(in uint2 pixel, in float2 uv)
 	const float3 detailGTAO = GTAOMultiBounce(detailAO, diffuseColor);
 	aoMultiplier *= detailGTAO;
 
-	diffuseLo *= Diffuse_Lambert(diffuseColor) * aoMultiplier;
+	diffuseLo *= brdf_utils::lambert::Evaluate(diffuseColor) * aoMultiplier;
 
 	RTReflections result;
 	result.specular = ExposedLuminanceToLuminance(specularLo);
@@ -330,7 +330,7 @@ void CompositeLightingCS(CS_INPUT input)
 #if VOLUMETRIC_CLOUDS_ENABLED
 	if (depth == 0.f)
 	{
-	luminance = CompositeCirrusClouds(pixel, luminance);
+		luminance = CompositeCirrusClouds(pixel, luminance);
 	}
 #endif // VOLUMETRIC_CLOUDS_ENABLED
 

@@ -507,6 +507,7 @@ lib::SharedRef<rdr::Texture> RenderGraphBuilder::DownloadTexture(const RenderGra
 	textureDef.usage       = lib::Flags(rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::SampledTexture);
 	textureDef.format      = textureView->GetFormat();
 	textureDef.tiling      = rhi::ETextureTiling::Linear;
+	textureDef.type        = textureView->GetTextureDefinition().type;
 	const lib::SharedRef<rdr::TextureView> texture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME_FORMATTED("{} Download Texture", commandName.AsString()), textureDef, rhi::EMemoryUsage::GPUToCpu);
 
 	const rg::RGTextureViewHandle cpuTextureView = AcquireExternalTextureView(texture);
@@ -652,7 +653,6 @@ void RenderGraphBuilder::CopyTextureToBuffer(const RenderGraphDebugName& copyNam
 
 	const math::Vector3u resolution = sourceRGTextureView->GetResolution();
 
-	SPT_CHECK(resolution.z() == 1u);
 	SPT_CHECK(sourceRGTextureView->GetMipSize() + bufferOffset <= destBufferView->GetSize());
 
 	sourceRGTextureView->GetTexture()->AddUsageForAccess(ERGTextureAccess::ShaderRead);

@@ -6,7 +6,6 @@
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
 #include "SpecularReflections/Denoiser/RTDenoising.hlsli"
-#include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 
 
@@ -39,7 +38,7 @@ void SRDisocclusionFixCS(CS_INPUT input)
 		const bool fixSpecular = specularHistoryLength < 3;
 		const bool fixDiffuse  = diffuseHistoryLength < 5;
 
-		if((!fixSpecular && !fixDiffuse) || roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
+		if((!fixSpecular && !fixDiffuse) || roughness <= RTClosure::RoughnessDeltaThreshold)
 		{
 			PARAMS_S_R_DISOCCLUSION_FIX->outSpecularY_SH2[pixel]  = PARAMS_S_R_DISOCCLUSION_FIX->inSpecularY_SH2.Load(uint3(pixel, 0));
 			PARAMS_S_R_DISOCCLUSION_FIX->outDiffuseY_SH2[pixel]   = PARAMS_S_R_DISOCCLUSION_FIX->inDiffuseY_SH2.Load(uint3(pixel, 0));

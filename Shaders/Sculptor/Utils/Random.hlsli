@@ -23,7 +23,7 @@ float3 VectorInCone(float3 coneDir, float coneHalfAngleRad, float2 random)
 
 
 // Based on: Chapter 16.6.1 of "Ray Tracing Gems"
-float3 RandomVectorInCosineWeightedHemisphere(in float3x3 tangent, in float2 random, out float pdf)
+float3 RandomVectorInCosineWeightedHemisphere(in float3x3 tangentToWorld, in float2 random, out float pdf)
 {
 	const float a2 = random.x;
 	const float a = sqrt(a2);
@@ -35,8 +35,8 @@ float3 RandomVectorInCosineWeightedHemisphere(in float3x3 tangent, in float2 ran
 	const float y = a * sinPhi;
 	const float z = sqrt(1.f - a2);
 
-	const float3 direction = mul(tangent, float3(x, y, z));
-	pdf = z/ PI;
+	const float3 direction = mul(tangentToWorld, float3(x, y, z));
+	pdf = z / PI;
 
 	return direction;
 }
@@ -48,7 +48,7 @@ float PDFHemisphereCosineWeighted(in float3 normal, in float3 direction)
 }
 
 
-float3 RandomVectorInUniformHemisphere(in float3x3 tangentFrame, in float2 random, out float pdf)
+float3 RandomVectorInUniformHemisphere(in float3x3 tangentToWorld, in float2 random, out float pdf)
 {
 	const float r   = sqrt(1.f - Pow2(random.x));
 	const float phi = 2 * PI *	random.y;
@@ -57,7 +57,7 @@ float3 RandomVectorInUniformHemisphere(in float3x3 tangentFrame, in float2 rando
 
 	pdf = 1.f / (2.f * PI);
 
-	return mul(tangentFrame, localDir);
+	return mul(tangentToWorld, localDir);
 }
 
 

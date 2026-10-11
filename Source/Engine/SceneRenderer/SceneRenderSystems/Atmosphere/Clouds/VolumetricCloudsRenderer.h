@@ -59,6 +59,7 @@ private:
 
 	lib::SharedPtr<rdr::TextureView> m_curlNoise;
 
+	lib::SharedPtr<rdr::TextureView> m_cloudscapeIrradianceProbes;
 	lib::SharedPtr<rdr::TextureView> m_cloudscapeProbes;
 	lib::SharedPtr<rdr::TextureView> m_cloudscapeHighResProbe;
 

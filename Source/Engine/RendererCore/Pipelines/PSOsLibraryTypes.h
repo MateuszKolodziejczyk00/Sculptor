@@ -37,6 +37,15 @@ struct ShaderCompilationSettingsBuilder<Int32>
 };
 
 template<>
+struct ShaderCompilationSettingsBuilder<Uint32>
+{
+	static void Build(const lib::String& variableName, const Uint32& value, sc::ShaderCompilationSettings& outSettings)
+	{
+		ShaderCompilationSettingsBuilder<Int32>::Build(variableName, static_cast<Int32>(value), outSettings);
+	}
+};
+
+template<>
 struct ShaderCompilationSettingsBuilder<Bool>
 {
 	static void Build(const lib::String& variableName, const Bool& value, sc::ShaderCompilationSettings& outSettings)
@@ -573,8 +582,8 @@ COMPUTE_PSO(PSOName) \
 };
 
 
-#define FULLSCREEN_VS() \
-	VERTEX_SHADER("Sculptor/Utils/FullScreen.hlsli", FullScreenVS)
+#define FULLSCREEN_VS(path) \
+	VERTEX_SHADER(path, FullScreenVS)
 
 
 class DebugFeature

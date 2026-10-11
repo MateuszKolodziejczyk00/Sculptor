@@ -465,7 +465,7 @@ END_SHADER_STRUCT();
 
 GRAPHICS_PSO(RenderTerrainMaterialCachePSO)
 {
-	FULLSCREEN_VS();
+	FULLSCREEN_VS("Sculptor/Terrain/RenderTerrainMaterialCache.hlsl");
 	FRAGMENT_SHADER("Sculptor/Terrain/RenderTerrainMaterialCache.hlsl", RenderTerrainMaterialCacheFS);
 
 	PERMUTATION_DOMAIN(RenderTerrainMaterialCachePermutationDomain)

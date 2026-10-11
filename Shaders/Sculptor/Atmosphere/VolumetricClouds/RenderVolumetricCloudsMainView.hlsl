@@ -24,12 +24,12 @@ void RenderVolumetricCloudsMainViewCS(CS_INPUT input)
     if(PARAMS_RENDER_VOLUMETRIC_CLOUDS_MAIN_VIEW->fullResTrace)
     {
         uv = (coords.xy + 0.5f) * PARAMS_RENDER_VOLUMETRIC_CLOUDS_MAIN_VIEW->rcpResolution;
-        blueNoise = frac(PARAMS_RENDER_VOLUMETRIC_CLOUDS_MAIN_VIEW->blueNoise256.Load(coords & 255u) + ((PARAMS_RENDER_VOLUMETRIC_CLOUDS_MAIN_VIEW->frameIdx) & 255u) * SPT_GOLDEN_RATIO);
+        blueNoise = frac(GLOBALS->blueNoise256.Load(coords & 255u) + ((PARAMS_RENDER_VOLUMETRIC_CLOUDS_MAIN_VIEW->frameIdx) & 255u) * SPT_GOLDEN_RATIO);
     }
     else
     {
         uv = (coords.xy + 0.25f + 0.5f * PARAMS_RENDER_VOLUMETRIC_CLOUDS_MAIN_VIEW->tracedPixel2x2) * PARAMS_RENDER_VOLUMETRIC_CLOUDS_MAIN_VIEW->rcpResolution;
-        blueNoise = frac(PARAMS_RENDER_VOLUMETRIC_CLOUDS_MAIN_VIEW->blueNoise256.Load((coords * 2u + uint3(PARAMS_RENDER_VOLUMETRIC_CLOUDS_MAIN_VIEW->tracedPixel2x2, 0u)) & 255u) + ((PARAMS_RENDER_VOLUMETRIC_CLOUDS_MAIN_VIEW->frameIdx >> 2u) & 31u) * SPT_GOLDEN_RATIO);
+        blueNoise = frac(GLOBALS->blueNoise256.Load((coords * 2u + uint3(PARAMS_RENDER_VOLUMETRIC_CLOUDS_MAIN_VIEW->tracedPixel2x2, 0u)) & 255u) + ((PARAMS_RENDER_VOLUMETRIC_CLOUDS_MAIN_VIEW->frameIdx >> 2u) & 31u) * SPT_GOLDEN_RATIO);
     }
 
     const float depth = PARAMS_RENDER_VOLUMETRIC_CLOUDS_MAIN_VIEW->furthestDepth.SampleLevel(BindlessSamplers::LinearMinClampEdge(), uv, 0.f);

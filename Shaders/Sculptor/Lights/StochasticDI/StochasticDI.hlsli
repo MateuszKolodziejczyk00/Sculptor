@@ -1,7 +1,6 @@
 #ifndef STOCHASTIC_DI_HLSLI
 #define STOCHASTIC_DI_HLSLI
 
-#include "SpecularReflections/RTGICommon.hlsli"
 #include "Utils/MortonCode.hlsli"
 #include "Utils/Packing.hlsli"
 #include "Utils/GBuffer/GBuffer.hlsli"
@@ -184,8 +183,8 @@ float3 UnshadowedPathContribution(in SurfaceInfo surface, in float3 V, in Emissi
 
 	const float NdotL = max(dot(surface.normal, L), 0.f);
 
-	const RTBRDF brdf = RT_EvaluateBRDF(surface.normal, V, L, surface.roughness, surface.specularColor, surface.diffuseColor);
-	Li = sample.luminance * (brdf.diffuse + brdf.specular) * NdotL * G;
+	const BRDFLobes lobes = RTClosure::RTEvaluate(surface.GetShadingSurface(), V, L);
+	Li = sample.luminance * (lobes.diffuse + lobes.specular) * G;
 
 	return Li;
 }
@@ -224,12 +223,12 @@ StochasticDIShadingResult FinalDIShading(in SurfaceInfo surface, in float3 V, in
 
 	if (NdotL > 0.f)
 	{
-		const RTBRDF brdf = RT_EvaluateBRDF(surface.normal, V, L, surface.roughness, surface.specularColor, surface.diffuseColor);
+		const BRDFLobes lobes = RTClosure::RTEvaluate(surface.GetShadingSurface(), V, L);
 
-		const float3 Li = sample.luminance * NdotL * G * weight;
+		const float3 Li = sample.luminance * G * weight;
 		
-		result.diffuse     = brdf.diffuse  * Li;
-		result.specular    = brdf.specular * Li;
+		result.diffuse     = lobes.diffuse  * Li;
+		result.specular    = lobes.specular * Li;
 		result.hitDistance = hitDistance;
 	}
 

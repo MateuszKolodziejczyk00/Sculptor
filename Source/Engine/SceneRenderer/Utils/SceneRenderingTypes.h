@@ -90,7 +90,7 @@ BEGIN_SHADER_STRUCT(GPUGBuffer)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         depth)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, gBuffer0)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, gBuffer1)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         gBuffer2)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, gBuffer2)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, gBuffer3)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Uint32>,         gBuffer4)
 END_SHADER_STRUCT();
@@ -99,7 +99,7 @@ END_SHADER_STRUCT();
 // GBuffer layout:
 // 0 - 4 bytes [baseColor - 24bits] [metallic - 8bits]
 // 1 - 4 bytes [tangent frame - 32bits]
-// 2 - 2 bytes [roughness - 16bits]
+// 2 - 4 bytes [roughness - 8bits][clear coat weight - 8bits][clear coat roughness - 8bits][reserved - 8bits]
 // 3 - 4 bytes [emissive - 32bits]
 // 4 - 1 byte  [flags - 8bits] - 0: tangent frame handedness, other bits are reserved
 class GBuffer
@@ -123,7 +123,7 @@ public:
 	{
 		rhi::EFragmentFormat::RGBA8_UN_Float,
 		rhi::EFragmentFormat::RGB10A2_UN_Float,
-		rhi::EFragmentFormat::R16_UN_Float,
+		rhi::EFragmentFormat::RGBA8_UN_Float,
 		rhi::EFragmentFormat::B10G11R11_U_Float,
 		rhi::EFragmentFormat::R8_U_Int,
 		rhi::EFragmentFormat::R8_UN_Float

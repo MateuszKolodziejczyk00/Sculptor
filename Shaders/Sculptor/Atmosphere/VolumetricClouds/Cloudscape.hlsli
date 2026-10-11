@@ -3,6 +3,7 @@
 
 #include "Utils/Packing.hlsli"
 #include "Utils/Shapes.hlsli"
+#include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
 
 float3 ComputeCloudscapeProbeRayDirection(in uint rayIdx, in uint raysNum)
 {
@@ -18,11 +19,31 @@ float3 GetCloudscapeProbeLocation(CloudscapeConstants cloudscape, uint2 probeCoo
 
 #ifdef PARAM_CloudscapeProbesParams
 
+float3 SampleCloudscapeIrradiance(in float3 location)
+{
+	const float2 probeCoords = (location.xy - PARAM_CloudscapeProbesParams->cloudscapeConstants->probesOrigin) * PARAM_CloudscapeProbesParams->cloudscapeConstants->rcpProbesSpacing;
+	const float2 uv = probeCoords * PARAM_CloudscapeProbesParams->cloudscapeConstants->uvPerProbe;
+	return PARAM_CloudscapeProbesParams->cloudscapeIrradianceProbes.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0.f).xyz;
+}
+
+float3 SampleCloudscapeInScattering(in float3 location, in float3 direction)
+{
+	const float3 cloudscapeIrradiance = SampleCloudscapeIrradiance(location);
+
+	float2 skyInScatteringLUTUV;
+	skyInScatteringLUTUV.x = saturate(location.z / HEIGHT_FOG_MAX_HEIGHT);
+	skyInScatteringLUTUV.y =  direction.z * 0.5f + 0.5f;
+	const float3 skyInScattering = PARAM_CloudscapeProbesParams->skyInScatteringLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), skyInScatteringLUTUV, 0);
+
+	return cloudscapeIrradiance * skyInScattering;
+}
+
 struct CloudscapeSample
 {
     float3 inScattering;
     float  transmittance;
 };
+
 
 CloudscapeSample SampleCloudscapeProbe(uint2 probeCoords, in float2 octUV)
 {
@@ -75,6 +96,7 @@ CloudscapeSample SampleCloudscape(in float3 location, in float3 direction)
 
     return result;
 }
+
 
 
 CloudscapeSample SampleHighResCloudscape(in float3 direction)
