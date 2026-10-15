@@ -47,13 +47,15 @@ float TraceShadowRay(in uint2 pixel)
 
 #if CONTINUE_RAYS
 			const uint16_t continuationDist = PARAMS_DIRECTIONAL_LIGHT_SHADOW_MASK->rayContinuationDists.Load(DispatchRaysIndex().x);
-			minT = (continuationDist / 255.f) * PARAMS_DIRECTIONAL_LIGHT_SHADOW_MASK->ssTraceDistance;
+			minT = max((continuationDist / 255.f) * PARAMS_DIRECTIONAL_LIGHT_SHADOW_MASK->ssTraceDistance, 0.01f);
 #endif // CONTINUE_RAYS
+
+			const float3 toView = normalize(VIEW->sceneView.viewLocation - worldLocation);
 
 			RayDesc rayDesc;
 			rayDesc.TMin        = minT;
 			rayDesc.TMax        = PARAMS_DIRECTIONAL_LIGHT_SHADOW_MASK->maxTraceDistance;
-			rayDesc.Origin      = worldLocation;
+			rayDesc.Origin      = worldLocation + toView * 0.02f;
 			rayDesc.Direction   = shadowRayDirection;
 
 			result = RTScene().VisibilityTest(rayDesc) ? 1.f : 0.f;

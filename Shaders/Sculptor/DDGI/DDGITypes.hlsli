@@ -331,7 +331,7 @@ TCallback.SampledDataType DDGISampleProbe<TContext : IDDGISampleContext, TCallba
 
 	const float2 luminanceOctCoords = GetProbeOctCoords(sampleParams.sampleDirection);
 
-	bool hasValidSamples = true;
+	bool hasValidSamples = false;
 
 	[unroll]
 	for (int i = 0; i < 8; ++i)
@@ -342,6 +342,11 @@ TCallback.SampledDataType DDGISampleProbe<TContext : IDDGISampleContext, TCallba
 		const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(volumeParams, probeCoords);
 
 		const TCallback.SampledDataType probleSample = sampleCallback.Sample(volumeParams, probeWrappedCoords, luminanceOctCoords);
+
+		if(!sampleCallback.IsValid(probleSample))
+		{
+			continue;
+		}
 
 		const float3 probeWorldLocation = GetProbeWorldLocation(volumeParams, probeCoords);
 		
@@ -389,10 +394,7 @@ TCallback.SampledDataType DDGISampleProbe<TContext : IDDGISampleContext, TCallba
 
 		weight *= trilinearWeight;
 
-		if(!sampleCallback.IsValid(probleSample))
-		{
-			hasValidSamples = false;
-		}
+		hasValidSamples = true;
 
 		sampledDataSum = sampleCallback.Accumulate(sampledDataSum, probleSample, weight);
 

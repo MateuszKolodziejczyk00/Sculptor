@@ -6,7 +6,7 @@
 
 typealias DiffuseBRDF   = EONDiffuseBRDF;
 typealias SpecularBRDF  = GGXSpecularBRDF<true, true>;
-typealias ClearCoatBRDF = GGXClearCoatBRDF;
+typealias ClearCoatBRDF = GGXClearCoatBRDF<true>;
 
 
 struct LightingContribution
@@ -98,9 +98,7 @@ struct OpaqueClosure : IClosure
 		{
 			const float3 clearCoat = ClearCoatBRDF::Evaluate(surface, shadingVectors) * surface.clearCoatWeight;
 
-			const float3 clearCoatExit  = 1.f -  ClearCoatBRDF::F(surface, shadingVectors.NoV) * surface.clearCoatWeight;
-			const float3 clearCoatEnter = 1.f -  ClearCoatBRDF::F(surface, shadingVectors.NoL) * surface.clearCoatWeight;
-			float3 clearCoatThroughput = clearCoatExit * clearCoatEnter;
+			float3 clearCoatThroughput  = lerp(1.f, ClearCoatBRDF::ComputeThroughput(surface, shadingVectors.NoV, shadingVectors.NoL), surface.clearCoatWeight);
 
 			if (surface.clearCoatWeight > 0.f)
 			{

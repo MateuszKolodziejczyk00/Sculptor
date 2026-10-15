@@ -11,12 +11,12 @@
 [[shader_struct(SSTracerData)]]
 
 
-struct SSTraceResult
+struct SSTraceResultInternal
 {
-	bool isHit;
+	bool   isHit;
 	float2 hitUV;
 	float  hitT;
-	float unoccludedT;
+	float  unoccludedT;
 };
 
 
@@ -55,9 +55,9 @@ void ComputeClampedEndUV(in float2 startUV, in float startDepth, inout float2 en
 }
 
 
-SSTraceResult TraceScreenSpaceRay(in SSTracerData tracer, in SceneViewData sceneView, in float2 startUV, in float startDepth, in float2 endUV, in float endDepth, in float jitter, in bool allowOccluded)
+SSTraceResultInternal TraceScreenSpaceRay<let allowOccluded : bool, let refineStepsNum : uint>(in SSTracerData tracer, in SceneViewData sceneView, in float2 startUV, in float startDepth, in float2 endUV, in float endDepth, in float jitter)
 {
-	SSTraceResult result;
+	SSTraceResultInternal result;
 	result.isHit       = false;
 	result.unoccludedT = 0.f;
 
@@ -125,13 +125,11 @@ SSTraceResult TraceScreenSpaceRay(in SSTracerData tracer, in SceneViewData scene
 		}
 #endif // DEBUG_SCREEN_SPACE_TRACER
 
-		float unclampedT = t * clampedMaxT;
-
 		if (isHit)
 		{
 			result.isHit = true;
 			result.hitUV = uv;
-			result.hitT  = unclampedT;
+			result.hitT  = t;
 
 			break;
 		}
@@ -139,7 +137,7 @@ SSTraceResult TraceScreenSpaceRay(in SSTracerData tracer, in SceneViewData scene
 		{
 			if (!wasOccluded)
 			{
-				result.unoccludedT = unclampedT;
+				result.unoccludedT = t;
 			}
 		}
 		else
@@ -148,6 +146,60 @@ SSTraceResult TraceScreenSpaceRay(in SSTracerData tracer, in SceneViewData scene
 			if (!allowOccluded)
 			{
 				break;
+			}
+		}
+	}
+
+	if (refineStepsNum > 0u && result.isHit)
+	{
+		// Refine hit point
+
+		result.hitT = max(result.hitT - dT * 0.5f * linearStepExponent, 0.f);
+		for (uint i = 0u; i < refineStepsNum; ++i)
+		{
+			const float2 uv = startUV + dUV * result.hitT;
+			const float  z  = ComputeLinearDepth(startZ + dZ * result.hitT, sceneView);
+
+			const float zNearest = tracer.linearDepth.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0.f);
+			const float zLinear  = tracer.linearDepth.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0.f);
+
+			const float minZ = min(zNearest, zLinear);
+			const float maxZ = max(zNearest, zLinear);
+
+			const float penetration = z - minZ;
+
+			const bool isHit = z >= maxZ * 1.00002f && penetration < rayThickness;
+
+#if DEBUG_SCREEN_SPACE_TRACER
+		if(debugRay)
+		{
+				const float3 wsRay  = NDCToWorldSpace(float3(uv * 2.f - 1.f, ComputeProjectionDepth(z, sceneView)), sceneView);
+				const float3 wsSurf = NDCToWorldSpace(float3(uv * 2.f - 1.f, ComputeProjectionDepth(maxZ, sceneView)), sceneView);
+
+				DebugMarkerDefinition m;
+				m.location = wsRay;
+				m.size = 0.01f;
+				m.color = isHit ? float3(1.f, 0.f, 0.f) : float3(0.f, 1.f, 0.f);
+				GPUDebugRenderer::DrawPersistentMarker(m);
+				m.location = wsSurf;
+				m.color = float3(0.f, 0.f, 1.f);
+				GPUDebugRenderer::DrawPersistentMarker(m);
+
+				DebugLineDefinition lineDef;
+				lineDef.begin = wsRay;
+				lineDef.end   = wsSurf;
+				lineDef.color = float3(0.f, 1.f, 1.f);
+				GPUDebugRenderer::DrawPersistentLine(lineDef);
+		}
+#endif // DEBUG_SCREEN_SPACE_TRACER
+
+			if (isHit)
+			{
+				result.hitT -= dT * pow(0.5f, i + 2u) * linearStepExponent;
+			}
+			else
+			{
+				result.hitT += dT * pow(0.5f, i + 2u) * linearStepExponent;
 			}
 		}
 	}
@@ -186,17 +238,29 @@ SSTraceResult TraceScreenSpaceRay(in SSTracerData tracer, in SceneViewData scene
 	}
 #endif // DEBUG_SCREEN_SPACE_TRACER
 
+	if (result.isHit)
+	{
+		result.hitT *= clampedMaxT;
+	}
+	else
+	{
+		result.unoccludedT *= clampedMaxT;
+	}
+
 	return result;
 }
 
 
-struct SSTraceResultExtended : SSTraceResult 
+struct SSTraceResult
 {
-	float unoccludedDistance;
+	bool   isHit;
+	float2 hitUV;
+	float  hitDist;        // valid if hit
+	float  unoccludedDist; // valid if no hit
 };
 
 
-SSTraceResultExtended TraceScreenSpaceRay(in SSTracerData tracer, in SceneViewData sceneView, in float2 startUV, in float depth, in float3 rayDirWS, in float rayLenght, in float jitter)
+SSTraceResult TraceScreenSpaceRay<let allowOccluded : bool, let refineStepsNum : uint = 0>(in SSTracerData tracer, in SceneViewData sceneView, in float2 startUV, in float depth, in float3 rayDirWS, in float rayLenght, in float jitter)
 {
 	const float startDepth = depth;
 
@@ -217,14 +281,21 @@ SSTraceResultExtended TraceScreenSpaceRay(in SSTracerData tracer, in SceneViewDa
 	const float2 endUV = endNDC.xy * 0.5f + 0.5f;
 	const float endDepth = endNDC.z;
 
-	const SSTraceResult traceResult = TraceScreenSpaceRay(tracer, sceneView, startUV, startDepth, endUV, endDepth, jitter, true);
+	const SSTraceResultInternal traceResult = TraceScreenSpaceRay<allowOccluded, refineStepsNum>(tracer, sceneView, startUV, startDepth, endUV, endDepth, jitter);
 
-	SSTraceResultExtended result;
+	const float eventT = traceResult.isHit ? traceResult.hitT : traceResult.unoccludedT;
+
+	const float2 eventUV   = lerp(startUV, endUV, eventT);
+	const float eventDepth = lerp(startDepth, endDepth, eventT);
+
+	const float3 eventNDC = float3(eventUV * 2.f - 1.f, eventDepth);
+	const float3 eventWS  = NDCToWorldSpace(eventNDC, sceneView);
+
+	SSTraceResult result;
 	result.isHit              = traceResult.isHit;
 	result.hitUV              = traceResult.hitUV;
-	result.hitT               = traceResult.hitT;
-	result.unoccludedT        = traceResult.unoccludedT;
-	result.unoccludedDistance = traceResult.unoccludedT * rayLenght;
+	result.hitDist            = traceResult.isHit ? length(eventWS - startWS) : -1.f;
+	result.unoccludedDist     = !traceResult.isHit ? length(eventWS - startWS) : -1.f;
 
 	return result;
 }

@@ -25,7 +25,7 @@ float3 F_avg_Schlick(in float3 f0)
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // GGX Visibility ================================================================================
 
-// Contains (2 / NoX) factor (in uncorrelated form, it's 4 /(NoL * NoV) factor) from the microfacet BRDF equation
+// Contains (2 / NoX) factor (in uncorrelated form, it's 4 / (NoL * NoV) factor) from the microfacet BRDF equation
 float GGX_V1(in float a2, in float nDotX)
 {
 	return 1.0f / (nDotX + sqrt(a2 + (1 - a2) * nDotX * nDotX));
@@ -127,7 +127,7 @@ interface ISpecularBRDF
 
 interface IClearCoatBRDF
 {
-	static float3 F(in ShadedSurface surface, in float VoX);
+	static float3 ComputeThroughput(in ShadedSurface surface, in float NoV, in float NoL);
 
 	static float3 Evaluate(in ShadedSurface surface, in ShadingVectors shadingVectors);
 
@@ -243,11 +243,27 @@ struct GGXSpecularBRDF<let enableMultiscattering : bool, let enableEnergyConserv
 };
 
 
-struct GGXClearCoatBRDF : IClearCoatBRDF
+struct GGXClearCoatBRDF<let energyConservingThroughput : bool> : IClearCoatBRDF
 {
-	static float3 F(in ShadedSurface surface, in float VoX)
+	static float3 ComputeThroughput(in ShadedSurface surface, in float NoV, in float NoL)
 	{
-		return brdf_utils::F_Schlick(brdf_utils::clearCoatF0, VoX);
+		if (energyConservingThroughput)
+		{
+			// Based on Revisiting Physically Based Shading at Imageworks
+			// https://fpsunflower.github.io/ckulla/data/s2017_pbs_imageworks_slides_v2.pdf
+			// slide 58
+			const float2 uv0 = float2(NoV, surface.clearCoatRoughness);
+			const float2 uv1 = float2(NoL, surface.clearCoatRoughness);
+
+			const float t0 = GLOBALS->MS_COAT_GGX_THROUGHPUT_LUT.SampleLevel(BindlessSamplers::LinearClampEdge(), uv0, 0.f);
+			const float t1 = GLOBALS->MS_COAT_GGX_THROUGHPUT_LUT.SampleLevel(BindlessSamplers::LinearClampEdge(), uv1, 0.f);
+
+			return min(t0, t1);
+		}
+		else
+		{
+			return (1.f - brdf_utils::F_Schlick(brdf_utils::clearCoatF0, NoV)) * (1.f - brdf_utils::F_Schlick(brdf_utils::clearCoatF0, NoL));
+		}
 	}
 
 	// Eq. 99 from https://academysoftwarefoundation.github.io/OpenPBR
@@ -268,22 +284,18 @@ struct GGXClearCoatBRDF : IClearCoatBRDF
 	{
 		const float coatIOR = 1.5f;
 
-		//// Internal diffuse reflection coefficient. Eq. 65 gives the rough base limit, Eq. 66 the smooth base one,
-		//// where the specular reflection off the base rarely generates TIR at the coat boundary
-		//const float kRough  = saturate(1.f - (1.f - AverageFresnelApprox(coatRelativeIOR)) / Pow2(coatRelativeIOR));
+		// Internal diffuse reflection coefficient. Eq. 65 gives the rough base limit, Eq. 66 the smooth base one,
+		// where the specular reflection off the base rarely generates TIR at the coat boundary
 
-		//// Eq. 68 from https://academysoftwarefoundation.github.io/OpenPBR
+		// Eq. 68 from https://academysoftwarefoundation.github.io/OpenPBR
 		const float baseFresnel   = saturate(Luminance(brdf_utils::F_Schlick(surface.f0, shadingVectors.NoV)));
 		const float baseRoughness = lerp(1.f, surface.roughness, baseFresnel);
-
 
 		const float averageFresnel = AverageFresnelApprox(coatIOR);
 
 		// Eq. 65 from https://academysoftwarefoundation.github.io/OpenPBR
 		const float k_r = 1.f - (1.f - averageFresnel)  / Pow2(coatIOR);
-		//const float3 k_s = brdf_utils::F_Schlick(brdf_utils::clearCoatF0, shadingVectors.NoV).x;
 
-		//const float3 k = lerp(k_s, k_r, baseRoughness);
 		const float k = k_r;
 
 		const float3 incidenceAlbedo = saturate(surface.albedo + surface.f0);
@@ -301,7 +313,7 @@ struct GGXClearCoatBRDF : IClearCoatBRDF
 		const float a  = RoughnessToAlpha(surface.clearCoatRoughness);
 		const float a2 = max(Pow2(a), 1e-7f);
 
-		const float3 f   = F(surface, shadingVectors.VoH);
+		const float3 f   = brdf_utils::F_Schlick(brdf_utils::clearCoatF0, shadingVectors.VoH);
 		const float  d   = brdf_utils::D_GGX(a2, shadingVectors.NoH);
 		const float  vis = brdf_utils::V_SmithGGXCorrelated(a2, shadingVectors.NoL, shadingVectors.NoV);
 
@@ -317,14 +329,14 @@ struct GGXClearCoatBRDF : IClearCoatBRDF
 
 		ShadingSample sample;
 		sample.direction = reflectedRay;
-		sample.pdf       = brdf_utils::vndf_isotropic::PDF(viewDir, sample.direction, a, normal);
+		sample.pdf       = brdf_utils::vndf_isotropic::PDF(sample.direction, viewDir, a, normal);
 
 		return sample;
 	}
 
 	static float PDF(in float3 normal, in float roughness, in float3 viewDir, in float3 sampledDir)
 	{
-		return brdf_utils::vndf_isotropic::PDF(viewDir, sampledDir, RoughnessToAlpha(roughness), normal);
+		return brdf_utils::vndf_isotropic::PDF(sampledDir, viewDir, RoughnessToAlpha(roughness), normal);
 	}
 };
 

@@ -29,7 +29,11 @@ enum class ETextureUsage : Flags32
 	ShadingRateTexture = BIT(8),
 	FragmentDensityMap = BIT(9),
 
-	GloballyReadable   = TransferSource | SampledTexture
+	GloballyReadable   = TransferSource | SampledTexture,
+
+	UAV      = StorageTexture | SampledTexture | TransferSource | TransferDest,
+	ColorRTV = ColorRT | SampledTexture | TransferSource | TransferDest,
+	DepthRTV = DepthSetncilRT | SampledTexture | TransferSource | TransferDest,
 };
 
 

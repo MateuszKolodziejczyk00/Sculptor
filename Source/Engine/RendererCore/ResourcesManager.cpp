@@ -273,6 +273,24 @@ lib::SharedRef<TextureView> ResourcesManager::CreateTextureView(const RendererRe
 	return texture->CreateView(RENDERER_RESOURCE_NAME_FORMATTED("{} View", name.Get().ToString()));
 }
 
+lib::SharedRef<TextureView> ResourcesManager::CreateTextureView2D(const RendererResourceName& name, const math::Vector2u& resolution, rhi::EFragmentFormat format, rhi::ETextureUsage usage, const AllocationDefinition& allocationInfo /* = rhi::EMemoryUsage::GPUOnly */)
+{
+	rhi::TextureDefinition textureDef;
+	textureDef.resolution = resolution;
+	textureDef.format     = format;
+	textureDef.usage      = usage;
+	return CreateTextureView(name, textureDef, allocationInfo);
+}
+
+lib::SharedRef<TextureView> ResourcesManager::CreateTextureView3D(const RendererResourceName& name, const math::Vector3u& resolution, rhi::EFragmentFormat format, rhi::ETextureUsage usage /* = rhi::ETextureUsage::UAV */, const AllocationDefinition& allocationInfo /* = rhi::EMemoryUsage::GPUOnly */)
+{
+	rhi::TextureDefinition textureDef;
+	textureDef.resolution = resolution;
+	textureDef.format     = format;
+	textureDef.usage      = usage;
+	return CreateTextureView(name, textureDef, allocationInfo);
+}
+
 lib::SharedRef<TextureView> ResourcesManager::CreateTextureViewObject(const RendererResourceName& name, const lib::SharedRef<Texture>& texture, const rhi::TextureViewDefinition& viewDefinition /* = rhi::TextureViewDefinition() */, TextureViewDescriptorsAllocation externalDescriptorsAllocation /* = TextureViewDescriptorsAllocation() */)
 {
 	return g_GPUApiFactory->createTextureViewFunc(name, texture, viewDefinition, std::move(externalDescriptorsAllocation));

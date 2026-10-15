@@ -49,10 +49,20 @@ void ClosureFurnanceTestCS(CS_INPUT input)
 
 		const ShadedSurface surface = CreateViewerSurface(normal);
 
-		const ShadingSample sample = OpaqueClosure::Sample(surface, viewDir, rng);
+		const float rcpSamplesNum = 1.f / float(CONSTS->samplesNum);
 
-		const BRDFLobes lobes = OpaqueClosure::Evaluate<true>(surface, viewDir, sample.direction);
-		float3 Lo = background * (lobes.diffuse + lobes.specular) / sample.pdf;
+		float3 Lo = 0.f;
+
+		for (uint i = 0u; i < CONSTS->samplesNum; ++i)
+		{
+			const ShadingSample sample = OpaqueClosure::Sample(surface, viewDir, rng);
+
+			const BRDFLobes lobes = OpaqueClosure::Evaluate<true>(surface, viewDir, sample.direction);
+
+			const float3 sampleLo = background * (lobes.diffuse + lobes.specular) / sample.pdf;
+
+			Lo += sampleLo * rcpSamplesNum;
+		}
 
 		const float3 prevLo = VIEWER->frameIdx > 0u ? CONSTS->rwOutput[coords].xyz : 0.f;
 		const float3 newLo = (prevLo * VIEWER->frameIdx + Lo) / (VIEWER->frameIdx + 1.f);

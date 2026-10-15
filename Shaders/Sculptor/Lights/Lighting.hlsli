@@ -357,13 +357,14 @@ float3 CalcReflectedLuminance_Indirect(in ShadedSurface surface, in SurfaceGeome
 	diffuseSampleParams.sampleLocationBiasMultiplier = 1.0f;
 
 	const float3 indirectLuminance = DDGISampleLuminance(diffuseSampleParams, ddgiSampleContext);
-	const float3 indirectIlluminance = indirectLuminance * 2.f * PI;
-	luminance += brdf_utils::lambert::Evaluate(indirectIlluminance) * surface.albedo * indirectMultiplier;
+	const float3 indirectIlluminance = indirectLuminance * PI;
 
 	const float NdotL = dot(surface.normal, specularDominantDirection);
 	const float NdotV = saturate(dot(surface.normal, viewDir));
 	const float2 integratedBRDF = PARAM_GlobalLightsParams->brdfIntegrationLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), float2(NdotV, surface.roughness), 0);
 	luminance += indirectLuminance * (surface.f0 * integratedBRDF.x + integratedBRDF.y) * indirectMultiplier * NdotL;
+
+	luminance += brdf_utils::lambert::Evaluate(indirectIlluminance) * surface.albedo * indirectMultiplier * (1.f - integratedBRDF.x);
 #endif // defined(PARAM_DDGIGPUScene)
 
 	return luminance;

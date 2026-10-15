@@ -133,6 +133,7 @@ SIMPLE_COMPUTE_PSO(GenerateGGXThroughputLUTPSO, "Sculptor/Tools/GGXMultiscatteri
 
 BEGIN_SHADER_STRUCT(GenerateGGXThroughputLUTConsts)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture3D<Real32>,  rwLUT)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture3D<Real32>,  rwCoatLUT)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<Real32>,  directionalAlbedoLUT)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,  averageEnergyLUT)
 	SHADER_STRUCT_FIELD(Uint32,                     seed)
@@ -172,11 +173,13 @@ void Generate(rg::RenderGraphBuilder& graphBuilder, GenerationContext& context)
 								rg::ShaderParams(shaderParams));
 	}
 
-	const rg::RGTextureViewHandle throughputLUT = graphBuilder.CreateTextureView(RG_DEBUG_NAME("GGX Throughput LUT"), rg::TextureDef(math::Vector3u(16u, 16u, 16u), rhi::EFragmentFormat::R32_S_Float).SetType(rhi::ETextureType::Texture3D));
+	const rg::RGTextureViewHandle throughputLUT     = graphBuilder.CreateTextureView(RG_DEBUG_NAME("GGX Throughput LUT"), rg::TextureDef(math::Vector3u(16u, 16u, 16u), rhi::EFragmentFormat::R32_S_Float).SetType(rhi::ETextureType::Texture3D));
+	const rg::RGTextureViewHandle coatThroughputLUT = graphBuilder.CreateTextureView(RG_DEBUG_NAME("GGX Coat Throughput LUT"), rg::TextureDef(math::Vector3u(16u, 16u, 16u), rhi::EFragmentFormat::R32_S_Float).SetType(rhi::ETextureType::Texture3D));
 
 	{
 		GenerateGGXThroughputLUTConsts shaderParams;
 		shaderParams.rwLUT                = throughputLUT;
+		shaderParams.rwCoatLUT            = coatThroughputLUT;
 		shaderParams.directionalAlbedoLUT = averageAlbedo;
 		shaderParams.averageEnergyLUT     = averageEnergy;
 		shaderParams.seed                 = 192837465u;
@@ -193,6 +196,40 @@ void Generate(rg::RenderGraphBuilder& graphBuilder, GenerationContext& context)
 } // ggx_throughput_lut
 
 
+namespace coating_throughput_lut
+{
+
+SIMPLE_COMPUTE_PSO(GenerateCoatingThroughputLUTPSO, "Sculptor/Tools/GGXMultiscatteringLUTs/GenerateGGXCoatingThroughputLUT.hlsl", GenerateGGXCoatingThroughputLUTCS);
+
+
+BEGIN_SHADER_STRUCT(GenerateGGXCoatingThroughputLUTConsts)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Real32>,  rwCoatLUT)
+	SHADER_STRUCT_FIELD(Uint32,                     seed)
+END_SHADER_STRUCT()
+
+
+void Generate(rg::RenderGraphBuilder& graphBuilder, GenerationContext& context)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_LOG_INFO(GGXMultiscatteringLUTsGenerator, "Generating GGX coating throughput LUT");
+
+	const rg::RGTextureViewHandle coatThroughputLUT = graphBuilder.CreateTextureView(RG_DEBUG_NAME("GGX Coat Throughput LUT"), rg::TextureDef(math::Vector2u(32u, 32u), rhi::EFragmentFormat::R32_S_Float));
+
+	GenerateGGXCoatingThroughputLUTConsts shaderParams;
+	shaderParams.rwCoatLUT = coatThroughputLUT;
+	shaderParams.seed      = 564738291u;
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("GenerateGGXCoatingThroughputLUT"),
+							GenerateCoatingThroughputLUTPSO::pso,
+							math::Utils::DivideCeil(coatThroughputLUT->GetResolution2D(), math::Vector2u(8u, 8u)),
+							rg::ShaderParams(shaderParams));
+
+	context.SaveLUT(graphBuilder, coatThroughputLUT, "GGX_Coat_Throughput_LUT.dds");
+}
+
+} // coating_throughput_lut
+
 static void GenerateMultiscatteringLUTs(rg::RenderGraphBuilder& graphBuilder, GenerationContext& context)
 {
 	SPT_PROFILER_FUNCTION();
@@ -208,6 +245,8 @@ static void GenerateThroughputLUT(rg::RenderGraphBuilder& graphBuilder, Generati
 	SPT_PROFILER_FUNCTION();
 
 	ggx_throughput_lut::Generate(graphBuilder, context);
+
+	coating_throughput_lut::Generate(graphBuilder, context);
 }
 
 static Bool Run(const lib::Path& outputDirectory)

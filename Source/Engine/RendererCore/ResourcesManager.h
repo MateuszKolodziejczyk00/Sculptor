@@ -96,6 +96,8 @@ public:
 
 	SPT_NODISCARD static lib::SharedRef<Texture>     CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationInfo);
 	SPT_NODISCARD static lib::SharedRef<TextureView> CreateTextureView(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationInfo);
+	SPT_NODISCARD static lib::SharedRef<TextureView> CreateTextureView2D(const RendererResourceName& name, const math::Vector2u& resolution, rhi::EFragmentFormat format, rhi::ETextureUsage usage, const AllocationDefinition& allocationInfo = rhi::EMemoryUsage::GPUOnly);
+	SPT_NODISCARD static lib::SharedRef<TextureView> CreateTextureView3D(const RendererResourceName& name, const math::Vector3u& resolution, rhi::EFragmentFormat format, rhi::ETextureUsage usage = rhi::ETextureUsage::UAV, const AllocationDefinition& allocationInfo = rhi::EMemoryUsage::GPUOnly);
 	SPT_NODISCARD static lib::SharedRef<TextureView> CreateTextureViewObject(const RendererResourceName& name, const lib::SharedRef<Texture>& texture, const rhi::TextureViewDefinition& viewDefinition = rhi::TextureViewDefinition(), TextureViewDescriptorsAllocation externalDescriptorsAllocation = TextureViewDescriptorsAllocation());
 
 	SPT_NODISCARD static lib::SharedRef<GPUMemoryPool> CreateGPUMemoryPool(const RendererResourceName& name, const rhi::RHIMemoryPoolDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo);

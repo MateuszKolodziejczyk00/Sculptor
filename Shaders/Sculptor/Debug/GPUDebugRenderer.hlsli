@@ -14,10 +14,30 @@ struct GPUDebugRenderer
 		PARAM_ShaderDebugCommandBufferParams->dynamicDebugRendererData.rwLines.Store(lineIdx, lineDef);
 	}
 
+	static void DrawLine(float3 begin, float3 end, float3 color)
+	{
+		DebugLineDefinition lineDef;
+		lineDef.begin = begin;
+		lineDef.end   = end;
+		lineDef.color = color;
+
+		DrawLine(lineDef);
+	}
+
 	static void DrawPersistentLine(DebugLineDefinition lineDef)
 	{
 		const uint lineIdx = PARAM_ShaderDebugCommandBufferParams->persistentDebugRendererData.rwLinesNum.AtomicAdd(0u, 1u);
 		PARAM_ShaderDebugCommandBufferParams->persistentDebugRendererData.rwLines.Store(lineIdx, lineDef);
+	}
+
+	static void DrawPersistentLine(float3 begin, float3 end, float3 color)
+	{
+		DebugLineDefinition lineDef;
+		lineDef.begin = begin;
+		lineDef.end   = end;
+		lineDef.color = color;
+
+		DrawPersistentLine(lineDef);
 	}
 
 	static void DrawMarker(DebugMarkerDefinition markerDef)

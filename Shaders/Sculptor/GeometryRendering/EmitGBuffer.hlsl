@@ -327,9 +327,6 @@ FS_Output EmitGBuffer_FS(in OutputVertex vertexInput)
 
 		const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(visibleMeshlet.materialDataHandle);
 
-		//debug::WriteDebugPixel(pixelCoord, float2(visibleMeshletIdx, visibleMeshlet.submeshPtr.dataIdx == 47u ? 1.f : 0.f));
-		debug::WriteDebugPixel(pixelCoord, float2(visibleMeshletIdx, visibleMeshlet.submeshPtr.dataIdx));
-
 #if PASS_ENABLE_POM
 		float pomDepth = 0.f;
 #if defined(MATERIAL_DEPTH_DATA_ACCESSOR) && MATERIAL_ENABLE_POM
@@ -517,4 +514,3 @@ FS_Output EmitGrassGBuffer_FS(in OutputVertex vertexInput)
 
 	return output;
 }
-[[meta(debug_features)]]

@@ -186,7 +186,7 @@ void SharcUpdateRTG()
 		if (it == 0u)
 		{
 			const float traceDist = PARAMS_SHARC_UPDATE->sharcConstants.ssrTraceLength;
-			const SSTraceResultExtended ssResult = TraceScreenSpaceRay(PARAMS_SHARC_UPDATE->sharcConstants.ssrTracer, VIEW->sceneView, mainSurface.uv, mainSurface.depth, sample.direction, traceDist, rng.Next());
+			const SSTraceResult ssResult = TraceScreenSpaceRay<false, 2u>(PARAMS_SHARC_UPDATE->sharcConstants.ssrTracer, VIEW->sceneView, mainSurface.uv, mainSurface.depth, sample.direction, traceDist, rng.Next());
 
 			if (ssResult.isHit)
 			{
@@ -199,13 +199,13 @@ void SharcUpdateRTG()
 				hitRes.metallic           = hitSurfaceInfo.baseColorMetallic.w;
 				hitRes.emissive           = hitSurfaceInfo.emissive;
 				hitRes.hitType            = RTGBUFFER_HIT_TYPE_VALID_HIT;
-				hitRes.hitDistance        = traceDist * ssResult.hitT;
+				hitRes.hitDistance        = ssResult.hitDist;
 
 				isScreenSpaceHit = true;
 			}
 			else
 			{
-				worldLocation += sample.direction * ssResult.unoccludedDistance * 0.9f;
+				worldLocation += max(sample.direction * ssResult.unoccludedDist * 0.9f, 0.02f);
 			}
 		}
 

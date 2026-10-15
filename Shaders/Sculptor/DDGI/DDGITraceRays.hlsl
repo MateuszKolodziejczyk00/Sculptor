@@ -85,7 +85,7 @@ void DDGIProbeRaysRTG()
 		distanceTraveled = -traceResult.material.distance;
 	}
 
-	const bool isBackface = distanceTraveled > 0.f;
+	const bool isBackface = distanceTraveled < 0.f;
 
 	if (!isBackface)
 	{

@@ -264,7 +264,7 @@ bool PerformDIVisibilityTest(in SSTracerData tracer, in SceneViewData sceneView,
 	const float  d = length(toSample);
 	const float3 L = toSample / d;
 
-	const SSTraceResultExtended traceResult = TraceScreenSpaceRay(tracer, sceneView, surf.uv, surf.depth, L, min(d, ssRayLength), jitter);
+	const SSTraceResult traceResult = TraceScreenSpaceRay<true>(tracer, sceneView, surf.uv, surf.depth, L, min(d, ssRayLength), jitter);
 	if (traceResult.isHit)
 	{
 		return false;
@@ -276,7 +276,7 @@ bool PerformDIVisibilityTest(in SSTracerData tracer, in SceneViewData sceneView,
 	}
 
 	RayDesc rayDesc;
-	rayDesc.TMin      = traceResult.unoccludedDistance;
+	rayDesc.TMin      = traceResult.unoccludedDist;
 	rayDesc.TMax      = d - 0.02f;
 	rayDesc.Origin    = surf.location;
 	rayDesc.Direction = L;

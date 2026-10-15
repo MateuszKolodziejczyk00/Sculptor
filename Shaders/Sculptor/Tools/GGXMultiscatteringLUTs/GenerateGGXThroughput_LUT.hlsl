@@ -30,7 +30,8 @@ void GenerateGGXThroughput_LUTCS(CS_INPUT input)
 
 	const float E = CONSTS->averageEnergyLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), float2(roughness, f0), 0.f);
 
-	const float throughput = (1.f - directionalAlbedo) / sqrt(1.f - E);
+	const float throughput     = (1.f - directionalAlbedo) / sqrt(1.f - E);
+	const float coatThroughput = (1.f - directionalAlbedo);
 
 	CONSTS->rwLUT[coords] = throughput;
 }

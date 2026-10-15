@@ -359,6 +359,7 @@ static void ShadeRays(rg::RenderGraphBuilder& graphBuilder, const SceneRendererI
 BEGIN_SHADER_STRUCT(SpecularReflectionsTraceConstants)
 	SHADER_STRUCT_FIELD(math::Vector2u,                                       resolution)
 	SHADER_STRUCT_FIELD(math::Vector2f,                                       invResolution)
+	SHADER_STRUCT_FIELD(Uint32,                                               frameIdx)
 	SHADER_STRUCT_FIELD(Uint32,                                               rayCommandsBufferSize)
 	SHADER_STRUCT_FIELD(SSTracerData,                                         ssrTracer)
 	SHADER_STRUCT_FIELD(Real32,                                               ssrTraceLength)
@@ -448,6 +449,7 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, const Scene
 	SpecularReflectionsTraceConstants shaderConstants;
 	shaderConstants.resolution            = params.resolution;
 	shaderConstants.invResolution         = params.resolution.cast<Real32>().cwiseInverse();
+	shaderConstants.frameIdx              = viewSpec.GetFrameIdx();
 	shaderConstants.rayCommandsBufferSize = static_cast<Uint32>(sortedRaysBuffer->GetSize() / sizeof(vrt::EncodedRayTraceCommand));
 	shaderConstants.ssrTracer             = CreateScreenSpaceTracerData(viewContext.linearDepth, static_cast<Uint32>(renderer_params::ssrtStepsNum));
 	shaderConstants.ssrTraceLength        = renderer_params::ssrtTraceLenght;

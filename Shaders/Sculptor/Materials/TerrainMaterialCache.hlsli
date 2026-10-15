@@ -37,9 +37,10 @@ MaterialEvaluationOutput EvaluateMaterial<TSampler : IMaterialSampler>(TSampler 
 	bool foundCachedMaterial = false;
 
 #if !SPT_RAY_TRACING_SHADER 
+	[unroll]
 	for (int i = 0; i < 8; ++i)
 	{
-		TerrrainMaterialCacheLOD matCacheLOD = terrainInterface.materialCache.lods[i];
+		const TerrrainMaterialCacheLOD matCacheLOD = terrainInterface.materialCache.lods[i];
 		const float2 lodUV = (evalParams.worldLocation.xy - matCacheLOD.minBounds) * matCacheLOD.rcpRange;
 		const float2 uv = evalParams.worldLocation.xy * matCacheLOD.rcpRange;
 

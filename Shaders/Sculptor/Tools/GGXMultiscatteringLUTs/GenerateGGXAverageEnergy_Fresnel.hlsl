@@ -34,7 +34,7 @@ void GenerateGGXAverageEnergy_FresnelCS(CS_INPUT input)
 	const uint numSamples = directionalAlbedoResolution.x;
 	for (uint i = 0u; i < numSamples; ++i)
 	{
-		const float NoV = float(i) / float(numSamples - 1u);
+		const float NoV = (i + 0.5f) / float(numSamples);
 
 		const float3 directionalAlbedoUVW = float3(NoV, roughness, f0);
 

@@ -67,7 +67,7 @@ void ResamplingFinalVisibilityTestRTG()
 				RngState rng = RngState::Create(pixel.xy, 123u);
 
 				const float traceDist = min(PARAMS_S_R_RESAMPLING_FINAL_VISIBILITY_TEST->resamplingConstants->ssrTraceLength, distance - bias);
-				const SSTraceResultExtended ssResult = TraceScreenSpaceRay(PARAMS_S_R_RESAMPLING_FINAL_VISIBILITY_TEST->resamplingConstants->ssTracer, VIEW->sceneView, uv, depth, rayDirection, traceDist, rng.Next());
+				const SSTraceResult ssResult = TraceScreenSpaceRay<false>(PARAMS_S_R_RESAMPLING_FINAL_VISIBILITY_TEST->resamplingConstants->ssTracer, VIEW->sceneView, uv, depth, rayDirection, traceDist, rng.Next());
 				if (ssResult.isHit)
 				{
 					isVisible = false;
@@ -75,7 +75,7 @@ void ResamplingFinalVisibilityTestRTG()
 				else
 				{
 					RayDesc rayDesc;
-					rayDesc.TMin        = ssResult.unoccludedDistance * 0.99f;
+					rayDesc.TMin        = max(ssResult.unoccludedDist * 0.99f, 0.01f);
 					rayDesc.TMax        = distance - bias;
 					rayDesc.Origin      = worldLocation;
 					rayDesc.Direction   = rayDirection;
