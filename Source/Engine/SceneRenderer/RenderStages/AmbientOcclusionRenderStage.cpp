@@ -2,7 +2,6 @@
 #include "RenderGraphBuilder.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "RenderScene.h"
-#include "Utility/Random.h"
 #include "MaterialsSubsystem.h"
 #include "SceneRenderer/Utils/DepthBasedUpsampler.h"
 
@@ -70,7 +69,9 @@ static rg::RGTextureViewHandle TraceAmbientOcclusionRays(rg::RenderGraphBuilder&
 	const rg::RGTextureViewHandle traceRaysResultTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("AO Trace Rays Result"), rg::TextureDef(traceRaysResolution, rhi::EFragmentFormat::R8_UN_Float));
 
 	RTAOTraceRaysParams params;
-	params.randomSeed              = math::Vector2f(lib::rnd::Random<Real32>(), lib::rnd::Random<Real32>());
+	constexpr Uint32 baseSeed = 0x3A7C51E9u;
+	const SizeType seedHash = lib::HashCombine(baseSeed, context.viewSpec.GetFrameIdx());
+	params.randomSeed              = math::Vector2f(static_cast<Real32>(seedHash & 0xFFFFu), static_cast<Real32>((seedHash >> 16u) & 0xFFFFu)) / 65536.f;
 	params.raysNumber              = 1u;
 	params.raysLength              = 0.25f;
 	params.raysMinHitDistance      = 0.02f;

@@ -54,6 +54,8 @@ public:
 
 	// Debug ===========================================================================
 
+	static rhi::RHIMemoryUsageStats GetMemoryUsageStats();
+
 #if SPT_RHI_DEBUG
 
 	static void EnableValidationWarnings(Bool enable);

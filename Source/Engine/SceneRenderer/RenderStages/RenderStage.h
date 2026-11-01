@@ -83,7 +83,7 @@ public:
 
 		const auto constructor = [](lib::MemoryArena& arena) -> RenderStageBase*
 		{
-			return arena.AllocateType<TRenderStageType>();
+			return arena.Allocate<TRenderStageType>();
 		};
 
 		const auto destructor = [](RenderStageBase& s)

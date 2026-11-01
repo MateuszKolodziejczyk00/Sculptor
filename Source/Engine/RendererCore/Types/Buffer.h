@@ -62,6 +62,8 @@ public:
 
 	lib::SharedPtr<BindableBufferView> AsSharedPtr();
 
+	void UpdateDescriptorsMemory();
+
 private:
 
 	void CreateDescriptors(BufferViewDescriptorsAllocation externalDescriptorsAllocation);
@@ -85,6 +87,8 @@ public:
 	Bool HasBoundMemory() const;
 	void BindMemory(const AllocationDefinition& definition);
 	void ReleasePlacedAllocation();
+
+	void UpdateDescriptorsMemory();
 
 	BufferView CreateFullView() const;
 	lib::SharedPtr<BindableBufferView> GetFullView() const;

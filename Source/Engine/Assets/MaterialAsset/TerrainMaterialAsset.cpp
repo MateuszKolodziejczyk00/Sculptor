@@ -55,7 +55,7 @@ Bool TerrainMaterialAsset::Compile()
 		const ResourcePath materialAssetPath = ResolveAssetRelativePath(materialEntry.materialAsset.GetPath());
 		if (!GetOwningSystem().CompileAssetIfDeprecated(materialAssetPath))
 		{
-			SPT_LOG_ERROR(TerrainMaterialAsset, "Failed to compile TerrainMaterialAsset '{}' - referenced MaterialAsset '{}' could not be compiled", GetName().ToString(), materialAssetPath.GetPath().generic_string());
+			SPT_LOG_ERROR(TerrainMaterialAsset, "Failed to compile TerrainMaterialAsset '{}' - referenced MaterialAsset '{}' could not be compiled", GetName().ToString(), materialAssetPath.GetPath());
 			return false;
 		}
 

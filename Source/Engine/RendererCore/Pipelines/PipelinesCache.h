@@ -109,6 +109,8 @@ private:
 	};
 
 	lib::HashMap<ShaderID, lib::DynamicArray<PipelineStateID>>		m_shaderToPipelineStates;
+
+	lib::Lock														m_shaderToPipelineStatesLock;
 	lib::HashMap<PipelineStateID, ComputePipelineHotReloadData>		m_computePipelineHotReloadData;
 	lib::HashMap<PipelineStateID, GfxPipelineHotReloadData>			m_graphicsPipelineHotReloadData;
 	lib::HashMap<PipelineStateID, RayTracingPipelineHotReloadData>	m_rayTracingPipelineHotReloadData;

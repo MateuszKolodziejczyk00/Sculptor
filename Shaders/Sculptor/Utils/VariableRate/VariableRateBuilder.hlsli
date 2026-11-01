@@ -19,18 +19,31 @@
 
 #if !VR_BUILDER_SINGLE_LANE_PER_QUAD
 groupshared float gs_inputSamples[GS_SAMPLES_X][GS_SAMPLES_Y];
+groupshared float gs_depth[GROUP_SIZE_X][GROUP_SIZE_Y];
 
 
-void CacheInputSamples(in SRVTexture2D<float> texture, in int2 tileCoords, in int threadIdx)
+void CacheInputSamples(in SRVTexture2D<float> input, in int2 tileCoords, in int threadIdx)
 {
 	for(int i = threadIdx; i < (GS_SAMPLES_X * GS_SAMPLES_Y); i += WaveGetLaneCount())
 	{
 		const int2 sampleCoords = int2(i % GS_SAMPLES_X, i / GS_SAMPLES_X);
 		const int2 globalCoords = clamp(tileCoords + sampleCoords - int2(1, 1), int2(0, 0), PARAMS_CREATE_VARIABLE_RATE_TEXTURE->inputResolution);
 
-		const float signal = texture.Load(uint3(globalCoords, 0));
+		const float signal = input.Load(uint3(globalCoords, 0));
 
 		gs_inputSamples[sampleCoords.x][sampleCoords.y] = signal;
+	}
+}
+
+
+void CacheDepthSamples(in SRVTexture2D<float> depth, in int2 tileCoords, in int threadIdx)
+{
+	for(int i = threadIdx; i < (GROUP_SIZE_X * GROUP_SIZE_Y); i += WaveGetLaneCount())
+	{
+		const int2 sampleCoords = int2(i % GROUP_SIZE_X, i / GROUP_SIZE_Y);
+		const int2 globalCoords = clamp(tileCoords + sampleCoords, int2(0, 0), PARAMS_CREATE_VARIABLE_RATE_TEXTURE->inputResolution);
+
+		gs_depth[sampleCoords.x][sampleCoords.y] = depth.Load(uint3(globalCoords, 0));
 	}
 }
 
@@ -63,6 +76,31 @@ float2 SobelFilter(in uint2 localID)
 	return float2(x, y);
 }
 #endif // !VR_BUILDER_SINGLE_LANE_PER_QUAD
+
+float2 ApplyDepthBasedEdgeFilter(in uint2 localID, in float2 edgeFilter)
+{
+	const float leftDepth  = gs_depth[(localID.x & ~ 1u) + 0u][localID.y];
+	const float rightDepth = gs_depth[(localID.x & ~ 1u) + 1u][localID.y];
+
+	const float topDepth   = gs_depth[localID.x][(localID.y & ~ 1u) + 0u];
+	const float bottomDepth = gs_depth[localID.x][(localID.y & ~ 1u) + 1u];
+
+	const bool leftInvalid   = leftDepth   <= 0.f;
+	const bool rightInvalid  = rightDepth  <= 0.f;
+	const bool topInvalid    = topDepth    <= 0.f;
+	const bool bottomInvalid = bottomDepth <= 0.f;
+
+	if (leftInvalid ^ rightInvalid)
+	{
+		edgeFilter.x = FLOAT_MAX;
+	}
+	if (topInvalid ^ bottomInvalid)
+	{
+		edgeFilter.y = FLOAT_MAX;
+	}
+
+	return edgeFilter;
+}
 
 #define FAST_VARIABLE_RATE 1
 
@@ -200,14 +238,17 @@ struct VariableRateProcessor
 		return variableRate;
 	}
 
-	float2 ComputeEdgeFilter(in SRVTexture2D<float> texture)
+	float2 ComputeEdgeFilter(in SRVTexture2D<float> texture, in SRVTexture2D<float> depth)
 	{
 		const uint2 tileCoords = m_groupID * uint2(GROUP_SIZE_X, GROUP_SIZE_Y);
 		CacheInputSamples(texture, tileCoords, m_localThreadIdx);
+		CacheDepthSamples(depth, tileCoords, m_localThreadIdx);
 
 		GroupMemoryBarrierWithGroupSync();
 
 		float2 edgeFilter = SobelFilter(m_localID);
+
+		edgeFilter = ApplyDepthBasedEdgeFilter(m_localID, edgeFilter);
 
 		edgeFilter = QuadMax(edgeFilter);
 
@@ -271,7 +312,7 @@ struct GenericVariableRateCallback : IVariableRateBuilderCallback
 {
 	uint ComputeVariableRateMask(in VariableRateProcessor processor)
 	{
-		const float2 edgeFilter = processor.ComputeEdgeFilter(PARAMS_CREATE_VARIABLE_RATE_TEXTURE->inputTexture);
+		const float2 edgeFilter = processor.ComputeEdgeFilter(PARAMS_CREATE_VARIABLE_RATE_TEXTURE->inputTexture, PARAMS_CREATE_VARIABLE_RATE_TEXTURE->depthTexture);
 		return processor.ComputeEdgeBasedVariableRateMask(edgeFilter);
 	}
 };

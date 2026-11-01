@@ -48,7 +48,7 @@ private:
 	lib::SharedPtr<rdr::TopLevelAS> m_tlas;
 
 	lib::SharedPtr<rdr::Buffer> m_rtInstancesDataBuffer;
-	lib::SharedPtr<rdr::Buffer> m_rtInstancesDataStagingBuffer;
+	lib::SharedPtr<rdr::Buffer> m_rtInstancesDataStagingBuffer[2];
 
 	lib::StaticArray<lib::SharedPtr<rdr::Buffer>, 2u> m_instancesDefsBuffers;
 };

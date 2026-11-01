@@ -97,9 +97,6 @@ void ViewRenderingSpec::Initialize(rg::RenderGraphBuilder& graphBuilder, RenderV
 	
 	m_renderView = &renderView;
 
-	m_settingsDirty = m_renderView->settingsDirty;
-	m_renderView->settingsDirty = false;
-
 	const Bool isShadingView = lib::HasAnyFlag(renderView.supportedStages, ERenderStage::DeferredLightingStages);
 	if (isShadingView)
 	{
@@ -128,8 +125,6 @@ void ViewRenderingSpec::BeginFrame(rg::RenderGraphBuilder& graphBuilder, const R
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_renderView->frameIdx++;
-
 	const ViewRenderSystemsAPI& systemsAPI = ViewRenderSystemsAPI::Get();
 	for (Uint32 systemIdx = 0; systemIdx < m_renderView->renderSystems.size(); ++systemIdx)
 	{
@@ -155,6 +150,7 @@ void ViewRenderingSpec::BeginFrame(rg::RenderGraphBuilder& graphBuilder, const R
 	renderView.sceneView           = m_renderView->GetViewRenderingData();
 	renderView.cullingData         = m_renderView->GetCullingData();
 	renderView.renderingResolution = GetRenderingRes();
+	renderView.settings            = m_renderView->settings;
 
 	if (m_renderView->viewExposureBuffer)
 	{
@@ -197,6 +193,8 @@ void ViewRenderingSpec::EndFrame(rg::RenderGraphBuilder& graphBuilder, const Ren
 			stagesAPI.CallEndFrameFunc(stage, *stageInstance, scene, *m_renderView);
 		}
 	}
+
+	m_renderView->frameIdx++;
 }
 
 void ViewRenderingSpec::SetRenderingRes(const math::Vector2u& res)
@@ -263,16 +261,6 @@ ShadingViewContext& ViewRenderingSpec::GetShadingViewContext()
 const ShadingViewContext& ViewRenderingSpec::GetShadingViewContext() const
 {
 	return m_blackboard.Get<ShadingViewContext>();
-}
-
-Bool ViewRenderingSpec::AreSettingsDirty() const
-{
-	return m_settingsDirty;
-}
-
-const ShadingRenderViewSettings& ViewRenderingSpec::GetShadingViewSettings() const
-{
-	return m_renderView->shadingSettings;
 }
 
 const lib::Blackboard& ViewRenderingSpec::GetBlackboard() const

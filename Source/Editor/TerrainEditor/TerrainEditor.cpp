@@ -82,7 +82,7 @@ void TerrainEditorUIView::DrawUI()
 
 	EditorFrameContext& editorFrameContext = static_cast<EditorFrameContext&>(scui::ApplicationUI::GetCurrentContext().GetCurrentFrame());
 
-	editorFrameContext.terrainEditorState = editorFrameContext.GetFrameMemoryArena().AllocateType<TerrainEditorFrameState>();
+	editorFrameContext.terrainEditorState = editorFrameContext.GetFrameMemoryArena().Allocate<TerrainEditorFrameState>();
 	TerrainEditorFrameState& edFrameState = *editorFrameContext.terrainEditorState;
 
 	editorFrameContext.terrainEditorStateDeleter = [](TerrainEditorFrameState* state)

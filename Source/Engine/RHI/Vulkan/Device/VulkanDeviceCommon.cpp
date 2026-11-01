@@ -62,6 +62,10 @@ lib::DynamicArray<const char*> VulkanDeviceCommon::GetRequiredDeviceExtensions()
 
 	requiredExtensions.emplace_back(VK_EXT_VERTEX_ATTRIBUTE_ROBUSTNESS_EXTENSION_NAME);
 
+	requiredExtensions.emplace_back(VK_NV_COOPERATIVE_VECTOR_EXTENSION_NAME);
+
+	requiredExtensions.emplace_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+
 #if SPT_ENABLE_NSIGHT_AFTERMATH
 
 	if (VulkanRHI::GetSettings().AreGPUCrashDumpsEnabled())

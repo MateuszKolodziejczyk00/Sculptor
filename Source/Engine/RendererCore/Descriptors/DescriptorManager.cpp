@@ -135,7 +135,7 @@ DescriptorManager::~DescriptorManager()
 		{
 			if (m_bufferDescriptorAllocator.IsDescriptorOccupied(idx))
 			{
-				const lib::String bufferName = m_resourceDescriptorInfos[idx].resourceName.ToString();
+				const lib::String bufferName = m_bufferDescriptorInfos[idx].resourceName.ToString();
 
 				SPT_LOG_ERROR(DescriptorManager, "Descriptor at index {} is not freed! Resource name: '{}'", idx + m_bufferDescriptorOffset, bufferName);
 			}
@@ -149,7 +149,7 @@ DescriptorManager::~DescriptorManager()
 		{
 			if (m_textureDescriptorAllocator.IsDescriptorOccupied(idx))
 			{
-				const lib::String textureName = m_resourceDescriptorInfos[idx].resourceName.ToString();
+				const lib::String textureName = m_textureDescriptorInfos[idx].resourceName.ToString();
 
 				SPT_LOG_ERROR(DescriptorManager, "Descriptor at index {} is not freed! Resource name: '{}'", idx + m_textureDescriptorOffset, textureName);
 			}
@@ -220,8 +220,8 @@ void DescriptorManager::UploadSRVDescriptor(ResourceDescriptorIdx idx, TextureVi
 	SPT_CHECK(idx != rdr::invalidResourceDescriptorIdx);
 
 #if SPT_DESCRIPTOR_MANAGER_DEBUG
-	SPT_CHECK(m_resourceDescriptorAllocator.IsDescriptorOccupied(idx));
-	m_resourceDescriptorInfos[idx].resourceName = textureView.GetRHI().GetName();
+	SPT_CHECK(m_textureDescriptorAllocator.IsDescriptorOccupied(idx - m_textureDescriptorOffset));
+	m_textureDescriptorInfos[idx - m_textureDescriptorOffset].resourceName = textureView.GetRHI().GetName();
 #endif // SPT_DESCRIPTOR_MANAGER_DEBUG
 
 	const lib::Span<Byte> descriptorData = m_resourceDescriptorHeap.GetRHI().GetTextureDescriptorData(idx);
@@ -238,8 +238,8 @@ void DescriptorManager::UploadUAVDescriptor(ResourceDescriptorIdx idx, TextureVi
 	SPT_CHECK(textureView.GetTexture()->GetRHI().HasUsage(rhi::ETextureUsage::StorageTexture));
 
 #if SPT_DESCRIPTOR_MANAGER_DEBUG
-	SPT_CHECK(m_resourceDescriptorAllocator.IsDescriptorOccupied(idx));
-	m_resourceDescriptorInfos[idx].resourceName = textureView.GetRHI().GetName();
+	SPT_CHECK(m_textureDescriptorAllocator.IsDescriptorOccupied(idx - m_textureDescriptorOffset));
+	m_textureDescriptorInfos[idx - m_textureDescriptorOffset].resourceName = textureView.GetRHI().GetName();
 #endif // SPT_DESCRIPTOR_MANAGER_DEBUG
 
 	const lib::Span<Byte> descriptorData = m_resourceDescriptorHeap.GetRHI().GetTextureDescriptorData(idx);
@@ -258,8 +258,7 @@ void DescriptorManager::UploadSRVDescriptor(ResourceDescriptorIdx idx, BindableB
 	SPT_CHECK(lib::HasAnyFlag(buffer->GetRHI().GetUsage(), rhi::EBufferUsage::Storage));
 
 #if SPT_DESCRIPTOR_MANAGER_DEBUG
-	SPT_CHECK(m_resourceDescriptorAllocator.IsDescriptorOccupied(idx));
-	m_resourceDescriptorInfos[idx].resourceName = bufferView.GetBuffer()->GetRHI().GetName();
+	SPT_CHECK(m_bufferDescriptorAllocator.IsDescriptorOccupied(idx - m_bufferDescriptorOffset));
 #endif // SPT_DESCRIPTOR_MANAGER_DEBUG
 
 	const lib::Span<Byte> descriptorData = m_resourceDescriptorHeap.GetRHI().GetBufferDescriptorData(idx);
@@ -278,8 +277,8 @@ void DescriptorManager::UploadUAVDescriptor(ResourceDescriptorIdx idx, BindableB
 	SPT_CHECK(lib::HasAnyFlag(buffer->GetRHI().GetUsage(), rhi::EBufferUsage::Storage));
 
 #if SPT_DESCRIPTOR_MANAGER_DEBUG
-	SPT_CHECK(m_resourceDescriptorAllocator.IsDescriptorOccupied(idx));
-	m_resourceDescriptorInfos[idx].resourceName = bufferView.GetBuffer()->GetRHI().GetName();
+	SPT_CHECK(m_bufferDescriptorAllocator.IsDescriptorOccupied(idx - m_bufferDescriptorOffset));
+	m_bufferDescriptorInfos[idx - m_bufferDescriptorOffset].resourceName = bufferView.GetBuffer()->GetRHI().GetName();
 #endif // SPT_DESCRIPTOR_MANAGER_DEBUG
 
 	const lib::Span<Byte> descriptorData = m_resourceDescriptorHeap.GetRHI().GetBufferDescriptorData(idx);

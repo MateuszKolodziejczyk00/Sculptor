@@ -6,7 +6,6 @@
 #include "RenderGraphBuilder.h"
 #include "Paths.h"
 #include "EngineFrame.h"
-#include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include <SceneRenderSystems/Atmosphere/Clouds/CloudscapeEditorRenderer.h>
 #include <ViewRenderSystems/ParticipatingMedia/ParticipatingMediaTypes.h>
 #include <ViewRenderSystems/ParticipatingMedia/ParticipatingMediaViewRenderSystem.h>
@@ -18,42 +17,6 @@ SPT_DEFINE_LOG_CATEGORY(VolumetricCloudsRenderer, true);
 
 namespace spt::rsc::clouds
 {
-
-namespace renderer_params
-{
-
-RendererFloatParameter baseShapeNoiseMeters("Base Shape Noise Meters", { "Clouds" }, 2400.f, 0.f, 60000.f);
-RendererFloatParameter cirrusCloudsMeters("Cirrus Clouds Meters", { "Clouds" }, 40000.f, 0.f, 60000.f);
-
-RendererFloatParameter detailShapeNoiseStrength0("Detail Shape Noise Strength (Octave 0)", { "Clouds" }, 0.45f, 0.f, 2.f);
-RendererFloatParameter detailShapeNoiseMeters0("Detail Shape Noise Meters (Octave 0)", { "Clouds" }, 380.f, 0.f, 20000.f);
-RendererFloatParameter detailShapeNoiseStrength1("Detail Shape Noise Strength (Octave 1)", { "Clouds" }, 0.0f, 0.f, 2.f);
-RendererFloatParameter detailShapeNoiseMeters1("Detail Shape Noise Meters (Octave 1)", { "Clouds" }, 255.f, 0.f, 20000.f);
-
-RendererFloatParameter weatherMapMeters("Weather Map meters", { "Clouds" }, 68000.f, 0.f, 100000.f);
-
-RendererFloatParameter curlNoiseOffset("Curl Noise Offset", { "Clouds" }, 300.f, 0.f, 500.f);
-RendererFloatParameter curlNoiseMeters("Curl Noise Meters", { "Clouds" }, 1700.f, 0.f, 40000.f);
-
-RendererFloatParameter globalDensity("Global Density", { "Clouds" }, 1.f, 0.f, 5.f);
-RendererFloatParameter globalCoverageOffset("Global Coverage Offset", { "Clouds" }, 0.4f, -1.f, 1.f);
-RendererFloatParameter cloudsHeightOffset("Clouds Height Offset", { "Clouds" }, 0.0f, -1.f, 1.f);
-
-RendererFloatParameter globalCoverageMultiplier("Global Coverage Multiplier", { "Clouds" }, 1.f, -2.f, 2.f);
-RendererFloatParameter cloudsHeightMultiplier("Clouds Height Multiplier", { "Clouds" }, 1.0f, -2.f, 2.f);
-
-RendererBoolParameter enableVolumetricClouds("Enable Volumetric Clouds", { "Clouds" }, true);
-
-RendererBoolParameter forceTransmittanceMapFullUpdates("Force Transmittance Map Full Updates", { "Clouds" }, false);
-RendererBoolParameter forceHRCloudsProbeFullUpdates("Force High Res Clouds Probe Full Updates", { "Clouds" }, false);
-RendererBoolParameter forceLRCloudsProbeFullUpdates("Force Low Res Clouds Probe Full Updates", { "Clouds" }, false);
-RendererBoolParameter fullResClouds("Full Res Clouds", { "Clouds" }, false);
-
-RendererIntParameter  cloudsShadowsCacheRes2D("Clouds Shadows Cache Res 2D", { "Clouds" }, 384, 1, 2048);
-RendererIntParameter  cloudsShadowsCacheResZ("Clouds Shadows Cache Res Z", { "Clouds" }, 16, 1, 64);
-
-} // renderer_params
-
 
 static void BuildCloudsTransmittanceMapMatrices(const math::Vector3f& center, const math::Vector3f& lightDirection, Real32 cloudscapeRange, Real32 cloudscapeMaxHeight, math::Matrix4f& outViewProj)
 {
@@ -337,7 +300,9 @@ static void RenderVolumetricCloudsMainView(rg::RenderGraphBuilder& graphBuilder,
 
 	ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
 
-	const math::Vector2u cloudsResolution = renderer_params::fullResClouds ? viewSpec.GetRenderingRes() : math::Utils::DivideCeil(viewSpec.GetRenderingRes(), math::Vector2u(4u, 4u));
+	const Bool fullResClouds = viewSpec.GetSettings().clouds.fullRes;
+
+	const math::Vector2u cloudsResolution = fullResClouds ? viewSpec.GetRenderingRes() : math::Utils::DivideCeil(viewSpec.GetRenderingRes(), math::Vector2u(4u, 4u));
 
 	SPT_CHECK(!!params.cloudscape);
 
@@ -350,7 +315,7 @@ static void RenderVolumetricCloudsMainView(rg::RenderGraphBuilder& graphBuilder,
 	shaderConstants.resolution      = cloudsResolution;
 	shaderConstants.rcpResolution   = cloudsResolution.cast<Real32>().cwiseInverse();
 	shaderConstants.frameIdx        = renderedFrameIdx;
-	shaderConstants.fullResTrace    = renderer_params::fullResClouds;
+	shaderConstants.fullResTrace    = fullResClouds;
 	shaderConstants.tracedPixel2x2  = tracedPixel2x2;
 	shaderConstants.furthestDepth = furthestDepth;
 	shaderConstants.skyProbe      = shadingViewContext.skyProbe;
@@ -364,7 +329,7 @@ static void RenderVolumetricCloudsMainView(rg::RenderGraphBuilder& graphBuilder,
 						  math::Utils::DivideCeil(cloudsResolution, math::Vector2u(8u, 8u)),
 						  rg::ShaderParams(shaderConstants, params.cloudscape->gpuCloudscapeConstants));
 
-	if (renderer_params::fullResClouds)
+	if (fullResClouds)
 	{
 		shadingViewContext.volumetricClouds      = cloudsTexture;
 		shadingViewContext.volumetricCloudsDepth = cloudsDepthTexture;
@@ -753,7 +718,7 @@ namespace sky_in_scattering_lut
 {
 
 BEGIN_SHADER_STRUCT(SkyInScatteringLUTConstants)
-	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwSkyInScatteringLUT)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture3D<math::Vector4f>, rwSkyInScatteringLUT)
 	SHADER_STRUCT_FIELD(HeightFogParams,                   heightFogParams)
 	SHADER_STRUCT_FIELD(math::Vector2f,                    rcpSkyInScatteringLUTRes)
 END_SHADER_STRUCT();
@@ -766,7 +731,7 @@ static rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, cons
 {
 	SPT_PROFILER_FUNCTION();
 
-	rg::RGTextureViewHandle skyInScatteringLUT = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Sky In-Scattering LUT"), rg::TextureDef(math::Vector2u(32u, 32u), rhi::EFragmentFormat::RGBA16_S_Float));
+	rg::RGTextureViewHandle skyInScatteringLUT = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Sky In-Scattering LUT"), rg::TextureDef(math::Vector3u(32u, 32u, 32u), rhi::EFragmentFormat::RGBA16_S_Float));
 
 	SkyInScatteringLUTConstants skyInScatteringLUTConstants;
 	skyInScatteringLUTConstants.rwSkyInScatteringLUT     = skyInScatteringLUT;
@@ -820,18 +785,19 @@ VolumetricCloudsRenderer::VolumetricCloudsRenderer()
 	m_cloudscapeConstants.shadowsCacheOrigin    = -math::Vector2f::Constant(volumetricCloudsRange);
 	m_cloudscapeConstants.shadowsCacheSize      = math::Vector2f::Constant(volumetricCloudsRange * 2.f);
 	m_cloudscapeConstants.shadowsCacheRcpSize   = math::Vector2f::Constant(volumetricCloudsRange * 2.f).cwiseInverse();
-	m_cloudscapeConstants.shadowsCacheVoxelSize = math::Vector3f(1.f / renderer_params::cloudsShadowsCacheRes2D, 1.f / renderer_params::cloudsShadowsCacheRes2D, 1.f / renderer_params::cloudsShadowsCacheResZ);
 
 	InitTextures();
 }
 
 void VolumetricCloudsRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const lib::DynamicPushArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings)
 {
-	m_volumetricCloudsEnabled = renderer_params::enableVolumetricClouds;
+	const CloudsSettings& cloudsSettings = renderScene.settings.clouds;
+
+	m_volumetricCloudsEnabled = cloudsSettings.enable;
 
 	if (m_volumetricCloudsEnabled)
 	{
-		m_cloudscapeShadowCache.Update(math::Vector3u(renderer_params::cloudsShadowsCacheRes2D, renderer_params::cloudsShadowsCacheRes2D, 16u));
+		m_cloudscapeShadowCache.Update(math::Vector3u(cloudsSettings.shadowsCacheRes2D, cloudsSettings.shadowsCacheRes2D, cloudsSettings.shadowsCacheResZ));
 
 		const CloudscapeContext cloudscapeContext = CreateFrameCloudscapeContext(graphBuilder, rendererInterface, renderScene, viewSpecs, settings);
 
@@ -861,7 +827,7 @@ void VolumetricCloudsRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBuild
 		cloudsTransmittanceParams.cloudscape                 = &cloudscapeContext;
 		cloudsTransmittanceParams.cloudsTransmittanceTexture = graphBuilder.AcquireExternalTextureView(m_cloudscapeTransmittance);
 
-		if (cloudscapeContext.resetAccumulation || renderer_params::forceTransmittanceMapFullUpdates)
+		if (cloudscapeContext.resetAccumulation || cloudsSettings.forceTransmittanceMapFullUpdates)
 		{
 			cloudsTransmittanceParams.updateOffset = math::Vector2u::Zero();
 			cloudsTransmittanceParams.updateSize   = cloudsTransmittanceParams.cloudsTransmittanceTexture->GetResolution2D();
@@ -921,7 +887,9 @@ void VolumetricCloudsRenderer::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 
 	viewSpec.GetRenderViewEntry(ERenderViewEntry::RenderVolumetricClouds).AddRawMember(this, &VolumetricCloudsRenderer::RenderVolumetricClouds, cloudscapeContext);
 
-	if (m_enqueuedCloudscapeProbesGlobalUpdate || cloudscapeContext.resetAccumulation || renderer_params::forceLRCloudsProbeFullUpdates)
+	const CloudsSettings& cloudsSettings = renderScene.settings.clouds;
+
+	if (m_enqueuedCloudscapeProbesGlobalUpdate || cloudscapeContext.resetAccumulation || cloudsSettings.forceLowResProbesFullUpdates)
 	{
 		UpdateAllCloudscapeProbes(graphBuilder, renderScene, viewSpec, cloudscapeContext);
 		m_enqueuedCloudscapeProbesGlobalUpdate = false;
@@ -941,7 +909,7 @@ void VolumetricCloudsRenderer::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 	highResProbeParams.skyProbe        = viewSpec.GetShadingViewContext().skyProbe;
 	highResProbeParams.cloudscapeProbe = cloudscapeHighResProbe;
 
-	if (cloudscapeContext.resetAccumulation || renderer_params::forceHRCloudsProbeFullUpdates)
+	if (cloudscapeContext.resetAccumulation || cloudsSettings.forceHighResProbeFullUpdates)
 	{
 		highResProbeParams.updateOffset  = math::Vector2u::Zero();
 		highResProbeParams.updateSize    = cloudscapeHighResProbe->GetResolution2D();
@@ -1029,20 +997,23 @@ CloudscapeContext VolumetricCloudsRenderer::CreateFrameCloudscapeContext(rg::Ren
 		weatherMap = graphBuilder.AcquireExternalTextureView(cloudscapeDef.weatherMap);
 	}
 
-	m_cloudscapeConstants.baseShapeNoiseScale          = 1.f / renderer_params::baseShapeNoiseMeters;
-	m_cloudscapeConstants.detailShapeNoiseStrength0    = renderer_params::detailShapeNoiseStrength0;
-	m_cloudscapeConstants.detailShapeNoiseScale0       = 1.f / renderer_params::detailShapeNoiseMeters0;
-	m_cloudscapeConstants.detailShapeNoiseStrength1    = renderer_params::detailShapeNoiseStrength1;
-	m_cloudscapeConstants.detailShapeNoiseScale1       = 1.f / renderer_params::detailShapeNoiseMeters1;
-	m_cloudscapeConstants.curlNoiseScale               = 1.f / renderer_params::curlNoiseMeters;
-	m_cloudscapeConstants.curlMaxoffset                = renderer_params::curlNoiseOffset;
-	m_cloudscapeConstants.weatherMapScale              = 1.f / renderer_params::weatherMapMeters;
+	const CloudsSettings& cloudsSettings = renderScene.settings.clouds;
+
+	m_cloudscapeConstants.baseShapeNoiseScale          = 1.f / cloudsSettings.baseShapeNoiseMeters;
+	m_cloudscapeConstants.detailShapeNoiseStrength0    = cloudsSettings.detailNoiseStrength0;
+	m_cloudscapeConstants.detailShapeNoiseScale0       = 1.f / cloudsSettings.detailNoiseMeters0;
+	m_cloudscapeConstants.detailShapeNoiseStrength1    = cloudsSettings.detailNoiseStrength1;
+	m_cloudscapeConstants.detailShapeNoiseScale1       = 1.f / cloudsSettings.detailNoiseMeters1;
+	m_cloudscapeConstants.curlNoiseScale               = 1.f / cloudsSettings.curlNoiseMeters;
+	m_cloudscapeConstants.curlMaxoffset                = cloudsSettings.curlNoiseOffset;
+	m_cloudscapeConstants.weatherMapScale              = 1.f / cloudsSettings.weatherMapMeters;
 	m_cloudscapeConstants.cloudsAtmosphereCenter       = cloudsAtmosphereCenter;
-	m_cloudscapeConstants.globalDensity                = renderer_params::globalDensity;
-	m_cloudscapeConstants.globalCoverageOffset         = renderer_params::globalCoverageOffset;
-	m_cloudscapeConstants.globalCloudsHeightOffset     = renderer_params::cloudsHeightOffset;
-	m_cloudscapeConstants.globalCoverageMultiplier     = renderer_params::globalCoverageMultiplier;
-	m_cloudscapeConstants.globalCloudsHeightMultiplier = renderer_params::cloudsHeightMultiplier;
+	m_cloudscapeConstants.globalDensity                = cloudsSettings.density;
+	m_cloudscapeConstants.globalCoverageOffset         = cloudsSettings.coverageOffset;
+	m_cloudscapeConstants.globalCloudsHeightOffset     = cloudsSettings.heightOffset;
+	m_cloudscapeConstants.globalCoverageMultiplier     = cloudsSettings.coverageMultiplier;
+	m_cloudscapeConstants.globalCloudsHeightMultiplier = cloudsSettings.heightMultiplier;
+	m_cloudscapeConstants.shadowsCacheVoxelSize        = math::Vector3f(1.f / cloudsSettings.shadowsCacheRes2D, 1.f / cloudsSettings.shadowsCacheRes2D, 1.f / cloudsSettings.shadowsCacheResZ);
 	m_cloudscapeConstants.time                         = renderScene.GetCurrentFrameRef().GetTime();
 	m_cloudscapeConstants.mainDirectionalLight         = *atmosphereContext.mainDirectionalLight;
 	m_cloudscapeConstants.atmosphereConstants          = atmosphereContext.atmosphereParams;

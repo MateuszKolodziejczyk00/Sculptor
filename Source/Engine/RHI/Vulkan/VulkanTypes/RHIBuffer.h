@@ -113,12 +113,17 @@ public:
 
 	Bool						HasBoundMemory() const;
 
+	Bool						IsPlacedAllocation() const;
+	Bool						IsCommittedAllocation() const;
+
 	Bool						CanMapMemory() const;
 	Byte*						MapPtr() const;
 	void						Unmap() const;
 	Byte*						GetPersistentlyMappedPtr() const;
 
 	DeviceAddress				GetDeviceAddress() const;
+
+	const rhi::RHIAllocationInfo&	GetAllocationInfo() const;
 
 	Bool						AllowsSuballocations() const;
 	rhi::RHIVirtualAllocation	CreateSuballocation(const rhi::VirtualAllocationDefinition& definition);
@@ -157,7 +162,9 @@ private:
 	EMappingStrategy SelectMappingStrategy(const rhi::RHIAllocationInfo& allocationInfo) const;
 
 	VkBuffer                         m_bufferHandle;
+
 	rhi::RHIResourceAllocationHandle m_allocationHandle;
+	rhi::RHIAllocationInfo           m_allocationInfo;
 
 	Uint64            m_bufferSize;
 	rhi::EBufferUsage m_usageFlags;

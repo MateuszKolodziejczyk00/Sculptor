@@ -245,9 +245,6 @@ public:
 
 	lib::SharedPtr<rdr::Buffer> viewExposureBuffer;
 
-	ShadingRenderViewSettings shadingSettings;
-	Bool settingsDirty = false;
-
 	lib::StaticArray<RenderStageBase*, MaxRenderStagesNum>       renderStages;
 	lib::StaticArray<ViewRenderSystem*, MaxViewRenderSystemsNum> renderSystems;
 };
@@ -274,6 +271,7 @@ BEGIN_SHADER_STRUCT(GPURenderView)
 	SHADER_STRUCT_FIELD(SceneViewCullingData,          cullingData)
 	SHADER_STRUCT_FIELD(math::Vector2u,                renderingResolution)
 	SHADER_STRUCT_FIELD(rdr::GPUPtr<ViewExposureData>, viewExposure)
+	SHADER_STRUCT_FIELD(RenderViewSettings,            settings)
 END_SHADER_STRUCT();
 
 
@@ -295,6 +293,8 @@ public:
 	void ResetJitter();
 
 	Uint32 GetFrameIdx() const { return m_renderView->frameIdx; }
+
+	const RenderViewSettings& GetSettings() const { return m_renderView->settings ; }
 
 	const rdr::GPUPtr<GPURenderView>& GetViewShaderParams() const { return m_gpuRenderView; }
 
@@ -327,9 +327,6 @@ public:
 	ShadingViewContext&       GetShadingViewContext();
 	const ShadingViewContext& GetShadingViewContext() const;
 
-	Bool                             AreSettingsDirty() const;
-	const ShadingRenderViewSettings& GetShadingViewSettings() const;
-
 	const lib::Blackboard&	GetBlackboard() const;
 	lib::Blackboard&		GetBlackboard();
 
@@ -345,8 +342,6 @@ private:
 	RenderViewPrivate* m_renderView;
 
 	math::Vector2u m_renderingRes = math::Vector2u(0u, 0u);
-
-	Bool m_settingsDirty = false;
 };
 
 } // spt::rsc

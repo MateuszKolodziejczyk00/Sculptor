@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "Vulkan/VulkanCore.h"
+#include "RHICore/RHIAllocationTypes.h"
 
 namespace spt::rhi
 {
@@ -24,6 +25,8 @@ public:
 	Bool IsValid() const;
 
 	VmaAllocator GetAllocatorHandle() const;
+
+	rhi::RHIMemoryUsageStats GetMemoryUsageStats() const;
 
 private:
 

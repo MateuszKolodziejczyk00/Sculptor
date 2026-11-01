@@ -80,7 +80,7 @@ void ProfilerUIView::DrawGPUScopeStatistics(const GPUProfilerStatistics& profile
 {
 	ImGui::Text("Resolution: %d x %d", profilerStats.resolution.x(), profilerStats.resolution.y());
 
-	DrawGPUScopeStatistics(profilerStats.frameStatistics, profilerStats.GetGPUFrameDuration());
+	DrawGPUScopeStatistics(*profilerStats.frameStatistics.fullScope, profilerStats.GetGPUFrameDuration());
 }
 
 void ProfilerUIView::DrawGPUScopeStatistics(const rdr::GPUStatisticsScopeData& scopeStats, rdr::GPUDurationMs frameDuration)

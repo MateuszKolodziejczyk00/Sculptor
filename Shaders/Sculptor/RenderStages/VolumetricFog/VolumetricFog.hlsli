@@ -6,13 +6,14 @@
 [[shader_struct(HeightFogParams)]]
 
 
+static const float HEIGHT_FOG_MAX_HEIGHT             = 1330.f; // Maximum height for height-based fog, in meters
+static const float FOG_SKY_IN_SCATTERING_LUT_MAX_DST = 2000.f;
+
+
 float4 ComputeScatteringAndExtinction(in float3 fogAlbedo, in float fogExtinction, in float fogDensity)
 {
 	return float4(fogAlbedo * fogExtinction, fogExtinction) * fogDensity.xxxx;
 }
-
-
-static const float HEIGHT_FOG_MAX_HEIGHT = 1330.f; // Maximum height for height-based fog, in meters
 
 
 // based on https://advances.realtimerendering.com/s2006/Chapter6-Real-time%20Atmospheric%20Effects%20in%20Games.pdf

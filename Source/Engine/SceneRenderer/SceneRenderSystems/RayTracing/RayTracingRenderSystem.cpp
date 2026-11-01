@@ -9,16 +9,10 @@
 #include "RenderSceneConstants.h"
 #include "RayTracing/RayTracingGeometry.h"
 #include "EngineFrame.h"
-#include "Parameters/SceneRendererParams.h"
 
 
 namespace spt::rsc
 {
-
-namespace renderer_params
-{
-RendererBoolParameter visualizeRTInstances("Visualize RT Instances", { "Ray Tracing Debug" }, false);
-} // renderer_params
 
 namespace debug
 {
@@ -113,8 +107,9 @@ RayTracingRenderSystem::RayTracingRenderSystem(lib::MemoryArena& arena, RenderSc
 	rhi::BufferDefinition instancesBufferDef;
 	instancesBufferDef.size  = maxInstancesNum * sizeof(rdr::HLSLStorage<RTInstanceData>);
 	instancesBufferDef.usage = lib::Flags(rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
-	m_rtInstancesDataBuffer        = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("TLAS Instances Data Buffer"), instancesBufferDef, rhi::EMemoryUsage::GPUOnly);
-	m_rtInstancesDataStagingBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("TLAS Instances Data Staging Buffer"), instancesBufferDef, rhi::EMemoryUsage::CPUToGPU);
+	m_rtInstancesDataBuffer           = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("TLAS Instances Data Buffer"), instancesBufferDef, rhi::EMemoryUsage::GPUOnly);
+	m_rtInstancesDataStagingBuffer[0] = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("TLAS Instances Data Staging Buffer"), instancesBufferDef, rhi::EMemoryUsage::CPUToGPU);
+	m_rtInstancesDataStagingBuffer[1] = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("TLAS Instances Data Staging Buffer"), instancesBufferDef, rhi::EMemoryUsage::CPUToGPU);
 
 	rhi::BufferDefinition instancesDefsBufferDef;
 	instancesDefsBufferDef.size  = rhi::RHIASUtils::GetInstancesBufferSize(maxInstancesNum);
@@ -145,7 +140,7 @@ void RayTracingRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder
 
 	mainView->GetRenderViewEntry(ERenderViewEntry::BuildTLAS).AddRawMember(this, &RayTracingRenderSystem::OnBuildTLAS);
 
-	if (renderer_params::visualizeRTInstances)
+	if (mainView->GetSettings().rayTracing.visualizeInstances)
 	{
 		mainView->GetRenderViewEntry(ERenderViewEntry::DebugRenderAndEditor).AddRaw(&debug::ExecuteRayTracingDebug);
 	}
@@ -155,7 +150,10 @@ void RayTracingRenderSystem::OnBuildTLAS(rg::RenderGraphBuilder& graphBuilder, S
 {
 	SPT_PROFILER_FUNCTION();
 
-	rhi::RHIMappedBuffer<rdr::HLSLStorage<RTInstanceData>> rtInstances(m_rtInstancesDataStagingBuffer->GetRHI());
+	const Uint32 stagingBufferIdx = scene.GetCurrentFrameRef().GetFrameIdx() & 1u;
+	const lib::SharedPtr<rdr::Buffer>& currentFrameStagingBuffer = m_rtInstancesDataStagingBuffer[stagingBufferIdx];
+
+	rhi::RHIMappedBuffer<rdr::HLSLStorage<RTInstanceData>> rtInstances(currentFrameStagingBuffer->GetRHI());
 
 	const lib::SharedPtr<rdr::Buffer>& instancesDefsBuffer = m_instancesDefsBuffers[scene.GetCurrentFrameRef().GetFrameIdx() % m_instancesDefsBuffers.size()];
 	rhi::RHIMappedByteBuffer rtInstancesDefs(instancesDefsBuffer->GetRHI());
@@ -252,6 +250,7 @@ void RayTracingRenderSystem::OnBuildTLAS(rg::RenderGraphBuilder& graphBuilder, S
 	const Uint32 instancesNum = currentInstanceIdx;
 
 	const rg::RGBufferViewHandle scratchBuffer = graphBuilder.CreateStorageBufferView(RG_DEBUG_NAME("TLAS Builder Scratch Buffer"), m_tlas->GetRHI().GetBuildScratchSize(), rhi::EMemoryUsage::GPUOnly);
+	scratchBuffer->SetNonDeterministic();
 
 	graphBuilder.BuildTLAS(RG_DEBUG_NAME("Build Scene TLAS"), 
 			rg::TLASBuildCommand
@@ -265,7 +264,11 @@ void RayTracingRenderSystem::OnBuildTLAS(rg::RenderGraphBuilder& graphBuilder, S
 	if (instancesNum > 0)
 	{
 		const rg::RGBufferViewHandle rtInstancesBuffer = graphBuilder.AcquireExternalBufferView(m_rtInstancesDataBuffer->GetFullView());
-		const rg::RGBufferViewHandle rtInstancesStagingBuffer = graphBuilder.AcquireExternalBufferView(m_rtInstancesDataStagingBuffer->GetFullView());
+		const rg::RGBufferViewHandle rtInstancesStagingBuffer = graphBuilder.AcquireExternalBufferView(currentFrameStagingBuffer->GetFullView());
+
+		// Non-deterministic due to pointers
+		rtInstancesBuffer->SetNonDeterministic();
+
 		graphBuilder.CopyBuffer(RG_DEBUG_NAME("Upload RT Instances Data"),
 								rtInstancesStagingBuffer, 0,
 								rtInstancesBuffer, 0,

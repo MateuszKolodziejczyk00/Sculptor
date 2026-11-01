@@ -52,6 +52,9 @@ SetProjectsSubgroupName("Graphics/Rendering")
 IncludeProject("RendererCore")
 IncludeProject("RenderGraph")
 
+SetProjectsSubgroupName("SDD")
+IncludeProject("SDDTests")
+
 SetProjectsSubgroupName("Graphics/Rendering/DLSS")
 IncludeProjectFromDirectory("DLSS/SculptorDLSSVulkan", "SculptorDLSSVulkan")
 IncludeProjectFromDirectory("DLSS/SculptorDLSS", "SculptorDLSS")

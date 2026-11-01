@@ -10,6 +10,7 @@
 #include "StaticMeshes/RetainedDraws.h"
 #include "Terrain/TerrainDefinition.h"
 #include "Cloudscape/CloudscapeDefinition.h"
+#include "Generated/RenderSceneSettingsDef.h"
 
 
 namespace spt::engn
@@ -71,6 +72,8 @@ public:
 	RetainedDraws draws;
 
 	LightingScene lighting;
+
+	RenderSceneSettings settings;
 
 	const RenderInstances& GetInstances() const { return m_instances; }
 

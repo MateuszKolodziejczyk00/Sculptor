@@ -7,6 +7,8 @@
 #include "ConfigUtils.h"
 #include "JobSystem/JobSystem.h"
 #include "Common/ShaderCompilationEnvironment.h"
+#include "Common/CompilationErrorsLogger.h"
+#include "FileSystem/DirectoryWatcher.h"
 #include "Pipelines/PipelinesCache.h"
 #include "GPUApi.h"
 
@@ -150,6 +152,9 @@ void ShadersManager::HotReloadShaders()
 		std::atomic<Int32> pendingCompilationsNum = 0;
 	};
 
+	// Shaders that still fail will output their errors again
+	sc::CompilationErrorsLogger::ClearLastErrors();
+
 	lib::SharedPtr<ShaderHotReloadState> hotReloadState = lib::MakeShared<ShaderHotReloadState>();
 	hotReloadState->pendingCompilationsNum = static_cast<Int32>(m_compiledShadersHotReloadParams.size());
 	hotReloadState->invalidatedShaderIDs.resize(m_compiledShadersHotReloadParams.size());
@@ -202,16 +207,35 @@ void ShadersManager::CompileAndCacheShader(const lib::String& shaderRelativePath
 
 	if (thisThreadSHouldCompile)
 	{
-		lib::SharedPtr<Shader> shader;
-		while (!shader)
+		lib::SharedPtr<Shader> shader = CompileShader(shaderRelativePath, shaderStageDef, compilationSettings, sc::EShaderCompilationFlags::Default, flags);
+		if (!shader)
 		{
-			shader = CompileShader(shaderRelativePath, shaderStageDef, compilationSettings, sc::EShaderCompilationFlags::Default, flags);
-			if (!shader)
-			{
-				SPT_LOG_ERROR(ShadersManager, "Failed to compile shader: {} ({}). Attempting again in 2 seconds...", shaderRelativePath.data(), shaderStageDef.entryPoint.GetData());
+			std::atomic<Bool> shadersModified = false;
 
-				std::this_thread::sleep_for(std::chrono::seconds(2));
+			lib::WatchParams watchParams;
+			watchParams.directory           = sc::ShaderCompilationEnvironment::GetShadersPath();
+			watchParams.watchSubdirectories = true;
+			watchParams.callback            = lib::FileModifiedCallback::CreateLambda([&shadersModified](const lib::FileModifiedPayload& payload)
+																					  {
+																						  shadersModified = true;
+																						  shadersModified.notify_one();
+																					  });
+			const lib::FileWatcherHandle watcherHandle = lib::StartWatchingDirectory(std::move(watchParams));
+			SPT_CHECK(watcherHandle != 0u);
+
+			while (!shader)
+			{
+				SPT_LOG_ERROR(ShadersManager, "Failed to compile shader: {} ({}). Will attempt again after shaders are modified...", shaderRelativePath.data(), shaderStageDef.entryPoint.GetData());
+
+				shadersModified.wait(false);
+				shadersModified = false;
+
+				shader = CompileShader(shaderRelativePath, shaderStageDef, compilationSettings, sc::EShaderCompilationFlags::Default, flags);
 			}
+
+			lib::StopWatchingDirectory(watcherHandle);
+
+			sc::CompilationErrorsLogger::ClearLastErrors();
 		}
 
 		OnShaderCompiled(shaderRelativePath, shaderStageDef, compilationSettings, flags, shaderHash);

@@ -46,6 +46,7 @@ BEGIN_SHADER_STRUCT(CreateVariableRateTextureConstants)
 	SHADER_STRUCT_FIELD(Uint32,                    logFramesNumPerSlot)
 	SHADER_STRUCT_FIELD(Uint32,                    frameIdx)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>, inputTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>, depthTexture)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<Uint32>, rwVariableRateTexture)
 END_SHADER_STRUCT();
 
@@ -57,7 +58,7 @@ static rdr::ShaderID CreateGenericVariableRateTextureShader(const VariableRatePe
 	return rdr::ResourcesManager::CreateShader("Sculptor/Utils/VariableRate/CreateGenericVariableRateTexture.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CreateVariableRateTextureCS"), compilationSettings);
 }
 
-static void RenderVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const VariableRateSettings& vrSettings, rg::RGTextureViewHandle inputTexture, math::Vector2u inputResolution, rg::RGTextureViewHandle variableRateTexture, Uint32 frameIdx, std::optional<rdr::ShaderID> customShader)
+static void RenderVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const VariableRateSettings& vrSettings, rg::RGTextureViewHandle inputTexture, rg::RGTextureViewHandle depth, math::Vector2u inputResolution, rg::RGTextureViewHandle variableRateTexture, Uint32 frameIdx, std::optional<rdr::ShaderID> customShader)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -77,6 +78,11 @@ static void RenderVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, cons
 	if (inputTexture.IsValid())
 	{
 		shaderConstants.inputTexture = inputTexture;
+	}
+
+	if (depth.IsValid())
+	{
+		shaderConstants.depthTexture = depth;
 	}
 
 	rdr::ShaderID shader;
@@ -218,7 +224,7 @@ void VariableRateRenderer::Reproject(rg::RenderGraphBuilder& graphBuilder, const
 	}
 }
 
-void VariableRateRenderer::Render(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle inputTexture, std::optional<rdr::ShaderID> customShader /*= {}*/)
+void VariableRateRenderer::Render(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle inputTexture, rg::RGTextureViewHandle depth, std::optional<rdr::ShaderID> customShader /* = {} */)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -226,7 +232,7 @@ void VariableRateRenderer::Render(rg::RenderGraphBuilder& graphBuilder, rg::RGTe
 
 	const rg::RGTextureViewHandle variableRateTexture = graphBuilder.AcquireExternalTextureView(m_reprojectionSourceVRTexture);
 
-	RenderVariableRateTexture(graphBuilder, m_vrSettings, inputTexture, m_resolution, variableRateTexture, m_frameIdx, customShader);
+	RenderVariableRateTexture(graphBuilder, m_vrSettings, inputTexture, depth, m_resolution, variableRateTexture, m_frameIdx, customShader);
 
 	m_frameIdx++;
 }

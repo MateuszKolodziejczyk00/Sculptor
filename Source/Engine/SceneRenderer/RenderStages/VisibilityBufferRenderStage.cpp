@@ -1,5 +1,4 @@
 #include "VisibilityBufferRenderStage.h"
-#include "Parameters/SceneRendererParams.h"
 #include "View/RenderView.h"
 #include "RenderGraphBuilder.h"
 #include "RenderScene.h"
@@ -15,11 +14,6 @@ namespace spt::rsc
 {
 
 REGISTER_RENDER_STAGE(ERenderStage::VisibilityBuffer, VisibilityBufferRenderStage);
-
-namespace renderer_params
-{
-RendererBoolParameter enablePOM("Enable POM", { "Geometry" }, true);
-} // renderer_params
 
 namespace utils
 {
@@ -169,8 +163,9 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 	const rg::RGTextureViewHandle historyHiZ   = m_historyHiZTexture ? graphBuilder.AcquireExternalTextureView(m_historyHiZTexture) : nullptr;
 
 	const rg::RGTextureViewHandle visibilityTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Visibility Texture"), rg::TextureDef(viewSpec.GetRenderingRes(), rhi::EFragmentFormat::R32_U_Int));
+	visibilityTexture->SetNonDeterministic();
 
-	const Bool enablePOM = renderer_params::enablePOM;
+	const Bool enablePOM = viewSpec.GetSettings().shading.enablePOM;
 
 	rg::RGTextureViewHandle rasterizedDepth = depth;
 	if (enablePOM)

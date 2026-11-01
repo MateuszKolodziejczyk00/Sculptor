@@ -11,18 +11,10 @@
 #include "RenderScene.h"
 #include "SceneRenderer/RenderStages/Utils/RTReflectionsTypes.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
-#include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "Pipelines/PSOsLibraryTypes.h"
 
 namespace spt::rsc
 {
-
-namespace renderer_params
-{
-
-RendererBoolParameter enableColoredAO("Enable Colored AO", { "Lighting" }, true);
-
-} // renderer_params
 
 namespace composite_pass_impl
 {
@@ -112,7 +104,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	CompositeLightingConstants shaderConstants;
 	shaderConstants.resolution    = resolution;
 	shaderConstants.invResolution = resolution.cast<Real32>().cwiseInverse();
-	shaderConstants.enableColoredAO = renderer_params::enableColoredAO;
+	shaderConstants.enableColoredAO = viewSpec.GetSettings().shading.enableColoredAO;
 	shaderConstants.luminanceTexture = viewContext.luminance;
 	shaderConstants.depthTexture     = viewContext.depth;
 	shaderConstants.aoTexture        = viewContext.gBuffer[GBuffer::Texture::Occlusion];

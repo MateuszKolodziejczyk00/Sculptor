@@ -3,6 +3,7 @@
 #include "MathUtils.h"
 #include "Pipelines/PSOsLibraryTypes.h"
 #include "RenderGraphResourcesPool.h"
+#include "ThreadContext.h"
 #include "Utils/TransfersUtils.h"
 #include "Types/Texture.h"
 #include "ResourcesManager.h"
@@ -699,13 +700,15 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 }
 
 
-static const tinygltf::Material* FindSourceMaterial(const rsc::GLTFModel& model, const PBRGLTFMaterialDefinition& definition)
+static const cgltf_material* FindSourceMaterial(const rsc::GLTFModel& model, const PBRGLTFMaterialDefinition& definition)
 {
+	const lib::Span<const cgltf_material> materials(model->materials, model->materials_count);
+
 	if (!definition.materialName.empty())
 	{
-		for (const tinygltf::Material& mat : model.materials)
+		for (const cgltf_material& mat : materials)
 		{
-			if (mat.name == definition.materialName)
+			if (mat.name && definition.materialName == mat.name)
 			{
 				return &mat;
 			}
@@ -715,49 +718,48 @@ static const tinygltf::Material* FindSourceMaterial(const rsc::GLTFModel& model,
 	}
 	else
 	{
-		return definition.materialIdx < model.materials.size() ? &model.materials[definition.materialIdx] : nullptr;
+		return definition.materialIdx < materials.size() ? &materials[definition.materialIdx] : nullptr;
 	}
 }
 
 
-static rhi::EFragmentFormat GetGLTFImageFormat(const tinygltf::Image& image, Bool isSRGB)
+static rhi::EFragmentFormat GetGLTFImageFormat(const rsc::GLTFImageData& image, Bool isSRGB)
 {
-	if (image.component == 1)
+	const Bool is8Bit  = image.bitsPerComponent == 8u;
+	const Bool is16Bit = image.bitsPerComponent == 16u;
+
+	if (image.componentsNum == 1u)
 	{
 		SPT_CHECK(!isSRGB);
 
-		switch (image.pixel_type)
-		{
-		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:		return rhi::EFragmentFormat::R8_UN_Float;
-		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:	return rhi::EFragmentFormat::R16_UN_Float; 
-		}
+		if (is8Bit)  return rhi::EFragmentFormat::R8_UN_Float;
+		if (is16Bit) return rhi::EFragmentFormat::R16_UN_Float;
 	}
-	else if (image.component == 2)
+	else if (image.componentsNum == 2u)
 	{
 		SPT_CHECK(!isSRGB);
 
-		switch (image.pixel_type)
-		{
-		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:		return rhi::EFragmentFormat::RG8_UN_Float;
-		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:	return rhi::EFragmentFormat::RG16_UN_Float; 
-		}
+		if (is8Bit)  return rhi::EFragmentFormat::RG8_UN_Float;
+		if (is16Bit) return rhi::EFragmentFormat::RG16_UN_Float;
 	}
-	else if (image.component == 3)
+	else if (image.componentsNum == 3u)
 	{
 		SPT_CHECK(!isSRGB);
 
-		switch (image.pixel_type)
-		{
-		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:		return rhi::EFragmentFormat::RGB8_UN_Float;
-		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:	return rhi::EFragmentFormat::RGB16_UN_Float; 
-		}
+		// Return RGBA format because RGB format is not supported on many devices
+		if (is8Bit)  return rhi::EFragmentFormat::RGBA8_UN_Float;
+		if (is16Bit) return rhi::EFragmentFormat::RGB16_UN_Float;
 	}
-	else if (image.component == 4)
+	else if (image.componentsNum == 4u)
 	{
-		switch (image.pixel_type)
+		if (is8Bit)
 		{
-		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:		return isSRGB ? rhi::EFragmentFormat::RGBA8_sRGB_Float : rhi::EFragmentFormat::RGBA8_UN_Float;
-		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:	SPT_CHECK(!isSRGB); return rhi::EFragmentFormat::RGBA16_UN_Float; 
+			return isSRGB ? rhi::EFragmentFormat::RGBA8_sRGB_Float : rhi::EFragmentFormat::RGBA8_UN_Float;
+		}
+		if (is16Bit)
+		{
+			SPT_CHECK(!isSRGB);
+			return rhi::EFragmentFormat::RGBA16_UN_Float;
 		}
 	}
 
@@ -766,38 +768,72 @@ static rhi::EFragmentFormat GetGLTFImageFormat(const tinygltf::Image& image, Boo
 }
 
 
-static lib::SharedRef<rdr::Texture> CreateGLTFImage(const tinygltf::Image& image, Bool isSRGB)
+
+static lib::SharedRef<rdr::Texture> CreateGLTFImage(const rsc::GLTFImageData& image, const lib::String& name, Bool isSRGB)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const rhi::RHIAllocationInfo allocationInfo(rhi::EMemoryUsage::GPUOnly);
 
 	rhi::TextureDefinition textureDef;
-	textureDef.resolution  = math::Vector3u(static_cast<Uint32>(image.width), static_cast<Uint32>(image.height), 1);
+	textureDef.resolution  = math::Vector3u(image.width, image.height, 1);
 	textureDef.usage       = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::TransferSource);
 	textureDef.format      = GetGLTFImageFormat(image, isSRGB);
 
-	return rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME(image.name), textureDef, allocationInfo);
+	return rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME(name), textureDef, allocationInfo);
 }
 
 
-lib::SharedPtr<rdr::TextureView> LoadTexture(const rsc::GLTFModel& model, int textureIdx, Bool isSRGB)
+lib::SharedPtr<rdr::TextureView> LoadTexture(const rsc::GLTFModel& model, const cgltf_texture* gltfTexture, Bool isSRGB)
 {
-	const int imageIdx = textureIdx != -1 ? model.textures[textureIdx].source : -1;
+	const cgltf_image* gltfImage = gltfTexture ? gltfTexture->image : nullptr;
 
-	if (imageIdx == -1)
+	if (!gltfImage)
 	{
 		return nullptr;
 	}
 
-	const tinygltf::Image& image = model.images[imageIdx];
-	const lib::SharedRef<rdr::Texture> texture = CreateGLTFImage(image, isSRGB);
+	const std::optional<rsc::GLTFImageData> image = rsc::LoadGLTFImage(model, *gltfImage);
+	if (!image)
+	{
+		return nullptr;
+	}
 
-	rdr::UploadDataToTexture(reinterpret_cast<const Byte*>(image.image.data()), image.image.size(), texture, rhi::ETextureAspect::Color, texture->GetResolution());
+	const lib::String imageName = gltfImage->name ? gltfImage->name : "";
+	const lib::SharedRef<rdr::Texture> texture = CreateGLTFImage(*image, imageName, isSRGB);
+
+	if (image->componentsNum == 3u)
+	{
+		// Handle 3 channel images by converting them to 4 channels (RGBA) with alpha set to 255
+		TCX_SCRATCH_SCOPE();
+
+		SPT_CHECK(image->bitsPerComponent == 8u);
+
+		const Uint32 pixelsNum = image->width * image->height;
+		const Uint32 extenedDataSize = pixelsNum * 4u;
+
+		const lib::Span<Byte> extendedData = tcx::Scratch().AllocateSpanUninitialized<Byte>(extenedDataSize);
+
+		for (Uint32 pixelIdx = 0u; pixelIdx < pixelsNum; ++pixelIdx)
+		{
+			const Uint32 srcOffset = pixelIdx * 3u;
+			const Uint32 dstOffset = pixelIdx * 4u;
+
+			extendedData[dstOffset + 0u] = image->data[srcOffset + 0u];
+			extendedData[dstOffset + 1u] = image->data[srcOffset + 1u];
+			extendedData[dstOffset + 2u] = image->data[srcOffset + 2u];
+			extendedData[dstOffset + 3u] = Byte(255u);
+		}
+
+		rdr::UploadDataToTexture(extendedData.data(), extendedData.size(), texture, rhi::ETextureAspect::Color, texture->GetResolution());
+	}
+	else
+	{
+		rdr::UploadDataToTexture(image->data.data(), image->data.size(), texture, rhi::ETextureAspect::Color, texture->GetResolution());
+	}
 
 	return texture->CreateView(RENDERER_RESOURCE_NAME("GLTF Texture View"));
 }
-
 
 lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBRGLTFMaterialDefinition& definition)
 {
@@ -818,36 +854,42 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 		return {};
 	}
 
-	const tinygltf::Material* srcMat = FindSourceMaterial(*gltfModel, definition);
+	const cgltf_material* srcMat = FindSourceMaterial(*gltfModel, definition);
 	if (!srcMat)
 	{
 		return {};
 	}
 
-	const tinygltf::PbrMetallicRoughness& srcMatPBR = srcMat->pbrMetallicRoughness;
+	cgltf_pbr_metallic_roughness srcMatPBR{};
+	srcMatPBR.base_color_factor[0] = srcMatPBR.base_color_factor[1] = srcMatPBR.base_color_factor[2] = srcMatPBR.base_color_factor[3] = 1.f;
+	srcMatPBR.metallic_factor  = 1.f;
+	srcMatPBR.roughness_factor = 1.f;
+	if (srcMat->has_pbr_metallic_roughness)
+	{
+		srcMatPBR = srcMat->pbr_metallic_roughness;
+	}
 
 	float emissiveStrength = 1.f;
-	const auto emissiveStrengthIter = srcMat->extensions.find("KHR_materials_emissive_strength");
-	if (emissiveStrengthIter != srcMat->extensions.end())
+	if (srcMat->has_emissive_strength)
 	{
-		emissiveStrength = static_cast<Real32>(emissiveStrengthIter->second.Get("emissiveStrength").GetNumberAsDouble());
+		emissiveStrength = srcMat->emissive_strength.emissive_strength;
 	}
 
 	//const Bool isTransparent = srcMat->alphaMode == "BLEND" || srcMat->name.find("Glass") != lib::String::npos || srcMat->name.find("glass") != lib::String::npos ;
-	const Bool isMasked      = srcMat->alphaMode == "MASK" || srcMat->alphaMode == "BLEND";
+	const Bool isMasked      = srcMat->alpha_mode == cgltf_alpha_mode_mask || srcMat->alpha_mode == cgltf_alpha_mode_blend;
 	const Bool isTransparent = false;
 
 	PBRMaterialCompilationInput compilationInput;
-	compilationInput.baseColorTex         = LoadTexture(*gltfModel, srcMatPBR.baseColorTexture.index, false);
-	compilationInput.metallicRoughnessTex = LoadTexture(*gltfModel, srcMatPBR.metallicRoughnessTexture.index, false);
-	compilationInput.normalsTex           = LoadTexture(*gltfModel, srcMat->normalTexture.index, false);
-	compilationInput.emissiveTex          = LoadTexture(*gltfModel, srcMat->emissiveTexture.index, false);
-	compilationInput.baseColorFactor      = math::Map<const math::Vector3d>(srcMatPBR.baseColorFactor.data()).cast<Real32>();;
-	compilationInput.metallicFactor       = static_cast<Real32>(srcMatPBR.metallicFactor);
-	compilationInput.roughnessFactor      = static_cast<Real32>(srcMatPBR.roughnessFactor);
-	compilationInput.emissionFactor       = math::Map<const math::Vector3d>(srcMat->emissiveFactor.data()).cast<Real32>() * emissiveStrength;
+	compilationInput.baseColorTex         = LoadTexture(*gltfModel, srcMatPBR.base_color_texture.texture, false);
+	compilationInput.metallicRoughnessTex = LoadTexture(*gltfModel, srcMatPBR.metallic_roughness_texture.texture, false);
+	compilationInput.normalsTex           = LoadTexture(*gltfModel, srcMat->normal_texture.texture, false);
+	compilationInput.emissiveTex          = LoadTexture(*gltfModel, srcMat->emissive_texture.texture, false);
+	compilationInput.baseColorFactor      = math::Map<const math::Vector3f>(srcMatPBR.base_color_factor);
+	compilationInput.metallicFactor       = srcMatPBR.metallic_factor;
+	compilationInput.roughnessFactor      = srcMatPBR.roughness_factor;
+	compilationInput.emissionFactor       = math::Map<const math::Vector3f>(srcMat->emissive_factor) * emissiveStrength;
 	compilationInput.maxDepthCm           = PBRMaterialDefinition::s_defultMaxDepthCm;
-	compilationInput.doubleSided          = srcMat->doubleSided;
+	compilationInput.doubleSided          = srcMat->double_sided;
 	compilationInput.customOpacity        = isMasked;
 	compilationInput.transparent          = isTransparent;
 

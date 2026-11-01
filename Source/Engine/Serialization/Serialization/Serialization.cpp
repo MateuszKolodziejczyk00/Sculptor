@@ -12,7 +12,7 @@ void Serializer::Serialize(const char* name, Bool& value)
 	}
 	else
 	{
-		value = GetImpl<Bool>(name);
+		GetImpl(name, value);
 	}
 }
 
@@ -24,7 +24,7 @@ void Serializer::Serialize(const char* name, Int32& value)
 	}
 	else
 	{
-		value = GetImpl<Int32>(name);
+		GetImpl(name, value);
 	}
 }
 
@@ -36,7 +36,7 @@ void Serializer::Serialize(const char* name, Uint32& value)
 	}
 	else
 	{
-		value = GetImpl<Uint32>(name);
+		GetImpl(name, value);
 	}
 }
 
@@ -48,7 +48,7 @@ void Serializer::Serialize(const char* name, SizeType& value)
 	}
 	else
 	{
-		value = GetImpl<SizeType>(name);
+		GetImpl(name, value);
 	}
 }
 
@@ -60,7 +60,7 @@ void Serializer::Serialize(const char* name, Real32& value)
 	}
 	else
 	{
-		value = GetImpl<Real32>(name);
+		GetImpl(name, value);
 	}
 }
 
@@ -72,7 +72,7 @@ void Serializer::Serialize(const char* name, lib::String& value)
 	}
 	else
 	{
-		value = GetImpl<lib::String>(name);
+		GetImpl(name, value);
 	}
 }
 
@@ -82,10 +82,10 @@ void Serializer::Serialize(const char* name, lib::HashedString& value)
 	{
 		SetImpl(name, value.ToString());
 	}
-	else
+	else if (const JSON* json = FindJson(name))
 	{
-		const lib::String str = GetImpl<lib::String>(name);
-		value = str.empty() ? lib::HashedString() : lib::HashedString(std::move(str));
+		const lib::String& str = json->get_ref<const lib::String&>();
+		value = str.empty() ? lib::HashedString() : lib::HashedString(str);
 	}
 }
 
@@ -95,9 +95,9 @@ void Serializer::Serialize(const char* name, lib::Path& value)
 	{
 		SetImpl(name, value.generic_string());
 	}
-	else
+	else if (const JSON* json = FindJson(name))
 	{
-		value = lib::Path(GetImpl<lib::String>(name));
+		value = lib::Path(json->get_ref<const lib::String&>());
 	}
 }
 
@@ -107,9 +107,9 @@ void Serializer::Serialize(const char* name, lib::RuntimeTypeInfo& value)
 	{
 		SetImpl(name, lib::String(value.name));
 	}
-	else
+	else if (const JSON* json = FindJson(name))
 	{
-		const lib::HashedString typeName = GetImpl<lib::String>(name);
+		const lib::HashedString typeName = json->get_ref<const lib::String&>();
 		value = lib::RuntimeTypeInfo::CreateFromName(typeName.GetView());
 	}
 }

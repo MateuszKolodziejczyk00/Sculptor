@@ -6,7 +6,6 @@
 #include "Utils/ViewRenderingSpec.h"
 #include "View/RenderView.h"
 #include "Engine.h"
-#include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "Utils/TransfersUtils.h"
 #include "RenderScene.h"
 #include "SceneRenderer/Utils/AutomaticExposure.h"
@@ -21,46 +20,6 @@ namespace spt::rsc
 {
 
 REGISTER_RENDER_STAGE(ERenderStage::HDRResolve, HDRResolveRenderStage);
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// Paramters =====================================================================================
-
-namespace params
-{
-
-RendererFloatParameter minLogLuminance("Min Log Luminance", { "Exposure" }, -10.f, -20.f, 20.f);
-RendererFloatParameter maxLogLuminance("Max Log Luminance", { "Exposure" }, 20.f, -20.f, 20.f);
-
-RendererBoolParameter enableBloom("Enable Bloom", { "Bloom" }, true);
-RendererFloatParameter bloomIntensity("Bloom Intensity", { "Bloom" }, 1.0f, 0.f, 10.f);
-RendererFloatParameter bloomBlendFactor("Bloom Blend Factor", { "Bloom" }, 0.35f, 0.f, 1.f);
-RendererFloatParameter bloomUpsampleBlendFactor("Bloom Upsample Blend Factor", { "Bloom" }, 0.45f, 0.f, 1.f);
-
-RendererBoolParameter enableLensFlares("Enable Lens Flares", { "Lens Flares" }, true);
-RendererFloatParameter lensFlaresIntensity("Lens Flares Intensity", { "Lens Flares" }, 0.0006f, 0.f, 1.f);
-
-RendererFloat3Parameter lensFlaresColor("Lens Flares Color", { "Lens Flares" }, math::Vector3f(1.f, 1.f, 1.f), 0.f, 1.f);
-
-RendererIntParameter lensFlaresGhostsNum("Lens Flares GhostsNum", { "Lens Flares", "Ghosts" }, 6, 0, 10);
-RendererFloatParameter lensFlaresGhostsDispersal("Lens Flares Ghosts Dispersal", { "Lens Flares", "Ghosts" }, 0.3f, 0.f, 1.f);
-RendererFloatParameter lensFlaresGhostsIntensity("Lens Flares Ghosts Intensity", { "Lens Flares", "Ghosts" }, 1.f, 0.f, 1.f);
-RendererFloatParameter lensFlaresGhostsDistortion("Lens Flares Ghosts Distortion", { "Lens Flares", "Ghosts" }, 0.01f, 0.f, 1.f);
-
-RendererFloatParameter lensFlaresHaloIntensity("Lens Flares Halo Intensity", { "Lens Flares", "Halo" }, 1.f, 0.f, 1.f);
-RendererFloatParameter lensFlaresHaloDistortion("Lens Flares Halo Distortion", { "Lens Flares", "Halo" }, 0.01f, 0.f, 1.f);
-RendererFloatParameter lensFlaresHaloWidth("Lens Flares Halo Width", { "Lens Flares", "Halo" }, 0.55f, 0.f, 1.f);
-
-RendererBoolParameter enableColorDithering("Enable Color Dithering", { "Post Process" }, true);
-RendererFloatParameter whitePointTemperature("White Point Temperature", { "Post Process" }, 6500.f, 2000.f, 25000.f);
-RendererFloatParameter purkinjeShiftIntensity("Purkinje Shift Intensity", { "Post Process" }, 0.f, 0.f, 1.f);
-RendererIntParameter tonemapper("Tonemapper", { "Post Process" }, 1, 0, 2);
-
-RendererFloatParameter detailStrength("Detail Strength", { "LocalTonemap" }, 1.f, 0.f, 2.f);
-RendererFloatParameter contrastStrength("Contrast Strength", { "LocalTonemap" }, 0.7f, 0.f, 2.f);
-
-RendererFloatParameter bilateralGridStrength("Bilateral Grid Strength", { "LocalTonemap" }, 0.5f, 0.f, 1.f);
-
-} // params
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Lens Flares ===================================================================================
@@ -104,16 +63,18 @@ static rg::RGTextureViewHandle ComputeLensFlares(rg::RenderGraphBuilder& graphBu
 	
 	const rg::RGTextureViewHandle tempTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Lens Flares Texture Temp"), rg::TextureDef(lensFlaresRes, SceneRendererStatics::hdrFormat));
 
+	const LensFlaresSettings& settings = viewSpec.GetSettings().lensFlares;
+
 	LensFlaresParams lensFlaresParams;
-	lensFlaresParams.ghostsDistortion = math::Vector3f(-params::lensFlaresGhostsDistortion, 0.f, params::lensFlaresGhostsDistortion);
-	lensFlaresParams.ghostsNum        = params::lensFlaresGhostsNum;
-	lensFlaresParams.haloDistortion   = math::Vector3f(-params::lensFlaresHaloDistortion, 0.f, params::lensFlaresHaloDistortion);
-	lensFlaresParams.ghostsInensity   = params::lensFlaresGhostsIntensity;
-	lensFlaresParams.lensFlaresColor  = params::lensFlaresColor;
-	lensFlaresParams.ghostsDispersal  = params::lensFlaresGhostsDispersal;
-	lensFlaresParams.ghostsIntensity  = params::lensFlaresGhostsIntensity;
-	lensFlaresParams.haloIntensity    = params::lensFlaresHaloIntensity;
-	lensFlaresParams.haloWidth        = params::lensFlaresHaloWidth;
+	lensFlaresParams.ghostsDistortion = math::Vector3f(-settings.ghostsDistortion, 0.f, settings.ghostsDistortion);
+	lensFlaresParams.ghostsNum        = settings.ghostsNum;
+	lensFlaresParams.haloDistortion   = math::Vector3f(-settings.haloDistortion, 0.f, settings.haloDistortion);
+	lensFlaresParams.ghostsInensity   = settings.ghostsIntensity;
+	lensFlaresParams.lensFlaresColor  = settings.color;
+	lensFlaresParams.ghostsDispersal  = settings.ghostsDispersal;
+	lensFlaresParams.ghostsIntensity  = settings.ghostsIntensity;
+	lensFlaresParams.haloIntensity    = settings.haloIntensity;
+	lensFlaresParams.haloWidth        = settings.haloWidth;
 	lensFlaresParams.inputTexture     = bloomTexture;
 	lensFlaresParams.outputTexture    = lensFlaresTexture;
 	
@@ -172,13 +133,13 @@ BEGIN_SHADER_STRUCT(BloomCompositePassInfo)
 END_SHADER_STRUCT()
 
 
-BloomPassInfo CreateBloomPassInfo(math::Vector2u inputRes, math::Vector2u outputRes)
+BloomPassInfo CreateBloomPassInfo(const BloomSettings& settings, math::Vector2u inputRes, math::Vector2u outputRes)
 {
 	BloomPassInfo passInfo;
 	passInfo.inputPixelSize				= inputRes.cast<Real32>().cwiseInverse();
 	passInfo.outputPixelSize			= outputRes.cast<Real32>().cwiseInverse();
-	passInfo.bloomUpsampleBlendFactor	= params::bloomUpsampleBlendFactor;
-	passInfo.bloomIntensity				= params::bloomIntensity;
+	passInfo.bloomUpsampleBlendFactor	= settings.upsampleBlendFactor;
+	passInfo.bloomIntensity				= settings.intensity;
 
 	return passInfo;
 }
@@ -240,7 +201,7 @@ static void BloomDownsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 		const math::Vector2u inputRes  = inputTextureView->GetResolution2D();
 		const math::Vector2u outputRes = outputTextureView->GetResolution2D();
 
-		BloomPassInfo passInfo = CreateBloomPassInfo(inputRes, outputRes);
+		BloomPassInfo passInfo = CreateBloomPassInfo(viewSpec.GetSettings().bloom, inputRes, outputRes);
 		if (passIdx == 0)
 		{
 			passInfo.isSetupPass = true;
@@ -276,7 +237,7 @@ static void BloomUpsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpe
 		const math::Vector2u inputRes  = inputTextureView->GetResolution2D();
 		const math::Vector2u outputRes = outputTextureView->GetResolution2D();
 
-		BloomPassInfo passInfo = CreateBloomPassInfo(inputRes, outputRes);
+		BloomPassInfo passInfo = CreateBloomPassInfo(viewSpec.GetSettings().bloom, inputRes, outputRes);
 		passInfo.inputTexture  = inputTextureView;
 		passInfo.outputTexture = outputTextureView;
 
@@ -301,13 +262,15 @@ static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSp
 	const math::Vector2u inputRes = math::Vector2u(resolution.x() >> 1, resolution.y() >> 1);
 	const math::Vector2u outputRes = math::Vector2u(resolution.x(), resolution.y());
 
-	BloomPassInfo passInfo = CreateBloomPassInfo(inputRes, outputRes);
+	const RenderViewSettings& settings = viewSpec.GetSettings();
+
+	BloomPassInfo passInfo = CreateBloomPassInfo(settings.bloom, inputRes, outputRes);
 	passInfo.inputTexture  = bloomTextureMip0;
 	passInfo.outputTexture = outputTexture;
 
 	BloomCompositePassInfo compositePassInfo;
-	compositePassInfo.bloomBlendFactor		= params::bloomBlendFactor;
-	compositePassInfo.lensFlaresIntensity	= params::lensFlaresIntensity;
+	compositePassInfo.bloomBlendFactor		= settings.bloom.blendFactor;
+	compositePassInfo.lensFlaresIntensity	= settings.lensFlares.intensity;
 	compositePassInfo.hasLensFlaresTexture	= lensFlaresTexture.IsValid();
 	compositePassInfo.lensFlaresTexture		= lensFlaresTexture;
 
@@ -350,7 +313,7 @@ static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& 
 
 	BloomUpsample(graphBuilder, viewSpec, bloomTextureMips);
 
-	const rg::RGTextureViewHandle lensFlaresTexture = params::enableLensFlares
+	const rg::RGTextureViewHandle lensFlaresTexture = viewSpec.GetSettings().lensFlares.enable
 													? lens_flares::ComputeLensFlares(graphBuilder, viewSpec, bloomTextureMips[0])
 													: rg::RGTextureViewHandle{};
 
@@ -390,6 +353,7 @@ BEGIN_SHADER_STRUCT(TonemappingPassConstants)
 	SHADER_STRUCT_FIELD(math::Vector2f,                       bilateralGridUVPerPixel)
 	SHADER_STRUCT_FIELD(math::Vector2f,                       pixelSize)
 	SHADER_STRUCT_FIELD(Bool,                                 enableColorDithering)
+	SHADER_STRUCT_FIELD(Bool,                                 enableLocalExposure)
 	SHADER_STRUCT_FIELD(Real32,                               minLogLuminance)
 	SHADER_STRUCT_FIELD(Real32,                               logLuminanceRange)
 	SHADER_STRUCT_FIELD(Real32,                               inverseLogLuminanceRange)
@@ -399,8 +363,8 @@ BEGIN_SHADER_STRUCT(TonemappingPassConstants)
 	SHADER_STRUCT_FIELD(Real32,                               whitePointTemperature)
 	SHADER_STRUCT_FIELD(Real32,                               purkinjeShiftIntensity)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>, linearColor)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture3DRef<math::Vector2f>, luminanceBilateralGrid)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,         logLuminance)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector2f>,    luminanceBilateralGrid)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,            logLuminance)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture3DRef<math::Vector3f>, tonemappingLUT)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector4f>, rwLDRTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>,    debugGeometry)
@@ -487,26 +451,23 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, Scene
 
 	const rg::RGTextureViewHandle linearColorTexture = viewContext.luminance;
 
-	const Real32 minLogLuminance = params::minLogLuminance;
-	const Real32 logLuminanceRange = params::maxLogLuminance - params::minLogLuminance;
+	const RenderViewSettings& settings = viewSpec.GetSettings();
+
+	const Real32 minLogLuminance = settings.exposure.minLogLuminance;
+	const Real32 logLuminanceRange = settings.exposure.maxLogLuminance - settings.exposure.minLogLuminance;
 
 	automatic_exposure::Inputs automaticExposureInputs;
 	automaticExposureInputs.linearColor      = linearColorTexture;
-	automaticExposureInputs.minLogLuminance  = params::minLogLuminance;
-	automaticExposureInputs.maxLogLuminance  = params::maxLogLuminance;
+	automaticExposureInputs.minLogLuminance  = settings.exposure.minLogLuminance;
+	automaticExposureInputs.maxLogLuminance  = settings.exposure.maxLogLuminance;
 	automaticExposureInputs.viewExposureData = viewContext.viewExposureData;
 
-	const automatic_exposure::Outputs automaticExposureOutputs = automatic_exposure::RenderAutoExposure(graphBuilder, renderScene, viewSpec, automaticExposureInputs);
+	const std::optional<automatic_exposure::LocalExposureOutputs> localExposureOutputs = automatic_exposure::RenderAutoExposure(graphBuilder, renderScene, viewSpec, automaticExposureInputs);
 
-	if (params::enableBloom)
+	if (settings.bloom.enable)
 	{
 		bloom::ApplyBloom(graphBuilder, viewSpec, linearColorTexture);
 	}
-
-	const math::Vector2u gridTileSize     = automaticExposureOutputs.bilateralGridInfo.tilesSize;
-	const math::Vector2u gridResolution2D = automaticExposureOutputs.bilateralGridInfo.bilateralGrid->GetResolution2D();
-
-	const math::Vector2u gridSize2D = gridTileSize.cwiseProduct(gridResolution2D);
 
 	const rg::RGTextureViewHandle debugColorTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Debug Color Texture"), rg::TextureDef(renderingRes, rhi::EFragmentFormat::RGBA8_UN_Float));
 	const rg::RGTextureViewHandle debugDepthTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Debug Depth Texture"), rg::TextureDef(renderingRes, rhi::EFragmentFormat::D32_S_Float));
@@ -542,26 +503,35 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, Scene
 	}
 
 	tonemapping::TonemappingPassConstants tonemappingSettings;
-	tonemappingSettings.enableColorDithering     = params::enableColorDithering;
+	tonemappingSettings.enableColorDithering     = settings.tonemap.enableColorDithering;
 	tonemappingSettings.minLogLuminance          = minLogLuminance;
 	tonemappingSettings.logLuminanceRange        = logLuminanceRange;
 	tonemappingSettings.inverseLogLuminanceRange = 1.f / logLuminanceRange;
-	tonemappingSettings.contrastStrength         = params::contrastStrength;
-	tonemappingSettings.detailStrength           = params::detailStrength;
-	tonemappingSettings.bilateralGridStrength    = params::bilateralGridStrength;
-	tonemappingSettings.bilateralGridUVPerPixel  = gridSize2D.cast<Real32>().cwiseInverse();
+	tonemappingSettings.contrastStrength         = settings.localTonemap.contrastStrength;
+	tonemappingSettings.detailStrength           = settings.localTonemap.detailStrength;
+	tonemappingSettings.bilateralGridStrength    = settings.localTonemap.bilateralGridStrength;
 	tonemappingSettings.pixelSize                = inputPixelSize;
-	tonemappingSettings.whitePointTemperature    = params::whitePointTemperature;
-	tonemappingSettings.purkinjeShiftIntensity   = params::purkinjeShiftIntensity;
+	tonemappingSettings.whitePointTemperature    = settings.tonemap.whitePointTemperature;
+	tonemappingSettings.purkinjeShiftIntensity   = settings.tonemap.purkinjeShiftIntensity;
 	tonemappingSettings.linearColor              = linearColorTexture;
-	tonemappingSettings.luminanceBilateralGrid   = automaticExposureOutputs.bilateralGridInfo.bilateralGrid;
-	tonemappingSettings.logLuminance             = automaticExposureOutputs.bilateralGridInfo.downsampledLogLuminance;
 	tonemappingSettings.tonemappingLUT           = m_tonemappingLUT;
 	tonemappingSettings.rwLDRTexture             = tonemappedTexture;
 	tonemappingSettings.debugGeometry            = debugColorTexture;
 
+	if (localExposureOutputs)
+	{
+		const math::Vector2u gridTileSize     = localExposureOutputs->bilateralGridInfo.tilesSize;
+		const math::Vector2u gridResolution2D = localExposureOutputs->bilateralGridInfo.bilateralGrid->GetResolution2D();
+		const math::Vector2u gridSize2D       = gridTileSize.cwiseProduct(gridResolution2D);
+
+		tonemappingSettings.luminanceBilateralGrid  = localExposureOutputs->bilateralGridInfo.bilateralGrid;
+		tonemappingSettings.logLuminance            = localExposureOutputs->bilateralGridInfo.downsampledLogLuminance;
+		tonemappingSettings.bilateralGridUVPerPixel = gridSize2D.cast<Real32>().cwiseInverse();
+		tonemappingSettings.enableLocalExposure     = true;
+	}
+
 	tonemapping::TonemappingPermutation permutation;
-	permutation.TONEMAPPER = params::tonemapper;
+	permutation.TONEMAPPER = static_cast<Int32>(settings.tonemap.tonemapper);
 
 	tonemapping::DoTonemappingAndGammaCorrection(graphBuilder, viewSpec, permutation, tonemappingSettings);
 

@@ -26,6 +26,11 @@ void Engine::Initialize(const EngineInitializationParams& initializationParams)
 
 	g_engineInstance->m_cmdLineArgs.Parse(cmdLineArgs);
 
+	if (g_engineInstance->m_cmdLineArgs.Contains("-FixedDeltaTime"))
+	{
+		g_engineInstance->m_timer.SetFixedDeltaTime(std::stof(g_engineInstance->m_cmdLineArgs.GetValue("-FixedDeltaTime").ToString()));
+	}
+
 	g_engineInstance->m_paths.Initialize(g_engineInstance->m_cmdLineArgs);
 
 	g_engineInstance->m_modulesManager.Initialize();
@@ -51,6 +56,11 @@ Real32 Engine::BeginFrame()
 	m_onBeginFrameDelegate.Broadcast();
 
 	return deltaTime;
+}
+
+void Engine::ResetTimer()
+{
+	m_timer.Reset();
 }
 
 Engine::OnBeginFrameDelegate& Engine::GetOnBeginFrameDelegate()

@@ -2,7 +2,6 @@
 #include "RenderGraphBuilder.h"
 #include "Utils/SceneRenderingTypes.h"
 #include "Utils/ViewRenderingSpec.h"
-#include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "SceneRenderSystems/DDGI/DDGIRenderSystem.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "RenderScene.h"
@@ -19,30 +18,6 @@ namespace spt::rsc
 {
 
 SPT_REGISTER_VIEW_RENDER_SYSTEM(ParticipatingMediaViewRenderSystem)
-
-namespace parameters
-{
-
-RendererFloatParameter constantFogDensity("Constant Fog Density", { "Volumetric Fog" }, 0.005f, 0.f, 1.f);
-RendererFloatParameter constantFogExtinction("Constant Fog Extinction", { "Volumetric Fog" }, 0.3f, 0.f, 10.f);
-RendererFloat3Parameter consantFogAlbedo("Constant Fox Albedo", { "Volumetric Fog" }, math::Vector3f::Constant(1.f), 0.f, 1.f);
-
-RendererFloatParameter fogHeightFalloff("Fog Height Falloff", { "Volumetric Fog" }, 0.0042f, 0.f, 10.f);
-RendererFloatParameter fogHeightAbsorptionPercentage("Fog Height Absorption %", { "Volumetric Fog" }, 1.f, 0.f, 1.f);
-
-RendererFloatParameter phaseFunctionAnisotrophy("Phase Function Aniso", { "Volumetric Fog" }, 0.84f, 0.f, 1.f);
-
-RendererFloatParameter fogFarPlane("Fog Far Plane", { "Volumetric Fog" }, 8000.f, 1.f, 40000.f);
-
-RendererBoolParameter enableDirectionalLightsInScattering("Enable Directional Lights Scattering", { "Volumetric Fog" }, true);
-RendererBoolParameter enableDirectionalLightsVolumetricRTShadows("Enable Directional Lights Volumetric RT Shadows", { "Volumetric Fog" }, true);
-
-RendererBoolParameter enableVolumetricFogBlur("Enable Volumetric Fog Blur", { "Volumetric Fog" }, true);
-RendererFloatParameter volumetricFogBlurSigma("Volumetric Fog Blur Sigma", { "Volumetric Fog" }, 1.4f, 0.f, 10.f);
-RendererIntParameter volumetricFogBlurKernelSize("Volumetric Fog Blur Kernel Size", { "Volumetric Fog" }, 2, 1, 10);
-RendererBoolParameter fogBlurEnableTonemap("Fog Blur Enable Tonemap", { "Volumetric Fog" }, true);
-
-} // parameters
 
 BEGIN_SHADER_STRUCT(VolumetricFogConstants)
 	SHADER_STRUCT_FIELD(math::Vector3u,                    fogGridRes)
@@ -134,11 +109,13 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 {
 	SPT_PROFILER_FUNCTION();
 
+	const HeightFogSettings& fogSettings = renderScene.settings.fog;
+
 	RenderParticipatingMediaParams pariticipatingMediaParams;
-	pariticipatingMediaParams.constantFogAlbedo         = parameters::consantFogAlbedo;
-	pariticipatingMediaParams.constantFogDensity        = parameters::constantFogDensity;
-	pariticipatingMediaParams.constantFogExtinction     = parameters::constantFogExtinction;
-	pariticipatingMediaParams.fogHeightFalloff          = parameters::fogHeightFalloff;
+	pariticipatingMediaParams.constantFogAlbedo         = fogSettings.albedo;
+	pariticipatingMediaParams.constantFogDensity        = fogSettings.globalDensity;
+	pariticipatingMediaParams.constantFogExtinction     = fogSettings.extinction;
+	pariticipatingMediaParams.fogHeightFalloff          = fogSettings.heightFalloff;
 	pariticipatingMediaParams.participatingMediaTexture = fogParams.participatingMediaTextureView;
 
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(4u, 4u, 4u));
@@ -297,8 +274,8 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	const Bool hasValidIndirectInScattering = indirect::Render(graphBuilder, rendererInterface, renderScene, viewSpec, fogParams, fogRenderingParams);
 
 	VolumetricFogInScatteringParams inScatteringParams;
-	inScatteringParams.paseFunctionAnisotrophy               = parameters::phaseFunctionAnisotrophy;
-	inScatteringParams.enableDirectionalLightsInScattering   = parameters::enableDirectionalLightsInScattering;
+	inScatteringParams.paseFunctionAnisotrophy               = renderScene.settings.fog.phaseAnisotropy;
+	inScatteringParams.enableDirectionalLightsInScattering   = viewSpec.GetSettings().volumetricFog.enableDirLightsInScattering;
 	inScatteringParams.enableIndirectInScattering            = hasValidIndirectInScattering;
 	inScatteringParams.hasValidHistory                       = fogParams.historyLocalLightsInScattering.IsValid();
 	inScatteringParams.participatingMediaTexture             = fogParams.participatingMediaTextureView;
@@ -371,6 +348,8 @@ void ParticipatingMediaViewRenderSystem::BeginFrame(rg::RenderGraphBuilder& grap
 
 	Super::BeginFrame(graphBuilder, renderScene, viewSpec);
 
+	m_sceneFogSettings = &renderScene.settings.fog;
+
 	viewSpec.GetRenderViewEntry(ERenderViewEntry::RenderParticipatingMedia).AddRawMember(this, &ParticipatingMediaViewRenderSystem::RenderParticipatingMedia);
 }
 
@@ -382,11 +361,11 @@ const VolumetricFogParams& ParticipatingMediaViewRenderSystem::GetVolumetricFogP
 HeightFogParams ParticipatingMediaViewRenderSystem::GetHeightFogParams() const
 {
 	HeightFogParams heightFogParams;
-	heightFogParams.density              = parameters::constantFogDensity;
-	heightFogParams.extinction           = parameters::constantFogExtinction;
-	heightFogParams.albedo               = parameters::consantFogAlbedo;
-	heightFogParams.heightFalloff        = parameters::fogHeightFalloff;
-	heightFogParams.absorptionPercentage = parameters::fogHeightAbsorptionPercentage;
+	heightFogParams.density              = m_sceneFogSettings->globalDensity;
+	heightFogParams.extinction           = m_sceneFogSettings->extinction;
+	heightFogParams.albedo               = m_sceneFogSettings->albedo;
+	heightFogParams.heightFalloff        = m_sceneFogSettings->heightFalloff;
+	heightFogParams.absorptionPercentage = m_sceneFogSettings->heightAbsorption;
 	return heightFogParams;
 }
 
@@ -398,6 +377,8 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 
 	const rsc::RenderView& renderView = viewSpec.GetRenderView();
 	const math::Vector2u renderingRes = viewSpec.GetRenderingRes();
+
+	const VolumetricFogSettings& fogSettings = viewSpec.GetSettings().volumetricFog;
 
 	const Uint32 volumetricTileSize = 8u;
 
@@ -424,14 +405,15 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 
 	const rg::RGTextureViewHandle inScatteringTextureView = graphBuilder.CreateTextureView(RG_DEBUG_NAME("In-Scattering Texture"), rg::TextureDef(volumetricFogRes, rhi::EFragmentFormat::RGBA16_S_Float));
 
+	const rg::RGTextureViewHandle depthTexture = viewSpec.GetShadingViewContext().depth;
 
 	const math::Vector3u indirectInScatteringRes = math::Utils::DivideCeil(volumetricFogRes, math::Vector3u(2u, 2u, 1u));
 
 	rg::RGTextureViewHandle indirectInScatteringTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Indirect In Scattering Texture"),
 																						 rg::TextureDef(indirectInScatteringRes, rhi::EFragmentFormat::B10G11R11_U_Float));
 
-	const Uint64 frameIdx = renderScene.GetCurrentFrameRef().GetFrameIdx();
-	const Uint32 jitterSequenceIdx = static_cast<Uint32>(frameIdx) & 7u;
+	const Uint32 frameIdx = viewSpec.GetFrameIdx();
+	const Uint32 jitterSequenceIdx = (frameIdx & 7u);
 
 	const math::Vector2f jitterSequence = math::Vector2f(math::Sequences::Halton<Real32>(jitterSequenceIdx, 2),
 														 math::Sequences::Halton<Real32>(jitterSequenceIdx, 3));
@@ -441,12 +423,13 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 
 	VolumetricFogConstants fogConstants;
 	fogConstants.fogNearPlane                        = renderView.GetNearPlane();
-	fogConstants.fogFarPlane                         = parameters::fogFarPlane;
-	fogConstants.frameIdx                            = viewSpec.GetFrameIdx();
+	fogConstants.fogFarPlane                         = fogSettings.farPlane;
+	fogConstants.frameIdx                            = frameIdx;
 	fogConstants.fogGridRes                          = volumetricFogRes;
 	fogConstants.fogGridInvRes                       = volumetricFogRes.cast<Real32>().cwiseInverse();
 	fogConstants.localLightsScatteringMaxDepth       = volumetricFogLocalLightsZRes;
 	fogConstants.localLightsScatteringWNormalization = volumetricFogZRes / static_cast<Real32>(volumetricFogLocalLightsZRes);
+	fogConstants.depthTexture                        = tile_min_depth::RenderTileMinDepth(graphBuilder, depthTexture, volumetricTileRes);
 
 	const rg::RGTextureViewHandle dirLightShadowTerm = graphBuilder.AcquireExternalTextureView(m_directionalLightShadowTerm.GetCurrent());
 
@@ -462,7 +445,7 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 	m_volumetricFogParams.directionalLightShadowTerm        = dirLightShadowTerm;
 	m_volumetricFogParams.historyDirectionalLightShadowTerm = graphBuilder.TryAcquireExternalTextureView(m_directionalLightShadowTerm.GetHistory());
 	m_volumetricFogParams.nearPlane                         = renderView.GetNearPlane();
-	m_volumetricFogParams.farPlane                          = parameters::fogFarPlane;
+	m_volumetricFogParams.farPlane                          = fogSettings.farPlane;
 
 	participating_media::Render(graphBuilder, rendererInterface, renderScene, viewSpec, m_volumetricFogParams, fogRenderingParams);
 
@@ -481,12 +464,12 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 		viewSpec.GetRenderViewEntry(ERenderViewEntry::RenderAerialPerspective).Broadcast(graphBuilder, rendererInterface, renderScene, viewSpec, apContext);
 	}
 
-	if (parameters::enableVolumetricFogBlur)
+	if (fogSettings.enableBlur)
 	{
 		gaussian_blur_renderer::GaussianBlur2DParams gaussianBlurParams;
-		gaussianBlurParams.horizontalPass      = gaussian_blur_renderer::BlurPassParams{ static_cast<Uint32>(parameters::volumetricFogBlurKernelSize), parameters::volumetricFogBlurSigma };
-		gaussianBlurParams.verticalPass        = gaussian_blur_renderer::BlurPassParams{ static_cast<Uint32>(parameters::volumetricFogBlurKernelSize), parameters::volumetricFogBlurSigma };
-		gaussianBlurParams.useTonemappedValues = parameters::fogBlurEnableTonemap;
+		gaussianBlurParams.horizontalPass      = gaussian_blur_renderer::BlurPassParams{ fogSettings.blurKernelSize, fogSettings.blurSigma };
+		gaussianBlurParams.verticalPass        = gaussian_blur_renderer::BlurPassParams{ fogSettings.blurKernelSize, fogSettings.blurSigma };
+		gaussianBlurParams.useTonemappedValues = fogSettings.blurTonemapped;
 
 		m_volumetricFogParams.integratedInScatteringTextureView = gaussian_blur_renderer::ApplyGaussianBlur2D(graphBuilder,
 																											  RG_DEBUG_NAME("Integrated Fog Blur"),

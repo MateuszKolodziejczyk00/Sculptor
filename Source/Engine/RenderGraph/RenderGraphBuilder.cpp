@@ -55,6 +55,15 @@ void RenderGraphBuilder::AddDebugDecorator(const lib::SharedRef<RenderGraphDebug
 	m_debugDecorators.EmplaceBack(std::move(debugDecorator));
 }
 
+#if RG_ENABLE_TEST_MODE
+void RenderGraphBuilder::EnableTestMode()
+{
+	SPT_CHECK_MSG(m_textures.IsEmpty() && m_buffers.IsEmpty(), "Test mode must be enabled before creating any resource");
+
+	m_testModeEnabled = true;
+}
+#endif // RG_ENABLE_TEST_MODE
+
 Bool RenderGraphBuilder::IsTextureAcquired(const lib::SharedPtr<rdr::Texture>& texture) const
 {
 	return m_externalTextures.contains(texture);
@@ -106,7 +115,20 @@ RGTextureHandle RenderGraphBuilder::CreateTexture(const RenderGraphDebugName& na
 	definition.name = name;
 	definition.flags = flags;
 
-	return &m_textures.EmplaceBack(definition, textureDefinition, allocationInfo);
+	const RGTextureHandle texture = &m_textures.EmplaceBack(definition, textureDefinition, allocationInfo);
+
+#if RG_ENABLE_TEST_MODE
+	if (m_testModeEnabled)
+	{
+		const lib::ValueGuard testModeNodeGuard(m_isAddingTestModeNode, true);
+
+		rhi::TextureViewDefinition fullViewDefinition;
+		fullViewDefinition.subresourceRange.aspect = rhi::GetFullAspectForFormat(textureDefinition.format);
+		ClearTexture(RG_DEBUG_NAME("RG Test Mode Clear"), CreateTextureView(name, texture, fullViewDefinition), rhi::ClearColor());
+	}
+#endif // RG_ENABLE_TEST_MODE
+
+	return texture;
 }
 
 RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebugName& name, RGTextureHandle texture, const rhi::TextureViewDefinition& viewDefinition /*= rhi::TextureViewDefinition()*/, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
@@ -214,7 +236,25 @@ RGBufferHandle RenderGraphBuilder::CreateBuffer(const RenderGraphDebugName& name
 	modifiedBufferDefinition.usage = lib::Flags(modifiedBufferDefinition.usage, rhi::EBufferUsage::TransferSrc);
 #endif // SPT_DEBUG || SPT_DEVELOPMENT
 
-	return &m_buffers.EmplaceBack(resourceDefinition, modifiedBufferDefinition, allocationInfo);
+#if RG_ENABLE_TEST_MODE
+	if (m_testModeEnabled)
+	{
+		lib::AddFlag(modifiedBufferDefinition.usage, rhi::EBufferUsage::TransferDst);
+	}
+#endif // RG_ENABLE_TEST_MODE
+
+	const RGBufferHandle buffer = &m_buffers.EmplaceBack(resourceDefinition, modifiedBufferDefinition, allocationInfo);
+
+#if RG_ENABLE_TEST_MODE
+	if (m_testModeEnabled)
+	{
+		const lib::ValueGuard testModeNodeGuard(m_isAddingTestModeNode, true);
+
+		FillFullBuffer(RG_DEBUG_NAME("RG Test Mode Clear"), CreateBufferView(name, buffer, 0u, modifiedBufferDefinition.size), 0u);
+	}
+#endif // RG_ENABLE_TEST_MODE
+
+	return buffer;
 }
 
 RGBufferViewHandle RenderGraphBuilder::CreateBufferView(const RenderGraphDebugName& name, RGBufferHandle buffer, Uint64 offset, Uint64 size, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
@@ -864,9 +904,21 @@ void RenderGraphBuilder::PostNodeAdded(RGNode& node, const RGDependeciesContaine
 		m_lastRenderPassNode = static_cast<RGRenderPassNodeBase*>(&node);
 	}
 
-	for (const lib::SharedPtr<RenderGraphDebugDecorator>& decorator : m_debugDecorators)
+	Bool shouldRunDecorators = true;
+
+#if RG_ENABLE_TEST_MODE
+	if (m_isAddingTestModeNode)
 	{
-		decorator->PostNodeAdded(*this, node, dependencies);
+		shouldRunDecorators = false;
+	}
+#endif // RG_ENABLE_TEST_MODE
+
+	if (shouldRunDecorators)
+	{
+		for (const lib::SharedPtr<RenderGraphDebugDecorator>& decorator : m_debugDecorators)
+		{
+			decorator->PostNodeAdded(*this, node, dependencies);
+		}
 	}
 }
 
@@ -1034,7 +1086,7 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 		{
 			node.AddBufferToAcquire(*accessedBuffer);
 		}
-			
+
 		const ERGBufferAccess nextAccess			= bufferAccess.access;
 		const rhi::EPipelineStage nextAccessStages	= bufferAccess.pipelineStages;
 
@@ -1168,7 +1220,7 @@ void RenderGraphBuilder::PostBuild()
 {
 	AddReleaseResourcesNode();
 
-	ResolveTextureProperties();
+	ResolveResourceProperties();
 }
 
 void RenderGraphBuilder::ExecuteGraph()

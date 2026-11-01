@@ -4,6 +4,7 @@
 #include "AssetsSystemMacros.h"
 #include "FileSystem/File.h"
 #include "Serialization.h"
+#include "Allocators/MemoryArena.h"
 
 
 namespace spt::as
@@ -15,8 +16,8 @@ constexpr ResourcePathID InvalidResourcePathID = maxValue<SizeType>;
 
 struct CachedPath
 {
-	lib::Path      path;
-	ResourcePathID id;
+	lib::StringView path;
+	ResourcePathID  id;
 };
 
 
@@ -24,22 +25,23 @@ class ResourcePathsCache
 {
 public:
 
+	static constexpr SizeType s_maxPathLength = 256u;
+
 	static ResourcePathsCache& GetInstance();
 
 	const CachedPath* FindCachedPath(ResourcePathID id) const;
 	const CachedPath& GetCachedPathChecked(ResourcePathID id) const;
 
-	const CachedPath& GetOrCreatePath(lib::Path path);
+	const CachedPath& GetOrCreatePath(lib::StringView path);
 
 
 private:
 
-	ResourcePathsCache() = default;
+	ResourcePathsCache();
 
-	ResourcePathID ComputePathID(const lib::Path& path) const;
-
-	mutable lib::Spinlock m_lock;
-	lib::HashMap<ResourcePathID, lib::UniquePtr<CachedPath>> m_paths;
+	mutable lib::ReadWriteLock m_lock;
+	lib::HashMap<ResourcePathID, const CachedPath*> m_paths;
+	lib::MemoryArena m_arena;
 };
 
 
@@ -48,8 +50,10 @@ class ASSETS_SYSTEM_API ResourcePath
 public:
 
 	ResourcePath();
+	ResourcePath(lib::StringView path);
 	ResourcePath(const char* path);
-	ResourcePath(lib::Path path);
+	ResourcePath(const lib::String& path);
+	ResourcePath(const lib::Path& path);
 
 	ResourcePath(const ResourcePath&) = default;
 	ResourcePath(ResourcePath&&)      = default;
@@ -64,9 +68,9 @@ public:
 
 	static ResourcePath GetCachedPath(ResourcePathID pathID);
 
-	const lib::Path& GetPath() const;
+	lib::StringView GetPath() const;
 
-	lib::String GetName() const;
+	lib::StringView GetName() const;
 
 	Bool IsValid() const { return !!m_cachedPath; }
 
@@ -76,7 +80,7 @@ public:
 
 	void Serialize(srl::Serializer& serializer)
 	{
-		lib::Path tempPath;
+		lib::String tempPath;
 		if (serializer.IsLoading())
 		{
 			serializer.Serialize("Path", tempPath);

@@ -47,6 +47,8 @@ TracesAllocation AllocateTraces(rg::RenderGraphBuilder& graphBuilder, const Trac
 		bufferDef.size = tracesNum * sizeof(EncodedRayTraceCommand);;
 		bufferDef.usage = rhi::EBufferUsage::Storage;
 		tracesAllocation.rayTraceCommands = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Ray Trace Commands Buffer"), bufferDef, rhi::EMemoryUsage::GPUOnly);
+
+		tracesAllocation.rayTraceCommands->SetNonDeterministic();
 	}
 
 	{
@@ -84,11 +86,11 @@ TracesAllocation AllocateTraces(rg::RenderGraphBuilder& graphBuilder, const Trac
 	const math::Vector2u vrtResolution = definition.variableRateTexture->GetResolution2D();
 
 	AllocateTracesConstants shaderConstants;
-	shaderConstants.resolution                 = definition.resolution;
-	shaderConstants.invResolution              = definition.resolution.cast<Real32>().cwiseInverse();
-	shaderConstants.vrtResolution              = vrtResolution;
-	shaderConstants.vrtInvResolution           = vrtResolution.cast<Real32>().cwiseInverse();
-	shaderConstants.traceIdx                   = definition.traceIdx;
+	shaderConstants.resolution                  = definition.resolution;
+	shaderConstants.invResolution               = definition.resolution.cast<Real32>().cwiseInverse();
+	shaderConstants.vrtResolution               = vrtResolution;
+	shaderConstants.vrtInvResolution            = vrtResolution.cast<Real32>().cwiseInverse();
+	shaderConstants.traceIdx                    = definition.traceIdx;
 	shaderConstants.variableRateTexture         = definition.variableRateTexture;
 	shaderConstants.rayTracesCommands           = tracesAllocation.rayTraceCommands;
 	shaderConstants.commandsNum                 = tracesAllocation.tracingIndirectArgs;

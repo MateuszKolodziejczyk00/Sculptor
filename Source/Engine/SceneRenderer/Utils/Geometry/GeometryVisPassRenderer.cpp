@@ -157,6 +157,8 @@ VisPassResult VisPassRenderer::RenderVisibility(rg::RenderGraphBuilder& graphBui
 	const rg::RGBufferViewHandle visibleMeshlets      = graphBuilder.AcquireExternalBufferView(m_visibleMeshlets->GetFullView());
 	const rg::RGBufferViewHandle visibleMeshletsCount = graphBuilder.AcquireExternalBufferView(m_visibleMeshletsCount->GetFullView());
 
+	visibleMeshlets->SetNonDeterministic(); // atomics
+
 	vis_pass::VisibilityBufferRenderingPipeline pipeline(visPassParams.visibilityTexture, visibleMeshlets, visibleMeshletsCount);
 
 	gp::GeometryPipelineExecutor*  gpExecutor = gp::CreateExecutor(graphBuilder, visPassParams.geometryPassParams, pipeline);
@@ -190,7 +192,9 @@ gp::GeometryPipelineExecutor* VisPassRenderer::CreatePipelineExecutor(rg::Render
 	const rg::RGBufferViewHandle visibleMeshlets      = graphBuilder.AcquireExternalBufferView(m_visibleMeshlets->GetFullView());
 	const rg::RGBufferViewHandle visibleMeshletsCount = graphBuilder.AcquireExternalBufferView(m_visibleMeshletsCount->GetFullView());
 
-	vis_pass::VisibilityBufferRenderingPipeline* pipeline = graphBuilder.GetMemoryArena().AllocateType<vis_pass::VisibilityBufferRenderingPipeline>(visPassParams.visibilityTexture, visibleMeshlets, visibleMeshletsCount);
+	visibleMeshlets->SetNonDeterministic(); // atomics
+
+	vis_pass::VisibilityBufferRenderingPipeline* pipeline = graphBuilder.GetMemoryArena().Allocate<vis_pass::VisibilityBufferRenderingPipeline>(visPassParams.visibilityTexture, visibleMeshlets, visibleMeshletsCount);
 
 	return gp::CreateExecutor(graphBuilder, visPassParams.geometryPassParams, *pipeline);
 }

@@ -3,7 +3,6 @@
 #include "Renderer/SandboxRenderer.h"
 #include "JobSystem.h"
 #include "GPUApi.h"
-#include "RenderView/RenderViewSettingsUIView.h"
 #include "RenderScene/RenderSceneSettingsUIView.h"
 #include "RenderScene/SceneRendererStatsUIView.h"
 #include "Types/UIBackend.h"
@@ -27,7 +26,6 @@ SandboxUIView::SandboxUIView(const scui::ViewDefinition& definition)
 	, m_sceneViewName(CreateUniqueName("Scene"))
 	, m_sanboxUIViewName(CreateUniqueName("SandboxUI"))
 {
-	RecreateRenderViewSettings();
 	RecreateRenderSceneSettings();
 	RecreateSceneRendererStats();
 	RecreateProfilerView();
@@ -51,11 +49,9 @@ void SandboxUIView::BuildDefaultLayout(ImGuiID dockspaceID)
 								  ui::DockWindow(m_sceneViewName),
 								  ui::Split(ui::ESplit::Vertical, 0.33f,
 											ui::DockWindow(m_sanboxUIViewName),
-											ui::Split(ui::ESplit::Vertical, 0.33f,
-													  ui::DockWindow(m_renderViewSettingsName),
 													  ui::Split(ui::ESplit::Vertical, 0.5f,
 																ui::DockWindow(m_renderSceneSettingsName),
-																ui::DockWindow(m_sceneRendererStatsName)))))));
+																ui::DockWindow(m_sceneRendererStatsName))))));
 }
 
 void SandboxUIView::DrawUI()
@@ -164,11 +160,6 @@ void SandboxUIView::DrawMenuBar()
 		if (ImGui::MenuItem("Profiler"))
 		{
 			RecreateProfilerView();
-		}
-
-		if (ImGui::MenuItem("Render View Settings"))
-		{
-			RecreateRenderViewSettings();
 		}
 
 		if (ImGui::MenuItem("Render Scene Settings"))
@@ -293,16 +284,6 @@ void SandboxUIView::FocusWindow(const lib::HashedString& windowName)
 	ImGui::DockBuilderDockWindow(windowName.GetData(), scui::CurrentViewBuildingContext::GetCurrentViewContentClass().ClassId);
 	ImGui::SetWindowCollapsed(windowName.GetData(), false);
 	ImGui::SetWindowFocus(windowName.GetData());
-}
-
-void SandboxUIView::RecreateRenderViewSettings()
-{
-	RemoveChild(m_renderViewSettingsView);
-
-	const lib::SharedRef<rsc::RenderViewSettingsUIView> view = lib::MakeShared<rsc::RenderViewSettingsUIView>(scui::ViewDefinition("Render View Settings"), m_renderer.GetRenderView());
-	m_renderViewSettingsView = view.ToSharedPtr();
-	m_renderViewSettingsName = AddChild(view);
-	m_requestedWindowFocus = m_renderViewSettingsName;
 }
 
 void SandboxUIView::RecreateRenderSceneSettings()

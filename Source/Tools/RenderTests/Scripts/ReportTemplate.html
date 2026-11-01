@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sculptor Render Tests</title>
+<style>
+:root {
+	--bg: #f6f7f9; --panel: #ffffff; --text: #1d2129; --muted: #667085; --border: #e3e6eb;
+	--accent: #3a6ff7; --pass: #1f9d55; --fail: #d64545; --warn: #c98a0b; --none: #8a94a6;
+	--row-hover: #f0f3f8; --chart-line: #3a6ff7; --chart-grid: #e8ebf0;
+	color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #0f1115; --panel: #171a21; --text: #e6e8ec; --muted: #8b93a3; --border: #262b35;
+		--accent: #6f95ff; --pass: #3cc47c; --fail: #f06a6a; --warn: #e5b23a; --none: #6b7385;
+		--row-hover: #1e232c; --chart-line: #6f95ff; --chart-grid: #232833;
+		color-scheme: dark;
+	}
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1500px; margin: 0 auto; padding: 20px 16px 60px; }
+h1 { font-size: 20px; margin: 0 0 14px; }
+h2 { font-size: 15px; margin: 0 0 10px; }
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
+.toolbar label { color: var(--muted); font-size: 12px; display: flex; flex-direction: column; gap: 3px; }
+select, input { font: inherit; padding: 4px 6px; border-radius: 5px; border: 1px solid var(--border); background: var(--panel); color: var(--text); max-width: 420px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 13px; margin-top: 10px; }
+.meta b { color: var(--text); font-weight: 600; }
+.counts { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.count { padding: 4px 10px; border-radius: 14px; border: 1px solid var(--border); font-size: 12px; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; cursor: default; }
+th.sortable { cursor: pointer; }
+td.num, th.num { text-align: right; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--row-hover); }
+tr.selected { background: var(--row-hover); box-shadow: inset 3px 0 0 var(--accent); }
+#testsTable tr > :first-child { position: sticky; left: 0; background: var(--panel); }
+#testsTable tbody tr:hover > :first-child, #testsTable tr.selected > :first-child { background: var(--row-hover); }
+#testsTable tr.selected { box-shadow: none; }
+#testsTable tr.selected > :first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; color: #fff; }
+.b-Pass, .b-Ok { background: var(--pass); }
+.b-Fail, .b-Crashed, .b-Timeout, .b-Regression { background: var(--fail); }
+.b-NoGolden, .b-NoBaseline { background: var(--none); }
+.b-Changed { background: var(--warn); }
+.worse { color: var(--fail); } .better { color: var(--pass); }
+.warn { color: var(--warn); }
+.muted { color: var(--muted); }
+.detail-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; }
+@media (max-width: 1100px) { .detail-grid { grid-template-columns: minmax(0, 1fr); } }
+.tabs { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+.tabs button { font: inherit; font-size: 13px; padding: 4px 12px; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; }
+.tabs button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.viewer { --x: 50%; --y: 50%; position: relative; width: 100%; background: #000; border-radius: 6px; overflow: hidden; user-select: none; }
+.viewer img { display: block; width: 100%; height: auto; }
+.viewer .layer { position: absolute; inset: 0; height: 100%; }
+.viewer .q-flip { clip-path: inset(0 calc(100% - var(--x)) calc(100% - var(--y)) 0); }
+.viewer .q-diff { clip-path: inset(0 0 calc(100% - var(--y)) var(--x)); }
+.viewer .q-golden { clip-path: inset(var(--y) calc(100% - var(--x)) 0 0); }
+.viewer .q-result { clip-path: inset(var(--y) 0 0 var(--x)); }
+.viewer .divider { position: absolute; background: #fff; box-shadow: 0 0 4px #000; pointer-events: none; }
+.viewer .divider.v { top: 0; bottom: 0; left: var(--x); width: 2px; }
+.viewer .divider.h { left: 0; right: 0; top: var(--y); height: 2px; }
+.viewer .tag { position: absolute; padding: 2px 8px; background: rgba(0,0,0,.6); color: #fff; font-size: 12px; border-radius: 4px; }
+.flip-stats { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; font-size: 13px; color: var(--muted); }
+.flip-stats b { color: var(--text); }
+.chart { width: 100%; height: 220px; display: block; }
+.chart text { fill: var(--muted); font-size: 11px; }
+.chart .grid { stroke: var(--chart-grid); }
+.chart .band { fill: var(--chart-line); opacity: .15; }
+.chart .line { fill: none; stroke: var(--chart-line); stroke-width: 2; pointer-events: none; }
+.chart .line.samples { stroke-width: 1.5; }
+.chart .ref { fill: none; stroke: var(--warn); stroke-width: 1.5; pointer-events: none; }
+.chart .dot { fill: var(--panel); stroke: var(--chart-line); stroke-width: 2; cursor: pointer; }
+.chart .dot.current { fill: var(--chart-line); }
+.chart .dot.compare { stroke: var(--warn); fill: var(--warn); }
+.chart.memory { height: 260px; cursor: crosshair; }
+.chart .area { fill: var(--chart-line); opacity: .15; pointer-events: none; }
+.chart .diff { fill: var(--warn); stroke: var(--panel); stroke-width: 2; pointer-events: none; }
+.chart .peak { fill: var(--chart-line); stroke: var(--panel); stroke-width: 2; pointer-events: none; }
+.chart .crosshair { stroke: var(--muted); stroke-dasharray: 3 3; pointer-events: none; }
+.chart .sel { stroke: var(--accent); opacity: .6; pointer-events: none; }
+.chart .lifetime { fill: var(--muted); opacity: .3; pointer-events: none; }
+.resources { max-height: 360px; overflow-y: auto; }
+.resources th { position: sticky; top: 0; background: var(--panel); }
+.legend { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+.legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 6px; }
+.legend i.dot { width: 8px; height: 8px; border-radius: 50%; }
+.empty { color: var(--muted); padding: 20px 0; text-align: center; }
+.pass-name { display: inline-block; }
+.spark { vertical-align: middle; }
+.spark polyline { fill: none; stroke: var(--chart-line); stroke-width: 1.5; }
+.hint { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+.hash-Match { color: var(--pass); }
+.hash-Mismatch { color: var(--fail); font-weight: 600; }
+.hash-New { color: var(--none); }
+.popup { position: fixed; z-index: 10; pointer-events: none; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; box-shadow: 0 4px 16px rgba(0,0,0,.25); font-size: 12px; max-width: 420px; }
+.popup table td { padding: 2px 8px 2px 0; border: none; }
+.popup div { overflow-wrap: anywhere; }
+.command { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px; }
+.command[hidden] { display: none; }
+.command code { flex: 1; min-width: 0; padding: 6px 8px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg); font: 12px/1.4 ui-monospace, Consolas, monospace; word-break: break-all; user-select: all; }
+.command button { font: inherit; font-size: 13px; padding: 4px 12px; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; }
+details.panel > summary { cursor: pointer; }
+details.panel > summary h2 { display: inline; margin: 0; }
+.settings { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 700px) { .settings { grid-template-columns: minmax(0, 1fr); } }
+.settings h3 { font-size: 14px; margin: 0 0 4px; }
+.settings summary { cursor: pointer; padding: 3px 0; }
+.settings details details { margin-left: 16px; }
+.settings table { width: auto; margin: 0 0 4px 16px; }
+.settings td { padding: 2px 16px 2px 0; border: none; }
+.settings tr { cursor: default; }
+.hash-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: currentColor; vertical-align: middle; }
+</style>
+</head>
+<body>
+<main>
+	<h1>Sculptor Render Tests</h1>
+
+	<section class="panel">
+		<div class="toolbar">
+			<label>Run <select id="runSelect"></select></label>
+			<label>Compare performance with <select id="compareSelect"></select></label>
+		</div>
+		<div class="meta" id="runMeta"></div>
+		<div class="counts" id="runCounts"></div>
+	</section>
+
+	<section class="panel">
+		<h2>Tests</h2>
+		<div class="table-wrap"><table id="testsTable"></table></div>
+	</section>
+
+	<section id="detail" hidden>
+		<div class="panel">
+			<h2 id="detailTitle"></h2>
+			<div class="command" id="testCommandRow"><code id="testCommand"></code><button id="copyCommand">Copy</button></div>
+			<div class="tabs" id="imageTabs"></div>
+			<div id="imageViewer"></div>
+			<div class="flip-stats" id="flipStats"></div>
+		</div>
+		<details class="panel">
+			<summary><h2 id="settingsTitle">Settings</h2></summary>
+			<div class="tabs" style="margin-top:10px"><button id="expandSettings">Expand all</button><button id="collapseSettings">Collapse all</button></div>
+			<div class="settings" id="settings"></div>
+			<p class="hint">All view and scene settings used by the test (including defaults not specified in test json), compared with settings stored with golden image.</p>
+		</details>
+		<div class="detail-grid">
+			<div class="panel">
+				<h2 id="chartTitle">GPU frame time history</h2>
+				<svg class="chart" id="historyChart"></svg>
+				<p class="hint">Runs on the same machine, config, mode and ray tracing setting. Click a point to select that run. Click a pass below to chart it.</p>
+			</div>
+			<div class="panel">
+				<h2 id="samplesTitle">GPU frame samples</h2>
+				<svg class="chart" id="samplesChart"></svg>
+				<p class="hint">Every measured frame of the selected run. Orange: compare reference (per frame median of baseline runs, or the selected run).</p>
+			</div>
+		</div>
+		<div class="panel">
+			<h2>Transient memory per pass (MiB)</h2>
+			<div class="flip-stats" id="memoryStats"></div>
+			<div class="legend" id="memoryLegend"></div>
+			<svg class="chart memory" id="memoryChart"></svg>
+			<div class="popup" id="memoryPopup" hidden></div>
+			<p class="hint">Render graph transient memory in use while each pass executes, in frame execution order (last measured frame). Resources are allocated at the start of their first pass and released at the end of their last pass, so both passes count them. Orange: compare reference (last baseline run, or the selected run). Dots mark passes with different usage or allocations; in the tooltip, orange events are not in the compare run and struck through ones exist only there. Click a pass to select it.</p>
+			<div class="toolbar" style="justify-content: space-between; margin-top:14px">
+				<h2 style="margin:0" id="resourcesTitle">Transient resources</h2>
+				<label>Filter <input id="resourceFilter" type="search" placeholder="Resource or pass name"></label>
+			</div>
+			<div class="table-wrap resources"><table id="resourcesTable"></table></div>
+			<p class="hint">Every transient allocation of the frame, largest first. Hover to show its lifetime on the chart, click to select the allocating pass.</p>
+		</div>
+		<div class="panel">
+			<h2>Pass hashes vs golden</h2>
+			<div id="passHashes"></div>
+			<p class="hint">Hashes of all outputs of every render graph pass in the golden frame, rendered with transient resources cleared. The first mismatching pass is usually the source of a difference.</p>
+		</div>
+		<div class="panel">
+			<div class="toolbar" style="justify-content: space-between">
+				<h2 style="margin:0">Per pass GPU time</h2>
+				<div class="toolbar">
+					<div class="tabs" id="passFlags" style="margin:0"></div>
+					<label>Filter <input id="passFilter" type="search" placeholder="Pass name or path"></label>
+					<label>Order <select id="passOrder"><option value="tree">Frame order</option><option value="delta">Largest change</option><option value="time">Slowest</option></select></label>
+				</div>
+			</div>
+			<div class="table-wrap"><table id="passTable"></table></div>
+			<div class="popup" id="passPopup" hidden></div>
+		</div>
+	</section>
+</main>
+
+<script>
+const runs = /*RUNS_DATA*/[];
+
+// Runs from before min/P90 tracking store only median
+for (const run of runs) for (const t of Object.values(run.Tests)) {
+	if (t.Perf && !t.Perf.GPUFrame) t.Perf.GPUFrame = { Ms: t.Perf.GPUFrameMs };
+	const b = t.PerfBaseline;
+	if (b && !b.GPUFrame) { b.GPUFrame = { Ms: b.GPUFrameMs }; for (const p in b.Scopes) b.Scopes[p] = { Ms: b.Scopes[p] }; }
+}
+
+const state = { runIdx: runs.length - 1, compare: "baseline", test: null, imageMode: "split", scope: "GPU Frame", passOrder: "tree", passFilter: "", passFlags: new Set(), resourceFilter: "" };
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmtMs = v => v == null ? "–" : v.toFixed(3);
+const badge = s => s ? `<span class="badge b-${s}">${s}</span>` : `<span class="muted">–</span>`;
+
+function deltaCell(cur, ref) {
+	if (cur == null || ref == null) return `<td class="num muted">–</td><td class="num muted">–</td>`;
+	const d = cur - ref, pct = ref > 0 ? d / ref * 100 : 0;
+	const cls = Math.abs(pct) < 1 ? "muted" : (d > 0 ? "worse" : "better");
+	return `<td class="num ${cls}">${d >= 0 ? "+" : ""}${d.toFixed(3)}</td><td class="num ${cls}">${d >= 0 ? "+" : ""}${pct.toFixed(1)}%</td>`;
+}
+
+const MiB = 1024 * 1024;
+const fmtMiB = v => v == null ? "–" : (v / MiB).toFixed(2);
+const memoryDelta = (cur, ref) => ref == null || cur === ref ? "" : ` <span class="${cur > ref ? "worse" : "better"}">${cur > ref ? "+" : ""}${fmtMiB(cur - ref)}</span>`;
+const memoryCell = (cur, ref) => `<td class="num${cur == null ? " muted" : ""}">${fmtMiB(cur)}${memoryDelta(cur, ref)}</td>`;
+
+// Memory changes are evaluated during the run against the last comparable run, independently of the selected compare reference
+const memoryChangesNum = c => c ? Object.keys(c.Scopes).length + Object.keys(c.Allocations).length + Object.keys(c).length - 2 : 0;
+const isMemoryChanged = (c, path) => !!c && (path in c.Scopes || path in c.Allocations);
+function memoryChangeLines(c) {
+	const lines = [
+		...("TotalAllocatedBytes" in c ? [`Total allocated, previous: ${fmtMiB(c.TotalAllocatedBytes)} MiB`] : []),
+		...("PeakTransientBytes" in c ? [`Peak transient, previous: ${fmtMiB(c.PeakTransientBytes)} MiB`] : []),
+		...Object.entries(c.Scopes).map(([p, v]) => `${p.split("/").pop()}, previous: ${fmtMiB(v)} MiB`),
+		...Object.keys(c.Allocations).map(p => `${p.split("/").pop()}: transient allocations changed`)
+	];
+	return lines.length > 20 ? [...lines.slice(0, 20), `… ${lines.length - 20} more`] : lines;
+}
+
+function showPopup(popup, e) {
+	popup.hidden = false;
+	popup.style.left = Math.min(e.clientX + 16, innerWidth - popup.offsetWidth - 8) + "px";
+	popup.style.top = (e.clientY + 16 + popup.offsetHeight > innerHeight ? e.clientY - popup.offsetHeight - 8 : e.clientY + 16) + "px";
+}
+
+const currentRun = () => runs[state.runIdx];
+const comparable = (a, b) => ["Machine", "Config", "Mode", "RayTracing"].every(k => a[k] === b[k]);
+
+function scopeStats(perf, path) {
+	if (!perf) return null;
+	return path === "GPU Frame" ? perf.GPUFrame : perf.Scopes[path] || null;
+}
+const statMs = (stats, key) => stats ? stats[key] ?? null : null;
+const timingCells = s => `<td class="num muted">${fmtMs(statMs(s, "MinMs"))}</td><td class="num">${fmtMs(statMs(s, "Ms"))}</td><td class="num">${fmtMs(statMs(s, "P90Ms"))}</td>`;
+
+// Reference performance for a test: either the baseline computed during the run or a specific run
+function comparePerf(testName) {
+	const result = currentRun().Tests[testName];
+	if (state.compare === "baseline") return result && result.PerfBaseline;
+	const other = runs.find(r => r.Id === state.compare);
+	return other && other.Tests[testName] ? other.Tests[testName].Perf : null;
+}
+
+function renderRunSelectors() {
+	$("runSelect").innerHTML = runs.map((r, i) => `<option value="${i}">${esc(r.Id)}${r.Label ? " · " + esc(r.Label) : ""} · ${esc(r.Mode)}</option>`).reverse().join("");
+	$("runSelect").value = state.runIdx;
+
+	const run = currentRun();
+	const options = [`<option value="baseline">Baseline (median of previous comparable runs)</option>`];
+	runs.forEach((r, i) => {
+		if (i !== state.runIdx && comparable(r, run)) options.push(`<option value="${esc(r.Id)}">${esc(r.Id)}${r.Label ? " · " + esc(r.Label) : ""}</option>`);
+	});
+	$("compareSelect").innerHTML = options.reverse().join("");
+	if (![...$("compareSelect").options].some(o => o.value === state.compare)) state.compare = "baseline";
+	$("compareSelect").value = state.compare;
+}
+
+function renderRunSummary() {
+	const run = currentRun();
+	$("runMeta").innerHTML = [
+		["Date", run.Date], ["Commit", run.Commit + (run.Dirty ? " (dirty)" : "")], ["Mode", run.Mode], ["Config", run.Config],
+		["Machine", run.Machine], ["Ray tracing", run.RayTracing ? "on" : "off"], ["Label", run.Label || "–"]
+	].map(([k, v]) => `<span>${k}: <b>${esc(v)}</b></span>`).join("");
+
+	const results = Object.values(run.Tests);
+	const count = (key, value) => results.filter(r => r[key] === value).length;
+	const items = [
+		["Image pass", count("ImageStatus", "Pass"), "Pass"], ["Image fail", count("ImageStatus", "Fail"), "Fail"],
+		["No golden", count("ImageStatus", "NoGolden"), "NoGolden"], ["Crashed / timeout", count("ImageStatus", "Crashed") + count("ImageStatus", "Timeout"), "Crashed"],
+		["Perf regressions", count("PerfStatus", "Regression"), "Regression"],
+		["Memory changed", results.filter(r => memoryChangesNum(r.MemoryChanges)).length, "Changed"]
+	];
+	$("runCounts").innerHTML = items.map(([label, n, s]) => `<span class="count">${n > 0 ? badge(s) : ""} ${label}: <b>${n}</b></span>`).join("");
+}
+
+function renderTestsTable() {
+	const run = currentRun();
+	const names = Object.keys(run.Tests).sort();
+	const rows = names.map(name => {
+		const r = run.Tests[name];
+		const cur = scopeStats(r.Perf, "GPU Frame"), refMs = statMs(scopeStats(comparePerf(name), "GPU Frame"), "Ms");
+		const flipMean = r.Flip ? r.Flip.Mean.toFixed(5) : "–";
+		const flipCls = r.Flip && r.Flip.Mean > r.MaxFlipMean ? "worse" : "";
+		const changedWorkload = r.WorkloadChanges ? Object.keys(r.WorkloadChanges) : null;
+		const workload = !changedWorkload ? `<span class="muted" title="No golden workload">–</span>`
+			: changedWorkload.length ? `<span class="warn" title="${esc(changedWorkload.join("\n"))}">${changedWorkload.length} pass(es)</span>` : `<span class="hash-Match">match</span>`;
+		const h = r.PassHashes;
+		const hashes = h
+			? `<span class="${h.Mismatched ? "hash-Mismatch" : "hash-Match"}" title="${h.FirstMismatch ? "First mismatch: " + esc(h.FirstMismatch) : "All passes match golden"}">${h.Matched}/${h.Passes.length}</span>`
+			: `<span class="muted" title="No golden hashes">–</span>`;
+		const changedSettings = r.SettingsChanges ? Object.keys(r.SettingsChanges) : null;
+		const settings = !changedSettings ? `<span class="muted" title="No golden settings">–</span>`
+			: changedSettings.length ? `<span class="warn" title="${esc(changedSettings.join("\n"))}">${changedSettings.length} changed</span>` : `<span class="hash-Match">match</span>`;
+		const mc = r.MemoryChanges, memory = r.Perf?.Memory, refMemory = comparePerf(name)?.Memory;
+		const memoryChanges = !mc ? `<span class="muted" title="No previous comparable run">–</span>`
+			: memoryChangesNum(mc) ? `<span class="warn" title="${esc(memoryChangeLines(mc).join("\n"))}">${memoryChangesNum(mc)} changed</span>` : `<span class="hash-Match">same</span>`;
+		// Status columns first, details further right
+		return `<tr data-test="${esc(name)}" class="${name === state.test ? "selected" : ""}">
+			<td>${esc(name)}</td><td>${badge(r.ImageStatus)}</td><td class="num">${hashes}</td><td>${settings}</td>
+			<td>${badge(r.PerfStatus)}</td><td>${workload}</td><td>${memoryChanges}</td>
+			<td class="num ${flipCls}">${flipMean}</td><td class="num muted">${r.MaxFlipMean}</td>
+			${timingCells(cur)}<td class="num muted">${fmtMs(refMs)}</td>${deltaCell(statMs(cur, "Ms"), refMs)}
+			${memoryCell(memory?.PeakTransientBytes, refMemory?.PeakTransientBytes)}${memoryCell(memory?.TotalAllocatedBytes, refMemory?.TotalAllocatedBytes)}</tr>`;
+	});
+	$("testsTable").innerHTML = `<thead><tr><th>Test</th><th>Image</th><th class="num">Passes matching golden</th><th>Settings vs golden</th>
+		<th>Performance</th><th>Workload vs golden</th><th>Memory vs previous run</th>
+		<th class="num">FLIP mean</th><th class="num">Threshold</th>
+		<th class="num">GPU min ms</th><th class="num">GPU median ms</th><th class="num">GPU P90 ms</th><th class="num">Compare median ms</th><th class="num">Δ median ms</th><th class="num">Δ median %</th>
+		<th class="num">Peak transient MiB</th><th class="num">Total allocated MiB</th></tr></thead>
+		<tbody>${rows.join("")}</tbody>`;
+	for (const tr of $("testsTable").querySelectorAll("tbody tr")) {
+		tr.onclick = () => { state.test = tr.dataset.test; state.scope = "GPU Frame"; render(); $("detail").scrollIntoView({ behavior: "smooth" }); };
+	}
+}
+
+const runFilePath = (runId, name, file) => `Runs/${encodeURIComponent(runId)}/${encodeURIComponent(name)}/${file}`;
+const imagePath = (name, file) => runFilePath(currentRun().Id, name, file);
+
+function renderImages() {
+	const name = state.test, r = currentRun().Tests[name];
+	const hasResult = r.ImageStatus !== "Crashed" && r.ImageStatus !== "Timeout";
+	const hasGolden = hasResult && r.ImageStatus !== "NoGolden";
+	const hasFlip = hasGolden && !!r.Flip;
+
+	const modes = [["split", "Split", hasFlip], ["result", "Result", hasResult], ["golden", "Golden", hasGolden], ["flip", "FLIP error", hasFlip], ["diff", "Changed pixels", hasFlip]].filter(m => m[2]);
+	if (!modes.some(m => m[0] === state.imageMode)) state.imageMode = modes.length ? modes[0][0] : null;
+
+	$("imageTabs").innerHTML = modes.map(([m, label]) => `<button data-mode="${m}" class="${m === state.imageMode ? "active" : ""}">${label}</button>`).join("");
+	for (const b of $("imageTabs").querySelectorAll("button")) b.onclick = () => { state.imageMode = b.dataset.mode; renderImages(); };
+
+	const viewer = $("imageViewer");
+	if (!state.imageMode) {
+		viewer.innerHTML = `<div class="empty">No image: test ${esc(r.ImageStatus)}</div>`;
+	} else if (state.imageMode === "split") {
+		viewer.innerHTML = `<div class="viewer" id="split">
+			<img class="q-result" src="${imagePath(name, "Result.png")}" alt="Result">
+			<img class="layer q-golden" src="${imagePath(name, "Golden.png")}" alt="Golden">
+			<img class="layer q-flip" src="${imagePath(name, "Flip.png")}" alt="FLIP error">
+			<img class="layer q-diff" src="${imagePath(name, "Diff.png")}" alt="Changed pixels">
+			<div class="divider v"></div><div class="divider h"></div>
+			<span class="tag" style="top:8px;left:8px">FLIP error</span><span class="tag" style="top:8px;right:8px">Changed pixels</span>
+			<span class="tag" style="bottom:8px;left:8px">Golden</span><span class="tag" style="bottom:8px;right:8px">Result</span></div>`;
+		const split = $("split");
+		const move = e => {
+			const rect = split.getBoundingClientRect(), p = e.touches ? e.touches[0] : e;
+			split.style.setProperty("--x", Math.min(Math.max(p.clientX - rect.left, 0), rect.width) + "px");
+			split.style.setProperty("--y", Math.min(Math.max(p.clientY - rect.top, 0), rect.height) + "px");
+		};
+		split.addEventListener("mousemove", move);
+		split.addEventListener("touchmove", move, { passive: true });
+	} else {
+		const file = { result: "Result.png", golden: "Golden.png", flip: "Flip.png", diff: "Diff.png" }[state.imageMode];
+		viewer.innerHTML = `<div class="viewer"><img src="${imagePath(name, file)}" alt="${file}"></div>`;
+	}
+
+	$("flipStats").innerHTML = r.Flip
+		? ["Mean", "Median", "P95", "P99", "Max"].map(k => `<span>${k}: <b>${r.Flip[k].toFixed(5)}</b></span>`).join("") + `<span>Threshold (mean): <b>${r.MaxFlipMean}</b></span>`
+		: "";
+}
+
+const fmtSetting = v => v == null ? "–" : Array.isArray(v) ? `[${v.map(fmtSetting).join(", ")}]` : typeof v === "number" ? String(+v.toPrecision(6)) : String(v);
+
+// Changes are flat paths ("Group.Sub.Name"), they also list settings that exist only in golden
+function settingsGroup(node, prefix, changes) {
+	const keys = new Set(Object.keys(node || {}));
+	for (const p in changes) if (p.startsWith(prefix)) keys.add(p.slice(prefix.length).split(".")[0]);
+	const leaves = [], groups = [];
+	for (const key of keys) {
+		const path = prefix + key, value = node?.[key];
+		const isGroup = value === undefined ? !(path in changes) : value !== null && typeof value === "object" && !Array.isArray(value);
+		if (isGroup) {
+			const changed = Object.keys(changes).filter(p => p.startsWith(path + ".")).length;
+			groups.push(`<details><summary>${esc(key)}${changed ? ` <span class="warn">${changed} changed</span>` : ""}</summary>${settingsGroup(value, path + ".", changes)}</details>`);
+		} else {
+			const golden = path in changes ? `<td class="warn">${changes[path] == null ? "not in golden" : "golden: " + esc(fmtSetting(changes[path]))}</td>` : "<td></td>";
+			leaves.push(`<tr><td class="${path in changes ? "warn" : "muted"}">${esc(key)}</td><td class="num">${esc(fmtSetting(value))}</td>${golden}</tr>`);
+		}
+	}
+	return (leaves.length ? `<table>${leaves.join("")}</table>` : "") + groups.join("");
+}
+
+function renderSettings() {
+	const r = currentRun().Tests[state.test], changes = r.SettingsChanges;
+	const changedNum = changes ? Object.keys(changes).length : 0;
+	$("settingsTitle").innerHTML = "Settings " + (!r.Settings ? "" : !changes ? `<span class="muted">(no golden)</span>`
+		: changedNum ? `<span class="warn">${changedNum} changed vs golden</span>` : `<span class="hash-Match">(match golden)</span>`);
+	$("settings").innerHTML = r.Settings ? ["SceneSettings", "ViewSettings"].map(key => {
+		const changed = Object.keys(changes || {}).filter(p => p.startsWith(key + ".")).length;
+		return `<div><h3>${key}${changed ? ` <span class="warn">${changed} changed</span>` : ""}</h3>${settingsGroup(r.Settings[key], key + ".", changes || {})}</div>`;
+	}).join("") : `<div class="empty">No settings data</div>`;
+}
+
+const scopeLabel = () => state.scope === "GPU Frame" ? "GPU frame" : state.scope.split("/").pop();
+
+function valueAxis(vals, W, H, L, R, T, B, zeroBased = false) {
+	let lo = zeroBased ? 0 : Math.min(...vals), hi = Math.max(...vals);
+	const pad = Math.max((hi - lo) * 0.15, hi * 0.02, 0.001);
+	lo = zeroBased ? 0 : Math.max(0, lo - pad); hi += pad;
+	const y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+	let grid = "";
+	for (let g = 0; g <= 4; ++g) {
+		const v = lo + (hi - lo) * g / 4;
+		grid += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v.toFixed(2)}</text>`;
+	}
+	return { y, grid };
+}
+
+function renderHistoryChart() {
+	const name = state.test, run = currentRun();
+	const points = runs.map((r, i) => ({ r, i })).filter(({ r }) => comparable(r, run) && r.Tests[name] && r.Tests[name].Perf)
+		.map(({ r, i }) => ({ i, id: r.Id, label: r.Label, s: scopeStats(r.Tests[name].Perf, state.scope) })).filter(p => p.s)
+		.map(p => ({ ...p, v: p.s.Ms }));
+
+	$("chartTitle").textContent = `${scopeLabel()} time history (ms, median line, min–P90 band)`;
+	const svg = $("historyChart");
+	const W = svg.clientWidth || 600, H = 220, L = 48, R = 12, T = 12, B = 28;
+	svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+	if (!points.length) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle">No data</text>`; return; }
+
+	const { y, grid } = valueAxis(points.flatMap(p => [p.s.MinMs, p.v, p.s.P90Ms]).filter(v => v != null), W, H, L, R, T, B);
+	const x = k => points.length === 1 ? (L + W - R) / 2 : L + k * (W - L - R) / (points.length - 1);
+
+	let out = grid;
+	const banded = points.map((p, k) => ({ ...p, k })).filter(p => p.s.P90Ms != null);
+	out += `<polygon class="band" points="${[...banded.map(p => `${x(p.k)},${y(p.s.P90Ms)}`), ...banded.reverse().map(p => `${x(p.k)},${y(p.s.MinMs)}`)].join(" ")}"/>`;
+	out += `<polyline class="line" points="${points.map((p, k) => `${x(k)},${y(p.v)}`).join(" ")}"/>`;
+	points.forEach((p, k) => {
+		const cls = p.i === state.runIdx ? "current" : (p.id === state.compare ? "compare" : "");
+		out += `<circle class="dot ${cls}" data-idx="${p.i}" cx="${x(k)}" cy="${y(p.v)}" r="4.5"><title>${esc(p.id)}${p.label ? " · " + esc(p.label) : ""}\nmin ${fmtMs(p.s.MinMs)} · median ${fmtMs(p.v)} · P90 ${fmtMs(p.s.P90Ms)} ms</title></circle>`;
+	});
+	const first = points[0].id.slice(0, 10), last = points[points.length - 1].id.slice(0, 10);
+	out += `<text x="${L}" y="${H - 8}">${esc(first)}</text><text x="${W - R}" y="${H - 8}" text-anchor="end">${esc(last)}</text>`;
+	svg.innerHTML = out;
+	for (const dot of svg.querySelectorAll(".dot")) dot.onclick = () => { state.runIdx = +dot.dataset.idx; render(); };
+}
+
+const perfSamples = {}, transientMemory = {}, scriptLoads = {};
+
+function loadRunScript(store, file, runId, name) {
+	const key = runId + "/" + name;
+	return scriptLoads[file + "|" + key] ??= new Promise(resolve => {
+		const script = document.createElement("script");
+		script.src = runFilePath(runId, name, file);
+		script.onload = () => resolve(store[key]);
+		script.onerror = () => resolve(null);
+		document.head.appendChild(script);
+	});
+}
+const loadSamples = (runId, name) => loadRunScript(perfSamples, "Samples.js", runId, name);
+const loadTransientMemory = (runId, name) => loadRunScript(transientMemory, "TransientMemory.js", runId, name);
+
+let samplesChartToken = 0;
+async function renderSamplesChart() {
+	const token = ++samplesChartToken;
+	const name = state.test, run = currentRun(), baseline = run.Tests[name].PerfBaseline;
+	const refIds = state.compare === "baseline" ? (baseline && baseline.Runs) || [] : [state.compare];
+	const [current, ...refAll] = await Promise.all([run.Id, ...refIds].map(id => loadSamples(id, name)));
+	if (token !== samplesChartToken) return;
+
+	const samples = current && current[state.scope];
+	const refLists = refAll.map(s => s && s[state.scope]).filter(Boolean);
+	const ref = refLists.length ? Array.from({ length: Math.min(...refLists.map(l => l.length)) }, (_, k) => {
+		const vs = refLists.map(l => l[k]).sort((a, b) => a - b), m = vs.length >> 1;
+		return vs.length % 2 ? vs[m] : (vs[m - 1] + vs[m]) / 2;
+	}) : [];
+
+	$("samplesTitle").textContent = `${scopeLabel()} per frame samples (ms)`;
+	const svg = $("samplesChart");
+	const W = svg.clientWidth || 600, H = 220, L = 48, R = 12, T = 12, B = 28;
+	svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+	if (!samples) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle">No samples</text>`; return; }
+
+	const framesNum = Math.max(samples.length, ref.length);
+	const { y, grid } = valueAxis(samples.concat(ref), W, H, L, R, T, B);
+	const x = k => framesNum === 1 ? (L + W - R) / 2 : L + k * (W - L - R) / (framesNum - 1);
+	const line = (cls, vals) => `<polyline class="${cls}" points="${vals.map((v, k) => `${x(k)},${y(v)}`).join(" ")}"/>`;
+
+	svg.innerHTML = grid + line("ref", ref) + line("line samples", samples)
+		+ `<text x="${L}" y="${H - 8}">frame 0</text><text x="${W - R}" y="${H - 8}" text-anchor="end">${framesNum - 1}</text>`;
+}
+
+function sparkline(name, path) {
+	const run = currentRun();
+	const vals = runs.filter(r => comparable(r, run) && r.Tests[name] && r.Tests[name].Perf).map(r => statMs(scopeStats(r.Tests[name].Perf, path), "Ms")).filter(v => v != null).slice(-20);
+	if (vals.length < 2) return "";
+	const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
+	const pts = vals.map((v, k) => `${k * 80 / (vals.length - 1)},${18 - (v - lo) / span * 16}`).join(" ");
+	return `<svg class="spark" width="80" height="20"><polyline points="${pts}"/></svg>`;
+}
+
+function renderPassHashes() {
+	const h = currentRun().Tests[state.test].PassHashes;
+	if (!h) { $("passHashes").innerHTML = `<div class="empty">No golden hashes for this test (accept a result to store them)</div>`; return; }
+
+	$("passHashes").innerHTML = `<div class="flip-stats"><span class="hash-Match">Match: <b>${h.Matched}</b></span><span class="hash-Mismatch">Mismatch: <b>${h.Mismatched}</b></span><span class="hash-New">Not in golden: <b>${h.New}</b></span></div>`;
+}
+
+function renderPassTable() {
+	const name = state.test, r = currentRun().Tests[name];
+	if (!r.Perf) { $("passFlags").innerHTML = ""; $("passTable").innerHTML = `<tbody><tr><td class="empty">No performance data</td></tr></tbody>`; return; }
+
+	const ref = comparePerf(name);
+	const regressions = new Set(r.PerfRegressions || []);
+	const workload = r.WorkloadChanges || {};
+	const scopeHashStatus = r.PassHashes ? r.PassHashes.ScopeStatus : {};
+	let paths = Object.keys(r.Perf.Scopes);
+
+	const flags = [
+		["regression", "Regression", p => regressions.has(p)],
+		["workload", "Workload changed", p => p in workload],
+		["pso", "PSO stats changed", p => !!r.PipelineStatisticsChanges?.[p]],
+		["memory", "Memory changed", p => isMemoryChanged(r.MemoryChanges, p)],
+		["hash", "Hash mismatch", p => scopeHashStatus[p] === "Mismatch"]
+	];
+	$("passFlags").innerHTML = flags.map(([id, label, check]) => `<button data-flag="${id}" class="${state.passFlags.has(id) ? "active" : ""}">${label} (${paths.filter(check).length})</button>`).join("");
+	for (const b of $("passFlags").querySelectorAll("button")) {
+		b.onclick = () => { state.passFlags.has(b.dataset.flag) ? state.passFlags.delete(b.dataset.flag) : state.passFlags.add(b.dataset.flag); renderPassTable(); };
+	}
+
+	// Active flags are alternatives, pass is shown if it has any of them
+	const filter = state.passFilter.trim().toLowerCase();
+	const activeChecks = flags.filter(([id]) => state.passFlags.has(id)).map(([, , check]) => check);
+	if (filter || activeChecks.length) {
+		const matches = p => p.toLowerCase().includes(filter) && (!activeChecks.length || activeChecks.some(check => check(p)));
+		const visible = new Set(paths.filter(matches));
+		if (state.passOrder === "tree") for (const p of [...visible]) { const parts = p.split("/"); for (let d = 1; d < parts.length; ++d) visible.add(parts.slice(0, d).join("/")); }
+		paths = paths.filter(p => visible.has(p));
+	}
+	if (state.passOrder === "delta") {
+		const d = p => Math.abs(r.Perf.Scopes[p].Ms - (statMs(scopeStats(ref, p), "Ms") ?? r.Perf.Scopes[p].Ms));
+		paths.sort((a, b) => d(b) - d(a));
+	} else if (state.passOrder === "time") {
+		paths.sort((a, b) => r.Perf.Scopes[b].Ms - r.Perf.Scopes[a].Ms);
+	}
+
+	const invocations = s => ["FS", "CS", "TS"].filter(k => s[k + "Invocations"] != null).map(k => `${k} ${s[k + "Invocations"].toLocaleString()}`).join(" · ");
+	const rows = paths.map(path => {
+		const s = r.Perf.Scopes[path];
+		const depth = path.split("/").length - 1;
+		const label = state.passOrder === "tree" ? path.split("/").pop() : path;
+		const refMs = statMs(scopeStats(ref, path), "Ms");
+		const flags = (regressions.has(path) ? ` ${badge("Regression")}` : "") + (path in workload ? ` <span class="warn">workload changed</span>` : "")
+			+ (r.PipelineStatisticsChanges?.[path] ? ` <span class="warn">pso stats changed</span>` : "")
+			+ (isMemoryChanged(r.MemoryChanges, path) ? ` <span class="warn">memory changed</span>` : "");
+		const hashStatus = scopeHashStatus[path];
+		return `<tr data-path="${esc(path)}" class="${path === state.scope ? "selected" : ""}">
+			<td><span class="pass-name ${hashStatus ? "hash-" + hashStatus : ""}" style="padding-left:${state.passOrder === "tree" ? depth * 14 : 0}px">${hashStatus ? `<span class="hash-dot"></span>` : ""}${esc(label)}</span>${flags}</td>
+			${timingCells(s)}<td class="num muted">${fmtMs(refMs)}</td>${deltaCell(s.Ms, refMs)}
+			<td>${sparkline(name, path)}</td>${memoryCell(s.TransientMemoryUsage, scopeStats(ref, path)?.TransientMemoryUsage)}<td class="muted">${invocations(s)}</td></tr>`;
+	});
+	$("passTable").innerHTML = `<thead><tr><th>Pass</th><th class="num">Min ms</th><th class="num">Median ms</th><th class="num">P90 ms</th><th class="num">Compare median ms</th><th class="num">Δ median ms</th><th class="num">Δ median %</th><th>History</th><th class="num">Transient MiB</th><th>Invocations</th></tr></thead><tbody>${rows.join("")}</tbody>`;
+	for (const tr of $("passTable").querySelectorAll("tbody tr")) tr.onclick = () => selectScope(tr.dataset.path);
+}
+
+function selectScope(path) {
+	state.scope = path;
+	renderHistoryChart();
+	renderSamplesChart();
+	renderMemoryChart();
+	renderPassTable();
+}
+
+let memoryChartToken = 0;
+async function renderMemoryChart() {
+	const token = ++memoryChartToken;
+	const name = state.test, run = currentRun(), r = run.Tests[name];
+	// Memory is compared with the last baseline run, the same one that memory changes are evaluated against
+	const refId = state.compare === "baseline" ? r.PerfBaseline?.Runs.at(-1) : state.compare;
+	const [current, ref] = await Promise.all([loadTransientMemory(run.Id, name), refId ? loadTransientMemory(refId, name) : null]);
+	if (token !== memoryChartToken) return;
+
+	const svg = $("memoryChart");
+	const W = svg.clientWidth || 600, H = 260, L = 56, R = 12, T = 12, B = 28;
+	svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+	const memory = r.Perf.Memory, refMemory = comparePerf(name)?.Memory;
+	$("memoryStats").innerHTML = [["Peak transient", "PeakTransientBytes"], ["Total allocated", "TotalAllocatedBytes"]]
+		.map(([label, key]) => `<span>${label}: <b>${fmtMiB(memory[key])} MiB</b>${memoryDelta(memory[key], refMemory?.[key])}</span>`).join("");
+
+	// Pass names repeat (e.g. per cascade), so passes are matched by (path, occurrence index)
+	const keyed = list => {
+		const occurrences = {};
+		return list.map(([path, bytes, allocations, deallocations]) => ({ path, bytes, allocations, deallocations, key: path + "|" + (occurrences[path] = (occurrences[path] ?? -1) + 1) }));
+	};
+	const points = keyed(current), refPoints = new Map(ref ? keyed(ref).map(p => [p.key, p]) : []);
+	for (const p of points) p.ref = refPoints.get(p.key);
+	// Allocation ids differ between runs, so only names and sizes are compared
+	const eventsKey = p => JSON.stringify([p.allocations, p.deallocations].map(events => events.map(e => e.slice(0, 2))));
+	const differs = p => !p.ref || p.ref.bytes !== p.bytes || eventsKey(p) !== eventsKey(p.ref);
+	const diffs = ref ? points.filter(differs).length : 0;
+
+	$("memoryLegend").innerHTML = `<span><i style="background:var(--chart-line)"></i>${esc(run.Id)}</span>`
+		+ (ref ? `<span><i style="background:var(--warn)"></i>${esc(refId)}</span><span><i class="dot" style="background:var(--warn)"></i>${diffs} pass(es) differ</span>` : "");
+
+	const { y, grid } = valueAxis(points.flatMap(p => [p.bytes, p.ref?.bytes ?? 0]).map(v => v / MiB), W, H, L, R, T, B, true);
+	const step = (W - L - R) / points.length, x = k => L + k * step, cx = k => x(k) + step / 2;
+	const stepLine = vals => {
+		let d = "", pen = "M";
+		vals.forEach((v, k) => { if (v == null) { pen = "M"; return; } d += `${pen}${x(k)},${y(v / MiB)}H${x(k + 1)}`; pen = "L"; });
+		return d;
+	};
+	const line = stepLine(points.map(p => p.bytes));
+	const peak = points.reduce((best, p, k) => p.bytes > points[best].bytes ? k : best, 0);
+
+	let out = grid + `<path class="area" d="M${x(0)},${y(0)}${line.replace(/^M/, "L")}V${y(0)}Z"/><rect class="lifetime" y="${T}" height="${H - B - T}" visibility="hidden"/>`;
+	points.forEach((p, k) => { if (p.path === state.scope) out += `<line class="sel" x1="${cx(k)}" x2="${cx(k)}" y1="${T}" y2="${H - B}"/>`; });
+	if (ref) out += `<path class="ref" d="${stepLine(points.map(p => p.ref?.bytes))}"/>`;
+	out += `<path class="line" d="${line}"/>`;
+	if (ref) points.forEach((p, k) => { if (differs(p)) out += `<circle class="diff" cx="${cx(k)}" cy="${y(p.bytes / MiB)}" r="4"/>`; });
+	const peakAnchor = cx(peak) > W / 2 ? "end" : "start", peakDx = peakAnchor === "end" ? -8 : 8;
+	out += `<circle class="peak" cx="${cx(peak)}" cy="${y(points[peak].bytes / MiB)}" r="4.5"/>`
+		+ `<text x="${cx(peak) + peakDx}" y="${y(points[peak].bytes / MiB) - 6}" text-anchor="${peakAnchor}">peak ${fmtMiB(points[peak].bytes)} MiB ·${esc(points[peak].path.split("/").pop())}</text>`;
+	out += `<line class="crosshair" y1="${T}" y2="${H - B}" visibility="hidden"/>`
+		+ `<text x="${L}" y="${H - 8}">pass 1</text><text x="${W - R}" y="${H - 8}" text-anchor="end">${points.length}</text>`;
+	svg.innerHTML = out;
+
+	const hit = e => {
+		const rect = svg.getBoundingClientRect(), k = Math.floor(((e.clientX - rect.left) * W / rect.width - L) / step);
+		return k >= 0 && k < points.length ? k : null;
+	};
+	const crosshair = svg.querySelector(".crosshair"), popup = $("memoryPopup");
+	svg.onmousemove = e => {
+		const k = hit(e);
+		if (k == null) { popup.hidden = true; crosshair.setAttribute("visibility", "hidden"); return; }
+		const p = points[k];
+		crosshair.setAttribute("x1", cx(k)); crosshair.setAttribute("x2", cx(k)); crosshair.setAttribute("visibility", "visible");
+		popup.innerHTML = `<b>${esc(p.path.split("/").pop())}</b><div class="muted">${esc(p.path)}</div><table>
+			<tr><td class="muted">Pass</td><td class="num">${k + 1} / ${points.length}</td></tr>
+			<tr><td class="muted">Transient</td><td class="num">${fmtMiB(p.bytes)} MiB</td></tr>
+			${ref ? `<tr><td class="muted">Compare</td><td class="num">${fmtMiB(p.ref?.bytes)} MiB${memoryDelta(p.bytes, p.ref?.bytes)}</td></tr>` : ""}
+			${eventRows("Allocated at pass start", "+", p.allocations, ref && (p.ref?.allocations ?? []))}
+			${eventRows("Released at pass end", "−", p.deallocations, ref && (p.ref?.deallocations ?? []))}</table>`;
+		showPopup(popup, e);
+	};
+	svg.onmouseleave = () => { popup.hidden = true; crosshair.setAttribute("visibility", "hidden"); };
+	svg.onclick = e => { const k = hit(e); if (k != null && r.Perf.Scopes[points[k].path]) selectScope(points[k].path); };
+
+	renderResourcesTable(points, svg.querySelector(".lifetime"), x);
+}
+
+// Multiset difference of [name, size] events
+function eventsDiff(events, refEvents) {
+	const removed = [...refEvents], added = new Set();
+	for (const e of events) {
+		const i = removed.findIndex(o => o[0] === e[0] && o[1] === e[1]);
+		if (i < 0) added.add(e); else removed.splice(i, 1);
+	}
+	return { added, removed };
+}
+
+function eventRows(label, sign, events, refEvents) {
+	const { added, removed } = refEvents ? eventsDiff(events, refEvents) : { added: new Set(), removed: [] };
+	if (!events.length && !removed.length) return "";
+	return `<tr><td class="muted" colspan="2">${label}</td></tr>`
+		+ events.map(e => `<tr class="${added.has(e) ? "warn" : ""}"><td>${sign} ${esc(e[0])}</td><td class="num">${fmtMiB(e[1])}</td></tr>`).join("")
+		+ removed.map(e => `<tr class="muted"><td><s>${sign} ${esc(e[0])}</s></td><td class="num"><s>${fmtMiB(e[1])}</s></td></tr>`).join("");
+}
+
+// Resource lives in [first, last] passes, last is null when it's still alive at the end of the frame.
+// Events are matched by allocation id, runs recorded before ids were added match them by name and size.
+// Ids are addresses that can be reused by the next render graph of the frame, so release matches the newest alive resource
+function transientResources(points) {
+	const alive = new Map(), resources = [], key = ([name, size, id]) => id ?? name + "|" + size;
+	points.forEach((p, k) => {
+		for (const e of p.allocations) {
+			const [name, size] = e, resource = { name, size, first: k, last: null };
+			resources.push(resource);
+			if (!alive.has(key(e))) alive.set(key(e), []);
+			alive.get(key(e)).push(resource);
+		}
+		for (const e of p.deallocations) alive.get(key(e)).pop().last = k;
+	});
+	return resources.sort((a, b) => b.size - a.size);
+}
+
+function renderResourcesTable(points, lifetimeRect, x) {
+	const resources = transientResources(points), passName = k => esc(points[k].path.split("/").pop());
+	const end = res => (res.last ?? points.length - 1) + 1;
+	const filterText = res => [res.name, points[res.first].path, res.last != null ? points[res.last].path : ""].join("\n").toLowerCase();
+	$("resourcesTable").innerHTML = `<thead><tr><th>Resource</th><th class="num">Size MiB</th><th>First pass (allocated)</th><th>Last pass (released)</th><th class="num">Lifetime (passes)</th></tr></thead><tbody>`
+		+ resources.map((res, i) => `<tr data-idx="${i}" data-filter="${esc(filterText(res))}"><td>${esc(res.name)}</td><td class="num">${fmtMiB(res.size)}</td><td>${passName(res.first)}</td>
+			<td>${res.last != null ? passName(res.last) : `<span class="muted">alive at end of frame</span>`}</td><td class="num">${end(res) - res.first}</td></tr>`).join("") + "</tbody>";
+	for (const tr of $("resourcesTable").querySelectorAll("tbody tr")) {
+		const res = resources[+tr.dataset.idx];
+		tr.onmouseenter = () => { lifetimeRect.setAttribute("x", x(res.first)); lifetimeRect.setAttribute("width", x(end(res)) - x(res.first)); lifetimeRect.setAttribute("visibility", "visible"); };
+		tr.onmouseleave = () => lifetimeRect.setAttribute("visibility", "hidden");
+		tr.onclick = () => { if (currentRun().Tests[state.test].Perf.Scopes[points[res.first].path]) selectScope(points[res.first].path); };
+	}
+	filterResources();
+}
+
+function filterResources() {
+	const filter = state.resourceFilter.trim().toLowerCase(), rows = [...$("resourcesTable").querySelectorAll("tbody tr")];
+	for (const tr of rows) tr.hidden = !tr.dataset.filter.includes(filter);
+	const visible = rows.filter(tr => !tr.hidden).length;
+	$("resourcesTitle").innerHTML = `Transient resources <span class="muted">${filter ? `${visible} / ${rows.length}` : rows.length}</span>`;
+}
+
+function render() {
+	if (!runs.length) { document.querySelector("main").innerHTML = `<h1>Sculptor Render Tests</h1><div class="panel empty">No runs yet. Run: python RenderTests.py run</div>`; return; }
+	renderRunSelectors();
+	renderRunSummary();
+	if (state.test && !currentRun().Tests[state.test]) state.test = null;
+	renderTestsTable();
+	$("detail").hidden = !state.test;
+	if (state.test) {
+		$("detailTitle").textContent = state.test;
+		const command = currentRun().Tests[state.test].Command;
+		$("testCommandRow").hidden = !command;
+		$("testCommand").textContent = command || "";
+		renderImages();
+		renderSettings();
+		renderHistoryChart();
+		renderSamplesChart();
+		renderMemoryChart();
+		renderPassHashes();
+		renderPassTable();
+	}
+}
+
+$("runSelect").onchange = e => { state.runIdx = +e.target.value; render(); };
+$("compareSelect").onchange = e => { state.compare = e.target.value; render(); };
+$("copyCommand").onclick = async () => {
+	await navigator.clipboard.writeText($("testCommand").textContent);
+	$("copyCommand").textContent = "Copied";
+	setTimeout(() => { $("copyCommand").textContent = "Copy"; }, 1500);
+};
+$("expandSettings").onclick = () => { for (const d of $("settings").querySelectorAll("details")) d.open = true; };
+$("collapseSettings").onclick = () => { for (const d of $("settings").querySelectorAll("details")) d.open = false; };
+$("passOrder").onchange =e => { state.passOrder = e.target.value; renderPassTable(); };
+$("passFilter").oninput = e => { state.passFilter = e.target.value; renderPassTable(); };
+$("resourceFilter").oninput = e => { state.resourceFilter = e.target.value; filterResources(); };
+$("passTable").onmousemove = e => {
+	const tr = e.target.closest("tr[data-path]"), popup = $("passPopup");
+	if (!tr) { popup.hidden = true; return; }
+	const path = tr.dataset.path, result = currentRun().Tests[state.test];
+	// Parent scopes have no PSO, so they have no pipeline statistics
+	const stats = result.Perf.Scopes[path].PipelineStatistics;
+	const hashStatus = result.PassHashes?.ScopeStatus[path];
+	// Parent scopes inherit mismatch status from children, so mismatched outputs of the whole subtree are listed
+	const mismatches = Object.entries(result.PassHashes?.ScopeMismatches || {}).filter(([p]) => p === path || p.startsWith(path + "/"))
+		.flatMap(([p, outputs]) => outputs.map(o => p === path ? o : `${p.slice(path.length + 1)}: ${o}`));
+	const workloadChanges = result.WorkloadChanges?.[path];
+	const memoryChanged = isMemoryChanged(result.MemoryChanges, path);
+	if (!stats && !hashStatus && !workloadChanges && !memoryChanged) { popup.hidden = true; return; }
+
+	const goldenChanges = result.PipelineStatisticsChanges;
+	const fmt = v => typeof v === "boolean" ? (v ? "yes" : "no") : Number.isInteger(v) ? v.toLocaleString() : v.toFixed(3);
+	const change = (v, ref) => ref === undefined || v === ref ? "" : `<span class="warn">${typeof v === "number" ? (v > ref ? "▲" : "▼") : "≠"} ${fmt(ref)}</span>`;
+	popup.innerHTML = `<b>${esc(path.split("/").pop())}</b>
+		${hashStatus ? `<div class="hash-${hashStatus}">Golden frame outputs: ${hashStatus}</div>${mismatches.map(o => `<div class="muted">· ${esc(o)}</div>`).join("")}` : ""}
+		${workloadChanges ? `<div class="warn" style="margin-top:4px">Invocation counts differ from golden</div>
+		<table>${Object.entries(workloadChanges).map(([k, golden]) => `<tr><td class="muted">${k}</td><td class="num">${result.Perf.Scopes[path][k]?.toLocaleString() ?? "–"}</td><td class="warn">golden: ${golden?.toLocaleString() ?? "–"}</td></tr>`).join("")}</table>` : ""}
+		${memoryChanged && path in result.MemoryChanges.Scopes ? `<div class="warn">Transient memory ${fmtMiB(result.Perf.Scopes[path].TransientMemoryUsage)} MiB, previous run: ${fmtMiB(result.MemoryChanges.Scopes[path])} MiB</div>` : ""}
+		${memoryChanged && path in result.MemoryChanges.Allocations ? `<div class="warn">Transient allocations differ from previous run (see transient memory chart)</div>` : ""}
+		${stats ? `<div class="muted" style="margin-top:4px">Pipeline statistics ${goldenChanges ? "vs golden" : "(no golden)"}</div>
+		<table>${Object.entries(stats).map(([k, v]) => `<tr><td class="muted">${esc(k)}</td><td class="num">${fmt(v)}</td><td>${change(v, goldenChanges?.[path]?.[k])}</td></tr>`).join("")}</table>` : ""}`;
+	showPopup(popup, e);
+};
+$("passTable").onmouseleave = () => { $("passPopup").hidden = true; };
+window.addEventListener("scroll", () => { $("passPopup").hidden = true; $("memoryPopup").hidden = true; });
+window.addEventListener("resize", () => { if (state.test) { renderHistoryChart(); renderSamplesChart(); renderMemoryChart(); } });
+render();
+</script>
+</body>
+</html>

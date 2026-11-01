@@ -343,14 +343,16 @@ static rdr::PipelineStateID CompileResampleSpatiallyPipeline(Uint32 samplesNum, 
 }
 
 
-static void ResampleSpatially(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const rdr::GPUPtr<SRResamplingConstants>& resamplingConstants, const SpatialResamplingPassParams& passParams, utils::ReservoirsState& reservoirsState)
+static void ResampleSpatially(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const rdr::GPUPtr<SRResamplingConstants>& resamplingConstants, const SpatialResamplingPassParams& passParams, Uint32 passIdx, utils::ReservoirsState& reservoirsState)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const math::Vector2u resolution = params.GetResolution();
 
+	constexpr Uint32 baseSeed = 0x5E81C4A7u;
+
 	SpatialResamplingPassConstants passConstants;
-	passConstants.seed                         = lib::rnd::RandomFromTypeDomain<Uint32>();
+	passConstants.seed                         = static_cast<Uint32>(lib::HashCombine(baseSeed, params.viewSpec.GetFrameIdx(), passIdx));
 	passConstants.resamplingRangeMultiplier    = passParams.resamplingRangeMultiplier;
 	passConstants.resampleOnlyFromTracedPixels = passParams.resampleOnlyFromTracedPixels;
 	passConstants.depthTexture                 = params.depthTexture;
@@ -474,6 +476,8 @@ static void ResolveReservoirs(rg::RenderGraphBuilder& graphBuilder, const Resamp
 
 	const math::Vector2u resolution = params.GetResolution();
 
+	const ShadingViewContext& shadingContext = params.viewSpec.GetShadingViewContext();
+
 	ResolveReservoirsParams shaderConstants;
 	shaderConstants.depthTexture                  = params.depthTexture;
 	shaderConstants.normalsTexture                = params.normalsTexture;
@@ -492,7 +496,7 @@ static void ResolveReservoirs(rg::RenderGraphBuilder& graphBuilder, const Resamp
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Resolve Reservoirs"),
 						  ResolveReservoirsPSO::pso,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
-						  rg::ShaderParams(shaderConstants));
+						  rg::ShaderParams(shaderConstants, shadingContext.cloudscapeProbesParams));
 }
 
 } // resolve
@@ -616,9 +620,9 @@ void SpatiotemporalResampler::ExecuteFinalResampling(rg::RenderGraphBuilder& gra
 		firefly_filter::FireflyFilter(graphBuilder, params, resamplingConstants, reservoirsState);
 	}
 
-	for (const SpatialResamplingPassParams& spatialPassParams : params.spatialResamplingPasses)
+	for (SizeType passIdx = 0u; passIdx < params.spatialResamplingPasses.size(); ++passIdx)
 	{
-		spatial::ResampleSpatially(graphBuilder, params, resamplingConstants, spatialPassParams, reservoirsState);
+		spatial::ResampleSpatially(graphBuilder, params, resamplingConstants, params.spatialResamplingPasses[passIdx], static_cast<Uint32>(passIdx), reservoirsState);
 	}
 
 	final_visibility::ExecuteFinalVisibilityTest(graphBuilder, params, resamplingConstants, reservoirsState);

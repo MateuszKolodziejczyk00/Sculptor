@@ -80,4 +80,21 @@ VmaAllocator VulkanMemoryManager::GetAllocatorHandle() const
 	return m_allocator;
 }
 
+rhi::RHIMemoryUsageStats VulkanMemoryManager::GetMemoryUsageStats() const
+{
+	SPT_PROFILER_FUNCTION();
+
+	VmaBudget budgets[VK_MAX_MEMORY_HEAPS] = {};
+	vmaGetHeapBudgets(m_allocator, budgets);
+
+	rhi::RHIMemoryUsageStats stats;
+
+	for (Uint32 heapIdx = 0; heapIdx < VK_MAX_MEMORY_HEAPS; ++heapIdx)
+	{
+		stats.totalAllocatedBytes += budgets[heapIdx].usage;
+	}
+
+	return stats;
 }
+
+} // spt::vulkan

@@ -54,3 +54,6 @@
 [submodule "Source/ThirdParty/TinyTIFF/TinyTIFF"]
 	path = Source/ThirdParty/TinyTIFF/TinyTIFF
 	url = https://github.com/jkriege2/TinyTIFF
+[submodule "Source/ThirdParty/CGLTF/CGLTF"]
+	path = Source/ThirdParty/CGLTF/CGLTF
+	url = https://github.com/jkuhlmann/cgltf

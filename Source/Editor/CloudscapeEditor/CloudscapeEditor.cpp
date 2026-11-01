@@ -47,7 +47,7 @@ void CloudscapeEditorUIView::DrawUI()
 	ImGui::Begin(m_windowName.GetData());
 
 	EditorFrameContext& editorFrameContext = static_cast<EditorFrameContext&>(scui::ApplicationUI::GetCurrentContext().GetCurrentFrame());
-	editorFrameContext.cloudscapeEditorState = editorFrameContext.GetFrameMemoryArena().AllocateType<CloudscapeEditorFrameState>();
+	editorFrameContext.cloudscapeEditorState = editorFrameContext.GetFrameMemoryArena().Allocate<CloudscapeEditorFrameState>();
 	CloudscapeEditorFrameState& edFrameState = *editorFrameContext.cloudscapeEditorState;
 
 	editorFrameContext.cloudscapeEditorStateDeleter = [](CloudscapeEditorFrameState* state)

@@ -53,30 +53,37 @@ Real32 Profiler::GetAverageFrameTime() const
 	return m_recentFrameTimesNum > 0 ? m_recentFrameTimesSum / static_cast<Real32>(m_recentFrameTimesNum) : 0.f;
 }
 
-void Profiler::SetGPUFrameStatistics(GPUProfilerStatistics frameStatistics)
+void Profiler::SetGPUFrameStatistics(math::Vector2u resolution, rdr::GPUStatisticsCollector& collector)
 {
 	const lib::LockGuard lock(m_newFrameStatisticsLock);
-	m_newFrameStatistics = std::move(frameStatistics);
+
+	GPUProfilerStatistics& newStatistics = m_gpuFrameStatistics[1u - m_activeGPUFrameStatisticsIdx];
+	newStatistics.resolution = resolution;
+	collector.CollectStatistics(OUT newStatistics.frameStatistics);
+
+	m_hasNewGPUFrameStatistics = true;
 }
 
 void Profiler::FlushNewGPUFrameStatistics()
 {
 	const lib::LockGuard lock(m_newFrameStatisticsLock);
-	if (m_newFrameStatistics)
+	if (m_hasNewGPUFrameStatistics)
 	{
-		m_gpuFrameStatistics = std::move(*m_newFrameStatistics);
-		m_newFrameStatistics = std::nullopt;
+		m_activeGPUFrameStatisticsIdx = 1u - m_activeGPUFrameStatisticsIdx;
+		m_hasNewGPUFrameStatistics    = false;
 	}
 
+	const GPUProfilerStatistics& activeStatistics = m_gpuFrameStatistics[m_activeGPUFrameStatisticsIdx];
+	if (activeStatistics.frameStatistics.fullScope)
 	{
 		const lib::LockGuard lockGuard(m_scopeMetricsLock);
-		FlushScopeMetrics(m_gpuFrameStatistics.frameStatistics);
+		FlushScopeMetrics(*activeStatistics.frameStatistics.fullScope);
 	}
 }
 
 const GPUProfilerStatistics& Profiler::GetGPUFrameStatistics() const
 {
-	return m_gpuFrameStatistics;
+	return m_gpuFrameStatistics[m_activeGPUFrameStatisticsIdx];
 }
 
 Profiler::Profiler()

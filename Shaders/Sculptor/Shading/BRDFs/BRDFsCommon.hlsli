@@ -5,7 +5,7 @@ struct SurfaceGeometry
 {
 	float3 location;
 	float3 geoNormal;
-}
+};
 
 
 struct ShadedSurface
@@ -36,7 +36,7 @@ struct ShadingVectors
 		lightDir   = inLightDir;
 		halfVector = normalize(inViewDir + inLightDir);
 
-		NoL = saturate(dot(normal, lightDir));
+		NoL = clamp(dot(normal, lightDir), 0.0001f, 1.f);
 		NoV = clamp(dot(normal, viewDir), 0.0001f, 1.f);
 		NoH = clamp(dot(normal, halfVector), 0.0001f, 1.f);
 		VoH = clamp(dot(viewDir, halfVector), 0.0001f, 1.f);

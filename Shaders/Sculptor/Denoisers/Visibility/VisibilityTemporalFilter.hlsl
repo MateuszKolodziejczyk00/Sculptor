@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[shader_params(TemporalFilterShaderParams, PARAMS_VISIBILITY_TEMPORAL_FILTER)]]
 [[shader_params(GPURenderView, VIEW)]]
+[[shader_params(TemporalFilterShaderParams, CONSTS)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Sampling.hlsli"
@@ -24,47 +24,47 @@ void TemporalFilterCS(CS_INPUT input)
 {
 	const int2 pixel = input.globalID.xy;
 	
-	uint2 outputRes = PARAMS_VISIBILITY_TEMPORAL_FILTER->currentTexture.GetResolution();
+	uint2 outputRes = CONSTS->currentTexture.GetResolution();
 
 	if(pixel.x < outputRes.x && pixel.y < outputRes.y)
 	{
 		const float2 pixelSize = rcp(float2(outputRes));
 		const float2 uv = (float2(pixel) + 0.5f) * pixelSize;
 
-		const float2 moments = PARAMS_VISIBILITY_TEMPORAL_FILTER->spatialMomentsTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0.f).xx;
+		const float2 moments = CONSTS->spatialMomentsTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0.f).xx;
 		const float neighbourhoodMean = moments.x;
 		const float neighbourhoodVariance = abs(moments.x - Pow2(moments.y));
 
 		if(neighbourhoodVariance == 0.f)
 		{
-			PARAMS_VISIBILITY_TEMPORAL_FILTER->temporalMomentsTexture[pixel] = float2(neighbourhoodMean, neighbourhoodMean); // has to be either 0 or 1
-			PARAMS_VISIBILITY_TEMPORAL_FILTER->varianceTexture[pixel]        = 0.f;
+			CONSTS->temporalMomentsTexture[pixel] = float2(neighbourhoodMean, neighbourhoodMean); // has to be either 0 or 1
+			CONSTS->varianceTexture[pixel]        = 0.f;
 			return;
 		}
 
-		float2 motion = PARAMS_VISIBILITY_TEMPORAL_FILTER->motionTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0.f);
+		float2 motion = CONSTS->motionTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0.f);
 
 		const float2 historyUV = uv - motion;
 
 		bool wasSampleAccepted = false;
 		uint historySampleCount = 0;
 
-		const float currentValue = PARAMS_VISIBILITY_TEMPORAL_FILTER->currentTexture[pixel];
+		const float currentValue = CONSTS->currentTexture[pixel];
 
 		if (all(historyUV >= 0.f) && all(historyUV <= 1.f))
 		{
-			const float currentDepth = PARAMS_VISIBILITY_TEMPORAL_FILTER->depthTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0.f);
+			const float currentDepth = CONSTS->depthTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0.f);
 			const float3 currentNDC = float3(uv * 2.f - 1.f, currentDepth);
 			const float3 currentSampleWS = NDCToWorldSpaceNoJitter(currentNDC, VIEW->sceneView);
 
 			const float4 prevFrameClip = mul(VIEW->prevFrameSceneView.viewProjectionMatrixNoJitter, float4(currentSampleWS, 1.f));
 			const float2 prevFrameUV = (prevFrameClip.xy / prevFrameClip.w) * 0.5f + 0.5f;
 		
-			const float3 currentSampleNormal = OctahedronDecodeNormal(PARAMS_VISIBILITY_TEMPORAL_FILTER->normalsTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0.0f));
+			const float3 currentSampleNormal = OctahedronDecodeNormal(CONSTS->normalsTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0.0f));
 
 			const Plane currentSamplePlane = Plane::Create(currentSampleNormal, currentSampleWS);
 
-			const float historySampleDepth = PARAMS_VISIBILITY_TEMPORAL_FILTER->historyDepthTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), historyUV, 0.f);
+			const float historySampleDepth = CONSTS->historyDepthTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), historyUV, 0.f);
 
 			const float2 historySampleUV = round(historyUV * float2(outputRes)) * pixelSize;
 			const float3 historySampleNDC = float3(historySampleUV * 2.f - 1.f, historySampleDepth);
@@ -78,15 +78,15 @@ void TemporalFilterCS(CS_INPUT input)
 
 			if (sampleDistance <= distanceThreshold)
 			{
-				float currentFrameWeight = PARAMS_VISIBILITY_TEMPORAL_FILTER->currentFrameDefaultWeight;
+				float currentFrameWeight = CONSTS->currentFrameDefaultWeight;
 				const int2 historyPixel = round(historyUV * outputRes);
-				historySampleCount = PARAMS_VISIBILITY_TEMPORAL_FILTER->accumulatedSamplesNumHistoryTexture.Load(int3(historyPixel, 0));
+				historySampleCount = CONSTS->accumulatedSamplesNumHistoryTexture.Load(int3(historyPixel, 0));
 				currentFrameWeight = max(currentFrameWeight * 0.1f, rcp(float(historySampleCount + 1)));
 
 #if USE_CATMULL_ROM
-				float historyValue = SampleCatmullRom(PARAMS_VISIBILITY_TEMPORAL_FILTER->historyTexture, BindlessSamplers::LinearClampEdge(), historyUV, outputRes);
+				float historyValue = SampleCatmullRom(CONSTS->historyTexture, BindlessSamplers::LinearClampEdge(), historyUV, outputRes);
 #else
-				float historyValue = PARAMS_VISIBILITY_TEMPORAL_FILTER->historyTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), historyUV, 0.0f);
+				float historyValue = CONSTS->historyTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), historyUV, 0.0f);
 #endif // USE_CATMULL_ROM
 
 				const float spatialStdDev = sqrt(neighbourhoodVariance);
@@ -113,20 +113,20 @@ void TemporalFilterCS(CS_INPUT input)
 				const float2 temporalMoments = float2(currentValue, Pow2(currentValue));
 
 #if USE_CATMULL_ROM
-				const float2 historyTemporalMoments = saturate(SampleCatmullRom(PARAMS_VISIBILITY_TEMPORAL_FILTER->temporalMomentsHistoryTexture, BindlessSamplers::LinearClampEdge(), historyUV, outputRes));
+				const float2 historyTemporalMoments = saturate(SampleCatmullRom(CONSTS->temporalMomentsHistoryTexture, BindlessSamplers::LinearClampEdge(), historyUV, outputRes));
 #else
-				const float2 historyTemporalMoments = PARAMS_VISIBILITY_TEMPORAL_FILTER->temporalMomentsHistoryTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), historyUV, 0.0f);
+				const float2 historyTemporalMoments = CONSTS->temporalMomentsHistoryTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), historyUV, 0.0f);
 #endif // USE_CATMULL_ROM
 
 				half2 newTemporalMoments = half2(lerp(historyTemporalMoments, temporalMoments, currentMomentsWeight));
 				newTemporalMoments.x = newTemporalMoments.x == historyTemporalMoments.x ? half(temporalMoments.x) : newTemporalMoments.x;
 				newTemporalMoments.y = newTemporalMoments.y == historyTemporalMoments.y ? half(temporalMoments.y) : newTemporalMoments.y;
 
-				PARAMS_VISIBILITY_TEMPORAL_FILTER->temporalMomentsTexture[pixel] = newTemporalMoments;
+				CONSTS->temporalMomentsTexture[pixel] = newTemporalMoments;
 
 				float temporalVariance = abs(newTemporalMoments.y - Pow2(newTemporalMoments.x));
 
-				PARAMS_VISIBILITY_TEMPORAL_FILTER->currentTexture[pixel] = newValue;
+				CONSTS->currentTexture[pixel] = newValue;
 				if(historySampleCount < VARIANCE_BOOST_FRAMES_NUM)
 				{
 					temporalVariance *= max(VARIANCE_BOOST_FRAMES_NUM - historySampleCount, 1.f);
@@ -134,20 +134,20 @@ void TemporalFilterCS(CS_INPUT input)
 				}
 
 				temporalVariance = max(temporalVariance - 0.015f * saturate(ComputeLinearDepth(currentDepth, VIEW->sceneView) / MAX_VARIANCE_REDUCTION_DIST), 0.f);
-				PARAMS_VISIBILITY_TEMPORAL_FILTER->varianceTexture[pixel] = temporalVariance;
+				CONSTS->varianceTexture[pixel] = temporalVariance;
 
 				wasSampleAccepted = true;
 			}
 
 		}
 
-		const uint newSampleCount = wasSampleAccepted ? min(historySampleCount + 1u, PARAMS_VISIBILITY_TEMPORAL_FILTER->accumulatedFramesMaxCount) : 0u;
-		PARAMS_VISIBILITY_TEMPORAL_FILTER->accumulatedSamplesNumTexture[pixel] = newSampleCount;
+		const uint newSampleCount = wasSampleAccepted ? min(historySampleCount + 1u, CONSTS->accumulatedFramesMaxCount) : 0u;
+		CONSTS->accumulatedSamplesNumTexture[pixel] = newSampleCount;
 
 		if(!wasSampleAccepted)
 		{
-			PARAMS_VISIBILITY_TEMPORAL_FILTER->varianceTexture[pixel]        = neighbourhoodVariance * 8.f;
-			PARAMS_VISIBILITY_TEMPORAL_FILTER->temporalMomentsTexture[pixel] = 0.f;
+			CONSTS->varianceTexture[pixel]        = neighbourhoodVariance * 8.f;
+			CONSTS->temporalMomentsTexture[pixel] = 0.f;
 		}
 	}
 }

@@ -78,6 +78,8 @@ PipelineStateID PipelinesCache::GetOrCreateGfxPipeline(const RendererResourceNam
 				hotReloadData.pipelineDef                = pipelineDef;
 				m_graphicsPipelineHotReloadData[stateID] = hotReloadData;
 
+				const lib::LockGuard shaderToPipelineStatesLockGuard(m_shaderToPipelineStatesLock);
+
 				if (shaders.vertexShader.IsValid())
 				{
 					m_shaderToPipelineStates[shaders.vertexShader].emplace_back(stateID);
@@ -135,6 +137,7 @@ PipelineStateID PipelinesCache::GetOrCreateComputePipeline(const RendererResourc
 				hotReloadData.shader = shader;
 				m_computePipelineHotReloadData[stateID] = hotReloadData;
 
+				const lib::LockGuard shaderToPipelineStatesLockGuard(m_shaderToPipelineStatesLock);
 				m_shaderToPipelineStates[shader].emplace_back(stateID);
 #endif // WITH_SHADERS_HOT_RELOAD
 			}
@@ -177,6 +180,8 @@ PipelineStateID PipelinesCache::GetOrCreateRayTracingPipeline(const RendererReso
 				hotReloadData.shaders                      = shaders;
 				hotReloadData.pipelineDef                  = pipelineDef;
 				m_rayTracingPipelineHotReloadData[stateID] = hotReloadData;
+
+				const lib::LockGuard shaderToPipelineStatesLockGuard(m_shaderToPipelineStatesLock);
 
 				m_shaderToPipelineStates[shaders.rayGenShader].emplace_back(stateID);
 				for (const RayTracingHitGroup& group : shaders.hitGroups)

@@ -447,14 +447,14 @@ void RHICommandBuffer::AddBatchedBLASBuild(const RHIBottomLevelAS& blas, const r
 	SPT_CHECK(buildInfo.trianglesBuildInfo.primitivesNum > 0);
 	SPT_CHECK(buildInfo.trianglesBuildInfo.primitivesNum <= blas.GetMaxPrimitivesCount());
 
-	VkAccelerationStructureGeometryKHR* geometry = m_memArena->AllocateType<VkAccelerationStructureGeometryKHR>();
+	VkAccelerationStructureGeometryKHR* geometry = m_memArena->Allocate<VkAccelerationStructureGeometryKHR>();
 
 	VkAccelerationStructureBuildGeometryInfoKHR& vkBuildInfo = m_BLASBuildsBatchState.buildInfos[m_BLASBuildsBatchState.buildsNum];
 	vkBuildInfo = blas.CreateBuildGeometryInfo(OUT *geometry, &buildInfo);
 	vkBuildInfo.dstAccelerationStructure  = blas.GetHandle();
 	vkBuildInfo.scratchData.deviceAddress = scratchBuffer.GetDeviceAddress() + scratchBufferOffset;
 
-	VkAccelerationStructureBuildRangeInfoKHR* buildRangeInfo = m_memArena->AllocateType<VkAccelerationStructureBuildRangeInfoKHR>();
+	VkAccelerationStructureBuildRangeInfoKHR* buildRangeInfo = m_memArena->Allocate<VkAccelerationStructureBuildRangeInfoKHR>();
 	buildRangeInfo->primitiveCount = buildInfo.trianglesBuildInfo.primitivesNum;
 
 	m_BLASBuildsBatchState.buildRanges[m_BLASBuildsBatchState.buildsNum] = buildRangeInfo;
@@ -565,7 +565,15 @@ void RHICommandBuffer::ClearTexture(const RHITexture& texture, const rhi::ClearC
 	vulkanSubresourceRange.baseArrayLayer	= subresourceRange.baseArrayLayer;
 	vulkanSubresourceRange.layerCount		= subresourceRange.arrayLayersNum == rhi::constants::allRemainingArrayLayers ? VK_REMAINING_ARRAY_LAYERS : subresourceRange.arrayLayersNum;
 
-	vkCmdClearColorImage(m_cmdBufferHandle, texture.GetHandle(), textureLayout, reinterpret_cast<const VkClearColorValue*>(&clearColor), 1, &vulkanSubresourceRange);
+	if (lib::HasAnyFlag(subresourceRange.aspect, lib::Flags(rhi::ETextureAspect::Depth, rhi::ETextureAspect::Stencil)))
+	{
+		const VkClearDepthStencilValue clearValue{ clearColor.asDepthStencil.depth, clearColor.asDepthStencil.stencil };
+		vkCmdClearDepthStencilImage(m_cmdBufferHandle, texture.GetHandle(), textureLayout, &clearValue, 1, &vulkanSubresourceRange);
+	}
+	else
+	{
+		vkCmdClearColorImage(m_cmdBufferHandle, texture.GetHandle(), textureLayout, reinterpret_cast<const VkClearColorValue*>(&clearColor), 1, &vulkanSubresourceRange);
+	}
 }
 
 void RHICommandBuffer::CopyTexture(const RHITexture& source, const rhi::TextureCopyRange& sourceRange, const RHITexture& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent)

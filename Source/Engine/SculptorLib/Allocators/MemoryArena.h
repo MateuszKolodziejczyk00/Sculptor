@@ -98,7 +98,7 @@ public:
 	}
 
 	template<typename TType, typename... TArgs>
-	TType* AllocateType(TArgs&&... args)
+	TType* Allocate(TArgs&&... args)
 	{
 		void* const ptr = (void*)Allocate(sizeof(TType), alignof(TType));
 		return new (ptr) TType(std::forward<TArgs>(args)...);
@@ -109,6 +109,17 @@ public:
 	{
 		void* const ptr = (void*)Allocate(sizeof(TType) * elementsNum, alignof(TType));
 		return lib::Span<TType>(reinterpret_cast<TType*>(ptr), elementsNum);
+	}
+
+	template<typename TType>
+	lib::Span<TType> AllocateSpan(Uint64 elementsNum)
+	{
+		const lib::Span<TType> span = AllocateSpanUninitialized<TType>(elementsNum);
+		for (TType& element : span)
+		{
+			new (&element) TType();
+		}
+		return span;
 	}
 
 	template<typename TType>

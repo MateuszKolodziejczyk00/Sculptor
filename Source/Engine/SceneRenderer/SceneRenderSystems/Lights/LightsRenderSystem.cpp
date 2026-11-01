@@ -10,7 +10,6 @@
 #include "RGResources/RGResourceHandles.h"
 #include "RenderGraphBuilder.h"
 #include "Common/ShaderCompilationInput.h"
-#include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "ViewShadingInput.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 #include "SceneRenderSystems/Atmosphere/AtmosphereRenderSystem.h"
@@ -23,17 +22,6 @@ namespace spt::rsc
 {
 
 SPT_REGISTER_SCENE_RENDER_SYSTEM(LightsRenderSystem);
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// Parameters ====================================================================================
-
-namespace params
-{
-
-RendererFloatParameter ambientLightIntensity("Ambient Light Intensity", { "Lighting" }, 0.0f, 0.f, 1.f);
-RendererFloatParameter localLightsZClustersLength("Z Clusters Length", { "Lighting", "Local" }, 2.f, 1.f, 10.f);
-
-} // params
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Lights Rendering Common =======================================================================
@@ -459,11 +447,11 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 
 		lightsData.localLightsNum        = localLightsNum;
 		lightsData.localLights32Num      = math::Utils::DivideCeil(localLightsNum, 32u);
-		lightsData.zClusterLength        = params::localLightsZClustersLength;
+		lightsData.zClusterLength        = viewSpec.GetSettings().shading.lightsZClusterLength;
 		lightsData.zClustersNum          = zClustersNum;
 		lightsData.tilesNum              = tilesNum;
 		lightsData.tileSize              = tileSize;
-		lightsData.ambientLightIntensity = params::ambientLightIntensity;
+		lightsData.ambientLightIntensity = renderScene.settings.lighting.ambientIntensity;
 
 		rg::RGBufferViewHandle pointLightDrawCommands;
 		rg::RGBufferViewHandle pointLightDrawCommandsCount;
@@ -713,9 +701,9 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 
 
 	lib::SharedPtr<rdr::Buffer> localLightsBuffer;
-	if (localLightsNum > 0)
 	{
-		const Uint64 localLightsDataSize = localLightsNum * sizeof(rdr::HLSLStorage<LocalLightGPUData>);
+		// Buffer is bound even if there are no local lights, so it can't be empty
+		const Uint64 localLightsDataSize = std::max<SizeType>(localLightsNum, 1u) * sizeof(rdr::HLSLStorage<LocalLightGPUData>);
 		const rhi::BufferDefinition localLightsDataBufferDef(localLightsDataSize, rhi::EBufferUsage::Storage);
 		localLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Local Lights Buffer"), localLightsDataBufferDef, rhi::EMemoryUsage::CPUToGPU);
 		rhi::RHIMappedBuffer<rdr::HLSLStorage<LocalLightGPUData>> localLightsData(localLightsBuffer->GetRHI());

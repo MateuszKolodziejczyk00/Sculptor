@@ -22,6 +22,15 @@ concept CSerializableIntrusive = requires(Serializer& serializer, TType& data)
 };
 
 template<typename TType>
+concept CSerializableExternal = requires(Serializer& serializer, TType& data)
+{
+	{ SerializeType(serializer, data) } -> std::same_as<void>;
+};
+
+template<typename TType>
+concept CSerializableStruct = CSerializableIntrusive<TType> || CSerializableExternal<TType>;
+
+template<typename TType>
 concept CSerializableEnum = std::is_enum_v<TType>;
 
 } // detail
@@ -51,7 +60,7 @@ public:
 
 	static Serializer CreateReader(JSON j)
 	{
-		return Serializer(j);
+		return Serializer(std::move(j));
 	}
 
 	Bool IsSaving() const { return m_isSaving; }
@@ -66,23 +75,34 @@ public:
 	void Serialize(const char* name, lib::String& value);
 	void Serialize(const char* name, lib::HashedString& value);
 	void Serialize(const char* name, lib::Path& value);
-
 	void Serialize(const char* name, lib::RuntimeTypeInfo& value);
 
-	template<detail::CSerializableIntrusive TDataType>
+	template<detail::CSerializableStruct TDataType>
+	void SerializeObject(TDataType& value)
+	{
+		if constexpr (detail::CSerializableIntrusive<TDataType>)
+		{
+			value.Serialize(*this);
+		}
+		else
+		{
+			SerializeType(*this, value);
+		}
+	}
+
+	template<detail::CSerializableStruct TDataType>
 	void Serialize(const char* name, TDataType& value)
 	{
 		if (IsSaving())
 		{
 			Serializer subWriter = Serializer::CreateWriter();
-			value.Serialize(subWriter);
-			m_json[name] = subWriter.GetJson();
+			subWriter.SerializeObject(value);
+			m_json[name] = std::move(subWriter.GetJson());
 		}
-		else
+		else if (const JSON* subJson = FindJson(name))
 		{
-			JSON subJson = m_json[name];
-			Serializer subReader = Serializer::CreateReader(subJson);
-			value.Serialize(subReader);
+			Serializer subReader = Serializer::CreateReader(*subJson);
+			subReader.SerializeObject(value);
 		}
 	}
 
@@ -108,27 +128,19 @@ public:
 			}
 			m_json[name] = jsonArray;
 		}
-		else
+		else if (const JSON* jsonArray = FindJson(name))
 		{
-			Bool loaded = false;
-			if (m_json.contains(name))
+			if (jsonArray->size() == Cols * Rows)
 			{
-				JSON jsonArray = m_json[name];
-				if (jsonArray.size() == Cols * Rows)
+				for (int i = 0; i < Cols; ++i)
 				{
-					for (int i = 0; i < Cols; ++i)
+					for (int j = 0; j < Rows; ++j)
 					{
-						for (int j = 0; j < Rows; ++j)
-						{
-							data(j, i) = jsonArray[i * Rows + j].get<TType>();
-						}
+						data(j, i) = (*jsonArray)[i * Rows + j].get<TType>();
 					}
-
-					loaded = true;
 				}
 			}
-
-			if (!loaded)
+			else
 			{
 				data = {};
 			}
@@ -147,14 +159,13 @@ public:
 				jsonArray.push_back(ToJSON(item));
 			}
 
-			m_json[name] = jsonArray;
+			m_json[name] = std::move(jsonArray);
 		}
-		else
+		else if (const JSON* jsonArray = FindJson(name))
 		{
-			const JSON jsonArray = m_json[name];
 			dataArray.Clear();
 
-			for (const auto& itemJson : jsonArray)
+			for (const auto& itemJson : *jsonArray)
 			{
 				dataArray.EmplaceBack(FromJSON<TDataType>(itemJson));
 			}
@@ -173,15 +184,13 @@ public:
 				jsonArray.push_back(ToJSON(item));
 			}
 
-			m_json[name] = jsonArray;
+			m_json[name] = std::move(jsonArray);
 		}
-		else
+		else if (const JSON* jsonArray = FindJson(name))
 		{
-			const JSON jsonArray = m_json[name];
-
-			for (SizeType i = 0; i < N && i < jsonArray.size(); ++i)
+			for (SizeType i = 0; i < N && i < jsonArray->size(); ++i)
 			{
-				dataArray[i] = FromJSON<TDataType>(jsonArray[i]);
+				dataArray[i] = FromJSON<TDataType>((*jsonArray)[i]);
 			}
 		}
 	}
@@ -198,15 +207,14 @@ public:
 				jsonArray.push_back(ToJSON(item));
 			}
 
-			m_json[name] = jsonArray;
+			m_json[name] = std::move(jsonArray);
 		}
-		else
+		else if (const JSON* jsonArray = FindJson(name))
 		{
-			const JSON jsonArray = m_json[name];
 			dataArray.clear();
-			dataArray.reserve(jsonArray.size());
+			dataArray.reserve(jsonArray->size());
 
-			for (const auto& itemJson : jsonArray)
+			for (const auto& itemJson : *jsonArray)
 			{
 				dataArray.emplace_back(FromJSON<TDataType>(itemJson));
 			}
@@ -220,9 +228,9 @@ public:
 		{
 			m_json[name] = lib::EncodeBase64(dataArray);
 		}
-		else
+		else if (const JSON* json = FindJson(name))
 		{
-			dataArray = lib::DecodeBase64(m_json[name].get<lib::String>());
+			dataArray = lib::DecodeBase64(json->get_ref<const lib::String&>());
 		}
 	}
 
@@ -243,22 +251,17 @@ public:
 				jsonArray.push_back(elem);
 			}
 
-			m_json[name] = jsonArray;
+			m_json[name] = std::move(jsonArray);
 		}
-		else
+		else if (const JSON* jsonArray = FindJson(name))
 		{
-			const JSON jsonArray = m_json[name];
-
 			dataMap.clear();
-			dataMap.reserve(jsonArray.size());
+			dataMap.reserve(jsonArray->size());
 
-			for (const auto& itemJson : jsonArray)
+			for (const auto& itemJson : *jsonArray)
 			{
-				JSON keyJson   = itemJson[0];
-				JSON valueJson = itemJson[1];
-
-				TKeyType key = FromJSON<TKeyType>(keyJson);
-				TDataType value = FromJSON<TDataType>(valueJson);
+				TKeyType key = FromJSON<TKeyType>(itemJson[0]);
+				TDataType value = FromJSON<TDataType>(itemJson[1]);
 
 				dataMap.emplace(std::move(key), std::move(value));
 			}
@@ -294,7 +297,7 @@ protected:
 	}
 
 	explicit Serializer(JSON j)
-		: m_json(j)
+		: m_json(std::move(j))
 		, m_isSaving(false)
 	{
 	}
@@ -304,21 +307,32 @@ protected:
 		return m_json;
 	}
 
+	const JSON* FindJson(const char* name) const
+	{
+		if (!name)
+		{
+			return &m_json;
+		}
+
+		const auto it = m_json.find(name);
+		return it != m_json.end() ? &*it : nullptr;
+	}
+
 	template<typename TDataType>
 	JSON ToJSON(const TDataType& data)
 	{
 		Serializer writer = Serializer::CreateWriter();
 
-		if constexpr (detail::CSerializableIntrusive<TDataType>)
+		if constexpr (detail::CSerializableStruct<TDataType>)
 		{
-			const_cast<TDataType&>(data).Serialize(writer);
+			writer.SerializeObject(const_cast<TDataType&>(data));
 		}
 		else
 		{
 			writer.Serialize(nullptr, const_cast<TDataType&>(data));
 		}
 
-		return writer.GetJson();
+		return std::move(writer.GetJson());
 	}
 
 	template<typename TDataType>
@@ -327,9 +341,9 @@ protected:
 		TDataType data;
 		Serializer reader = Serializer::CreateReader(json);
 
-		if constexpr (detail::CSerializableIntrusive<TDataType>)
+		if constexpr (detail::CSerializableStruct<TDataType>)
 		{
-			data.Serialize(reader);
+			reader.SerializeObject(data);
 		}
 		else
 		{
@@ -353,15 +367,11 @@ protected:
 	}
 
 	template<typename TData>
-	TData GetImpl(const char* name) const
+	void GetImpl(const char* name, TData& data) const
 	{
-		if (name)
+		if (const JSON* json = FindJson(name))
 		{
-			return m_json.contains(name) ? m_json[name].get<TData>() : TData{};
-		}
-		else
-		{
-			return m_json.get<TData>();
+			json->get_to(data);
 		}
 	}
 

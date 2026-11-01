@@ -5,7 +5,6 @@
 #include "ResourcesManager.h"
 #include "Utils/BufferUtils.h"
 #include "Common/ShaderCompilationInput.h"
-#include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "SceneRenderSystems/Atmosphere/AtmosphereTypes.h"
 #include "MaterialsSubsystem.h"
 #include "SceneRenderSystems/Lights/LightsRenderSystem.h"
@@ -18,11 +17,6 @@ namespace spt::rsc::ddgi
 {
 
 SPT_REGISTER_SCENE_RENDER_SYSTEM(DDGIRenderSystem);
-
-namespace renderer_params
-{
-RendererBoolParameter ddgiEnabled("Enable DDGI", {"DDGI"}, true);
-} // renderer_params
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Descriptor Sets ===============================================================================
@@ -235,7 +229,7 @@ void DDGIRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, cons
 
 Bool DDGIRenderSystem::IsDDGIEnabled() const
 {
-	return renderer_params::ddgiEnabled;
+	return GetOwningScene().settings.ddgi.enable;
 }
 
 void DDGIRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
@@ -376,7 +370,7 @@ void DDGIRenderSystem::InvalidateOutOfBoundsProbes(rg::RenderGraphBuilder& graph
 
 	for (Uint32 textureIdx = 0u; textureIdx < probeDataTexturesNum; ++textureIdx)
 	{
-		const rg::RGTextureViewHandle textureView = graphBuilder.AcquireExternalTextureView(volume.GetProbesHitDistanceTexture(textureIdx));
+		const rg::RGTextureViewHandle textureView = graphBuilder.AcquireExternalTextureView(volume.GetProbesIlluminanceTexture(textureIdx));
 		invalidateProbesConsts.volumeIlluminanceTextures[textureIdx] = textureView;
 	}
 

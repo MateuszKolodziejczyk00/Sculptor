@@ -1,22 +1,10 @@
 #include "PostProcessPreAARenderStage.h"
 #include "Utils/DOFRenderer.h"
-#include "SceneRenderer/Parameters/SceneRendererParams.h"
 
 namespace spt::rsc
 {
 
 REGISTER_RENDER_STAGE(ERenderStage::PostProcessPreAA, PostProcessPreAARenderStage);
-
-namespace params
-{
-
-RendererBoolParameter enableDOF("Enable DOF", { "DOF" }, false);
-RendererFloatParameter focalPlane("Focal Plane", { "DOF" }, 4.f, 0.f, 20.f);
-RendererFloatParameter fullFocusRange("Full Focus Range", { "DOF" }, 1.f, 0.f, 10.f);
-RendererFloatParameter farFocusIncreaseRange("Far Focus Increase Range", { "DOF" }, 7.f, 0.f, 10.f);
-RendererFloatParameter nearFocusIncreaseRange("Near Focus Increase Range", { "DOF" }, 2.f, 0.f, 10.f);
-
-} // params
 
 PostProcessPreAARenderStage::PostProcessPreAARenderStage()
 { }
@@ -24,18 +12,20 @@ PostProcessPreAARenderStage::PostProcessPreAARenderStage()
 void PostProcessPreAARenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext)
 {
 	SPT_PROFILER_FUNCTION();
-	
-	if (params::enableDOF)
+
+	const DOFSettings& dofSettings = viewSpec.GetSettings().dof;
+
+	if (dofSettings.enable)
 	{
 		const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
 		dof::GatherBasedDOFParameters dofParameters;
 		dofParameters.linearColorTexture		= viewContext.luminance;
 		dofParameters.depthTexture				= viewContext.depth;
-		dofParameters.focalPlane				= params::focalPlane;
-		dofParameters.fullFocusRange			= params::fullFocusRange;
-		dofParameters.farFocusIncreaseRange		= params::farFocusIncreaseRange;
-		dofParameters.nearFocusIncreaseRange	= params::nearFocusIncreaseRange;
+		dofParameters.focalPlane				= dofSettings.focalPlane;
+		dofParameters.fullFocusRange			= dofSettings.fullFocusRange;
+		dofParameters.farFocusIncreaseRange		= dofSettings.farFocusIncreaseRange;
+		dofParameters.nearFocusIncreaseRange	= dofSettings.nearFocusIncreaseRange;
 		dof::RenderGatherBasedDOF(graphBuilder, dofParameters);
 	}
 }

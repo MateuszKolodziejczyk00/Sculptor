@@ -61,7 +61,6 @@ void RGDiagnosticsPlayback::Playback(rdr::CommandRecorder& recorder, const lib::
 		PlaybackPush(recorder, statisticsCollector, record[scopeIdx]);
 		++scopeIdx;
 	}
-
 }
 
 void RGDiagnosticsPlayback::PopRemainingScopes(rdr::CommandRecorder& recorder, const lib::SharedPtr<rdr::GPUStatisticsCollector>& statisticsCollector)

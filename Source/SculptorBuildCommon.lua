@@ -207,6 +207,14 @@ function Project:SetupProject()
     filter "configurations:Release"
     self:BuildConfiguration(EConfiguration.Release, EPlatform.Windows)
 
+    local sddGenerator = "%{wks.location}/Programs/DataDefinitions/GenerateDataDefinitions.py"
+    filter "files:**.sdd"
+        buildmessage "Generating %{file.name}"
+        buildcommands { 'python "' .. sddGenerator .. '" "%{wks.location}/Source/Generated" "%{file.abspath}"' }
+        buildoutputs { "%{wks.location}/Source/Generated/%{file.basename}.h" }
+        buildinputs { sddGenerator }
+    filter {}
+
     project(self.name).group = project(self.name).group .. currentProjectsSubgroup
 end
 
@@ -222,6 +230,7 @@ function Project:GetProjectFiles(configuration, platform)
 		"**.inl",
         "**.natvis",
         "**.c",
+        "**.sdd",
         self.name .. ".lua"
     }
 end
@@ -322,6 +331,7 @@ function Project:BuildConfiguration(configuration, platform)
     -- add additional includes in case if for example we want to include only headers from some project, without linking it's dll
     if self.projectType == EProjectType.Editor or self.projectType == EProjectType.Engine or self.projectType == EProjectType.Tools then
         self:AddIncludePathInternal(self:GetEngineSourceRelativePath() .. "Engine")
+        self:AddIncludePathInternal(self:GetEngineSourceRelativePath())
     end
 
     if self.projectType == EProjectType.Editor then

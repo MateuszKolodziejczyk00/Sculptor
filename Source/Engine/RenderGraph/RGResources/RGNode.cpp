@@ -159,9 +159,29 @@ void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rd
 	recorder.SetDebugCheckpoint(GetName());
 #endif // SPT_ENABLE_GPU_CRASH_DUMPS
 
+#if DEBUG_RENDER_GRAPH
+	if (context.statisticsCollector)
+	{
+		if (GetType() == ERenderGraphNodeType::Dispatch)
+		{
+			const RGNodeComputeDebugMetaData& computeMetaData = std::get<RGNodeComputeDebugMetaData>(GetDebugMetaData());
+			context.statisticsCollector->SetScopeStatisticsPSO(computeMetaData.pipelineStateID);
+		}
+	}
+#endif // DEBUG_RENDER_GRAPH
+
 	SPT_CHECK(!m_executed);
 
-	AcquireResources();
+	AcquireResources(context);
+
+#if DEBUG_RENDER_GRAPH
+	if (context.statisticsCollector)
+	{
+		const RenderGraphBuilder& graphBuilder = GetOwningGraphBuilder();
+		RenderGraphResourcesPool& resourcesPool = graphBuilder.GetResourcesPool();
+		context.statisticsCollector->SetScopeTransientMemoryUsage(resourcesPool.GetCurrentMemoryUsage());
+	}
+#endif // DEBUG_RENDER_GRAPH
 
 	PreExecuteBarrier(recorder);
 
@@ -169,16 +189,16 @@ void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rd
 	OnExecute(renderContext, recorder, context);
 	UnbindShaderParams(recorder);
 
-	ReleaseResources();
+	ReleaseResources(context);
 
 	m_executed = true;
 }
 
-void RGNode::AcquireResources()
+void RGNode::AcquireResources(const RGExecutionContext& context)
 {
-	AcquireTextures();
-	AcquireTextureViews();
-	AcquireBuffers();
+	AcquireTextures(context);
+	AcquireTextureViews(context);
+	AcquireBuffers(context);
 }
 
 void RGNode::PreExecuteBarrier(rdr::CommandRecorder& recorder)
@@ -193,10 +213,10 @@ void RGNode::PreExecuteBarrier(rdr::CommandRecorder& recorder)
 	recorder.ExecuteBarrier(m_preExecuteDependency);
 }
 
-void RGNode::ReleaseResources()
+void RGNode::ReleaseResources(const RGExecutionContext& context)
 {
-	ReleaseTextures();
-	ReleaseBuffers();
+	ReleaseTextures(context);
+	ReleaseBuffers(context);
 }
 
 void RGNode::BindShaderParams(rdr::CommandRecorder& recorder)
@@ -215,7 +235,7 @@ void RGNode::UnbindShaderParams(rdr::CommandRecorder& recorder)
 	}
 }
 
-void RGNode::AcquireTextures()
+void RGNode::AcquireTextures(const RGExecutionContext& context)
 {
 	const RenderGraphBuilder& graphBuilder = GetOwningGraphBuilder();
 	RenderGraphResourcesPool& resourcesPool = graphBuilder.GetResourcesPool();
@@ -225,25 +245,25 @@ void RGNode::AcquireTextures()
 		rhi::TextureDefinition textureRHIDef = textureToAcquire->GetTextureRHIDefinition();
 		lib::AddFlag(textureRHIDef.flags, rhi::ETextureFlags::SkipAutoGPUInit);
 
-		lib::SharedPtr<rdr::Texture> acquiredTexture = resourcesPool.AcquireTexture(RG_DEBUG_NAME(textureToAcquire->GetName()), textureRHIDef, textureToAcquire->GetAllocationInfo());
+		lib::SharedPtr<rdr::Texture> acquiredTexture = resourcesPool.AcquireTexture(context, RG_DEBUG_NAME(textureToAcquire->GetName()), textureRHIDef, textureToAcquire->GetAllocationInfo());
 		SPT_CHECK(!!acquiredTexture);
 
 		textureToAcquire->AcquireResource(std::move(acquiredTexture));
 	}
 }
 
-void RGNode::ReleaseTextures()
+void RGNode::ReleaseTextures(const RGExecutionContext& context)
 {
 	const RenderGraphBuilder& graphBuilder = GetOwningGraphBuilder();
 	RenderGraphResourcesPool& resourcesPool = graphBuilder.GetResourcesPool();
 
 	for (RGTextureHandle textureToRelease : m_texturesToRelease)
 	{
-		resourcesPool.ReleaseTexture(textureToRelease->ReleaseResource());
+		resourcesPool.ReleaseTexture(context, textureToRelease->ReleaseResource());
 	}
 }
 
-void RGNode::AcquireTextureViews()
+void RGNode::AcquireTextureViews(const RGExecutionContext& context)
 {
 	for (RGTextureViewHandle textureViewToAcquire : m_textureViewsToAcquire)
 	{
@@ -251,20 +271,26 @@ void RGNode::AcquireTextureViews()
 	}
 }
 
-void RGNode::AcquireBuffers()
+void RGNode::AcquireBuffers(const RGExecutionContext& context)
 {
+	const RenderGraphBuilder& graphBuilder = GetOwningGraphBuilder();
+	RenderGraphResourcesPool& resourcesPool = graphBuilder.GetResourcesPool();
+
 	for (RGBufferHandle buffer : m_buffersToAcquire)
 	{
-		lib::SharedPtr<rdr::Buffer> bufferInstance = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(buffer->GetName()), buffer->GetBufferDefinition(), buffer->GetAllocationInfo(), std::move(buffer->AcquireDescriptorsAllocation()));
+		lib::SharedPtr<rdr::Buffer> bufferInstance = resourcesPool.AcquireBuffer(context, RG_DEBUG_NAME(buffer->GetName()), buffer->GetBufferDefinition(), buffer->GetAllocationInfo(), std::move(buffer->AcquireDescriptorsAllocation()));
 		buffer->AcquireResource(std::move(bufferInstance));
 	}
 }
 
-void RGNode::ReleaseBuffers()
+void RGNode::ReleaseBuffers(const RGExecutionContext& context)
 {
+	const RenderGraphBuilder& graphBuilder = GetOwningGraphBuilder();
+	RenderGraphResourcesPool& resourcesPool = graphBuilder.GetResourcesPool();
+
 	for (RGBufferHandle buffer : m_buffersToRelease)
 	{
-		buffer->ReleaseResource();
+		resourcesPool.ReleaseBuffer(context, buffer->ReleaseResource());
 	}
 }
 

@@ -11,6 +11,7 @@ namespace spt::rdr
 {
 class Window;
 class GPUWorkload;
+class GPUStatisticsCollector;
 } // spt::rdr
 
 
@@ -56,6 +57,8 @@ private:
 
 	void ExecuteFrame();
 
+	void CollectGPUFrameStatistics();
+
 	void ExecuteRenderGraph();
 
 	void RenderUI();
@@ -73,6 +76,10 @@ private:
 	rg::RenderGraphResourcesPool m_renderGraphResourcesPool;
 
 	lib::SharedPtr<rdr::GPUWorkload> m_lastFrameWorkload;
+
+	lib::SharedPtr<rdr::GPUStatisticsCollector> m_gpuStatisticsCollector;
+
+	math::Vector2u m_gpuFrameResolution = math::Vector2u::Zero();
 
 	lib::SharedPtr<rg::capture::RGCaptureSourceContext> m_captureSourceContext;
 

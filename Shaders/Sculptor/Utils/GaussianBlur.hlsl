@@ -12,7 +12,7 @@ struct CS_INPUT
 
 #define BLUR_MAX_KERNEL 32 
 
-#define GROUP_SIZE 128
+#define GROUP_SIZE 64
 
 #define SHARED_DATA_SIZE (GROUP_SIZE + 2 * BLUR_MAX_KERNEL)
 

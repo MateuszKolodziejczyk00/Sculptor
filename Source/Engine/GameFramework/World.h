@@ -12,6 +12,7 @@
 namespace spt::rsc
 {
 class RenderScene;
+struct RenderSceneSettings;
 } // spt::rsc
 
 
@@ -56,6 +57,8 @@ public:
 	struct WorldPrefabs&       prefabs;
 	struct WorldMeshes&        meshes;
 	struct WorldMaterialSlots& materials;
+
+	struct rsc::RenderSceneSettings& renderSceneSettings;
 
 private:
 

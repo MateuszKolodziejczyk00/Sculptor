@@ -4,7 +4,7 @@
 
 [[shader_params(RenderSceneConstants, SCENE)]]
 [[shader_params(GPURenderView, VIEW)]]
-[[shader_params(SpecularReflectionsTraceConstants, PARAMS_SPECULAR_REFLECTIONS_TRACE)]]
+[[shader_params(SpecularReflectionsTraceConstants, CONSTS)]]
 
 #include "SpecularReflections/RTGBuffer.hlsli"
 #include "SpecularReflections/RTGITracingUtils.hlsli"
@@ -26,54 +26,54 @@ void GenerateRTGIRaysRTG()
 
 	if(traceCommandIndex == 0u)
 	{
-		PARAMS_SPECULAR_REFLECTIONS_TRACE->shadingIndirectArgs[0].hitDispatchSize.yz    = 1u;
-		PARAMS_SPECULAR_REFLECTIONS_TRACE->shadingIndirectArgs[0].missDispatchGroups.yz = 1u;
+		CONSTS->shadingIndirectArgs[0].hitDispatchSize.yz    = 1u;
+		CONSTS->shadingIndirectArgs[0].missDispatchGroups.yz = 1u;
 	}
 
-	const EncodedRayTraceCommand encodedTraceCommand = PARAMS_SPECULAR_REFLECTIONS_TRACE->traceCommands[traceCommandIndex];
+	const EncodedRayTraceCommand encodedTraceCommand = CONSTS->traceCommands[traceCommandIndex];
 	const RayTraceCommand traceCommand = DecodeTraceCommand(encodedTraceCommand);
 
 	const uint2 pixel = traceCommand.blockCoords + traceCommand.localOffset;
 
-	const float depth = PARAMS_SPECULAR_REFLECTIONS_TRACE->gpuGBuffer.depth.Load(uint3(pixel, 0));
+	const float depth = CONSTS->gpuGBuffer.depth.Load(uint3(pixel, 0));
 	if (depth > 0.f)
 	{
-		const float2 uv = (pixel + 0.5f) * PARAMS_SPECULAR_REFLECTIONS_TRACE->invResolution;
+		const float2 uv = (pixel + 0.5f) * CONSTS->invResolution;
 		const float3 ndc = float3(uv * 2.f - 1.f, depth);
 		float3 worldLocation = NDCToWorldSpace(ndc, VIEW->sceneView);
 
-		const uint encodedRayDirection = PARAMS_SPECULAR_REFLECTIONS_TRACE->rayDirections[traceCommandIndex];
+		const uint encodedRayDirection = CONSTS->rayDirections[traceCommandIndex];
 
 		const float3 rayDirection = OctahedronDecodeNormal(UnpackHalf2x16Norm(encodedRayDirection));
 
-		RngState rng = RngState::Create(pixel, 123u);
+		RngState rng = RngState::Create(pixel, CONSTS->frameIdx);
 
 		RayHitResult hitResult;
 		bool isRayFinished = false;
 
-		const float traceLength = PARAMS_SPECULAR_REFLECTIONS_TRACE->ssrTraceLength;
-		const SSTraceResultExtended ssResult = TraceScreenSpaceRay(PARAMS_SPECULAR_REFLECTIONS_TRACE->ssrTracer, VIEW->sceneView, uv, depth, rayDirection, traceLength, rng.Next());
+		const float traceLength = CONSTS->ssrTraceLength;
+		const SSTraceResult ssResult = TraceScreenSpaceRay<false, 2u>(CONSTS->ssrTracer, VIEW->sceneView, uv, depth, rayDirection, traceLength, rng.Next());
 
 		float3 traceOrigin = worldLocation;
 
 		if (ssResult.isHit)
 		{
-			const GBufferInterface gbuffer = GBufferInterface(PARAMS_SPECULAR_REFLECTIONS_TRACE->gpuGBuffer);
+			const GBufferInterface gbuffer = GBufferInterface(CONSTS->gpuGBuffer);
 
-			const SurfaceInfo hitSurfaceInfo = gbuffer.GetSurfaceInfo(ssResult.hitUV);
+			const SurfaceInfo hitSurfaceInfo = gbuffer.GetSurfaceInfo(ssResult.hitUV * CONSTS->resolution);
 			hitResult.normal            = hitSurfaceInfo.normal;
 			hitResult.roughness         = hitSurfaceInfo.roughness;
 			hitResult.baseColor         = hitSurfaceInfo.baseColorMetallic.rgb;
 			hitResult.metallic          = hitSurfaceInfo.baseColorMetallic.a;
 			hitResult.emissive          = 0.f;
 			hitResult.hitType           = RTGBUFFER_HIT_TYPE_VALID_HIT;
-			hitResult.hitDistance       = traceLength * ssResult.hitT;
+			hitResult.hitDistance       = ssResult.hitDist;
 
 			isRayFinished = true;
 		}
 		else
 		{
-			traceOrigin += rayDirection * ssResult.unoccludedDistance * 0.99f;
+			traceOrigin += rayDirection * max(ssResult.unoccludedDist * 0.99f, 0.02f);
 		}
 
 		if (!isRayFinished)
@@ -82,7 +82,7 @@ void GenerateRTGIRaysRTG()
 
 			if (hitResult.hitType != RTGBUFFER_HIT_TYPE_NO_HIT)
 			{
-				hitResult.hitDistance += ssResult.unoccludedDistance * 0.99f;
+				hitResult.hitDistance += ssResult.unoccludedDist * 0.99f;
 			}
 		}
 
@@ -96,9 +96,9 @@ void GenerateRTGIRaysRTG()
 			uint validHitsOffset = 0;
 			if(WaveIsFirstLane())
 			{
-				validHitsOffset = PARAMS_SPECULAR_REFLECTIONS_TRACE->raysShadingCounts.Cast<uint>().AtomicAdd(0u, validHitCount);
+				validHitsOffset = CONSTS->raysShadingCounts.Cast<uint>().AtomicAdd(0u, validHitCount);
 
-				PARAMS_SPECULAR_REFLECTIONS_TRACE->shadingIndirectArgs.Cast<uint>().AtomicMax(0u, validHitsOffset + validHitCount);
+				CONSTS->shadingIndirectArgs.Cast<uint>().AtomicMax(0u, validHitsOffset + validHitCount);
 			}
 			const uint validHitIndex = WaveReadLaneFirst(validHitsOffset) + GetCompactedIndex(validHitMask, WaveGetLaneIndex());
 			hitResultIdx = validHitIndex;
@@ -112,19 +112,19 @@ void GenerateRTGIRaysRTG()
 			uint missOffset = 0;
 			if (WaveIsFirstLane())
 			{
-				missOffset = PARAMS_SPECULAR_REFLECTIONS_TRACE->raysShadingCounts.Cast<uint>().AtomicAdd(1u, missCount);
+				missOffset = CONSTS->raysShadingCounts.Cast<uint>().AtomicAdd(1u, missCount);
 
-				PARAMS_SPECULAR_REFLECTIONS_TRACE->shadingIndirectArgs.Cast<uint>().AtomicMax(4u, (missOffset + missCount + 63) / 64);
+				CONSTS->shadingIndirectArgs.Cast<uint>().AtomicMax(4u, (missOffset + missCount + 63) / 64);
 			}
 			const uint compactedIdx = GetCompactedIndex(missMask, WaveGetLaneIndex());
-			const uint missIndex = PARAMS_SPECULAR_REFLECTIONS_TRACE->rayCommandsBufferSize - WaveReadLaneFirst(missOffset) - missCount + compactedIdx;
+			const uint missIndex = CONSTS->rayCommandsBufferSize - WaveReadLaneFirst(missOffset) - missCount + compactedIdx;
 			hitResultIdx = missIndex;
 		}
 
 		if(hitResultIdx != IDX_NONE_32)
 		{
-			PARAMS_SPECULAR_REFLECTIONS_TRACE->sortedRays[hitResultIdx] = traceCommandIndex;
-			PARAMS_SPECULAR_REFLECTIONS_TRACE->hitMaterialInfos[traceCommandIndex] = PackRTGBuffer(hitResult);
+			CONSTS->sortedRays[hitResultIdx] = traceCommandIndex;
+			CONSTS->hitMaterialInfos[traceCommandIndex] = PackRTGBuffer(hitResult);
 		}
 	}
 }

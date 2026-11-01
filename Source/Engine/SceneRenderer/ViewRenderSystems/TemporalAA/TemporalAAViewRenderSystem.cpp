@@ -125,11 +125,11 @@ void TemporalAAViewRenderSystem::PrepareRenderView(ViewRenderingSpec& viewSpec)
 {
 	Super::PrepareRenderView(viewSpec);
 
-	if (viewSpec.AreSettingsDirty())
-	{
-		const ShadingRenderViewSettings& settings = viewSpec.GetShadingViewSettings();
+	const UpscalerSettings& upscalerSettings = viewSpec.GetSettings().upscaler;
 
-		switch (settings.upscalingMethod)
+	if (m_upscalingMethod != upscalerSettings.method)
+	{
+		switch (upscalerSettings.method)
 		{
 		case EUpscalingMethod::None:
 			m_temporalAARendererImpl.reset();
@@ -144,6 +144,8 @@ void TemporalAAViewRenderSystem::PrepareRenderView(ViewRenderingSpec& viewSpec)
 			m_temporalAARendererImpl = gfx::TemporalAccumulationRenderer();
 			break;
 		}
+
+		m_upscalingMethod = upscalerSettings.method;
 
 		lib::CallOverload(*m_temporalAARendererImpl, [](auto& renderer)
 						{

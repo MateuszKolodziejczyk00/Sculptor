@@ -54,7 +54,7 @@ void PrefabMeshEntityDefinition::Spawn(SpawnContext& context, lib::Span<const By
 	as::MeshAssetHandle meshAsset = context.assetsSystem.GetLoadedAsset<as::MeshAsset>(compiledMesh.mesh);
 	if (!meshAsset.IsValid())
 	{
-		SPT_LOG_ERROR(PrefabMeshEntity, "Failed to spawn PrefabMeshEntity - mesh asset ({}) is invalid. Resolved path: {}", compiledMesh.mesh, context.assetsSystem.ResolvePath(compiledMesh.mesh).GetPath().string());
+		SPT_LOG_ERROR(PrefabMeshEntity, "Failed to spawn PrefabMeshEntity - mesh asset ({}) is invalid. Resolved path: {}", compiledMesh.mesh, context.assetsSystem.ResolvePath(compiledMesh.mesh).GetPath());
 		return;
 	}
 

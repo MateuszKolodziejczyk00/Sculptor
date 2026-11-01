@@ -24,6 +24,7 @@ namespace spt::vulkan
 
 SPT_DEFINE_LOG_CATEGORY(VulkanRHI, true);
 
+
 namespace priv
 {
 
@@ -300,6 +301,11 @@ rhi::DescriptorProps VulkanRHI::GetDescriptorProps()
 RHIDeviceQueue VulkanRHI::GetDeviceQueue(rhi::EDeviceCommandQueueType queueType)
 {
 	return priv::g_data->device.GetQueue(queueType);
+}
+
+rhi::RHIMemoryUsageStats VulkanRHI::GetMemoryUsageStats()
+{
+	return priv::g_data->memoryManager.GetMemoryUsageStats();
 }
 
 #if SPT_RHI_DEBUG

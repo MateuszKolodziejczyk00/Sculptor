@@ -2,7 +2,7 @@
 #include "Utility/String/StringUtils.h"
 
 #ifdef SPT_PLATFORM_WINDOWS
-#include <Windows.h>
+#include "SculptorLibWindows.h"
 #endif // SPT_PLATFORM_WINDOWS
 
 

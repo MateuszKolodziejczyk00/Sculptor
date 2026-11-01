@@ -21,6 +21,7 @@ namespace spt::rsc
 class RenderScene;
 class ViewRenderingSpec;
 struct SceneRendererInterface;
+struct SharcSettings;
 
 
 BEGIN_SHADER_STRUCT(SharcShadersPermutation)
@@ -48,14 +49,8 @@ class SharcGICache
 public:
 
 	static Bool IsSharcSupported();
-	static Bool IsDemodulatingMaterials();
 
-	static SharcShadersPermutation GetShadersPermutation()
-	{
-		SharcShadersPermutation permutation;
-		permutation.SHARC_DEMODULATE_MATERIALS = IsDemodulatingMaterials();
-		return permutation;
-	}
+	static SharcShadersPermutation GetShadersPermutation(const SharcSettings& settings);
 
 	SharcGICache();
 

@@ -34,6 +34,8 @@ public:
 
 	Real32 BeginFrame();
 
+	void ResetTimer();
+
 	using  OnBeginFrameDelegate = lib::MulticastDelegate<void()>;
 	OnBeginFrameDelegate& GetOnBeginFrameDelegate();
 

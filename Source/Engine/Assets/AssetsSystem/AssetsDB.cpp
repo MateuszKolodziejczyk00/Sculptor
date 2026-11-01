@@ -125,10 +125,12 @@ void AssetsDB::SaveAssetDescriptor(const ResourcePath& assetPath, const AssetDes
 	m_ddcDescriptors[descriptorIdx] = PersistentAssetDescriptorData{ .pathID = assetPath.GetID(), .assetTypeKey = descriptor.assetTypeKey };
 
 	PersistentPathDescriptorData& pathPersistentDescriptor = m_ddcPaths[descriptorIdx];
-	const wchar_t* path = assetPath.GetPath().c_str();
+	const lib::Path widePath = assetPath.GetPath();
+	const wchar_t* path = widePath.c_str();
 	const SizeType pathLength = std::wcslen(path);
+	SPT_CHECK_MSG(pathLength < PersistentPathDescriptorData::s_maxLength, "Asset path is too long");
 	std::memcpy(pathPersistentDescriptor.path, path, pathLength * sizeof(wchar_t));
-	std::memset(pathPersistentDescriptor.path + pathLength, 0, PersistentPathDescriptorData::s_maxLength - pathLength * sizeof(wchar_t));
+	std::memset(pathPersistentDescriptor.path + pathLength, 0, (PersistentPathDescriptorData::s_maxLength - pathLength) * sizeof(wchar_t));
 
 	m_descriptors[assetPath.GetID()] = RuntimeAssetDescriptor{ .descriptor = descriptor, .ddcDescriptorIdx = descriptorIdx };
 	m_paths[assetPath.GetID()] = assetPath;

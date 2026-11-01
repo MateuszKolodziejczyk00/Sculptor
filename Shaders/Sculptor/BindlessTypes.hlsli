@@ -497,6 +497,12 @@ struct ByteBuffer
 	uint descriptorIdx;
 	uint metaData;
 
+	ByteAddressBuffer GetResource()
+	{
+		ByteAddressBuffer buffer = ResourceDescriptorHeap[descriptorIdx];
+		return buffer;
+	}
+
 	T Load<T>(in uint offset)
 	{
 		ByteAddressBuffer buffer = ResourceDescriptorHeap[descriptorIdx];

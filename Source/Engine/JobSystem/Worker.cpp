@@ -1,6 +1,7 @@
 #include "Worker.h"
 #include "Job.h"
 #include "ThreadInfo.h"
+#include "ThreadContext.h"
 
 namespace spt::js
 {
@@ -54,6 +55,8 @@ void Worker::WorkerMain(WorkerContext& jobsQueue)
 {
 	SPT_PROFILER_THREAD("Worker");
 
+	tcx::InitThreadContext();
+
 	ThreadInfoDefinition threadInfo;
 	threadInfo.isWorker = true;
 	ThreadInfoTls::Get().Init(threadInfo);
@@ -62,6 +65,8 @@ void Worker::WorkerMain(WorkerContext& jobsQueue)
 
 	Worker worker(jobsQueue);
 	worker.Run();
+
+	tcx::ShutdownThreadContext();
 }
 
 Bool Worker::TryExecuteJob(lib::MTHandle<JobInstance> job)

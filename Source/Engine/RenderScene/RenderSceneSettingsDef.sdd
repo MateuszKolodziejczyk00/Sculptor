@@ -1,0 +1,135 @@
+namespace spt::rsc
+{
+
+[Gen=ShaderStructGen]
+struct HeightFogSettings
+{
+	[test=0.f]
+	Real32 globalDensity = 0.005f;
+
+	[min=0, max=10]
+	Real32 extinction = 0.3f;
+
+	[min=0, max=1]
+	math::Vector3f albedo = math::Vector3f(1.f, 1.f, 1.f);
+
+	[min=0, max=10]
+	Real32 heightFalloff = 0.0042f;
+
+	[min=0, max=1]
+	Real32 heightAbsorption = 1.f;
+
+	[min=0, max=1]
+	Real32 phaseAnisotropy = 0.84f;
+};
+
+
+[Gen=ShaderStructGen]
+struct CloudsSettings
+{
+	Bool enable = true;
+
+	[min=0, max=5]
+	Real32 density = 1.f;
+
+	[min=-1, max=1]
+	Real32 coverageOffset = 0.4f;
+
+	[min=-2, max=2]
+	Real32 coverageMultiplier = 1.f;
+
+	[min=-1, max=1]
+	Real32 heightOffset = 0.f;
+
+	[min=-2, max=2]
+	Real32 heightMultiplier = 1.f;
+
+	[min=0, max=60000]
+	Real32 baseShapeNoiseMeters = 2400.f;
+
+	[min=0, max=2]
+	Real32 detailNoiseStrength0 = 0.45f;
+
+	[min=0, max=20000]
+	Real32 detailNoiseMeters0 = 380.f;
+
+	[min=0, max=2]
+	Real32 detailNoiseStrength1 = 0.f;
+
+	[min=0, max=20000]
+	Real32 detailNoiseMeters1 = 255.f;
+
+	[min=0, max=100000]
+	Real32 weatherMapMeters = 68000.f;
+
+	[min=0, max=500]
+	Real32 curlNoiseOffset = 300.f;
+
+	[min=0, max=40000]
+	Real32 curlNoiseMeters = 1700.f;
+
+	[min=1, max=2048]
+	Uint32 shadowsCacheRes2D = 384;
+
+	[min=1, max=64]
+	Uint32 shadowsCacheResZ = 16;
+
+	Bool forceTransmittanceMapFullUpdates = false;
+	Bool forceHighResProbeFullUpdates     = false;
+	Bool forceLowResProbesFullUpdates     = false;
+};
+
+
+[Gen=ShaderStructGen]
+struct LightingSettings
+{
+	[min=0, max=1]
+	Real32 ambientIntensity = 0.f;
+};
+
+
+[Gen=ShaderStructGen]
+struct LocalShadowsSettings
+{
+	Bool enable = true;
+
+	[min=0, max=10]
+	Uint32 maxUpgradedPerFrame = 1;
+
+	[min=0, max=10]
+	Uint32 maxUpdatedPerFrame = 0;
+};
+
+
+[Gen=ShaderStructGen]
+struct TerrainSettings
+{
+	[test=false]
+	Bool enable      = true;
+
+	[test=false]
+	Bool enableGrass = true;
+
+	Bool enablePOM   = false;
+};
+
+
+[Gen=ShaderStructGen]
+struct DDGISettings
+{
+	Bool enable = true;
+};
+
+
+[Gen=ShaderStructGen]
+struct RenderSceneSettings
+{
+	HeightFogSettings    fog;
+	CloudsSettings       clouds;
+	LightingSettings     lighting;
+	LocalShadowsSettings localShadows;
+	TerrainSettings      terrain;
+	DDGISettings         ddgi;
+};
+
+} // spt::rsc

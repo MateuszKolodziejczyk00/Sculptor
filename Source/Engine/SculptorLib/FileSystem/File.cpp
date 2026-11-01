@@ -79,6 +79,8 @@ String File::ReadDocument(const Path& path, EFileOpenFlags openFlags /*= EFileOp
 		stream.seekg(0, std::ios::beg);
 
 		stream.read(&content[0], content.size());
+		// Text mode stream converts CRLF to LF, so fewer characters than file size may be read
+		content.resize(static_cast<SizeType>(stream.gcount()));
 		stream.close();
 	}
 
@@ -95,6 +97,58 @@ void File::SaveDocument(const Path& path, const lib::String& data, EFileOpenFlag
 	stream << data;
 
 	stream.close();
+}
+
+lib::Span<char> File::ReadDocument(lib::MemoryArena& memArena, const Path& path, EFileOpenFlags openFlags /* = EFileOpenFlags::None */)
+{
+	SPT_PROFILER_FUNCTION();
+
+	std::ifstream stream = lib::File::OpenInputStream(path, openFlags);
+	SPT_CHECK(stream.is_open());
+
+	stream.seekg(0, std::ios::end);
+	const SizeType size = stream.tellg();
+	stream.seekg(0, std::ios::beg);
+
+	lib::Span<char> content = memArena.AllocateSpanUninitialized<char>(size);
+
+	stream.read(content.data(), size);
+
+	stream.close();
+
+	return content;
+}
+
+void File::SaveBinary(const Path& path, lib::Span<const Byte> data, EFileOpenFlags openFlags /*= lib::Flags(lib::EFileOpenFlags::ForceCreate, lib::EFileOpenFlags::DiscardContent)*/)
+{
+	SPT_PROFILER_FUNCTION();
+
+	std::ofstream stream = lib::File::OpenOutputStream(path, openFlags);
+	SPT_CHECK(stream.is_open());
+
+	stream.write(reinterpret_cast<const char*>(data.data()), data.size());
+
+	stream.close();
+}
+
+lib::Span<Byte> LoadBinary(lib::MemoryArena& memArena, const Path& path, EFileOpenFlags openFlags = lib::EFileOpenFlags::Binary)
+{
+	SPT_PROFILER_FUNCTION();
+
+	std::ifstream stream = lib::File::OpenInputStream(path, openFlags);
+	SPT_CHECK(stream.is_open());
+
+	stream.seekg(0, std::ios::end);
+	const SizeType size = stream.tellg();
+	stream.seekg(0, std::ios::beg);
+
+	lib::Span<Byte> data = memArena.AllocateSpanUninitialized<Byte>(size);
+
+	stream.read(reinterpret_cast<char*>(data.data()), size);
+
+	stream.close();
+
+	return data;
 }
 
 Bool File::Exists(const Path& path)

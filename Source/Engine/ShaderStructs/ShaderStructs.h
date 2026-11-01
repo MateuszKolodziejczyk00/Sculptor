@@ -204,6 +204,12 @@ public: \
 	typedef rdr::priv::ShaderStructMemberMetaData<_MT_##name,
 
 
+#define SHADER_STRUCT_FIELD_DEFAULT(type, name, default) \
+	type, #name> _MT_##name; \
+	type name = default; \
+	typedef rdr::priv::ShaderStructMemberMetaData<_MT_##name,
+
+
 #define END_SHADER_STRUCT() \
 	void, "Head"> HeadMemberMetaData; \
 	private: \

@@ -4,6 +4,45 @@
 namespace spt::as
 {
 
+namespace priv
+{
+
+SizeType CanonicalizePath(lib::StringView path, char* out)
+{
+	SizeType length       = 0u;
+	SizeType segmentBegin = 0u;
+
+	for (SizeType i = 0u; i <= path.size(); ++i)
+	{
+		const char c = i < path.size() ? path[i] : '/';
+		if (c != '/' && c != '\\')
+		{
+			out[length++] = c;
+			continue;
+		}
+
+		const lib::StringView segment(out + segmentBegin, length - segmentBegin);
+		if (segment.empty() || segment == ".")
+		{
+			length = segmentBegin;
+		}
+		else if (segment == "..")
+		{
+			SPT_CHECK_MSG(segmentBegin > 0u, "Path escapes content root: {}", path);
+			length = lib::StringView(out, segmentBegin - 1u).rfind('/') + 1u; // npos + 1 == 0
+		}
+		else
+		{
+			out[length++] = '/';
+		}
+		segmentBegin = length;
+	}
+
+	return length > 0u ? length - 1u : 0u;
+}
+
+} // priv
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // ResourcePathsCache ============================================================================
 
@@ -13,12 +52,17 @@ ResourcePathsCache& ResourcePathsCache::GetInstance()
 	return instance;
 }
 
+ResourcePathsCache::ResourcePathsCache()
+	: m_arena("ResourcePathsArena", 64u * 1024u, 16u * 1024u * 1024u)
+{
+}
+
 const CachedPath* ResourcePathsCache::FindCachedPath(ResourcePathID id) const
 {
-	const lib::LockGuard lock(m_lock);
+	const lib::ReadLockGuard lock(m_lock);
 
 	const auto found_path = m_paths.find(id);
-	return found_path != m_paths.cend() ? found_path->second.get() : nullptr;
+	return found_path != m_paths.cend() ? found_path->second : nullptr;
 }
 
 const CachedPath& ResourcePathsCache::GetCachedPathChecked(ResourcePathID id) const
@@ -29,30 +73,39 @@ const CachedPath& ResourcePathsCache::GetCachedPathChecked(ResourcePathID id) co
 	return *pathPtr;
 }
 
-const CachedPath& ResourcePathsCache::GetOrCreatePath(lib::Path path)
+const CachedPath& ResourcePathsCache::GetOrCreatePath(lib::StringView path)
 {
-	path = path.lexically_normal();
-	path.make_preferred();
+	SPT_CHECK_MSG(path.size() < s_maxPathLength, "Path is too long: {}", path);
 
-	const ResourcePathID id = ComputePathID(path);
+	char canonicalPathBuffer[s_maxPathLength];
+	const lib::StringView canonicalPath(canonicalPathBuffer, priv::CanonicalizePath(path, canonicalPathBuffer));
 
-	const lib::LockGuard lock(m_lock);
+	const ResourcePathID id = lib::FNV1a::Hash({ canonicalPath.data(), canonicalPath.size() });
 
-	lib::UniquePtr<CachedPath>& cachedPath = m_paths[id];
+	{
+		const lib::ReadLockGuard lock(m_lock);
+
+		const auto found_path = m_paths.find(id);
+		if (found_path != m_paths.cend())
+		{
+			SPT_CHECK_MSG(found_path->second->path == canonicalPath, "ResourcePathID collision: '{}' and '{}'", found_path->second->path, canonicalPath);
+			return *found_path->second;
+		}
+	}
+
+	const lib::WriteLockGuard lock(m_lock);
+
+	const CachedPath*& cachedPath = m_paths[id];
 
 	if (!cachedPath)
 	{
-		cachedPath = std::make_unique<CachedPath>();
-		cachedPath->id   = id;
-		cachedPath->path = std::move(path);
+		char* pathData = reinterpret_cast<char*>(m_arena.Allocate(canonicalPath.size(), alignof(char)));
+		std::memcpy(pathData, canonicalPath.data(), canonicalPath.size());
+
+		cachedPath = m_arena.Allocate<CachedPath>(CachedPath{ .path = lib::StringView(pathData, canonicalPath.size()), .id = id });
 	}
 
 	return *cachedPath;
-}
-
-ResourcePathID ResourcePathsCache::ComputePathID(const lib::Path& path) const
-{
-	return lib::GetHash(path);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -62,21 +115,32 @@ ResourcePath::ResourcePath()
 {
 }
 
+ResourcePath::ResourcePath(lib::StringView path)
+	: m_cachedPath(&ResourcePathsCache::GetInstance().GetOrCreatePath(path))
+{
+}
+
 ResourcePath::ResourcePath(const char* path)
-	: ResourcePath(lib::Path(path))
+	: ResourcePath(lib::StringView(path))
 {
 }
 
-ResourcePath::ResourcePath(lib::Path path)
+ResourcePath::ResourcePath(const lib::String& path)
+	: ResourcePath(lib::StringView(path))
 {
-	m_cachedPath = &ResourcePathsCache::GetInstance().GetOrCreatePath(std::move(path));
 }
 
-lib::String ResourcePath::GetName() const
+ResourcePath::ResourcePath(const lib::Path& path)
+	: ResourcePath(lib::StringView(path.generic_string()))
 {
-	SPT_CHECK(m_cachedPath->path.has_filename())
+}
 
-	return m_cachedPath->path.filename().string();
+lib::StringView ResourcePath::GetName() const
+{
+	const lib::StringView path = GetPath();
+	SPT_CHECK(!path.empty());
+
+	return path.substr(path.rfind('/') + 1u); // npos + 1 == 0
 }
 
 ResourcePath ResourcePath::GetCachedPath(ResourcePathID pathID)
@@ -85,10 +149,9 @@ ResourcePath ResourcePath::GetCachedPath(ResourcePathID pathID)
 	return ResourcePath(cachedPath);
 }
 
-const lib::Path& ResourcePath::GetPath() const
+lib::StringView ResourcePath::GetPath() const
 {
-	static lib::Path emptyPath;
-	return m_cachedPath ? m_cachedPath->path : emptyPath;
+	return m_cachedPath ? m_cachedPath->path : lib::StringView();
 }
 
 } // spt::as

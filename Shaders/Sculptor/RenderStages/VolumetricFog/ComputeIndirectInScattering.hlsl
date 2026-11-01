@@ -2,7 +2,7 @@
 
 [[shader_params(VolumetricFogConstants, PARAMS_RENDER_VOLUMETRIC_FOG)]]
 [[shader_params(GPURenderView, VIEW)]]
-[[shader_params(IndirectInScatteringConstants, PARAMS_INDIRECT_IN_SCATTERING)]]
+[[shader_params(IndirectInScatteringConstants, CONSTS)]]
 [[shader_params(DDGIGPUScene, PARAMS_D_D_G_I_SCENE)]]
 
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
@@ -18,7 +18,7 @@ struct CS_INPUT
 [numthreads(4, 4, 4)]
 void ComputeIndirectInScatteringCS(CS_INPUT input)
 {
-	if (all(input.globalID < PARAMS_INDIRECT_IN_SCATTERING->indirectGridRes))
+	if (all(input.globalID < CONSTS->indirectGridRes))
 	{
 		const float projectionNearPlane = GetNearPlane(VIEW->sceneView);
 
@@ -26,7 +26,7 @@ void ComputeIndirectInScatteringCS(CS_INPUT input)
 		const float fogFarPlane = PARAMS_RENDER_VOLUMETRIC_FOG->fogFarPlane;
 
 		const float bias = 0.2f;
-		const float3 fogFroxelUVW = ComputeFogGridSampleUVW(*PARAMS_RENDER_VOLUMETRIC_FOG, VIEW->sceneView, input.globalID.xyz, PARAMS_INDIRECT_IN_SCATTERING->indirectGridRes, PARAMS_RENDER_VOLUMETRIC_FOG->depthTexture, BindlessSamplers::LinearMinClampEdge(), bias);
+		const float3 fogFroxelUVW = ComputeFogGridSampleUVW(*PARAMS_RENDER_VOLUMETRIC_FOG, VIEW->sceneView, input.globalID.xyz, CONSTS->indirectGridRes, PARAMS_RENDER_VOLUMETRIC_FOG->depthTexture, BindlessSamplers::LinearMinClampEdge(), bias);
 
 		const float fogFroxelLinearDepth = ComputeFogFroxelLinearDepth(fogFroxelUVW.z, fogNearPlane, fogFarPlane);
 
@@ -43,6 +43,6 @@ void ComputeIndirectInScatteringCS(CS_INPUT input)
 
 		const float integrationDomain = 4.f * PI;
 
-		PARAMS_INDIRECT_IN_SCATTERING->inScatteringTexture[input.globalID] = inScattering * integrationDomain;
+		CONSTS->inScatteringTexture[input.globalID] = inScattering * integrationDomain;
 	}
 }

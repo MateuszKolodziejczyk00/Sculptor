@@ -85,7 +85,7 @@ public:
 
 		const auto constructor = [](lib::MemoryArena& arena, RenderScene& scene) -> SceneRenderSystem*
 		{
-			return arena.AllocateType<TSystemType>(arena, scene);
+			return arena.Allocate<TSystemType>(arena, scene);
 		};
 
 		const auto destructor = [](SceneRenderSystem& system)

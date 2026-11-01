@@ -60,6 +60,31 @@ private:
 	std::ofstream		m_stream;
 };
 
+
+static lib::Lock g_lastErrorsLock;
+
+
+lib::Path GetLastErrorsLogPath()
+{
+	return ShaderCompilationEnvironment::GetErrorLogsPath() / "Last.log";
+}
+
+
+void OutputLastErrors(const lib::String& errors)
+{
+	const lib::LockGuard lockGuard(g_lastErrorsLock);
+
+	LoggerStreamGuard streamGuard(GetLastErrorsLogPath().generic_string());
+	streamGuard.getStream() << errors;
+}
+
+}
+
+void CompilationErrorsLogger::ClearLastErrors()
+{
+	const lib::LockGuard lockGuard(priv::g_lastErrorsLock);
+
+	std::filesystem::remove(priv::GetLastErrorsLogPath());
 }
 
 void CompilationErrorsLogger::OutputShaderPreprocessedCode(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef)
@@ -86,6 +111,8 @@ void CompilationErrorsLogger::OutputShaderPreprocessingErrors(const lib::String&
 	std::ofstream& stream = streamGuard.getStream();
 
 	stream << errors;
+
+	priv::OutputLastErrors(errors);
 }
 
 void CompilationErrorsLogger::OutputShaderCompilationErrors(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const lib::String& errors)
@@ -98,6 +125,8 @@ void CompilationErrorsLogger::OutputShaderCompilationErrors(const lib::String& s
 	std::ofstream& stream = streamGuard.getStream();
 
 	stream << errors;
+
+	priv::OutputLastErrors(errors);
 }
 
 lib::String CompilationErrorsLogger::GetShaderLogsPath(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef)

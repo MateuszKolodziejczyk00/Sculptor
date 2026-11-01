@@ -80,6 +80,14 @@ lib::SharedPtr<BindableBufferView> BindableBufferView::AsSharedPtr()
 	return shared_from_this();
 }
 
+void BindableBufferView::UpdateDescriptorsMemory()
+{
+	if (m_uavDescriptor.IsValid())
+	{
+		GPUApi::GetDescriptorManager().UploadUAVDescriptor(m_uavDescriptor.Get(), *this);
+	}
+}
+
 void BindableBufferView::CreateDescriptors(BufferViewDescriptorsAllocation externalDescriptorsAllocation)
 {
 	DescriptorManager& descriptorManager = GPUApi::GetDescriptorManager();
@@ -89,7 +97,11 @@ void BindableBufferView::CreateDescriptors(BufferViewDescriptorsAllocation exter
 	if (lib::HasAnyFlag(rhiBuffer.GetUsage(), rhi::EBufferUsage::Storage))
 	{
 		m_uavDescriptor = externalDescriptorsAllocation.uavDescriptor.IsValid() ? std::move(externalDescriptorsAllocation.uavDescriptor) : descriptorManager.AllocateBufferDescriptor();
-		descriptorManager.UploadUAVDescriptor(m_uavDescriptor.Get(), *this);
+
+		if (rhiBuffer.HasBoundMemory())
+		{
+			descriptorManager.UploadUAVDescriptor(m_uavDescriptor.Get(), *this);
+		}
 	}
 }
 
@@ -117,6 +129,7 @@ Buffer::Buffer(const RendererResourceName& name, const rhi::RHIBuffer& rhiBuffer
 	GetRHI().SetName(name.Get());
 
 	InitFullView(BufferViewDescriptorsAllocation{});
+
 }
 
 Buffer::~Buffer()
@@ -156,6 +169,11 @@ void Buffer::ReleasePlacedAllocation()
 	}
 
 	m_owningMemoryPool.reset();
+}
+
+void Buffer::UpdateDescriptorsMemory()
+{
+	m_fullView.Get().UpdateDescriptorsMemory();
 }
 
 BufferView Buffer::CreateFullView() const

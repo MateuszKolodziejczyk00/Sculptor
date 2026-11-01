@@ -18,7 +18,8 @@
 #include "Containers/HashSet.h"
 #include "Containers/Span.h"
 #include "Containers/Stack.h"
-#include "Containers/StackArenaArray.h"
+#include "Containers/DynamicArenaArray.h"
+#include "Containers/ArenaArray.h"
 
 // Utility
 #include "Utility/Concepts.h"
@@ -31,6 +32,7 @@
 #include "Utility/Flags.h"
 #include "Utility/String/HashedString.h"
 #include "Utility/String/String.h"
+#include "Utility/String/InlineString.h"
 #include "Utility/String/Literal.h"
 #include "Utility/Threading/Lock.h"
 #include "Utility/Threading/Spinlock.h"

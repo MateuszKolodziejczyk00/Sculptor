@@ -1,0 +1,25 @@
+namespace spt::sdd::tests
+{
+
+enum ESomeEnum
+{
+	[DisplayName="Value A"]
+	A,
+	B = 4,
+	[DisplayName="Value C", hidden]
+	C,
+};
+
+
+enum ESomeSignedEnum : Int32 { Negative = -1, Positive = 1 };
+
+
+struct SomeData0
+{
+	Uint32 x;
+
+	[test=-2]
+	Int32 y;
+};
+
+} // spt::sdd::tests

@@ -319,6 +319,16 @@ Bool RHIBuffer::HasBoundMemory() const
 	return !std::holds_alternative<rhi::RHINullAllocation>(m_allocationHandle);
 }
 
+Bool RHIBuffer::IsPlacedAllocation() const
+{
+	return std::holds_alternative<rhi::RHIPlacedAllocation>(m_allocationHandle);
+}
+
+Bool RHIBuffer::IsCommittedAllocation() const
+{
+	return std::holds_alternative<rhi::RHICommittedAllocation>(m_allocationHandle);
+}
+
 Bool RHIBuffer::CanMapMemory() const
 {
 	return m_mappingStrategy != EMappingStrategy::CannotBeMapped;
@@ -368,6 +378,12 @@ DeviceAddress RHIBuffer::GetDeviceAddress() const
 	VkBufferDeviceAddressInfo addressInfo{ VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO };
 	addressInfo.buffer = m_bufferHandle;
 	return vkGetBufferDeviceAddress(VulkanRHI::GetDeviceHandle(), &addressInfo);
+}
+
+const rhi::RHIAllocationInfo& RHIBuffer::GetAllocationInfo() const
+{
+	SPT_CHECK(HasBoundMemory());
+	return m_allocationInfo;
 }
 
 Bool RHIBuffer::AllowsSuballocations() const
@@ -466,6 +482,7 @@ Bool RHIBuffer::BindMemory(const rhi::RHIResourceAllocationDefinition& allocatio
 		const std::optional<rhi::RHIAllocationInfo> allocationInfo = memory_utils::GetAllocationInfo(allocationDefinition);
 		SPT_CHECK(allocationInfo.has_value());
 		InitializeMappingStrategy(*allocationInfo);
+		m_allocationInfo = *allocationInfo;
 	}
 
 	return success;

@@ -13,7 +13,6 @@
 #include "SceneRenderer/RenderStages/Utils/RayBinner.h"
 #include "SceneRenderer/RenderStages/Utils/TracesAllocator.h"
 #include "SceneRenderer/RenderStages/Utils/VariableRateTexture.h"
-#include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "SceneRenderer/RenderStages/Utils/RTReflectionsTypes.h"
 #include "SceneRenderer/Debug/Stats/RTReflectionsStatsView.h"
 #include "MaterialsSubsystem.h"
@@ -26,32 +25,6 @@ namespace spt::rsc
 {
 
 REGISTER_RENDER_STAGE(ERenderStage::SpecularReflections, SpecularReflectionsRenderStage);
-
-namespace renderer_params
-{
-RendererBoolParameter enableTemporalResampling("Enable Temporal Resampling", { "Specular Reflections" }, true);
-RendererIntParameter spatialResamplingIterationsNum("Spatial Resampling Iterations Num", { "Specular Reflections" }, 1, 0, 2);
-
-RendererBoolParameter halfResReflections("Half Res", { "Specular Reflections" }, false);
-RendererBoolParameter forceFullRateTracingReflections("Force Full Rate Tracing", { "Specular Reflections" }, true);
-RendererBoolParameter doFullFinalVisibilityCheck("Full Final Visibility Check", { "Specular Reflections" }, true);
-RendererBoolParameter enableFireflyFilter("Enable Firefly Filter", { "Specular Reflections" }, true);
-RendererBoolParameter enableSecondTracingPass("Enable SecondTracing Pass", { "Specular Reflections" }, false);
-RendererBoolParameter blurVarianceEstimate("Blur Variance Estimate", { "Specular Reflections" }, false);
-RendererBoolParameter useDepthTestForVRTReprojection("Use Depth Test For VRT Reprojection", { "Specular Reflections" }, false);
-RendererBoolParameter enableSpatialResamplingSSVisibilityTest("Enable Spatial Resampling SS Visibility Test", { "Specular Reflections" }, false);
-RendererBoolParameter useLargeTileSize("Use Large Tile Size", { "Specular Reflections" }, false);
-RendererBoolParameter resampleOnlyFromTracedPixels("Resample Only From Traced Pixels", { "Specular Reflections" }, true);
-RendererBoolParameter enableHitDistanceBasedMaxAge("Enable Hit Distance Based Max Age", { "Specular Reflections" }, true);
-RendererIntParameter reservoirMaxAge("Reservoir Max Age", { "Specular Reflections" }, 10, 0, 30);
-RendererFloatParameter resamplingRangeStep("Resampling Range Step", { "Specular Reflections" }, 2.333f, 0.f, 10.f);
-RendererBoolParameter enableStableHistoryBlend("Enable Stable History Blend", { "Specular Reflections" }, false);
-RendererIntParameter wideRadiusSpatialPassesNum("Wide Radius Spatial Passes Num", { "Specular Reflections" }, 0, 0, 5);
-RendererBoolParameter useSharcAsRadianceCache("Use Sharc As Radiance Cache", { "Specular Reflections" }, true);
-RendererIntParameter ssrtStepsNum("SSRT Steps Num", { "Specular Reflections" }, 10, 1, 64);
-RendererFloatParameter ssrtTraceLenght("SSRT Trace Lenght", { "Specular Reflections" }, 0.15f, 0.f, 1.f);
-
-} // renderer_params
 
 struct SpecularReflectionsParams
 {
@@ -121,11 +94,17 @@ RayDirections GenerateRayDirections(rg::RenderGraphBuilder& graphBuilder, const 
 	rayPdfsBufferDef.size  = resolution.x() * resolution.y() * sizeof(Real32);
 	rayPdfsBufferDef.usage = rhi::EBufferUsage::Storage;
 	const rg::RGBufferViewHandle rayPdfsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Ray PDFs Buffer"), rayPdfsBufferDef, rhi::EMemoryUsage::GPUOnly);
+	
+	// Non-deterministic because order of rays is not guaranteed due to atomics
+	rayDirectionsBuffer->SetNonDeterministic();
+	rayPdfsBuffer->SetNonDeterministic();
+
+	constexpr Uint32 baseSeed = 0x9D2B6F13u;
 
 	GenerateRayDirectionsConstants shaderConstants;
 	shaderConstants.resolution               = resolution;
 	shaderConstants.invResolution            = resolution.cast<Real32>().cwiseInverse();
-	shaderConstants.seed                     = lib::rnd::RandomFromTypeDomain<Uint32>();
+	shaderConstants.seed                     = static_cast<Uint32>(lib::HashCombine(baseSeed, viewSpec.GetFrameIdx()));
 	shaderConstants.tracesNum                = tracesAllocation.tracesNum;
 	shaderConstants.traceCommands            = tracesAllocation.rayTraceCommands;
 	shaderConstants.gpuGBuffer               = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
@@ -236,6 +215,10 @@ static rdr::PipelineStateID CreateMissRaysShadingPipeline()
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("MissRaysShadingPipeline"), shader);
 }
 
+BEGIN_SHADER_STRUCT(ProbeTrainingConsts)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<math::Vector3f>, data)
+END_SHADER_STRUCT()
+
 
 static void ShadeMissRays(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const SpecularReflectionsParams& srParams, const RTShadingParams& shadingParams, const rdr::GPUPtr<RTShadingConstants>& shadingConstants)
 {
@@ -249,6 +232,38 @@ static void ShadeMissRays(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 								  missRaysShadingPipeline,
 								  shadingParams.shadingIndirectArgs, ComputeMissShadingIndirectArgsOffset(),
 								  rg::ShaderParams(shadingConstants, shadingViewContext.cloudscapeProbesParams));
+
+
+	static bool test = false;
+
+	if (test)
+	{
+		const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/ProbeTraining.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ProbeTrainingCS"));
+		const auto pipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("ProbeTraining"), shader);
+
+		const auto trainingDataBuffer = graphBuilder.CreateStorageBufferView(RG_DEBUG_NAME("Probe Training Data Buffer"), 2u * 1024u * 1024u * sizeof(math::Vector3f));
+
+		ProbeTrainingConsts trainingConsts;
+		trainingConsts.data = trainingDataBuffer;
+
+		graphBuilder.Dispatch(RG_DEBUG_NAME("Training Data Export"),
+									  pipeline,
+									  math::Vector3u(1024u, 1u, 1u),
+									  rg::ShaderParams(trainingConsts, shadingConstants, shadingViewContext.cloudscapeProbesParams));
+
+		lib::SharedPtr<rdr::Buffer> downloadedData = graphBuilder.DownloadBuffer(RG_DEBUG_NAME("Download Probe Training Data"), trainingDataBuffer, 0, trainingDataBuffer->GetSize());
+
+		js::Launch("ASD",
+			[downloadedData]()
+			{
+				rhi::RHIMappedByteBuffer mappedData(downloadedData->GetRHI());
+
+				lib::File::SaveBinary(engn::GetEngine().GetPaths().savedPath / "ProbeTrainingData.bin", mappedData.GetSpan());
+			},
+			js::Prerequisites(graphBuilder.GetGPUFinishedEvent()));
+
+		test = false;
+	}
 }
 
 } // miss_rays
@@ -299,13 +314,15 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const SceneRender
 
 	const ddgi::DDGIRenderSystem& ddgiRenderSystem = rendererInterface.GetRenderSystemChecked<ddgi::DDGIRenderSystem>();
 
-	const Bool useSharc = renderer_params::useSharcAsRadianceCache && SharcGICache::IsSharcSupported();
+	const RenderViewSettings& settings = viewSpec.GetSettings();
+
+	const Bool useSharc = settings.reflections.useSharc && SharcGICache::IsSharcSupported();
 
 	HitRaysShadingPermutation permutation;
 	permutation.USE_DDGI = !useSharc;
 	if (useSharc)
 	{
-		permutation.SHARC_PERMUTATION = SharcGICache::GetShadersPermutation();
+		permutation.SHARC_PERMUTATION = SharcGICache::GetShadersPermutation(settings.sharc);
 	}
 
 	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("Hit Rays Shading"),
@@ -426,11 +443,13 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, const Scene
 	hitMaterialInfosBufferDef.size  = hitMaterialInfosBufferSize;
 	hitMaterialInfosBufferDef.usage = rhi::EBufferUsage::Storage;
 	const rg::RGBufferViewHandle hitMaterialInfos = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Hit Material Infos Buffer"), hitMaterialInfosBufferDef, rhi::EMemoryUsage::GPUOnly);
+	hitMaterialInfos->SetNonDeterministic(); // atomics
 
 	rhi::BufferDefinition sortedRaysBufferDef;
 	sortedRaysBufferDef.size  = traceParams.tracesAllocation.rayTraceCommands->GetSize();
 	sortedRaysBufferDef.usage = rhi::EBufferUsage::Storage;
 	const rg::RGBufferViewHandle sortedRaysBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Sorted Rays Buffer"), sortedRaysBufferDef, rhi::EMemoryUsage::GPUOnly);
+	sortedRaysBuffer->SetNonDeterministic(); // atomics
 
 	rhi::BufferDefinition shadingIndirectArgsBufferDef;
 	shadingIndirectArgsBufferDef.size  = sizeof(shading::RaysShadingIndirectArgs);
@@ -446,13 +465,15 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, const Scene
 	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Rays Shading Counts"), raysShadingCountsBuffer, 0u);
 
 
+	const ReflectionsSettings& settings = viewSpec.GetSettings().reflections;
+
 	SpecularReflectionsTraceConstants shaderConstants;
 	shaderConstants.resolution            = params.resolution;
 	shaderConstants.invResolution         = params.resolution.cast<Real32>().cwiseInverse();
 	shaderConstants.frameIdx              = viewSpec.GetFrameIdx();
 	shaderConstants.rayCommandsBufferSize = static_cast<Uint32>(sortedRaysBuffer->GetSize() / sizeof(vrt::EncodedRayTraceCommand));
-	shaderConstants.ssrTracer             = CreateScreenSpaceTracerData(viewContext.linearDepth, static_cast<Uint32>(renderer_params::ssrtStepsNum));
-	shaderConstants.ssrTraceLength        = renderer_params::ssrtTraceLenght;
+	shaderConstants.ssrTracer             = CreateScreenSpaceTracerData(viewContext.linearDepth, settings.ssrtSteps);
+	shaderConstants.ssrTraceLength        = settings.ssrtTraceLength;
 	shaderConstants.gpuGBuffer            = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
 	shaderConstants.rayDirections         = rayDirections;
 	shaderConstants.traceCommands         = traceParams.tracesAllocation.rayTraceCommands;
@@ -494,6 +515,8 @@ static sr_denoiser::Denoiser::Result Denoise(rg::RenderGraphBuilder& graphBuilde
 {
 	SPT_PROFILER_FUNCTION();
 
+	const ReflectionsSettings& settings = viewSpec.GetSettings().reflections;
+
 	sr_denoiser::Denoiser::Params denoiserParams(viewSpec);
 	denoiserParams.currentDepthTexture      = params.depthTexture;
 	denoiserParams.historyDepthTexture      = params.depthHistoryTexture;
@@ -506,9 +529,9 @@ static sr_denoiser::Denoiser::Result Denoise(rg::RenderGraphBuilder& graphBuilde
 	denoiserParams.specularTexture          = specularReflections;
 	denoiserParams.diffuseTexture           = diffuseReflections;
 	denoiserParams.lightDirection           = lightDirection;
-	denoiserParams.blurVarianceEstimate     = !renderer_params::forceFullRateTracingReflections && renderer_params::blurVarianceEstimate;
-	denoiserParams.enableStableHistoryBlend = renderer_params::enableStableHistoryBlend;
-	denoiserParams.wideRadiusPassesNum      = renderer_params::wideRadiusSpatialPassesNum;
+	denoiserParams.blurVarianceEstimate     = !settings.forceFullRateTracing && settings.blurVarianceEstimate;
+	denoiserParams.enableStableHistoryBlend = settings.enableStableHistoryBlend;
+	denoiserParams.wideRadiusPassesNum      = settings.wideRadiusSpatialPasses;
 	denoiserParams.resetAccumulation        = params.resetAccumulation;
 	denoiserParams.baseColorMetallicTexture = params.baseColorTexture;
 
@@ -597,7 +620,9 @@ void SpecularReflectionsRenderStage::BeginFrame(const RenderScene& renderScene, 
 
 	ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetBlackboard().Get<ShadingViewResourcesUsageInfo>();
 
-	m_renderHalfResReflections = renderer_params::halfResReflections;
+	const ReflectionsSettings& settings = viewSpec.GetSettings().reflections;
+
+	m_renderHalfResReflections = settings.halfRes;
 
 	if (m_renderHalfResReflections)
 	{
@@ -613,10 +638,10 @@ void SpecularReflectionsRenderStage::BeginFrame(const RenderScene& renderScene, 
 		resourcesUsageInfo.useLinearDepth                  = true;
 	}
 
-	if (m_variableRateRenderer.GetVariableRateSettings().permutationSettings.useLargeTile != renderer_params::useLargeTileSize)
+	if (m_variableRateRenderer.GetVariableRateSettings().permutationSettings.useLargeTile != settings.useLargeTile)
 	{
 		vrt::VariableRateSettings newVariableRateSettings = m_variableRateRenderer.GetVariableRateSettings();
-		newVariableRateSettings.permutationSettings.useLargeTile = renderer_params::useLargeTileSize;
+		newVariableRateSettings.permutationSettings.useLargeTile = settings.useLargeTile;
 
 		m_variableRateRenderer.Reinitialize(newVariableRateSettings);
 	}
@@ -638,6 +663,8 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 
 		const ShadingViewRenderingSystemsInfo& viewSystemsInfo = viewSpec.GetBlackboard().Get<ShadingViewRenderingSystemsInfo>();
 
+		const ReflectionsSettings& settings = viewSpec.GetSettings().reflections;
+
 		const Bool isHalfRes = m_renderHalfResReflections;
 
 		const math::Vector2u resolution = isHalfRes ? viewSpec.GetRenderingHalfRes() : viewSpec.GetRenderingRes();
@@ -653,7 +680,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 			.reprojectionSuccessMask = vrReprojectionSuccessMask,
 		};
 
-		if (renderer_params::useDepthTestForVRTReprojection)
+		if (settings.useDepthTestForReprojection)
 		{
 			reprojectionParams.geometryData = vrt::VariableRateReprojectionParams::Geometry
 			{
@@ -728,21 +755,21 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 			sr_restir::SpatialResamplingPassParams{
 				.resamplingRangeMultiplier        = 1.f,
 				.samplesNum                       = 4u,
-				.enableScreenSpaceVisibilityTrace = renderer_params::enableSpatialResamplingSSVisibilityTest,
-				.resampleOnlyFromTracedPixels     = renderer_params::resampleOnlyFromTracedPixels
+				.enableScreenSpaceVisibilityTrace = settings.spatialResamplingSSVisibilityTest,
+				.resampleOnlyFromTracedPixels     = settings.resampleOnlyFromTracedPixels
 			},
 			sr_restir::SpatialResamplingPassParams{
 				.resamplingRangeMultiplier        = 0.2f,
 				.samplesNum                       = 2u,
-				.enableScreenSpaceVisibilityTrace = renderer_params::enableSpatialResamplingSSVisibilityTest,
-				.resampleOnlyFromTracedPixels     = renderer_params::resampleOnlyFromTracedPixels
+				.enableScreenSpaceVisibilityTrace = settings.spatialResamplingSSVisibilityTest,
+				.resampleOnlyFromTracedPixels     = settings.resampleOnlyFromTracedPixels
 			}
 		};
 
-		const SizeType activeResamplingPassesNum = std::min(spatialResamplingPasses.size(), static_cast<SizeType>(renderer_params::spatialResamplingIterationsNum));
+		const SizeType activeResamplingPassesNum = std::min(spatialResamplingPasses.size(), static_cast<SizeType>(settings.spatialResamplingIterations));
 		const lib::Span<const sr_restir::SpatialResamplingPassParams> activeResamplingPasses = { spatialResamplingPasses.data(), activeResamplingPassesNum };
 
-		const Bool enableDistanceBasedMaxAge = renderer_params::enableHitDistanceBasedMaxAge && !viewSystemsInfo.useUnifiedDenoising;
+		const Bool enableDistanceBasedMaxAge = settings.enableHitDistanceBasedMaxAge && !viewSystemsInfo.useUnifiedDenoising;
 
 		sr_restir::ResamplingParams resamplingParams(viewSpec, renderScene);
 		resamplingParams.initialReservoirBuffer          = reservoirsBuffer;
@@ -761,17 +788,17 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		resamplingParams.historySpecularHitDist          = !viewSystemsInfo.useUnifiedDenoising ? m_denoiser.GetHistorySpecularHitDist(graphBuilder) : nullptr;
 		resamplingParams.tracesAllocation                = tracesAllocation;
 		resamplingParams.vrReprojectionSuccessMask       = vrReprojectionSuccessMask;
-		resamplingParams.enableTemporalResampling        = hasValidHistory && renderer_params::enableTemporalResampling;
+		resamplingParams.enableTemporalResampling        = hasValidHistory && settings.enableTemporalResampling;
 		resamplingParams.spatialResamplingPasses         = activeResamplingPasses;
-		resamplingParams.doFullFinalVisibilityCheck      = renderer_params::doFullFinalVisibilityCheck;
-		resamplingParams.enableSecondTracingPass         = renderer_params::enableSecondTracingPass;
+		resamplingParams.doFullFinalVisibilityCheck      = settings.fullFinalVisibilityCheck;
+		resamplingParams.enableSecondTracingPass         = settings.enableSecondTracingPass;
 		resamplingParams.variableRateTileSizeBitOffset   = vrt::GetTileSizeBitOffset(m_variableRateRenderer.GetVariableRateSettings());
 		resamplingParams.enableHitDistanceBasedMaxAge    = enableDistanceBasedMaxAge;
-		resamplingParams.enableFireflyFilter             = renderer_params::enableFireflyFilter && !viewSystemsInfo.useUnifiedDenoising;
-		resamplingParams.reservoirMaxAge                 = renderer_params::reservoirMaxAge;
-		resamplingParams.resamplingRangeStep             = renderer_params::resamplingRangeStep;
-		resamplingParams.ssrStepsNum                     = renderer_params::ssrtStepsNum;
-		resamplingParams.ssrTraceLength                  = renderer_params::ssrtTraceLenght;
+		resamplingParams.enableFireflyFilter             = settings.enableFireflyFilter && !viewSystemsInfo.useUnifiedDenoising;
+		resamplingParams.reservoirMaxAge                 = settings.reservoirMaxAge;
+		resamplingParams.resamplingRangeStep             = settings.resamplingRangeStep;
+		resamplingParams.ssrStepsNum                     = settings.ssrtSteps;
+		resamplingParams.ssrTraceLength                  = settings.ssrtTraceLength;
 		resamplingParams.heightFogParams                 = viewSpec.GetRenderSystemChecked<ParticipatingMediaViewRenderSystem>().GetHeightFogParams();
 
 		const sr_restir::InitialResamplingResult initialResamplingResult = m_resampler.ExecuteInitialResampling(graphBuilder, resamplingParams);
@@ -889,7 +916,7 @@ void SpecularReflectionsRenderStage::RenderVariableRateTexture(rg::RenderGraphBu
 
 	{
 		vrt::VariableRateRTConstants shaderConstants;
-		shaderConstants.forceFullRateTracing = renderer_params::forceFullRateTracingReflections;
+		shaderConstants.forceFullRateTracing = viewSpec.GetSettings().reflections.forceFullRateTracing;
 		shaderConstants.influenceTexture           = reflectionsViewData.reflectionsInfluenceTexture;
 		shaderConstants.roughnessTexture           = isHalfRes ? viewContext.roughnessHalfRes : viewContext.gBuffer[GBuffer::Texture::Roughness];
 		shaderConstants.varianceEstimation         = reflectionsViewData.varianceEstimation;
@@ -899,7 +926,7 @@ void SpecularReflectionsRenderStage::RenderVariableRateTexture(rg::RenderGraphBu
 
 		rg::BindShaderParamsScope bindShaderParamsScope(graphBuilder, rg::ShaderParams(shaderConstants));
 
-		m_variableRateRenderer.Render(graphBuilder, nullptr, vrtShader);
+		m_variableRateRenderer.Render(graphBuilder, nullptr, viewContext.depth, vrtShader);
 	}
 }
 
@@ -907,13 +934,9 @@ void SpecularReflectionsRenderStage::UpdateSharcCache(rg::RenderGraphBuilder& gr
 {
 	SPT_PROFILER_FUNCTION();
 
-	if (renderer_params::useSharcAsRadianceCache && !SharcGICache::IsSharcSupported())
-	{
-		SPT_LOG_WARN(RTGI, "Sharc is not supported. Falling back to DDGI.");
-		renderer_params::useSharcAsRadianceCache.SetValue(false);
-	}
+	const ReflectionsSettings& settings = viewSpec.GetSettings().reflections;
 
-	if (renderer_params::useSharcAsRadianceCache && SharcGICache::IsSharcSupported())
+	if (settings.useSharc && SharcGICache::IsSharcSupported())
 	{
 		if (!m_sharcCache)
 		{
@@ -922,8 +945,8 @@ void SpecularReflectionsRenderStage::UpdateSharcCache(rg::RenderGraphBuilder& gr
 
 		SharcUpdateParams updateParams;
 		updateParams.resetCache     = stageContext.rendererSettings.resetAccumulation;
-		updateParams.ssrStepsNum    = renderer_params::ssrtStepsNum;
-		updateParams.ssrTraceLength = renderer_params::ssrtTraceLenght;
+		updateParams.ssrStepsNum    = settings.ssrtSteps;
+		updateParams.ssrTraceLength = settings.ssrtTraceLength;
 		m_sharcCache->Update(graphBuilder, rendererInterface, renderScene, viewSpec, updateParams);
 	}
 	else

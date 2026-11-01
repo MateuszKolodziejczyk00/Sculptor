@@ -199,6 +199,16 @@ void EngineFramesManager::Shutdown()
 	}
 }
 
+void EngineFramesManager::ResetTimeline()
+{
+	EngineFramesManager& manager = GetInstance();
+
+	SPT_CHECK_MSG(!manager.m_lastFrame, "All frames must be finished (see Shutdown) before resetting timeline");
+
+	manager.m_frameCounter = 1u;
+	GetEngine().ResetTimer();
+}
+
 void EngineFramesManager::DispatchTickFrame(const FrameContext& context)
 {
 	SPT_PROFILER_FUNCTION();

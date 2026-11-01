@@ -50,6 +50,8 @@ private:
 	TextureWithHistory m_directionalLightShadowTerm;
 
 	VolumetricFogParams m_volumetricFogParams;
+
+	const struct HeightFogSettings* m_sceneFogSettings = nullptr;
 };
 
 } // spt::rsc

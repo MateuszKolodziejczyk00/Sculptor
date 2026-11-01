@@ -29,6 +29,7 @@ static rdr::PipelineStateID CompileGaussianBlurPipeline()
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("Gaussian Blur Pipeline"), shader);
 }
 
+
 void ApplyGaussianBlurPass(rg::RenderGraphBuilder& graphBuilder, rg::RenderGraphDebugName debugName, rg::RGTextureViewHandle input, rg::RGTextureViewHandle output, Uint32 dimention, Bool useTonemappedValues, const BlurPassParams& params)
 {
 	SPT_PROFILER_FUNCTION();
@@ -59,7 +60,7 @@ void ApplyGaussianBlurPass(rg::RenderGraphBuilder& graphBuilder, rg::RenderGraph
 
 	static const rdr::PipelineStateID pipeline = CompileGaussianBlurPipeline();
 
-	const Uint32 groupSize = 128u;
+	const Uint32 groupSize = 64u;
 	math::Vector3u dispatchSize = input->GetResolution();
 
 	if (dimention == 0)

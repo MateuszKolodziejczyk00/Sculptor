@@ -3,6 +3,15 @@
 #include "SculptorCoreTypes.h"
 
 
+#define RG_ENABLE_TEST_MODE (SPT_DEBUG || SPT_DEVELOPMENT)
+
+
+namespace spt::rdr
+{
+class GPUStatisticsCollector;
+} // spt::rdr
+
+
 namespace spt::rg
 {
 
@@ -87,6 +96,12 @@ struct WorkloadResolution
 private:
 
 	math::Vector3u m_groupsNum;
+};
+
+
+struct RGExecutionContext
+{
+	lib::SharedPtr<rdr::GPUStatisticsCollector> statisticsCollector;
 };
 
 } // spt::rg

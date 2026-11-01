@@ -334,9 +334,9 @@ int main()
 	if (cmdLineArgs.Contains("-Ref"))
 	{
 		const lib::Path referenceDirectory = engn::Engine::Get().GetPaths().savedPath / closure_viewer::ref_tool::refsDirectoryName / cmdLineArgs.GetValue("-Ref").ToString();
-		const lib::Path raportPath = engn::Engine::Get().GetPaths().savedPath / closure_viewer::ref_tool::raportsDirectoryName / (lib::File::Utils::CreateFileNameFromTime() + ".html");
+		const lib::Path reportPath = engn::Engine::Get().GetPaths().savedPath / closure_viewer::ref_tool::reportsDirectoryName / (lib::File::Utils::CreateFileNameFromTime() + ".html");
 
-		const Bool success = closure_viewer::ref_tool::GenerateComparisonRaport(referenceDirectory, raportPath);
+		const Bool success = closure_viewer::ref_tool::GenerateComparisonReport(referenceDirectory, reportPath);
 
 		return success ? 0 : 1;
 	}

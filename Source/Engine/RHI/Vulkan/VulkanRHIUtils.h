@@ -12,6 +12,7 @@
 #include "RHICore/RHIAccelerationStructureTypes.h"
 #include "RHICore/RHIQueryTypes.h"
 #include "RHICore/RHIDescriptorTypes.h"
+#include "RHICore/RHICooperativeVectorTypes.h"
 
 
 namespace spt::vulkan
@@ -21,61 +22,65 @@ class RHI_API RHIToVulkan
 {
 public:
 
-	static VkPipelineStageFlags2			GetStageFlags(rhi::EPipelineStage flags);
+	static VkPipelineStageFlags2				GetStageFlags(rhi::EPipelineStage flags);
 
-	static VkImageLayout					GetImageLayout(rhi::ETextureLayout layout);
+	static VkImageLayout						GetImageLayout(rhi::ETextureLayout layout);
 
-	static VkFormat							GetVulkanFormat(rhi::EFragmentFormat format);
+	static VkFormat								GetVulkanFormat(rhi::EFragmentFormat format);
 
-	static VkImageAspectFlags				GetAspectFlags(rhi::ETextureAspect flags);
+	static VkImageAspectFlags					GetAspectFlags(rhi::ETextureAspect flags);
 
-	static VkRenderingFlags					GetRenderingFlags(rhi::ERenderingFlags flags);
+	static VkRenderingFlags						GetRenderingFlags(rhi::ERenderingFlags flags);
 
-	static VkAttachmentLoadOp				GetLoadOp(rhi::ERTLoadOperation loadOp);
-	static VkAttachmentStoreOp				GetStoreOp(rhi::ERTStoreOperation storeOp);
+	static VkAttachmentLoadOp					GetLoadOp(rhi::ERTLoadOperation loadOp);
+	static VkAttachmentStoreOp					GetStoreOp(rhi::ERTStoreOperation storeOp);
 
-	static VkResolveModeFlagBits			GetResolveMode(rhi::ERTResolveMode resolveMode);
+	static VkResolveModeFlagBits				GetResolveMode(rhi::ERTResolveMode resolveMode);
 
-	static VkDescriptorType					GetDescriptorType(rhi::EDescriptorType descriptorType);
+	static VkDescriptorType						GetDescriptorType(rhi::EDescriptorType descriptorType);
 
-	static VkShaderStageFlagBits			GetShaderStage(rhi::EShaderStage stage);
-	static VkShaderStageFlags				GetShaderStages(rhi::EShaderStageFlags stages);
+	static VkShaderStageFlagBits				GetShaderStage(rhi::EShaderStage stage);
+	static VkShaderStageFlags					GetShaderStages(rhi::EShaderStageFlags stages);
 
-	static VkPrimitiveTopology				GetPrimitiveTopology(rhi::EPrimitiveTopology topology);
+	static VkPrimitiveTopology					GetPrimitiveTopology(rhi::EPrimitiveTopology topology);
 
-	static VkCullModeFlags					GetCullMode(rhi::ECullMode cullMode);
+	static VkCullModeFlags						GetCullMode(rhi::ECullMode cullMode);
 
-	static VkPolygonMode					GetPolygonMode(rhi::EPolygonMode polygonMode);
+	static VkPolygonMode						GetPolygonMode(rhi::EPolygonMode polygonMode);
 
-	static VkSampleCountFlagBits			GetSampleCount(Uint32 samplesNum);
+	static VkSampleCountFlagBits				GetSampleCount(Uint32 samplesNum);
 
-	static VkCompareOp						GetCompareOp(rhi::ECompareOp compareOperation);
+	static VkCompareOp							GetCompareOp(rhi::ECompareOp compareOperation);
 
-	static VkColorComponentFlags			GetColorComponentFlags(rhi::ERenderTargetComponentFlags componentFlags);
+	static VkColorComponentFlags				GetColorComponentFlags(rhi::ERenderTargetComponentFlags componentFlags);
 
-    static VkSamplerCreateFlags				GetSamplerCreateFlags(rhi::ESamplerFlags flags);
+    static VkSamplerCreateFlags					GetSamplerCreateFlags(rhi::ESamplerFlags flags);
 
-    static VkFilter							GetSamplerFilterType(rhi::ESamplerFilterType type);
+    static VkFilter								GetSamplerFilterType(rhi::ESamplerFilterType type);
 
-    static VkSamplerMipmapMode				GetMipMapAddressingMode(rhi::EMipMapAddressingMode mode);
+    static VkSamplerMipmapMode					GetMipMapAddressingMode(rhi::EMipMapAddressingMode mode);
 
-	static VkSamplerAddressMode				GetAxisAddressingMode(rhi::EAxisAddressingMode mode);
+	static VkSamplerAddressMode					GetAxisAddressingMode(rhi::EAxisAddressingMode mode);
 
-	static VkSamplerReductionMode			GetSamplerReductionMode(rhi::ESamplerReductionMode mode);
+	static VkSamplerReductionMode				GetSamplerReductionMode(rhi::ESamplerReductionMode mode);
 
-	static VkBorderColor					GetBorderColor(rhi::EBorderColor color);
+	static VkBorderColor						GetBorderColor(rhi::EBorderColor color);
 
-	static VkEventCreateFlags				GetEventFlags(rhi::EEventFlags eventFlags);
+	static VkEventCreateFlags					GetEventFlags(rhi::EEventFlags eventFlags);
 
-	static VkGeometryFlagsKHR				GetGeometryFlags(rhi::EGeometryFlags geometryFlags);
+	static VkGeometryFlagsKHR					GetGeometryFlags(rhi::EGeometryFlags geometryFlags);
 
-	static VkGeometryInstanceFlagsKHR		GetGeometryInstanceFlags(rhi::ETLASInstanceFlags instanceFlags);
+	static VkGeometryInstanceFlagsKHR			GetGeometryInstanceFlags(rhi::ETLASInstanceFlags instanceFlags);
 
-	static VkQueryType						GetQueryType(rhi::EQueryType queryType);
+	static VkQueryType							GetQueryType(rhi::EQueryType queryType);
 
-	static VkQueryPipelineStatisticFlags	GetPipelineStatistic(rhi::EQueryStatisticsType statisticsType);
+	static VkQueryPipelineStatisticFlags		GetPipelineStatistic(rhi::EQueryStatisticsType statisticsType);
 
-	static VkImageTiling					GetImageTiling(rhi::ETextureTiling tiling);
+	static VkImageTiling						GetImageTiling(rhi::ETextureTiling tiling);
+
+	static VkComponentTypeKHR					GetCoomponentType(rhi::ECooperativeVectorType type);
+
+	static VkCooperativeVectorMatrixLayoutNV	GetCooperativeVectorLayout(rhi::ECooperativeVectorLayout layout);
 };
 
 } // rhi::vulkan

@@ -16,6 +16,7 @@ World::World()
 	, meshes(*(new WorldMeshes()))
 	, materials(*(new WorldMaterialSlots()))
 	, m_renderScene(lib::MakeShared<rsc::RenderScene>())
+	, renderSceneSettings(*(new rsc::RenderSceneSettings()))
 {
 }
 
@@ -107,6 +108,8 @@ void World::UpdateRenderScene(engn::FrameContext& frame)
 	SPT_PROFILER_FUNCTION();
 
 	rsc::RenderScene& renderScene = GetRenderSceneRef();
+
+	renderScene.settings = renderSceneSettings;
 
 	lib::MemoryArena perInstanceArena = frame.GetFrameMemoryArena().CreateSubArena("Update Render Instance", 1024u * 4u);
 

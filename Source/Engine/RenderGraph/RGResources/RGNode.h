@@ -22,7 +22,6 @@ namespace spt::rdr
 {
 class RenderContext;
 class CommandRecorder;
-class GPUStatisticsCollector;
 } // spt::rdr
 
 
@@ -31,12 +30,6 @@ namespace spt::rg
 
 using RGNodeID = SizeType;
 class RenderGraphBuilder;
-
-
-struct RGExecutionContext
-{
-	lib::SharedPtr<rdr::GPUStatisticsCollector> statisticsCollector;
-};
 
 
 struct RGNodeNullDebugMetaData { };
@@ -103,22 +96,22 @@ private:
 
 	// Node Execution ===================================================
 
-	void AcquireResources();
+	void AcquireResources(const RGExecutionContext& context);
 	void PreExecuteBarrier(rdr::CommandRecorder& recorder);
-	void ReleaseResources();
+	void ReleaseResources(const RGExecutionContext& context);
 
 	void BindShaderParams(rdr::CommandRecorder& recorder);
 	void UnbindShaderParams(rdr::CommandRecorder& recorder);
 
 	// Execution Helpers ================================================
 
-	void AcquireTextures();
-	void ReleaseTextures();
+	void AcquireTextures(const RGExecutionContext& context);
+	void ReleaseTextures(const RGExecutionContext& context);
 
-	void AcquireTextureViews();
+	void AcquireTextureViews(const RGExecutionContext& context);
 	
-	void AcquireBuffers();
-	void ReleaseBuffers();
+	void AcquireBuffers(const RGExecutionContext& context);
+	void ReleaseBuffers(const RGExecutionContext& context);
 
 	RenderGraphBuilder& m_owningGraphBuilder;
 

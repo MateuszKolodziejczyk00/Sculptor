@@ -12,7 +12,7 @@ namespace spt::lib
 {
 
 template<typename TType>
-class StackArenaArray
+class DynamicArenaArray
 {
 public:
 
@@ -26,7 +26,7 @@ public:
 	using const_iterator  = const ValueType*;
 	using size_type       = SizeType;
 
-	explicit StackArenaArray(MemoryArena& arena, SizeType initialCapacity = 0u)
+	explicit DynamicArenaArray(MemoryArena& arena, SizeType initialCapacity = 0u)
 		: m_arena(arena)
 	{
 		if (initialCapacity > 0u)
@@ -35,13 +35,13 @@ public:
 		}
 	}
 
-	StackArenaArray(const StackArenaArray&) = delete;
-	StackArenaArray& operator=(const StackArenaArray&) = delete;
+	DynamicArenaArray(const DynamicArenaArray&) = delete;
+	DynamicArenaArray& operator=(const DynamicArenaArray&) = delete;
 
-	StackArenaArray(StackArenaArray&&) = delete;
-	StackArenaArray& operator=(StackArenaArray&&) = delete;
+	DynamicArenaArray(DynamicArenaArray&&) = delete;
+	DynamicArenaArray& operator=(DynamicArenaArray&&) = delete;
 
-	~StackArenaArray()
+	~DynamicArenaArray()
 	{
 		Clear();
 	}

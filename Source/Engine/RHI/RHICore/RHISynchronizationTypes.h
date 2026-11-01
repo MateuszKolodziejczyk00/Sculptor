@@ -43,7 +43,7 @@ namespace TextureTransition
 
 	static constexpr BarrierTextureTransitionDefinition Generic					= BarrierTextureTransitionDefinition(lib::Flags(EAccessType::Read, EAccessType::Write), ETextureLayout::General, lib::Flags(EPipelineStage::Transfer, rhi::EPipelineStage::FragmentShader, rhi::EPipelineStage::ComputeShader));
 
-	static constexpr BarrierTextureTransitionDefinition ShaderRead				= BarrierTextureTransitionDefinition(EAccessType::Read, ETextureLayout::General, lib::Flags(EPipelineStage::Transfer, rhi::EPipelineStage::FragmentShader, rhi::EPipelineStage::ComputeShader));
+	static constexpr BarrierTextureTransitionDefinition ShaderRead				= BarrierTextureTransitionDefinition(EAccessType::Read, ETextureLayout::General, lib::Flags(EPipelineStage::Transfer, rhi::EPipelineStage::ALL_GRAPHICS_SHADERS, rhi::EPipelineStage::ComputeShader, rhi::EPipelineStage::RayTracingShader));
 	static constexpr BarrierTextureTransitionDefinition ShaderWrite				= BarrierTextureTransitionDefinition(lib::Flags(EAccessType::Read, EAccessType::Write), ETextureLayout::General, lib::Flags(EPipelineStage::Transfer, rhi::EPipelineStage::FragmentShader, rhi::EPipelineStage::ComputeShader));
 }
 

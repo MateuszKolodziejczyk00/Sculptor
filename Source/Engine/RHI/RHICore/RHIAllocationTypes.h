@@ -266,4 +266,10 @@ struct RHIMemoryRequirements
 	Uint64 alignment = 0;
 };
 
+
+struct RHIMemoryUsageStats
+{
+	Uint64 totalAllocatedBytes = 0u;
+};
+
 } // spt::rhi

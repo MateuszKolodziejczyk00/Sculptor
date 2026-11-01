@@ -198,6 +198,7 @@ rdr::GPUPtr<RenderSceneConstants> UpdateRenderSystemsPerFrame(SceneRendererData&
 	sceneConstants.gpuScene  = sceneData;
 	sceneConstants.geometry  = geometryData;
 	sceneConstants.materials = gpuMaterials;
+	sceneConstants.settings  = scene.settings;
 
 	for (const ActiveRenderSystem& activeSystem : activeRenderSystems)
 	{
@@ -250,19 +251,6 @@ void DestroyRenderView(RenderView*& view)
 
 		view = nullptr;
 	}
-}
-
-void SetShadingViewSettings(RenderView& view, const ShadingRenderViewSettings& settings)
-{
-	RenderViewPrivate& viewPrivate = reinterpret_cast<RenderViewPrivate&>(view);
-	viewPrivate.shadingSettings = settings;
-	viewPrivate.settingsDirty = true;
-}
-
-const ShadingRenderViewSettings& GetShadingViewSettings(RenderView& view)
-{
-	RenderViewPrivate& viewPrivate = reinterpret_cast<RenderViewPrivate&>(view);
-	return viewPrivate.shadingSettings;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -391,8 +379,6 @@ void InitializeModule(const spt::engn::EngineGlobals& engineGlobals, spt::lib::M
 	static SceneRendererDLLModuleAPI api;
 	api.CreateRenderView       = &spt::rsc::CreateRenderView;
 	api.DestroyRenderView      = &spt::rsc::DestroyRenderView;
-	api.SetShadingViewSettings = &spt::rsc::SetShadingViewSettings;
-	api.GetShadingViewSettings = &spt::rsc::GetShadingViewSettings;
 	api.CreateSceneRenderer    = &spt::rsc::CreateSceneRenderer;
 	api.DestroySceneRenderer   = &spt::rsc::DestroySceneRenderer;
 	api.ExecuteSceneRendering  = &spt::rsc::ExecuteSceneRendering;

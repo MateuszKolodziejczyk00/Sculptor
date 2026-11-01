@@ -54,6 +54,7 @@ private:
 	Uint32 m_jitterFrameIdx = 0u;
 
 	std::optional<TemporalAARendererImpl> m_temporalAARendererImpl;
+	EUpscalingMethod m_upscalingMethod = EUpscalingMethod::None;
 };
 
 } // spt::rsc

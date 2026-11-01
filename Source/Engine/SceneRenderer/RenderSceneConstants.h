@@ -42,6 +42,7 @@ BEGIN_SHADER_STRUCT(RenderSceneConstants)
 	SHADER_STRUCT_FIELD(wsc::WSCData,        wsc)
 	SHADER_STRUCT_FIELD(SceneAtmosphereData, atmosphere)
 	SHADER_STRUCT_FIELD(TerrainSceneData,    terrain)
+	SHADER_STRUCT_FIELD(RenderSceneSettings, settings)
 END_SHADER_STRUCT();
 
 } // spt::rsc

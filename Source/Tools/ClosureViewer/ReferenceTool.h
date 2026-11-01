@@ -9,10 +9,10 @@ namespace spt::closure_viewer::ref_tool
 {
 
 constexpr const char* refsDirectoryName    = "Closures/Refs";
-constexpr const char* raportsDirectoryName = "Closures/Raports";
+constexpr const char* reportsDirectoryName = "Closures/Reports";
 
 Bool CreateReference(const ClosureMaterial& material, const lib::Path& outputDirectory);
 
-Bool GenerateComparisonRaport(const lib::Path& referenceDirectory, const lib::Path& raportPath);
+Bool GenerateComparisonReport(const lib::Path& referenceDirectory, const lib::Path& reportPath);
 
 } // spt::closure_viewer::ref_tool

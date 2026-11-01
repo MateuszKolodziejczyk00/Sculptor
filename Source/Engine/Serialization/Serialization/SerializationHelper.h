@@ -34,7 +34,7 @@ lib::String SerializationHelper::SerializeStruct(const TStructType& data)
 	SPT_PROFILER_FUNCTION();
 
 	srl::Serializer serializer = srl::Serializer::CreateWriter();
-	const_cast<TStructType&>(data).Serialize(serializer);
+	serializer.SerializeObject(const_cast<TStructType&>(data));
 	return serializer.ToString();
 }
 
@@ -44,7 +44,7 @@ Bool SerializationHelper::DeserializeStruct(TStructType& data, const lib::String
 	SPT_PROFILER_FUNCTION();
 
 	srl::Serializer serializer = srl::Serializer::CreateReader(serializedData);
-	data.Serialize(serializer);
+	serializer.SerializeObject(data);
 
 	return true;
 }

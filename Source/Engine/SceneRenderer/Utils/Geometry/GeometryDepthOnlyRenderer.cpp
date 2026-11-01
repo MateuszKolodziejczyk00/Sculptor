@@ -82,7 +82,7 @@ gp::GeometryPipelineExecutor* CreatePipelineExecutor(rg::RenderGraphBuilder& gra
 
 	lib::MemoryArena& arena = graphBuilder.GetMemoryArena();
 
-	DepthOnlyRenderingPipeline* pipeline = arena.AllocateType<DepthOnlyRenderingPipeline>();
+	DepthOnlyRenderingPipeline* pipeline = arena.Allocate<DepthOnlyRenderingPipeline>();
 
 	return gp::CreateExecutor(graphBuilder, geometryPassParams, *pipeline);
 }

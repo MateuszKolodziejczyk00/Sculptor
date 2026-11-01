@@ -34,8 +34,12 @@ enum class ERGBufferAccess
 
 enum class ERGResourceFlags : Flags32
 {
-	None = 0,
-	External	= BIT(0),
+	None             = 0,
+	External         = BIT(0),
+
+	// Content of the resource is not deterministic between runs. Rendering Tests shouldn't compare such resources
+	// Important: This flag should be set in resource, not in view
+	NonDeterministic = BIT(1),
 
 	Default = None
 };

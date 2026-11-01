@@ -61,6 +61,11 @@ public:
 		m_acquireNode = node;
 	}
 
+	Bool IsNonDeterministic() const
+	{
+		return lib::HasAnyFlag(m_flags, ERGResourceFlags::NonDeterministic);
+	}
+
 	RGNodeHandle GetAcquireNode() const
 	{
 		return m_acquireNode;
@@ -84,6 +89,13 @@ public:
 	Bool IsExternal() const
 	{
 		return lib::HasAnyFlag(GetFlags(), ERGResourceFlags::External);
+	}
+
+protected:
+
+	void AddFlags(ERGResourceFlags flags)
+	{
+		lib::AddFlag(m_flags, flags);
 	}
 
 private:
@@ -360,6 +372,11 @@ public:
 		}
 	}
 
+	void SetNonDeterministic()
+	{
+		AddFlags(ERGResourceFlags::NonDeterministic);
+	}
+
 private:
 
 	rhi::TextureDefinition					m_textureDefinition;
@@ -545,6 +562,11 @@ public:
 		return m_textureView->GetRHI();
 	}
 
+	void SetNonDeterministic()
+	{
+		m_texture->SetNonDeterministic();
+	}
+
 private:
 
 	void AllocateDescriptors()
@@ -654,6 +676,7 @@ public:
 	{
 		SPT_CHECK_MSG(!IsExternal(), "Cannot set descriptors for external buffer");
 		SPT_CHECK_MSG(!m_bufferInstance, "Cannot set descriptors for acquired buffer");
+		SPT_CHECK_MSG(!m_descriptorsAllocation.uavDescriptor.IsValid(), "Full view descriptors are already allocated");
 		m_descriptorsAllocation = std::move(descriptorsAllocation);
 	}
 
@@ -750,6 +773,13 @@ public:
 		m_lastAccessPipelineStages = stages;
 	}
 
+	// Properties ==========================================================
+
+	void SetNonDeterministic()
+	{
+		AddFlags(ERGResourceFlags::NonDeterministic);
+	}
+
 private:
 
 	rhi::BufferDefinition	m_bufferDef;
@@ -782,7 +812,7 @@ public:
 		SPT_CHECK(m_buffer.IsValid());
 		SPT_CHECK(!IsExternal());
 
-		const Bool requiresDescriptorsAllocation = !IsFullView() || !buffer->IsExternal();
+		const Bool requiresDescriptorsAllocation = !IsFullView() || (!buffer->IsExternal() && buffer->GetUAVDescriptor() == rdr::invalidResourceDescriptorIdx);
 
 		if (requiresDescriptorsAllocation && lib::HasAnyFlag(buffer->GetUsageFlags(), rhi::EBufferUsage::Storage))
 		{
@@ -901,6 +931,13 @@ public:
 		const rdr::ResourceDescriptorIdx descriptor = GetUAVDescriptor();
 		SPT_CHECK(descriptor != rdr::invalidResourceDescriptorIdx);
 		return descriptor;
+	}
+
+	// Properties ==========================================================
+
+	void SetNonDeterministic()
+	{
+		m_buffer->SetNonDeterministic();
 	}
 
 private:

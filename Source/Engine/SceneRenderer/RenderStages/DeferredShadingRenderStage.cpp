@@ -5,7 +5,6 @@
 #include "SceneRenderSystems/DDGI/DDGIRenderSystem.h"
 #include "ViewRenderSystems/ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 #include "Pipelines/PSOsLibraryTypes.h"
-#include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "Utils/StochasticDIRenderer.h"
 #include "ScenerenderSystems/Lights/ViewShadingInput.h"
 
@@ -13,13 +12,6 @@ namespace spt::rsc
 {
 
 REGISTER_RENDER_STAGE(ERenderStage::DeferredShading, DeferredShadingRenderStage);
-
-namespace renderer_params
-{
-RendererBoolParameter enableTiledShadingDebug("Enable Tiled Shading Debug", { "Deferred Shading" }, false);
-
-RendererBoolParameter enableStochasticLighting("Enable Stochastic Lighting", { "Deferred Shading" }, false);
-} // renderer_params
 
 
 
@@ -94,7 +86,7 @@ void ExecuteDeferredShading(rg::RenderGraphBuilder& graphBuilder, const Deferred
 
 	DeferredShadingPermutation permutation;
 	permutation.ENABLE_DDGI         = false;
-	permutation.TILED_SHADING_DEBUG = renderer_params::enableTiledShadingDebug;
+	permutation.TILED_SHADING_DEBUG = viewSpec.GetSettings().shading.tiledShadingDebug;
 
 	rdr::GPUPtr<ddgi::DDGIGPUScene> ddgiScene;
 	if (permutation.ENABLE_DDGI)
@@ -126,7 +118,7 @@ void DeferredShadingRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, 
 
 	const rg::RGTextureViewHandle luminance = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), rg::TextureDef(resolution, SceneRendererStatics::hdrFormat));
 
-	if (renderer_params::enableStochasticLighting)
+	if (viewSpec.GetSettings().shading.enableStochasticLighting)
 	{
 		const deferred_shading::DeferredShadingParams params{ rendererInterface, viewSpec, renderScene, luminance };
 		deferred_shading::ExecuteDeferredShading(graphBuilder, params);

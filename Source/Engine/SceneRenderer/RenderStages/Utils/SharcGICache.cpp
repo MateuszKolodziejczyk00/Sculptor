@@ -1,5 +1,4 @@
 #include "SharcGICache.h"
-#include "Parameters/SceneRendererParams.h"
 #include "SceneRenderSystems/Atmosphere/AtmosphereRenderSystem.h"
 #include "ResourcesManager.h"
 #include "Types/Buffer.h"
@@ -17,12 +16,6 @@
 
 namespace spt::rsc
 {
-
-namespace renderer_params
-{
-RendererBoolParameter demodulateMaterials("Demodulate Materials", { "SHRAC" }, false);
-RendererBoolParameter debugViewOn("Debug View On", { "SHRAC" }, false);
-} // renderer_params
 
 namespace sharc_passes
 {
@@ -134,9 +127,11 @@ Bool SharcGICache::IsSharcSupported()
 	return isSupported;
 }
 
-Bool SharcGICache::IsDemodulatingMaterials()
+SharcShadersPermutation SharcGICache::GetShadersPermutation(const SharcSettings& settings)
 {
-	return renderer_params::demodulateMaterials;
+	SharcShadersPermutation permutation;
+	permutation.SHARC_DEMODULATE_MATERIALS = settings.demodulateMaterials;
+	return permutation;
 }
 
 SharcGICache::SharcGICache()
@@ -162,9 +157,11 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 
 	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Update Sharc GI Cache");
 
-	if (IsDemodulatingMaterials() != m_isDemodulatingMaterials)
+	const SharcSettings& settings = viewSpec.GetSettings().sharc;
+
+	if (settings.demodulateMaterials != m_isDemodulatingMaterials)
 	{
-		m_isDemodulatingMaterials = renderer_params::demodulateMaterials;
+		m_isDemodulatingMaterials = settings.demodulateMaterials;
 		m_requresReset = true;
 	}
 
@@ -174,11 +171,18 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 
 	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-	const rg::RGBufferViewHandle hashEntriesView = graphBuilder.AcquireExternalBufferView(m_hashEntriesBuffer->GetFullView());
+	const rg::RGBufferViewHandle hashEntriesView   = graphBuilder.AcquireExternalBufferView(m_hashEntriesBuffer->GetFullView());
+	const rg::RGBufferViewHandle prevVoxelDataView = graphBuilder.AcquireExternalBufferView(m_prevVoxelData->GetFullView());
+	const rg::RGBufferViewHandle voxelDataView     = graphBuilder.AcquireExternalBufferView(m_voxelData->GetFullView());
+
+	// All based on atomics
+	hashEntriesView->SetNonDeterministic();
+	prevVoxelDataView->SetNonDeterministic();
+	voxelDataView->SetNonDeterministic();
 
 	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Sharc voxel data"), graphBuilder.AcquireExternalBufferView(m_voxelData->GetFullView()), 0u);
 
-	if (m_requresReset || params.resetCache)
+	if (m_requresReset || params.resetCache || renderView.settings.sharc.clearEveryFrame)
 	{
 		graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Sharc prev voxel data"), graphBuilder.AcquireExternalBufferView(m_prevVoxelData->GetFullView()), 0u);
 		graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Sharc entries"), hashEntriesView, 0u);
@@ -192,7 +196,7 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 	shaderConstants.resolution       = resolution;
 	shaderConstants.invResolution    = resolution.cast<Real32>().cwiseInverse();
 	shaderConstants.viewLocation     = renderView.GetLocation();
-	shaderConstants.seed             = viewSpec.GetFrameIdx(); // TODO
+	shaderConstants.seed             = static_cast<Uint32>(lib::HashCombine(viewSpec.GetFrameIdx(), 12391824u));
 	shaderConstants.prevViewLocation = renderView.GetPrevFrameRenderingData().viewLocation;
 	shaderConstants.frameIdx         = viewSpec.GetFrameIdx();
 	shaderConstants.sharcCapacity    = m_entriesNum;
@@ -209,6 +213,7 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 	hashEntriesBufferDef.size  = m_hashEntriesBuffer->GetSize();
 	hashEntriesBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
 	const rg::RGBufferViewHandle hashEntriesPrev = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Sharc Hash Entries (Prev)"), hashEntriesBufferDef, rhi::EMemoryUsage::GPUOnly);
+	hashEntriesPrev->SetNonDeterministic();
 
 	graphBuilder.CopyFullBuffer(RG_DEBUG_NAME("Copy Prev Hash Entries"), hashEntriesView, hashEntriesPrev);
 
@@ -216,16 +221,16 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 	updateParams.skyViewLUT               = viewContext.skyViewLUT;
 	updateParams.transmittanceLUT         = atmosphereContext.transmittanceLUT;
 	updateParams.atmosphereParams         = atmosphereContext.atmosphereParams;
-	updateParams.hashEntries              = m_hashEntriesBuffer->GetFullView();
+	updateParams.hashEntries              = hashEntriesView;
 	updateParams.hashEntriesPrev          = hashEntriesPrev;
-	updateParams.voxelData                = m_voxelData->GetFullView();
-	updateParams.voxelDataPrev            = m_prevVoxelData->GetFullView();
+	updateParams.voxelData                = voxelDataView;
+	updateParams.voxelDataPrev            = prevVoxelDataView;
 	updateParams.sharcConstants           = shaderConstants;
 
 	const LightsRenderSystem& lightsRenderSystem   = rendererInterface.GetRenderSystemChecked<LightsRenderSystem>();
 	const ddgi::DDGIRenderSystem& ddgiRenderSystem = rendererInterface.GetRenderSystemChecked<ddgi::DDGIRenderSystem>();
 
-	const SharcShadersPermutation permutation = GetShadersPermutation();
+	const SharcShadersPermutation permutation = GetShadersPermutation(settings);
 
 	graphBuilder.TraceRays(RG_DEBUG_NAME("Update Sharc GI Cache"),
 						   sharc_passes::SharcUpdatePSO::GetPermutation(permutation),
@@ -234,8 +239,8 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 
 	sharc_passes::SharcResolveParams resolveParams;
 	resolveParams.hashEntries    = m_hashEntriesBuffer->GetFullView();
-	resolveParams.voxelData      = m_voxelData->GetFullView();
-	resolveParams.voxelDataPrev  = m_prevVoxelData->GetFullView();
+	resolveParams.voxelData      = voxelDataView;
+	resolveParams.voxelDataPrev  = prevVoxelDataView;
 	resolveParams.sharcConstants = shaderConstants;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Resolve Sharc GI Cache"),
@@ -244,13 +249,13 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 						  rg::ShaderParams(resolveParams));
 
 	SharcCacheParams sharcCacheParams;
-	sharcCacheParams.hashEntries = m_hashEntriesBuffer->GetFullView();
-	sharcCacheParams.voxelData   = m_voxelData->GetFullView();
+	sharcCacheParams.hashEntries = hashEntriesView;
+	sharcCacheParams.voxelData   = voxelDataView;
 	sharcCacheParams.entriesNum  = m_entriesNum;
 
 	viewContext.sharcCacheParams = graphBuilder.CreateGPUData(sharcCacheParams);
 
-	if (renderer_params::debugViewOn)
+	if (settings.debugView)
 	{
 		sharc_passes::SharcDebugViewConstants debugViewConstants;
 		debugViewConstants.gpuGBuffer = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);

@@ -21,17 +21,17 @@ struct GPUProfilerStatistics
 
 	Bool IsValid() const
 	{
-		return resolution != math::Vector2u::Zero() && frameStatistics.IsValid();
+		return resolution != math::Vector2u::Zero() && frameStatistics.fullScope != nullptr;
 	}
 
 	rdr::GPUDurationMs GetGPUFrameDuration() const
 	{
-		return frameStatistics.GetDurationInMs();
+		return frameStatistics.fullScope->GetDurationInMs();
 	}
 
 	math::Vector2u resolution = math::Vector2u::Zero();
 
-	rdr::GPUStatisticsScopeData frameStatistics;
+	rdr::GPUStatisticsData frameStatistics;
 };
 
 
@@ -63,7 +63,7 @@ public:
 
 	// GPU ========================================================
 
-	void SetGPUFrameStatistics(GPUProfilerStatistics frameStatistics);
+	void SetGPUFrameStatistics(math::Vector2u resolution, rdr::GPUStatisticsCollector& collector);
 
 	void FlushNewGPUFrameStatistics();
 
@@ -86,10 +86,11 @@ private:
 
 	lib::DelegateHandle m_captureDelegateHandle;
 
-	GPUProfilerStatistics m_gpuFrameStatistics;
-
-	std::optional<GPUProfilerStatistics> m_newFrameStatistics;
-	mutable lib::Lock                    m_newFrameStatisticsLock;
+	// Active statistics are read by UI, the other buffer is written when new statistics are collected
+	lib::StaticArray<GPUProfilerStatistics, 2u> m_gpuFrameStatistics;
+	Uint32                                      m_activeGPUFrameStatisticsIdx = 0u;
+	Bool                                        m_hasNewGPUFrameStatistics    = false;
+	mutable lib::Lock                           m_newFrameStatisticsLock;
 
 
 	lib::HashMap<lib::HashedString, ScopeMetrics> m_scopeMetrics;

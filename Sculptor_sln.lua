@@ -67,4 +67,7 @@ workspace "Sculptor"
 	
 	group "Editor"
 		include "Source/SculptorEditor"
+
+	group "Tools"
+		include "Source/SculptorTools"
 	

@@ -1,0 +1,353 @@
+namespace spt::rsc
+{
+
+[Gen=ShaderStructGen]
+struct ExposureSettings
+{
+	[test=false]
+	Bool   enableAutoExposure = true;
+	Real32 manualEV100        = 4.f;
+
+	[min=0, max=20, test=0.f]
+	Real32 adaptationSpeed = 6.f;
+
+	[min=0, max=0.8]
+	Real32 rejectedDarkPixels = 0.6f;
+
+	[min=0, max=0.1]
+	Real32 rejectedBrightPixels = 0.05f;
+
+	[min=-10, max=10]
+	Real32 evCompensation0 = 1.f;
+
+	[min=-10, max=10]
+	Real32 evCompensation1 = -2.f;
+
+	[min=-20, max=20]
+	Real32 minLogLuminance = -10.f;
+
+	[min=-20, max=20]
+	Real32 maxLogLuminance = 20.f;
+};
+
+
+[Gen=ShaderStructGen]
+struct LocalTonemapSettings
+{
+	[test=false]
+	Bool   enableLocalExposure = true;
+
+	[min=0, max=2]
+	Real32 detailStrength = 1.f;
+
+	[min=0, max=2]
+	Real32 contrastStrength = 0.7f;
+
+	[min=0, max=1]
+	Real32 bilateralGridStrength = 0.5f;
+
+	[min=0, max=32]
+	Uint32 gridBlurKernelX = 12;
+
+	[min=0, max=32]
+	Uint32 gridBlurKernelY = 12;
+
+	[min=0, max=32]
+	Uint32 gridBlurKernelZ = 12;
+
+	[min=0, max=32]
+	Real32 gridBlurSigma2D = 8.f;
+
+	[min=0, max=32]
+	Real32 gridBlurDepthSigma = 2.2f;
+
+	[min=0, max=32]
+	Uint32 luminanceBlurKernelX = 14;
+
+	[min=0, max=32]
+	Uint32 luminanceBlurKernelY = 14;
+
+	[min=0, max=32]
+	Real32 luminanceBlurSigma = 8.f;
+};
+
+
+[Gen=ShaderStructGen]
+struct TonemapSettings
+{
+	[min=0, max=2]
+	Uint32 tonemapper = 1;
+
+	[test=false]
+	Bool enableColorDithering = true;
+
+	[min=2000, max=25000]
+	Real32 whitePointTemperature = 6500.f;
+
+	[min=0, max=1]
+	Real32 purkinjeShiftIntensity = 0.f;
+};
+
+
+[Gen=ShaderStructGen]
+struct BloomSettings
+{
+	[test=false]
+	Bool enable = true;
+
+	[min=0, max=10]
+	Real32 intensity = 1.f;
+
+	[min=0, max=1]
+	Real32 blendFactor = 0.35f;
+
+	[min=0, max=1]
+	Real32 upsampleBlendFactor = 0.45f;
+};
+
+
+[Gen=ShaderStructGen]
+struct LensFlaresSettings
+{
+	[test=false]
+	Bool enable = true;
+
+	[min=0, max=1]
+	Real32 intensity = 0.0006f;
+
+	[min=0, max=1]
+	math::Vector3f color = math::Vector3f(1.f, 1.f, 1.f);
+
+	[min=0, max=10]
+	Uint32 ghostsNum = 6;
+
+	[min=0, max=1]
+	Real32 ghostsDispersal = 0.3f;
+
+	[min=0, max=1]
+	Real32 ghostsIntensity = 1.f;
+
+	[min=0, max=1]
+	Real32 ghostsDistortion = 0.01f;
+
+	[min=0, max=1]
+	Real32 haloIntensity = 1.f;
+
+	[min=0, max=1]
+	Real32 haloDistortion = 0.01f;
+
+	[min=0, max=1]
+	Real32 haloWidth = 0.55f;
+};
+
+
+[Gen=ShaderStructGen]
+struct DOFSettings
+{
+	Bool enable = false;
+
+	[min=0, max=20]
+	Real32 focalPlane = 4.f;
+
+	[min=0, max=10]
+	Real32 fullFocusRange = 1.f;
+
+	[min=0, max=10]
+	Real32 farFocusIncreaseRange = 7.f;
+
+	[min=0, max=10]
+	Real32 nearFocusIncreaseRange = 2.f;
+};
+
+
+[Gen=ShaderStructGen]
+struct VolumetricFogSettings
+{
+	[min=1, max=40000]
+	Real32 farPlane = 8000.f;
+
+	Bool enableDirLightsInScattering = true;
+
+	Bool enableBlur = true;
+
+	[min=0, max=10]
+	Real32 blurSigma = 1.4f;
+
+	[min=1, max=10]
+	Uint32 blurKernelSize = 2;
+
+	Bool blurTonemapped = true;
+};
+
+
+[Gen=ShaderStructGen]
+struct VolumetricCloudsSettings
+{
+	Bool fullRes = false;
+};
+
+
+[Gen=ShaderStructGen]
+struct SunShadowsSettings
+{
+	Bool enable = true;
+
+	[min=0, max=5000]
+	Real32 maxTraceDistance = 2500.f;
+
+	[min=0, max=0.1]
+	Real32 rayBias = 0.01f;
+
+	Bool halfRes = false;
+
+	Bool enableScreenSpace = true;
+
+	[min=1, max=64]
+	Uint32 screenSpaceSteps = 32;
+
+	[min=0, max=5]
+	Real32 screenSpaceDistance = 1.f;
+
+	Bool screenSpaceDebug = false;
+};
+
+
+[Gen=ShaderStructGen]
+struct ReflectionsSettings
+{
+	Bool halfRes                     = false;
+	Bool forceFullRateTracing        = true;
+	Bool useLargeTile                = false;
+	Bool useDepthTestForReprojection = false;
+	Bool useSharc                    = true;
+
+	Bool enableTemporalResampling = true;
+
+	[min=0, max=2]
+	Uint32 spatialResamplingIterations = 1;
+
+	Bool spatialResamplingSSVisibilityTest = false;
+	Bool resampleOnlyFromTracedPixels      = true;
+	Bool fullFinalVisibilityCheck          = true;
+	Bool enableSecondTracingPass           = false;
+	Bool enableFireflyFilter               = true;
+	Bool enableHitDistanceBasedMaxAge      = true;
+
+	[min=0, max=30]
+	Uint32 reservoirMaxAge = 10;
+
+	[min=0, max=10]
+	Real32 resamplingRangeStep = 2.333f;
+
+	Bool blurVarianceEstimate     = false;
+	Bool enableStableHistoryBlend = false;
+
+	[min=0, max=5]
+	Uint32 wideRadiusSpatialPasses = 0;
+
+	[min=1, max=64]
+	Uint32 ssrtSteps = 10;
+
+	[min=0, max=1]
+	Real32 ssrtTraceLength = 0.15f;
+};
+
+
+[Gen=ShaderStructGen]
+struct StochasticDISettings
+{
+	[min=1, max=20]
+	Uint32 risSamples = 2;
+
+	Bool enableTemporalResampling = true;
+
+	[min=1, max=20]
+	Uint32 spatialSamples = 8;
+
+	[min=1, max=64]
+	Uint32 spatialResamplingRange = 32;
+
+	Bool spatialResamplingSurfaceCheck = false;
+
+	[min=0, max=0.5]
+	Real32 ssrtRange = 0.15f;
+
+	[min=0, max=100]
+	Uint32 ssrtSteps = 10;
+};
+
+
+[Gen=ShaderStructGen]
+struct SharcSettings
+{
+	Bool demodulateMaterials = false;
+	Bool debugView           = false;
+
+	// Enables full clear of a cache every frame.
+	// This is only a "debug" option, should be use in very specific cases
+	// For now, the main reason is that sharc is not deterministic by nature (GPU scheduling) and causes tests to sometimes fail
+	// The problem is visible mostly after many frames, when the cache is almost full.
+	// Because of that, as a workaround, tests can clear cache every frame to keep it almost empty.
+	// This still gives some contribution which allows testing usage of sharc but also avoids the non-determinism problem
+	Bool clearEveryFrame     = false;
+};
+
+
+[Gen=ShaderStructGen]
+struct ShadingSettings
+{
+	Bool enablePOM                = true;
+	Bool enableStochasticLighting = false;
+	Bool enableColoredAO          = true;
+	Bool tiledShadingDebug        = false;
+
+	[min=1, max=10]
+	Real32 lightsZClusterLength = 2.f;
+};
+
+
+[Gen=ShaderStructGen]
+struct RayTracingSettings
+{
+	Bool visualizeInstances = false;
+};
+
+
+enum EUpscalingMethod
+{
+	None,
+	DLSS,
+	TAA,
+	Accumulation,
+};
+
+
+[Gen=ShaderStructGen]
+struct UpscalerSettings
+{
+	[test=EUpscalingMethod::TAA]
+	EUpscalingMethod method = EUpscalingMethod::Accumulation;
+};
+
+
+[Gen=ShaderStructGen]
+struct RenderViewSettings
+{
+	ExposureSettings         exposure;
+	LocalTonemapSettings     localTonemap;
+	TonemapSettings          tonemap;
+	BloomSettings            bloom;
+	LensFlaresSettings       lensFlares;
+	DOFSettings              dof;
+	VolumetricFogSettings    volumetricFog;
+	VolumetricCloudsSettings clouds;
+	SunShadowsSettings       sunShadows;
+	ReflectionsSettings      reflections;
+	StochasticDISettings     stochasticDI;
+	SharcSettings            sharc;
+	ShadingSettings          shading;
+	RayTracingSettings       rayTracing;
+	UpscalerSettings         upscaler;
+};
+
+} // spt::rsc

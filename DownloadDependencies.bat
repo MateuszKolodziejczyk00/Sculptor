@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 :: --- CONFIGURATION ---
-set "URL=https://github.com/shader-slang/slang/releases/download/v2026.18/slang-2026.18-windows-x86_64.zip"
+set "URL=https://github.com/shader-slang/slang/releases/download/v2026.19/slang-2026.19-windows-x86_64.zip"
 set "TARGET_DIR=Source\ThirdParty\Slang\Slang"
 set "ZIP_FILE=slang_temp.zip"
 

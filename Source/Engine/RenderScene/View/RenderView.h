@@ -3,6 +3,7 @@
 #include "RenderSceneMacros.h"
 #include "SceneView.h"
 #include "Blackboard.h"
+#include "Generated/RenderViewSettingsDef.h"
 
 
 namespace spt::rsc
@@ -31,6 +32,8 @@ public:
 
 	lib::Blackboard&       GetBlackboard();
 	const lib::Blackboard& GetBlackboard() const;
+
+	RenderViewSettings settings;
 
 private:
 

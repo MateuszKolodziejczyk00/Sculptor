@@ -34,6 +34,7 @@ class RHIShaderBindingTable;
 class RHIQueryPool;
 class RHIGPUMemoryPool;
 class RHIDeviceQueue;
+class RHICooperativeVector;
 
 } // namespace spt::vulkan
 

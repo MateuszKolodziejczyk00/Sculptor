@@ -156,6 +156,9 @@ public:
 
 	static void Shutdown();
 
+	// Restarts frame indices and engine time, so following frames match the ones right after engine initialization
+	static void ResetTimeline();
+
 	template<typename TFrameContextType>
 	static lib::SharedPtr<TFrameContextType> CreateFrame();
 

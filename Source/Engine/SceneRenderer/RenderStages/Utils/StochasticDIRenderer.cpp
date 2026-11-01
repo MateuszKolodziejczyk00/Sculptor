@@ -2,7 +2,6 @@
 #include "RenderGraphBuilder.h"
 #include "RenderScene.h"
 #include "RenderSceneTypes.h"
-#include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "ShaderStructs.h"
 #include "Bindless/BindlessTypes.h"
 #include "Pipelines/PSOsLibraryTypes.h"
@@ -19,18 +18,6 @@
 
 namespace spt::rsc::stochastic_di
 {
-
-namespace renderer_params
-{
-RendererIntParameter risSamplesNum("RIS Samples Num", { "Stochastic DI" }, 2, 1, 20);
-RendererBoolParameter enableTemporalResampling("Enable Temporal Resampling", { "Stochastic DI" }, true);
-RendererIntParameter spatialSamplesNum("Spatial Samples Num", { "Stochastic DI" }, 8, 1, 20);
-RendererIntParameter spatialResamplingRange("Spatial Resampling Range", { "Stochastic DI" }, 32, 1, 64);
-RendererFloatParameter ssrtRange("SSRT Range", { "Stochastic DI" }, 0.15f, 0.f, 0.5f);
-RendererIntParameter ssrtStepsNum("SSRT Steps Num", { "Stochastic DI" }, 10, 0, 100);
-RendererBoolParameter enableSurfaceCheckDuringSpatialResampling("Enable Surface Check During Spatial Resampling", { "Stochastic DI" }, false);
-} // renderer_params
-
 
 BEGIN_SHADER_STRUCT(EmissiveElement)
 	SHADER_STRUCT_FIELD(RenderEntityGPUPtr,      entityPtr)
@@ -53,7 +40,7 @@ static EmissivesSampler CreateEmissivesSampler(rg::RenderGraphBuilder& graphBuil
 
 	EmissivesSampler sampler;
 
-	lib::StackArenaArray<rdr::HLSLStorage<EmissiveElement>> emissiveElements(rendererInterface.GetSceneRendererFrameArena());
+	lib::DynamicArenaArray<rdr::HLSLStorage<EmissiveElement>> emissiveElements(rendererInterface.GetSceneRendererFrameArena());
 
 	const auto processMesh = [&](const RetainedDrawHandle handle, const RetainedDraw& draw)
 	{
@@ -275,7 +262,9 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterfa
 
 	rg::RGBufferViewHandle reservoirsBuffer = CreateDIReservoirs(graphBuilder, reservoirsResolution);
 
-	const SSTracerData ssTracer = CreateScreenSpaceTracerData(viewContext.linearDepth, renderer_params::ssrtStepsNum);
+	const StochasticDISettings& settings = viewSpec.GetSettings().stochasticDI;
+
+	const SSTracerData ssTracer = CreateScreenSpaceTracerData(viewContext.linearDepth, settings.ssrtSteps);
 
 	{
 		StochasticDIInitialSamplingConstants shaderConstants;
@@ -285,9 +274,9 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterfa
 		shaderConstants.emissivesSampler         = CreateEmissivesSampler(graphBuilder, rendererInterface, renderScene);
 		shaderConstants.outReservoirs            = reservoirsBuffer;
 		shaderConstants.reservoirsResolution     = reservoirsResolution;
-		shaderConstants.risSamplesNum            = renderer_params::risSamplesNum;
-		shaderConstants.enableTemporalResampling = renderer_params::enableTemporalResampling;
-		shaderConstants.ssrtRange                = renderer_params::ssrtRange;
+		shaderConstants.risSamplesNum            = settings.risSamples;
+		shaderConstants.enableTemporalResampling = settings.enableTemporalResampling;
+		shaderConstants.ssrtRange                = settings.ssrtRange;
 
 		if (canReuseHistory)
 		{
@@ -319,12 +308,12 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterfa
 		shaderConstants.outReservoirs          = historyReservoirs;
 		shaderConstants.brdfIntegrationLUT     = brdfIntegrationLUT;
 		shaderConstants.reservoirsResolution   = reservoirsResolution;
-		shaderConstants.spatialSamplesNum      = renderer_params::spatialSamplesNum;
-		shaderConstants.spatialResamplingRange = renderer_params::spatialResamplingRange;
-		shaderConstants.ssrtRange              = renderer_params::ssrtRange;
+		shaderConstants.spatialSamplesNum      = settings.spatialSamples;
+		shaderConstants.spatialResamplingRange = settings.spatialResamplingRange;
+		shaderConstants.ssrtRange              = settings.ssrtRange;
 
 		DISpatialResamplingPermutationDomain permutation;
-		permutation.ENABLE_SURFACE_CHECK = renderer_params::enableSurfaceCheckDuringSpatialResampling;
+		permutation.ENABLE_SURFACE_CHECK = settings.spatialResamplingSurfaceCheck;
 
 		graphBuilder.TraceRays(RG_DEBUG_NAME("DI Spatial Resampling"),
 							   DISpatialResamplingPSO::GetPermutation(permutation),

@@ -345,10 +345,10 @@ void AssetsSystem::RecompileAssetByType(AssetType type)
 	{
 		if (assetMeta.descriptor.assetTypeKey == type.id)
 		{
-			SPT_LOG_INFO(AssetsSystem, "Begin recompiling asset: {}", ResolvePath(assetMeta.pathID).GetPath().string());
+			SPT_LOG_INFO(AssetsSystem, "Begin recompiling asset: {}", ResolvePath(assetMeta.pathID).GetPath());
 			LoadResult<> result = LoadAssetImpl(assetMeta.pathID, LoadAssetOption{ .forceRecompile = true });
 			result.GetValue()->AwaitInitialization();
-			SPT_LOG_INFO(AssetsSystem, "Finished recompiling asset: {}", ResolvePath(assetMeta.pathID).GetPath().string());
+			SPT_LOG_INFO(AssetsSystem, "Finished recompiling asset: {}", ResolvePath(assetMeta.pathID).GetPath());
 		}
 	}
 
@@ -511,18 +511,18 @@ Bool AssetsSystem::CompileAssetImpl(const AssetHandle& asset)
 	SPT_PROFILER_FUNCTION();
 
 	m_compilationInputCache.OnCompilationStarted();
-	SPT_LOG_INFO(AssetsSystem, "Compiling asset: {}", ResolvePath(asset->GetResourcePathID()).GetPath().string());
+	SPT_LOG_INFO(AssetsSystem, "Compiling asset: {}", ResolvePath(asset->GetResourcePathID()).GetPath());
 
 	const Bool compilationResult = asset->Compile();
 
 	if (compilationResult)
 	{
 		m_assetsDB.SaveAssetDescriptor(ResolvePath(asset->GetResourcePathID()), AssetDescriptor{ .assetTypeKey = asset->GetTypeKey() });
-		SPT_LOG_INFO(AssetsSystem, "Successfully compiled asset: {}", ResolvePath(asset->GetResourcePathID()).GetPath().string());
+		SPT_LOG_INFO(AssetsSystem, "Successfully compiled asset: {}", ResolvePath(asset->GetResourcePathID()).GetPath());
 	}
 	else
 	{
-		SPT_LOG_ERROR(AssetsSystem, "Failed to compile asset: {}", ResolvePath(asset->GetResourcePathID()).GetPath().string());
+		SPT_LOG_ERROR(AssetsSystem, "Failed to compile asset: {}", ResolvePath(asset->GetResourcePathID()).GetPath());
 	}
 
 	m_compilationInputCache.OnCompilationFinished();
@@ -571,11 +571,11 @@ void AssetsSystem::ReloadAssetImpl(const AssetHandle& assetInstance)
 
 	SPT_CHECK(assetInstance.IsValid());
 
-	SPT_LOG_INFO(AssetsSystem, "Reloading asset: {}", ResolvePath(assetInstance->GetResourcePathID()).GetPath().string());
+	SPT_LOG_INFO(AssetsSystem, "Reloading asset: {}", ResolvePath(assetInstance->GetResourcePathID()).GetPath());
 
 	if (!IsAssetUpToDate(assetInstance->GetResourcePath()))
 	{
-		SPT_LOG_INFO(AssetsSystem, "Asset is deprecated, recompiling: {}", ResolvePath(assetInstance->GetResourcePathID()).GetPath().string());
+		SPT_LOG_INFO(AssetsSystem, "Asset is deprecated, recompiling: {}", ResolvePath(assetInstance->GetResourcePathID()).GetPath());
 
 		AssetInstanceData assetData = ReadAssetData(m_contentPath / assetInstance->GetResourcePath().GetPath());
 		assetInstance->AssignData(std::move(assetData));

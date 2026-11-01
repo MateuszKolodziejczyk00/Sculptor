@@ -27,7 +27,7 @@ void RenderSkyInScatteringLUTCS(CS_INPUT input)
 	const float3 rayOrigin = float3(0.f, 0.f, height);
 
 	const uint stepsNum = 32u;
-	const float tMax = 2000.f;
+	const float tMax = FOG_SKY_IN_SCATTERING_LUT_MAX_DST;
 
 	const float stepSize = tMax / stepsNum;
 
@@ -38,8 +38,10 @@ void RenderSkyInScatteringLUTCS(CS_INPUT input)
 
 	float currentT = 0.f;
 
-	for (float t = 1.f; t < tMax; t += stepSize)
+	for (uint step = 0u; step < stepsNum; ++step)
 	{
+		const float t = float(step) * stepSize;
+
 		const float3 currentLocation = rayOrigin + rayDirection * t;
 		const float density = EvaluateHeightFogDensityAtLocation(CONSTS->heightFogParams, currentLocation);
 
@@ -63,7 +65,7 @@ void RenderSkyInScatteringLUTCS(CS_INPUT input)
 		integratedTransmittance *= max(transmittance, 0.f);
 
 		currentT = t;
-	}
 
-	CONSTS->rwSkyInScatteringLUT[pixel] = float4(integratedScattering, 0.f);
+		CONSTS->rwSkyInScatteringLUT[uint3(pixel, step)] = float4(integratedScattering, 0.f);
+	}
 }

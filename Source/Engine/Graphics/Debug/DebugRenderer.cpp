@@ -238,21 +238,21 @@ void DebugRenderer::RenderDebugGeometry(rg::RenderGraphBuilder& graphBuilder, co
 							std::tie(indirectParams),
 							[resolution, indirectParams](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
-								//recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), resolution.cast<Real32>()), 0.f, 1.f);
-								//recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), resolution));
+								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), resolution.cast<Real32>()), 0.f, 1.f);
+								recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), resolution));
 
-								//const rdr::BufferView& linesDrawCall   = indirectParams.linesDrawCall->GetResourceRef();
-								//const rdr::BufferView& markersDrawCall = indirectParams.markersDrawCall->GetResourceRef();
-								//const rdr::BufferView& spheresDrawCall = indirectParams.spheresDrawCall->GetResourceRef();
+								const rdr::BufferView& linesDrawCall   = indirectParams.linesDrawCall->GetResourceRef();
+								const rdr::BufferView& markersDrawCall = indirectParams.markersDrawCall->GetResourceRef();
+								const rdr::BufferView& spheresDrawCall = indirectParams.spheresDrawCall->GetResourceRef();
 
-								//recorder.BindGraphicsPipeline(DebugGeometryPSO::lines);
-								//recorder.DrawIndirect(linesDrawCall, 0u, sizeof(rdr::HLSLStorage<IndirectDrawCommand>), 1u);
+								recorder.BindGraphicsPipeline(DebugGeometryPSO::lines);
+								recorder.DrawIndirect(linesDrawCall, 0u, sizeof(rdr::HLSLStorage<IndirectDrawCommand>), 1u);
 
-								//recorder.BindGraphicsPipeline(DebugGeometryPSO::markers);
-								//recorder.DrawIndirect(markersDrawCall, 0u, sizeof(rdr::HLSLStorage<IndirectDrawCommand>), 1u);
+								recorder.BindGraphicsPipeline(DebugGeometryPSO::markers);
+								recorder.DrawIndirect(markersDrawCall, 0u, sizeof(rdr::HLSLStorage<IndirectDrawCommand>), 1u);
 
-								//recorder.BindGraphicsPipeline(DebugGeometryPSO::spheres);
-								//recorder.DrawIndirect(spheresDrawCall, 0u, sizeof(rdr::HLSLStorage<IndirectDrawCommand>), 1u);
+								recorder.BindGraphicsPipeline(DebugGeometryPSO::spheres);
+								recorder.DrawIndirect(spheresDrawCall, 0u, sizeof(rdr::HLSLStorage<IndirectDrawCommand>), 1u);
 							});
 }
 

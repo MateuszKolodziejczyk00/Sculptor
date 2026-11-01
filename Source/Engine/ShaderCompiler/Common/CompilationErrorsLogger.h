@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ShaderCompilerMacros.h"
 #include "SculptorCoreTypes.h"
 
 
@@ -9,9 +10,11 @@ namespace spt::sc
 struct ShaderStageCompilationDef;
 
 
-class CompilationErrorsLogger
+class SHADER_COMPILER_API CompilationErrorsLogger
 {
 public:
+
+	static void				ClearLastErrors();
 
 	static void				OutputShaderPreprocessedCode(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef);
 

@@ -119,6 +119,11 @@ public:
 
 	void AddDebugDecorator(const lib::SharedRef<RenderGraphDebugDecorator>& debugDecorator);
 
+#if RG_ENABLE_TEST_MODE
+	// Clears all transient resources just after creation, so that their content is deterministic even if not fully written. Must be enabled before creating any resource
+	void EnableTestMode();
+#endif // RG_ENABLE_TEST_MODE
+
 	// Textures ===============================================
 
 	Bool IsTextureAcquired(const lib::SharedPtr<rdr::Texture>& texture) const;
@@ -368,6 +373,11 @@ private:
 	RGProfilerRecorder m_profilerRecorder;
 #endif // RG_ENABLE_DIAGNOSTICS
 
+#if RG_ENABLE_TEST_MODE
+	Bool m_testModeEnabled      = false;
+	Bool m_isAddingTestModeNode = false;
+#endif // RG_ENABLE_TEST_MODE
+
 	RGAllocator m_allocator;
 
 	lib::MemoryArena& m_memoryArena;
@@ -505,7 +515,7 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, con
 
 	using CallableType = std::remove_cvref_t<TCallable>;
 	using SubpassType  = RGLambdaSubpass<CallableType>;
-	RGSubpassHandle subpass = m_memoryArena.AllocateType<SubpassType>(m_memoryArena, subpassName, std::forward<TCallable>(callable));
+	RGSubpassHandle subpass = m_memoryArena.Allocate<SubpassType>(m_memoryArena, subpassName, std::forward<TCallable>(callable));
 
 	m_lastRenderPassNode->AppendSubpass(subpass);
 
@@ -628,7 +638,7 @@ void RenderGraphBuilder::BindShaderParam(const TShaderParam& param)
 			Uint32 offset = 0u;
 		};
 
-		PtrWrapper* data = GetMemoryArena().AllocateType<PtrWrapper>();
+		PtrWrapper* data = GetMemoryArena().Allocate<PtrWrapper>();
 		data->buffer = AcquireExternalBufferView(param.GetBufferView());
 		data->offset = param.GetOffset();
 
@@ -648,7 +658,7 @@ void RenderGraphBuilder::BindShaderParam(const TShaderParam& param)
 	}
 	else
 	{
-		rdr::HLSLStorage<TShaderParam>* data = GetMemoryArena().AllocateType<rdr::HLSLStorage<TShaderParam>>();
+		rdr::HLSLStorage<TShaderParam>* data = GetMemoryArena().Allocate<rdr::HLSLStorage<TShaderParam>>();
 		*data = param;
 
 		BoundShaderParam boundParam;
@@ -685,7 +695,7 @@ TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& name, ER
 {
 	const RGNodeID nodeID = m_nodeCounter++;
 
-	TNodeType* allocatedNode = m_memoryArena.AllocateType<TNodeType>(*this, name, nodeID, type, std::forward<TArgs>(args)...);
+	TNodeType* allocatedNode = m_memoryArena.Allocate<TNodeType>(*this, name, nodeID, type, std::forward<TArgs>(args)...);
 	SPT_CHECK(!!allocatedNode);
 
 	return *allocatedNode;

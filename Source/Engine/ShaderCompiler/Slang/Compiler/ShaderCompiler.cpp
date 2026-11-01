@@ -261,6 +261,7 @@ CompiledShader CompilerImpl::CompileHLSLToSPIRV(const lib::String& shaderPath, c
 	}
 
 	const SlangCapabilityID descriptorHeapCapability = globalSession->findCapability("spvDescriptorHeapEXT");
+	const SlangCapabilityID cooperativeVectorCapability = globalSession->findCapability("spvCooperativeVectorNV");
 
 	lib::DynamicArray<slang::CompilerOptionEntry> sessionOptions;
 	sessionOptions.emplace_back(priv::MakeStringOption(slang::CompilerOptionName::Language, "hlsl"));
@@ -271,6 +272,10 @@ CompiledShader CompilerImpl::CompileHLSLToSPIRV(const lib::String& shaderPath, c
 	if (descriptorHeapCapability != 0)
 	{
 		targetOptions.emplace_back(priv::MakeIntOption(slang::CompilerOptionName::Capability, static_cast<int32_t>(descriptorHeapCapability)));
+	}
+	if (cooperativeVectorCapability != 0)
+	{
+		targetOptions.emplace_back(priv::MakeIntOption(slang::CompilerOptionName::Capability, static_cast<int32_t>(cooperativeVectorCapability)));
 	}
 
 	if (generateDebugInfo)
@@ -425,8 +430,9 @@ lib::String CompilerImpl::PreprocessShader(const lib::String& shaderPath, const 
 	sourceBuffer.Size     = sourceCode.size();
 	sourceBuffer.Encoding = 0;
 
+	// Preprocessor names main file in #line directives after the output file, so compilation errors point to the real shader file
 	DxcArguments preprocessorArguments = arguments;
-	preprocessorArguments.Append(L"-P", L"Preprocessed");
+	preprocessorArguments.Append(L"-P", (std::filesystem::absolute(ShaderCompilationEnvironment::GetShadersPath()) / shaderPath).wstring());
 
 	const auto [argumentsPtr, argumentsNum] = preprocessorArguments.GetArgs();
 	ComPtr<IDxcResult> result;

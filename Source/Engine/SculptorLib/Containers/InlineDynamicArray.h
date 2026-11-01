@@ -3,6 +3,7 @@
 #include "SculptorAliases.h"
 #include "Assertions/Assertions.h"
 #include "Utility/Templates/TypeStorage.h"
+#include "Span.h"
 
 #include <initializer_list>
 #include <type_traits>
@@ -288,6 +289,43 @@ public:
 		{
 			PushBack(value);
 		}
+	}
+
+	lib::Span<ValueType> EmplaceRangeUninitialized(SizeType count)
+	{
+		SPT_CHECK(m_size + count <= maxSize);
+
+		const SizeType startIdx = m_size;
+		m_size += count;
+
+		return lib::Span<ValueType>(m_inlineData[startIdx].GetAddress(), count);
+	}
+
+	lib::Span<ValueType> EmplaceRange(SizeType count)
+	{
+		SPT_CHECK(m_size + count <= maxSize);
+
+		const SizeType startIdx = m_size;
+
+		for (SizeType i = 0u; i < count; ++i)
+		{
+			PushBack(ValueType());
+		}
+
+		return lib::Span<ValueType>(m_inlineData[startIdx].GetAddress(), count);
+	}
+
+	lib::Span<ValueType> EmplaceRange(lib::Span<ValueType> span)
+	{
+		SPT_CHECK(m_size + span.size() <= maxSize);
+
+		const SizeType startIdx = m_size;
+		for (const ValueType& value : span)
+		{
+			PushBack(value);
+		}
+
+		return lib::Span<ValueType>(m_inlineData[startIdx].GetAddress(), span.size());
 	}
 
 private:

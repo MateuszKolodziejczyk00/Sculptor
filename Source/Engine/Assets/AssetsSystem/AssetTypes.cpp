@@ -6,6 +6,42 @@ namespace spt::as
 {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// AssetDefinitionRegistry =======================================================================
+
+namespace AssetDefinitionRegistry
+{
+
+struct AssetDefinitionRegistryImpl
+{
+	lib::HashMap<lib::RuntimeTypeInfo, AssetDefinitionEntry> definitions;
+};
+
+static AssetDefinitionRegistryImpl& GetRegistry()
+{
+	static AssetDefinitionRegistryImpl registry;
+	return registry;
+}
+
+
+void RegisterAssetDefinition(lib::RuntimeTypeInfo assetDefType, AssetDefinitionEntry entry)
+{
+	GetRegistry().definitions.emplace(assetDefType, std::move(entry));
+}
+
+const AssetDefinitionEntry* GetAssetDefinitionEntry(lib::RuntimeTypeInfo assetDefType)
+{
+	const AssetDefinitionRegistryImpl& registry = GetRegistry();
+	const auto it = registry.definitions.find(assetDefType);
+	if (it == registry.definitions.end())
+	{
+		return nullptr;
+	}
+	return &it->second;
+}
+
+} // AssetDefinitionRegistry
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 // AssetFactory ==================================================================================
 
 AssetFactory& AssetFactory::GetInstance()

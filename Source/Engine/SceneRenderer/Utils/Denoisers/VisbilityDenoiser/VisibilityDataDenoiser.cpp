@@ -112,6 +112,7 @@ void Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureVi
 	{
 		graphBuilder.ClearTexture(RG_DEBUG_NAME_FORMATTED("{}: Clear Variance Texture", m_debugName.AsString()), varianceTexture, rhi::ClearColor(0.f, 0.f, 0.f, 0.f));
 		graphBuilder.ClearTexture(RG_DEBUG_NAME_FORMATTED("{}: Clear Accumulated Samples Num Texture", m_debugName.AsString()), accumulatedSamplesNum, rhi::ClearColor(0, 0, 0, 0));
+		graphBuilder.ClearTexture(RG_DEBUG_NAME_FORMATTED("{}: Clear Temporal Moments Texture", m_debugName.AsString()), temporalMoments, rhi::ClearColor(0.f, 0.f, 0.f, 0.f));
 	}
 
 	ApplySpatialFilters(graphBuilder, denoiserParams, denoisedTexture, historyTexture, varianceTexture);

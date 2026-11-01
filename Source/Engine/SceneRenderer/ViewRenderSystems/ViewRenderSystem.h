@@ -66,7 +66,7 @@ public:
 
 		const auto constructor = [](lib::MemoryArena& arena, RenderView& owningView) -> ViewRenderSystem*
 		{
-			return arena.AllocateType<TViewRenderSystem>(owningView);
+			return arena.Allocate<TViewRenderSystem>(owningView);
 		};
 
 		const auto destructor = [](ViewRenderSystem& system)

@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[shader_params(TemporalAAConstants, PARAMS_TEMPORAL_A_A)]]
+[[shader_params(TemporalAAConstants, CONSTS)]]
 
 #include "Utils/Sampling.hlsli"
 #include "Utils/ColorSpaces.hlsli"
@@ -19,7 +19,6 @@ struct CS_INPUT
 #define SHARED_DATA_SIZE (GROUP_SIZE + 2)
 
 groupshared float sharedDepths[SHARED_DATA_SIZE][SHARED_DATA_SIZE];
-groupshared float3 sharedColors[SHARED_DATA_SIZE][SHARED_DATA_SIZE];
 
 
 void CacheGroupLocalDepths(CS_INPUT input, float2 pixelSize, int2 outputRes)
@@ -33,11 +32,8 @@ void CacheGroupLocalDepths(CS_INPUT input, float2 pixelSize, int2 outputRes)
 		pixel.x = clamp(pixel.x, 0, outputRes.x - 1);
 		pixel.y = clamp(pixel.y, 0, outputRes.y - 1);
 
-		const float depth = PARAMS_TEMPORAL_A_A->depth.SampleLevel(BindlessSamplers::NearestClampEdge(), pixel * pixelSize, 0);
+		const float depth = CONSTS->depth.Load(pixel);
 		sharedDepths[x][y] = depth;
-
-		const float3 color = PARAMS_TEMPORAL_A_A->outputColor[pixel];
-		sharedColors[x][y] = color;
 	}
 }
 
@@ -98,7 +94,7 @@ void TemporalAACS(CS_INPUT input)
 {
 	const uint2 pixel = input.globalID.xy;
 
-	uint2 outputRes = PARAMS_TEMPORAL_A_A->outputColor.GetResolution();
+	uint2 outputRes = CONSTS->outputColor.GetResolution();
 
 	const float2 pixelSize = rcp(float2(outputRes));
 
@@ -114,7 +110,7 @@ void TemporalAACS(CS_INPUT input)
 
 		const float2 closestNeighborUV = uv + pixelSize * closestPixelOffset;
 		
-		const float2 motion = PARAMS_TEMPORAL_A_A->motion.SampleLevel(BindlessSamplers::NearestClampEdge(), closestNeighborUV, 0);
+		const float2 motion = CONSTS->motion.SampleLevel(BindlessSamplers::NearestClampEdge(), closestNeighborUV, 0);
 
 		const float2 reporojectedUV = uv - motion;
 
@@ -137,10 +133,10 @@ void TemporalAACS(CS_INPUT input)
 					const int2 offset = int2(x, y);
 					const float2 neighborUV = uv + pixelSize * offset;
 
-					float3 neighborColor = PARAMS_TEMPORAL_A_A->inputColor.SampleLevel(BindlessSamplers::LinearClampEdge(), neighborUV, 0);
+					float3 neighborColor = CONSTS->inputColor.SampleLevel(BindlessSamplers::LinearClampEdge(), neighborUV, 0);
 					neighborColor /= (Luminance(neighborColor) + 1.f);
 
-					if(PARAMS_TEMPORAL_A_A->useYCoCg)
+					if(CONSTS->useYCoCg)
 					{
 						neighborColor = RGBToYCoCg(neighborColor);
 					}
@@ -163,7 +159,7 @@ void TemporalAACS(CS_INPUT input)
 			const float3 currentSample = currentSampleSum / currentSampleWeight;
 
 			// Shrink chroma min-max
-			if(PARAMS_TEMPORAL_A_A->useYCoCg)
+			if(CONSTS->useYCoCg)
 			{
 				const float chromaExtent = 0.125f * (neighborhoodMax.x - neighborhoodMin.x);
 				const float2 chromaCenter = currentSample.yz;
@@ -171,11 +167,11 @@ void TemporalAACS(CS_INPUT input)
 				neighborhoodMin.yz = chromaCenter - chromaExtent;
 			}
 
-			float3 historySample = SampleCatmullRom(PARAMS_TEMPORAL_A_A->historyColor, BindlessSamplers::LinearClampEdge(), reporojectedUV, float2(outputRes));
-			historySample *= (PARAMS_TEMPORAL_A_A->exposure[PARAMS_TEMPORAL_A_A->exposureOffset] / PARAMS_TEMPORAL_A_A->exposure[PARAMS_TEMPORAL_A_A->historyExposureOffset]);
+			float3 historySample = SampleCatmullRom(CONSTS->historyColor, BindlessSamplers::LinearClampEdge(), reporojectedUV, float2(outputRes));
+			historySample *= (CONSTS->exposure[CONSTS->exposureOffset] / CONSTS->exposure[CONSTS->historyExposureOffset]);
 			historySample /= (Luminance(historySample) + 1.f);
 
-			if(PARAMS_TEMPORAL_A_A->useYCoCg)
+			if(CONSTS->useYCoCg)
 			{
 				historySample = RGBToYCoCg(historySample);
 			}
@@ -193,8 +189,8 @@ void TemporalAACS(CS_INPUT input)
 			float3 historyWeight = 0.9f;
 			float3 currentWeight = 1.f - historyWeight;
 
-			const float currentLuminance = PARAMS_TEMPORAL_A_A->useYCoCg ? currentSample.r : Luminance(currentSample);
-			const float historyLuminance = PARAMS_TEMPORAL_A_A->useYCoCg ? historySample.r : Luminance(historySample);
+			const float currentLuminance = CONSTS->useYCoCg ? currentSample.r : Luminance(currentSample);
+			const float historyLuminance = CONSTS->useYCoCg ? historySample.r : Luminance(historySample);
 			
 			historyWeight /= max(historyLuminance, 0.01f);
 			currentWeight /= max(currentLuminance, 0.01f);
@@ -205,17 +201,17 @@ void TemporalAACS(CS_INPUT input)
 			float3 outputColor = (historyWeight * historySample + currentWeight * currentSample);
 			outputColor /= (1.f - Luminance(outputColor));
 
-			if(PARAMS_TEMPORAL_A_A->useYCoCg)
+			if(CONSTS->useYCoCg)
 			{
 				outputColor = YCoCgToRGB(outputColor);
 			}
 
-			PARAMS_TEMPORAL_A_A->outputColor[pixel] = (outputColor);
+			CONSTS->outputColor[pixel] = (outputColor);
 		}
 		else
 		{
-			const float3 inputColor = PARAMS_TEMPORAL_A_A->inputColor.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0);
-			PARAMS_TEMPORAL_A_A->outputColor[pixel] = inputColor;
+			const float3 inputColor = CONSTS->inputColor.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0);
+			CONSTS->outputColor[pixel] = inputColor;
 		}
 	}
 }

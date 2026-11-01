@@ -654,4 +654,30 @@ VkImageTiling RHIToVulkan::GetImageTiling(rhi::ETextureTiling tiling)
 	return VK_IMAGE_TILING_OPTIMAL;
 }
 
+VkComponentTypeKHR RHIToVulkan::GetCoomponentType(rhi::ECooperativeVectorType type)
+{
+	switch (type)
+	{
+	case rhi::ECooperativeVectorType::Float16:	return VK_COMPONENT_TYPE_FLOAT16_NV;
+	case rhi::ECooperativeVectorType::Float32:	return VK_COMPONENT_TYPE_FLOAT32_NV;
+	}
+
+	SPT_CHECK_NO_ENTRY();
+	return VK_COMPONENT_TYPE_FLOAT16_NV;
+}
+
+VkCooperativeVectorMatrixLayoutNV RHIToVulkan::GetCooperativeVectorLayout(rhi::ECooperativeVectorLayout layout)
+{
+	switch (layout)
+	{
+		case rhi::ECooperativeVectorLayout::RowMajor:           return VK_COOPERATIVE_VECTOR_MATRIX_LAYOUT_ROW_MAJOR_NV;
+		case rhi::ECooperativeVectorLayout::ColumnMajor:        return VK_COOPERATIVE_VECTOR_MATRIX_LAYOUT_COLUMN_MAJOR_NV;
+		case rhi::ECooperativeVectorLayout::InferencingOptimal: return VK_COOPERATIVE_VECTOR_MATRIX_LAYOUT_INFERENCING_OPTIMAL_NV;
+		case rhi::ECooperativeVectorLayout::TrainingOptimal:    return VK_COOPERATIVE_VECTOR_MATRIX_LAYOUT_TRAINING_OPTIMAL_NV;
+	}
+
+	SPT_CHECK_NO_ENTRY();
+	return VK_COOPERATIVE_VECTOR_MATRIX_LAYOUT_ROW_MAJOR_NV;
+}
+
 } // rhi::vulkan

@@ -77,7 +77,7 @@ BEGIN_SHADER_STRUCT(CloudscapeProbesParams)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, cloudscapeProbes)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, cloudscapeIrradianceProbes)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, cloudscapeHighResProbe)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, skyInScatteringLUT)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector3f>, skyInScatteringLUT)
 	SHADER_STRUCT_FIELD(rdr::GPUPtr<CloudscapeConstants>,  cloudscapeConstants)
 END_SHADER_STRUCT();
 

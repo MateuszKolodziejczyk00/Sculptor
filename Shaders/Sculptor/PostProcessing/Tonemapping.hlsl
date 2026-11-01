@@ -1,7 +1,6 @@
 #include "SculptorShader.hlsli"
 
 [[shader_params(GPURenderView, VIEW)]]
-
 [[shader_params(TonemappingPassConstants, CONSTS)]]
 
 #include "Utils/Exposure.hlsli"
@@ -137,7 +136,10 @@ void TonemappingCS(CS_INPUT input)
 
 	float3 color = CONSTS->linearColor.Load(coords).rgb;
 
-	color = ApplyLocalExposure(color, coords);
+	if (CONSTS->enableLocalExposure)
+	{
+		color = ApplyLocalExposure(color, coords);
+	}
 
 	if (CONSTS->purkinjeShiftIntensity > 0.f)
 	{

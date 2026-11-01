@@ -32,3 +32,9 @@ float AvgLuminanceToExposure(float avgLuminance)
 {
 	return ConvertEV100ToExposure(ComputeEV100FromAvgLuminance(avgLuminance + 0.001f));
 }
+
+
+float EV100ToAvgLuminance(float EV100)
+{
+	return exp2(EV100 - 3.f);
+}

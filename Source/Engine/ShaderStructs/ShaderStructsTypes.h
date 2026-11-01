@@ -41,6 +41,15 @@ struct StructTranslator
 	}
 };
 
+template<typename TType> requires std::is_enum_v<TType>
+struct StructTranslator<TType>
+{
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return StructTranslator<std::underlying_type_t<TType>>::GetHLSLStructName();
+	}
+};
+
 template<>
 struct StructTranslator<Bool>
 {

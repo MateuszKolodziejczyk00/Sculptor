@@ -1,0 +1,26 @@
+{
+	"Type": "Scene",
+	"Prefab": "Sponza/Sponza.sptasset",
+	"Spawn": {
+		"Location": [950.0, -286.0, 189.0],
+		"Rotation": [90.0, 0.0, 0.0],
+		"Scale": [1.0, 1.0, 1.0]
+	},
+	"Camera": {
+		"Location": [958.2977905273438, -286.43865966796875, 189.796630859375],
+		"Rotation": [0.0221705362200737, 0.08254575729370117, 2.8790693283081055],
+		"FOV": 90.0,
+		"Near": 0.1,
+		"Far": 1000.0
+	},
+	"ViewSettings": {
+		"exposure": {
+			"manualEV100": 8.0
+		}
+	},
+	"SceneSettings": {
+		"fog": {
+			"globalDensity": 0.02
+		}
+	}
+}

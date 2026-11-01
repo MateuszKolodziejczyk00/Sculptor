@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Pipelines/PipelineState.h"
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHIQueryTypes.h"
@@ -26,7 +27,8 @@ enum class EQueryFlags
 struct StatisticsContext
 {
 	lib::DynamicArray<GPUTimestampNs> timestamps;
-	lib::DynamicArray<GPUTimestampNs> pipelineStatistics;
+	lib::DynamicArray<Uint64>         pipelineStatistics;
+	struct GPUStatisticsData*         statisticsData = nullptr;
 };
 
 
@@ -60,7 +62,41 @@ struct GPUStatisticsScopeData
 	std::optional<Uint32> fragmentShaderInvocations;
 	std::optional<Uint32> computeShaderInvocations;
 
-	lib::DynamicArray<GPUStatisticsScopeData> children;
+	rhi::PipelineStatistics psoStatistics;
+
+	std::optional<Uint64> transientMemoryUsage;
+
+	lib::Span<TransientAllocEventInfo> transientAllocations;
+	lib::Span<TransientAllocEventInfo> transientDeallocations;
+
+	lib::Span<GPUStatisticsScopeData> children;
+};
+
+
+struct GPUStatisticsData
+{
+	GPUStatisticsData() = default;
+
+	GPUStatisticsData(const GPUStatisticsData&) = delete;
+	GPUStatisticsData& operator=(const GPUStatisticsData&) = delete;
+
+	GPUStatisticsData(GPUStatisticsData&&) = delete;
+	GPUStatisticsData& operator=(GPUStatisticsData&&) = delete;
+
+	void Reset()
+	{
+		scopesPool.Clear();
+		transientAllocationsPool.Clear();
+		transientDeallocationsPool.Clear();
+		fullScope = nullptr;
+	}
+
+	lib::InlineDynamicArray<GPUStatisticsScopeData, 1024u> scopesPool;
+
+	lib::InlineDynamicArray<TransientAllocEventInfo, 1024u> transientAllocationsPool;
+	lib::InlineDynamicArray<TransientAllocEventInfo, 1024u> transientDeallocationsPool;
+
+	GPUStatisticsScopeData* fullScope = nullptr;
 };
 
 
@@ -72,22 +108,7 @@ struct GPUStatisticsScopeDefinition
 		, endTimestampIndex(idxNone<Uint32>)
 	{ }
 
-	GPUStatisticsScopeData EmitScopeResult(const StatisticsContext& context) const
-	{
-		GPUStatisticsScopeData result;
-
-		FillScopeResultData(context, INOUT result);
-
-		result.children.reserve(children.size());
-		std::transform(std::cbegin(children), std::cend(children),
-					   std::back_inserter(result.children),
-					   [&context](const GPUStatisticsScopeDefinition& definition)
-					   {
-						   return definition.EmitScopeResult(context);
-					   });
-
-		return result;
-	}
+	void EmitScopeResult(const StatisticsContext& context, GPUStatisticsScopeData& scopeData) const;
 
 	lib::HashedString name;
 
@@ -101,39 +122,18 @@ struct GPUStatisticsScopeDefinition
 	std::optional<Uint32> fragmentShaderInvocationsIdx;
 	std::optional<Uint32> computeShaderInvocationsIdx;
 
+	rdr::PipelineStateID statisticsPSO;
+
+	std::optional<Uint64> transientMemoryUsage;
+
+	lib::Span<TransientAllocEventInfo> transientAllocations;
+	lib::Span<TransientAllocEventInfo> transientDeallocations;
+
 	lib::DynamicArray<GPUStatisticsScopeDefinition> children;
 
 private:
 
-	void FillScopeResultData(const StatisticsContext& context, INOUT GPUStatisticsScopeData& result) const
-	{
-		result.name = name;
-
-		const GPUTimestampNs beginTimestamp = context.timestamps[beginTimestampIndex];
-		const GPUTimestampNs endTimestamp   = context.timestamps[endTimestampIndex];
-
-		SPT_CHECK(beginTimestamp <= endTimestamp);
-
-		result.beginTimestamp = beginTimestamp;
-		result.endTimestamp   = endTimestamp;
-
-		if (taskShaderInvocationsIdx.has_value())
-		{
-			result.taskShaderInvocations = static_cast<Uint32>(context.pipelineStatistics[taskShaderInvocationsIdx.value()]);
-		}
-		if (meshShaderInvocationsIdx.has_value())
-		{
-			result.meshShaderInvocations = static_cast<Uint32>(context.pipelineStatistics[meshShaderInvocationsIdx.value()]);
-		}
-		if (fragmentShaderInvocationsIdx.has_value())
-		{
-			result.fragmentShaderInvocations = static_cast<Uint32>(context.pipelineStatistics[fragmentShaderInvocationsIdx.value()]);
-		}
-		if (computeShaderInvocationsIdx.has_value())
-		{
-			result.computeShaderInvocations = static_cast<Uint32>(context.pipelineStatistics[computeShaderInvocationsIdx.value()]);
-		}
-	}
+	void FillScopeResultData(const StatisticsContext& context, INOUT GPUStatisticsScopeData& result) const;
 };
 
 
@@ -143,10 +143,18 @@ public:
 
 	GPUStatisticsCollector();
 
+	void SetCollectMemoryDetails(Bool collectMemoryDetails) { m_collectMemoryDetails = collectMemoryDetails; }
+
 	void BeginScope(CommandRecorder& recoder, const lib::HashedString& scopeName, EQueryFlags queryFlags);
 	void EndScope(CommandRecorder& recoder);
 
-	GPUStatisticsScopeData CollectStatistics();
+	void SetScopeStatisticsPSO(rdr::PipelineStateID psoID);
+
+	void SetScopeTransientMemoryUsage(Uint64 transientMemoryUsage);
+	void AddScopeTransientAllocation(const TransientAllocEventInfo& allocation);
+	void AddScopeTransientDeallocation(const TransientAllocEventInfo& deallocation);
+
+	void CollectStatistics(OUT GPUStatisticsData& outStatistics);
 
 private:
 
@@ -160,8 +168,13 @@ private:
 
 	lib::DynamicArray<GPUStatisticsScopeDefinition> m_scopeDefinitions;
 
+	lib::InlineDynamicArray<TransientAllocEventInfo, 1024u> m_transientAllocations;
+	lib::InlineDynamicArray<TransientAllocEventInfo, 1024u> m_transientDeallocations;
+
 	/** This will never be dangling pointers because they can point only to last element of array and this array won't be modified during lifetime of pointer which is stored here */
 	lib::DynamicArray<GPUStatisticsScopeDefinition*> m_scopesInProgressStack;
+
+	Bool m_collectMemoryDetails = false;
 };
 
 

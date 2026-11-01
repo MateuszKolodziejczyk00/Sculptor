@@ -3,7 +3,6 @@
 #include "RenderGraphBuilder.h"
 #include "Utils/ViewRenderingSpec.h"
 #include "Utils/TransfersUtils.h"
-#include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "SceneRenderer/Utils/GaussianBlurRenderer.h"
 #include "SceneRenderer/RenderStages/Utils/BilateralGridRenderer.h"
 #include "RenderScene.h"
@@ -16,28 +15,6 @@ namespace spt::rsc
 
 namespace automatic_exposure
 {
-
-namespace params
-{
-
-RendererFloatParameter adaptationSpeed("Adaptation Speed", { "Exposure" }, 6.0f, 0.f, 20.f);
-RendererFloatParameter rejectedDarkPixelsPercentage("Rejected Dark Pixels Percentage", { "Exposure" }, 0.6f, 0.f, 0.8f);
-RendererFloatParameter rejectedBrightPixelsPercentage("Rejected Bright Pixels Percentage", { "Exposure" }, 0.05f, 0.f, 0.1f);
-
-RendererFloatParameter ec0("EV Compensation 0", { "Exposure" }, 1.f, -10.f, 10.f);
-RendererFloatParameter ec1("EV Compensation 1", { "Exposure" }, -2.f, -10.f, 10.f);
-
-RendererIntParameter bilateralGridBlurXKernel("Blur X Kernel", { "LocalTonemap", "BilateralGrid" }, 12, 0, 32);
-RendererIntParameter bilateralGridBlurYKernel("Blur Y Kernel", { "LocalTonemap", "BilateralGrid" }, 12, 0, 32);
-RendererIntParameter bilateralGridBlurZKernel("Blur Z Kernel", { "LocalTonemap", "BilateralGrid" }, 12, 0, 32);
-RendererFloatParameter bilateralGrid2DSigma("Blur 2D Sigma", { "LocalTonemap", "BilateralGrid" }, 8.f, 0.f, 32.f);
-RendererFloatParameter bilateralGridDepthSigma("Blur Depth Sigma", { "LocalTonemap", "BilateralGrid" }, 2.2f, 0.f, 32.f);
-
-RendererIntParameter logLuminanceBlurXKernel("Blur X Kernel", { "LocalTonemap", "LogLuminance" }, 14, 0, 32);
-RendererIntParameter logLuminanceBlurYKernel("Blur Y Kernel", { "LocalTonemap", "LogLuminance" }, 14, 0, 32);
-RendererFloatParameter logLuminanceBlurSigma("Blur 2D Sigma", { "LocalTonemap", "LogLuminance" }, 8.f, 0.f, 32.f);
-
-} // params
 
 namespace luminance_histogram_internal
 {
@@ -65,12 +42,7 @@ BEGIN_SHADER_STRUCT(LuminanceHistogramConstants)
 END_SHADER_STRUCT();
 
 
-static rdr::PipelineStateID CompileLuminanceHistogramPipeline()
-{
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/CreateLuminanceHistogram.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "LuminanceHistogramCS"));
-
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("LuminanceHistogramPipeline"), shader);
-}
+SIMPLE_COMPUTE_PSO(ComputeLuminanceHistogramPSO, "Sculptor/PostProcessing/CreateLuminanceHistogram.hlsl", LuminanceHistogramCS);
 
 
 static rg::RGBufferViewHandle CreateLuminanceHistogram(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const rdr::GPUPtr<ExposureSettings>& exposureSettings, rg::RGTextureViewHandle linearColorTexture)
@@ -92,25 +64,15 @@ static rg::RGBufferViewHandle CreateLuminanceHistogram(rg::RenderGraphBuilder& g
 	consts.exposureSettings   = exposureSettings;
 	consts.luminanceHistogram = luminanceHistogramBuffer;
 
-	static const rdr::PipelineStateID pipelineState = CompileLuminanceHistogramPipeline();
-
 	const math::Vector2u textureRes = linearColorTexture->GetResolution2D();
 	const math::Vector3u dispatchGroupsNum(math::Utils::DivideCeil(textureRes.x(), 32u), math::Utils::DivideCeil(textureRes.y(), 32u), 1);
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Luminance Histogram"),
-						  pipelineState,
+						  ComputeLuminanceHistogramPSO::pso,
 						  dispatchGroupsNum,
 						  rg::ShaderParams(consts));
 
 	return luminanceHistogramBuffer;
 }
-
-
-BEGIN_SHADER_STRUCT(ComputeAdaptedLuminanceConstants)
-	SHADER_STRUCT_FIELD(rdr::GPUPtr<ExposureSettings>,        exposureSettings)
-	SHADER_STRUCT_FIELD(gfx::TypedBuffer<Uint32>,             luminanceHistogram)
-	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Real32>,           adaptedLuminance)
-	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<ViewExposureData>, viewExposureData)
-END_SHADER_STRUCT();
 
 
 struct ViewLuminanceData
@@ -119,21 +81,45 @@ struct ViewLuminanceData
 };
 
 
-static rdr::PipelineStateID CompileAdaptedLuminancePipeline()
+BEGIN_SHADER_STRUCT(ComputeAdaptedLuminancePermutation)
+	SHADER_STRUCT_FIELD(Bool, MANUAL_EXPOSURE)
+END_SHADER_STRUCT();
+
+
+COMPUTE_PSO(ComputeAdaptedLuminancePSO)
 {
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/ComputeAdaptedLuminance.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "AdaptedLuminanceCS"));
+	PERMUTATION_DOMAIN(ComputeAdaptedLuminancePermutation);
 
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("AdaptedLuminancePipeline"), shader);
-}
+	COMPUTE_SHADER("Sculptor/PostProcessing/ComputeAdaptedLuminance.hlsl", AdaptedLuminanceCS);
+
+	PRESET(automatic);
+	PRESET(manual);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		automatic = CompilePermutation(compiler, ComputeAdaptedLuminancePermutation{ .MANUAL_EXPOSURE = false });
+		manual    = CompilePermutation(compiler, ComputeAdaptedLuminancePermutation{ .MANUAL_EXPOSURE = true });
+	}
+};
 
 
-static rg::RGBufferViewHandle ComputeAdaptedLuminance(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const rdr::GPUPtr<ExposureSettings>& exposureSettings, rg::RGBufferViewHandle luminanceHistogram, rg::RGBufferViewHandle viewExposureData)
+BEGIN_SHADER_STRUCT(ComputeAdaptedLuminanceConstants)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<ExposureSettings>,        exposureSettings)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<Uint32>,             luminanceHistogram)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<Real32>,           adaptedLuminance)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBuffer<ViewExposureData>, viewExposureData)
+	SHADER_STRUCT_FIELD(Bool,                                 isFirstFrame)
+	SHADER_STRUCT_FIELD(Real32,                               manualEV100)
+END_SHADER_STRUCT();
+
+
+static rg::RGBufferViewHandle ComputeAdaptedLuminance(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const rdr::GPUPtr<ExposureSettings>& exposureSettings, rg::RGTextureViewHandle inputTexture, rg::RGBufferViewHandle viewExposureData)
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(luminanceHistogram.IsValid());
-
 	RenderView& renderView = viewSpec.GetRenderView();
+
+	const Bool isAutoExposure = viewSpec.GetSettings().exposure.enableAutoExposure;
 
 	ViewLuminanceData& viewLuminanceData = renderView.GetBlackboard().GetOrCreate<ViewLuminanceData>();
 	
@@ -148,13 +134,26 @@ static rg::RGBufferViewHandle ComputeAdaptedLuminance(rg::RenderGraphBuilder& gr
 
 	const rg::RGBufferViewHandle adaptedLuminanceBuffer = graphBuilder.AcquireExternalBufferView(viewLuminanceData.adaptedLuminance->GetFullView());
 
+	const rg::RGBufferViewHandle luminanceHistogram = CreateLuminanceHistogram(graphBuilder, viewSpec, exposureSettings, inputTexture);
+
+	const Bool isFirstFrame = viewSpec.GetFrameIdx() == 0u;
+
 	ComputeAdaptedLuminanceConstants consts;
 	consts.exposureSettings   = exposureSettings;
-	consts.luminanceHistogram = luminanceHistogram;
 	consts.adaptedLuminance   = adaptedLuminanceBuffer;
 	consts.viewExposureData   = viewExposureData;
+	consts.isFirstFrame       = isFirstFrame;
 
-	static const rdr::PipelineStateID pipelineState = CompileAdaptedLuminancePipeline();
+	if (isAutoExposure)
+	{
+		consts.luminanceHistogram = luminanceHistogram;
+	}
+	else
+	{
+		consts.manualEV100 = renderView.settings.exposure.manualEV100;
+	}
+
+	const rdr::PipelineStateID pipelineState = isAutoExposure ? ComputeAdaptedLuminancePSO::automatic : ComputeAdaptedLuminancePSO::manual;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Adapted Luminance"), pipelineState, math::Vector3u(1, 1, 1), rg::ShaderParams(consts));
 
@@ -177,10 +176,12 @@ static bilateral_grid::BilateralGridInfo RenderBilateralGrid(rg::RenderGraphBuil
 	bilateralGridParams.logLuminanceRange = inputs.maxLogLuminance - inputs.minLogLuminance;
 	bilateral_grid::BilateralGridInfo grid = bilateral_grid::builder::RenderBilateralGrid(graphBuilder, bilateralGridParams);
 
-	gaussian_blur_renderer::GaussianBlur3DParams gridBlurParams(params::bilateralGrid2DSigma, params::bilateralGridDepthSigma, params::bilateralGridBlurXKernel, params::bilateralGridBlurYKernel, params::bilateralGridBlurZKernel);
+	const LocalTonemapSettings& settings = viewSpec.GetSettings().localTonemap;
+
+	gaussian_blur_renderer::GaussianBlur3DParams gridBlurParams(settings.gridBlurSigma2D, settings.gridBlurDepthSigma, settings.gridBlurKernelX, settings.gridBlurKernelY, settings.gridBlurKernelZ);
 	grid.bilateralGrid = gaussian_blur_renderer::ApplyGaussianBlur3D(graphBuilder, RG_DEBUG_NAME("Bilateral Grid Blur"), grid.bilateralGrid, gridBlurParams);
 
-	gaussian_blur_renderer::GaussianBlur2DParams logLuminanceBlurParams(params::logLuminanceBlurSigma, params::logLuminanceBlurXKernel, params::logLuminanceBlurYKernel);
+	gaussian_blur_renderer::GaussianBlur2DParams logLuminanceBlurParams(settings.luminanceBlurSigma, settings.luminanceBlurKernelX, settings.luminanceBlurKernelY);
 	grid.downsampledLogLuminance = gaussian_blur_renderer::ApplyGaussianBlur2D(graphBuilder, RG_DEBUG_NAME("Downsampled Log Luminance Blur"), grid.downsampledLogLuminance, logLuminanceBlurParams);
 
 	return grid;
@@ -189,15 +190,15 @@ static bilateral_grid::BilateralGridInfo RenderBilateralGrid(rg::RenderGraphBuil
 } // bilateral_grid_internal
 
 
-Outputs RenderAutoExposure(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const Inputs& inputs)
+std::optional<LocalExposureOutputs> RenderAutoExposure(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const Inputs& inputs)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Auto Exposure");
 
-	const bilateral_grid::BilateralGridInfo bilateralGrid = bilateral_grid_internal::RenderBilateralGrid(graphBuilder, viewSpec, inputs);
-
 	const math::Vector2u textureSize = inputs.linearColor->GetResolution2D();
+
+	const rsc::RenderViewSettings& settings = viewSpec.GetSettings();
 
 	luminance_histogram_internal::ExposureSettings exposureSettings;
 	exposureSettings.textureSize                    = textureSize;
@@ -207,20 +208,28 @@ Outputs RenderAutoExposure(rg::RenderGraphBuilder& graphBuilder, const RenderSce
 	exposureSettings.maxLogLuminance                = inputs.maxLogLuminance;
 	exposureSettings.logLuminanceRange              = inputs.maxLogLuminance - inputs.minLogLuminance;
 	exposureSettings.inverseLogLuminanceRange       = 1.f / exposureSettings.logLuminanceRange;
-	exposureSettings.adaptationSpeed                = params::adaptationSpeed;
-	exposureSettings.rejectedDarkPixelsPercentage   = params::rejectedDarkPixelsPercentage;
-	exposureSettings.rejectedBrightPixelsPercentage = params::rejectedBrightPixelsPercentage;
-	exposureSettings.ec0                            = params::ec0;
-	exposureSettings.ec1                            = params::ec1;
+	exposureSettings.adaptationSpeed                = settings.exposure.adaptationSpeed;
+	exposureSettings.rejectedDarkPixelsPercentage   = settings.exposure.rejectedDarkPixels;
+	exposureSettings.rejectedBrightPixelsPercentage = settings.exposure.rejectedBrightPixels;
+	exposureSettings.ec0                            = settings.exposure.evCompensation0;
+	exposureSettings.ec1                            = settings.exposure.evCompensation1;
 	const rdr::GPUPtr<luminance_histogram_internal::ExposureSettings> exposureSettingsGPU = graphBuilder.CreateGPUData(exposureSettings);
 
-	const rg::RGBufferViewHandle luminanceHistogram = luminance_histogram_internal::CreateLuminanceHistogram(graphBuilder, viewSpec, exposureSettingsGPU, inputs.linearColor);
-	luminance_histogram_internal::ComputeAdaptedLuminance(graphBuilder, viewSpec, exposureSettingsGPU, luminanceHistogram, inputs.viewExposureData);
+	luminance_histogram_internal::ComputeAdaptedLuminance(graphBuilder, viewSpec, exposureSettingsGPU, inputs.linearColor, inputs.viewExposureData);
 
-	Outputs outputs;
-	outputs.bilateralGridInfo = bilateralGrid;
+	if (settings.localTonemap.enableLocalExposure)
+	{
+		const bilateral_grid::BilateralGridInfo bilateralGrid = bilateral_grid_internal::RenderBilateralGrid(graphBuilder, viewSpec, inputs);
 
-	return outputs;
+		LocalExposureOutputs outputs;
+		outputs.bilateralGridInfo = bilateralGrid;
+
+		return outputs;
+	}
+	else
+	{
+		return std::nullopt;
+	}
 }
 
 } // automatic_exposure

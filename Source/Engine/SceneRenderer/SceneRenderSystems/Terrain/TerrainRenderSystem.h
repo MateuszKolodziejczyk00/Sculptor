@@ -24,6 +24,7 @@ public:
 	virtual lib::Span<const RayTracingGeometryDefinition> GetRayTracingGeometries() const;
 
 	struct TerrainRenderInstance* instance = nullptr;
+	const struct TerrainSettings* settings = nullptr;
 };
 
 

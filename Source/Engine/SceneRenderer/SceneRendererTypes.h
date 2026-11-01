@@ -200,19 +200,4 @@ struct SceneRendererDefinition
 	ESceneRenderSystem renderSystems = ESceneRenderSystem::None;
 };
 
-
-enum class EUpscalingMethod
-{
-	None,
-	DLSS,
-	TAA,
-	Accumulation
-};
-
-
-struct ShadingRenderViewSettings
-{
-	EUpscalingMethod upscalingMethod = EUpscalingMethod::None;
-};
-
 } // spt::rsc

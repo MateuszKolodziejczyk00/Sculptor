@@ -1,0 +1,44 @@
+include "SDDTestsCommon.sdd";
+
+namespace spt::sdd::tests
+{
+
+struct SomeData1
+{
+	SomeData0 data0;
+	Int32 z = 8;
+	lib::DynamicArray<Uint32> values;
+
+	[test=math::Vector3f(4.0, 5.0, 6.0)]
+	math::Vector3f position = math::Vector3f(1.0, 2.0, 3.0);
+
+	[test=ESomeEnum::C]
+	ESomeEnum someEnum = ESomeEnum::B;
+
+	ESomeSignedEnum signedEnum;
+};
+
+
+struct SomeData2
+{
+	[min=0, max=10]
+	Int32 w = 9;
+};
+
+
+[Gen=ShaderStructGen]
+struct SomeData3
+{
+	[min=0, max=10, test=3]
+	Int32 a = 1;
+
+	[min=0, max=1]
+	[test=0.5]
+	Real32 b = 2.0;
+
+	lib::StaticArray<Uint32, 2> c;
+
+	ESomeSignedEnum d = ESomeSignedEnum::Negative;
+};
+
+} // spt::sdd::tests

@@ -32,6 +32,8 @@ static rdr::PipelineStateID GetTemporalAAPipeline()
 StandardTAARenderer::StandardTAARenderer()
 {
 	m_name = "Standard TAA";
+
+	m_executesUnifiedDenoising = true;
 }
 
 Bool StandardTAARenderer::Initialize(const TemporalAAInitSettings& initSettings)
@@ -83,7 +85,7 @@ void StandardTAARenderer::Render(rg::RenderGraphBuilder& graphBuilder, const Tem
 
 	const rg::RGTextureViewHandle historyTexture = graphBuilder.AcquireExternalTextureView(m_historyTextureView);
 
-	if (m_historyTextureView && m_historyTextureView->GetResolution2D() == resolution)
+	if (m_hasValidHistory)
 	{
 		SPT_CHECK((renderingParams.exposure.exposureOffset & (sizeof(Uint32) - 1u)) == 0u);
 		SPT_CHECK((renderingParams.exposure.historyExposureOffset & (sizeof(Uint32) - 1u)) == 0u);

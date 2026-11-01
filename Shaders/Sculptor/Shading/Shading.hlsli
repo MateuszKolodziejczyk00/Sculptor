@@ -122,7 +122,9 @@ struct OpaqueClosure : IClosure
 	{
 		float3 direction;
 
-		const LobeProbabilities lobeProbabilites = EstimateLobeProbabilities(surface, dot(surface.normal, viewDir));
+		const float NoV = dot(surface.normal, viewDir);
+
+		const LobeProbabilities lobeProbabilites = EstimateLobeProbabilities(surface, NoV);
 
 		const float lobeRng = rng.Next();
 
@@ -154,8 +156,8 @@ struct OpaqueClosure : IClosure
 			direction  = sample.direction;
 			diffusePdf = sample.pdf;
 
-			specularPdf = SpecularBRDF::PDF(surface.normal, surface.roughness, viewDir, direction);
-			clearCoatPdf = ClearCoatBRDF::PDF(surface.normal, surface.clearCoatRoughness, viewDir, direction);
+			specularPdf  = lobeProbabilites.specular   > 0.f ? SpecularBRDF::PDF(surface.normal, surface.roughness, viewDir, direction) : 0.f;
+			clearCoatPdf = lobeProbabilites.clearCoat > 0.f ? ClearCoatBRDF::PDF(surface.normal, surface.clearCoatRoughness, viewDir, direction) : 0.f;
 		}
 		else if(isSpecular)
 		{
@@ -203,6 +205,16 @@ struct OpaqueClosure : IClosure
 
 	static LobeProbabilities EstimateLobeProbabilities(in ShadedSurface surface, in float NdotV)
 	{
+		if (NdotV <= 0.f)
+		{
+			LobeProbabilities res;
+			res.diffuse = 1.f;
+			res.specular = 0.f;
+			res.clearCoat = 0.f;
+
+			return res;
+		}
+
 		if (surface.roughness < RoughnessDeltaThreshold)
 		{
 			LobeProbabilities res;

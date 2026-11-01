@@ -33,13 +33,13 @@ struct Inputs
 };
 
 
-struct Outputs
+struct LocalExposureOutputs
 {
 	bilateral_grid::BilateralGridInfo bilateralGridInfo;
 };
 
 
-Outputs RenderAutoExposure(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const Inputs& inputs);
+std::optional<LocalExposureOutputs> RenderAutoExposure(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const Inputs& inputs);
 
 } // automatic_exposure
 

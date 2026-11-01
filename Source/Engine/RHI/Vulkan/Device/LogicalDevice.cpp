@@ -195,6 +195,11 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 
 	deviceInfoLinkedData.Append(shaderPointersFeatures);
 
+	VkPhysicalDeviceCooperativeVectorFeaturesNV cooperativeVectorFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_VECTOR_FEATURES_NV };
+	cooperativeVectorFeatures.cooperativeVector = VK_TRUE;
+
+	deviceInfoLinkedData.Append(cooperativeVectorFeatures);
+
 	SPT_VK_CHECK(vkCreateDevice(physicalDevice, &deviceInfo, allocator, &m_deviceHandle));
 
 	VkQueue gfxQueueHandle{ VK_NULL_HANDLE };

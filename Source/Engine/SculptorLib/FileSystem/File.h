@@ -32,7 +32,12 @@ public:
 	static std::ofstream OpenOutputStream(const Path& path, EFileOpenFlags openFlags = EFileOpenFlags::None);
 
 	static String ReadDocument(const Path& path, EFileOpenFlags openFlags = EFileOpenFlags::None);
-	static void SaveDocument(const Path& path, const lib::String& data, EFileOpenFlags openFlags = lib::Flags(lib::EFileOpenFlags::ForceCreate, lib::EFileOpenFlags::DiscardContent));
+	static void   SaveDocument(const Path& path, const lib::String& data, EFileOpenFlags openFlags = lib::Flags(lib::EFileOpenFlags::ForceCreate, lib::EFileOpenFlags::DiscardContent));
+
+	static lib::Span<char> ReadDocument(lib::MemoryArena& memArena, const Path& path, EFileOpenFlags openFlags = EFileOpenFlags::None);
+
+	static void            SaveBinary(const Path& path, lib::Span<const Byte> data, EFileOpenFlags openFlags = lib::Flags(lib::EFileOpenFlags::Binary, lib::EFileOpenFlags::ForceCreate, lib::EFileOpenFlags::DiscardContent));
+	static lib::Span<Byte> LoadBinary(lib::MemoryArena& memArena, const Path& path, EFileOpenFlags openFlags = lib::EFileOpenFlags::Binary);
 
 	static Bool Exists(const Path& path);
 

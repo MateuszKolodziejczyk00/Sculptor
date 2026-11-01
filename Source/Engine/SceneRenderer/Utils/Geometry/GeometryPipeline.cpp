@@ -177,6 +177,11 @@ static BatchGPUData CreateGPUBatch(rg::RenderGraphBuilder& graphBuilder, const G
 	graphBuilder.MemZeroBuffer(batchGPUData.occludedMeshletsCount);
 	graphBuilder.MemZeroBuffer(batchGPUData.dispatchOccludedMeshletsCommand);
 
+	// Non-deterministic because of atomics
+	batchGPUData.drawCommands->SetNonDeterministic();
+	batchGPUData.occludedBatchElements->SetNonDeterministic();
+	batchGPUData.occludedMeshlets->SetNonDeterministic();
+
 	return batchGPUData;
 }
 
@@ -429,7 +434,7 @@ struct GeometryPipelineExecutor
 
 GeometryPipelineExecutor* CreateExecutor(rg::RenderGraphBuilder& graphBuilder, const GeometryPassParams& inGeometryPassParams, GeometryRenderingPipeline& inPipeline)
 {
-	return graphBuilder.GetMemoryArena().AllocateType<GeometryPipelineExecutor>(graphBuilder, inGeometryPassParams, inPipeline);
+	return graphBuilder.GetMemoryArena().Allocate<GeometryPipelineExecutor>(graphBuilder, inGeometryPassParams, inPipeline);
 }
 
 

@@ -14,10 +14,11 @@ class Buffer;
 
 
 #define SPT_GLOBAL_SHADER_RESOURCES(X) \
-	X(gfx::ConstSRVTexture2D<Real32>, blueNoise256,          "Textures/Bluenoise256.png")        \
-	X(gfx::ConstSRVTexture2D<Real32>, MS_GGX_E_avg_LUT,      "Textures/GGX_EAvg_LUT.dds")        \
-	X(gfx::ConstSRVTexture2D<Real32>, MS_GGX_E_LUT,          "Textures/GGX_E_LUT.dds")           \
-	X(gfx::ConstSRVTexture3D<Real32>, MS_GGX_THROUGHPUT_LUT, "Textures/GGX_Throughput_LUT.dds")
+	X(gfx::ConstSRVTexture2D<Real32>,        blueNoise256,                       "Textures/Bluenoise256.png")                             \
+	X(gfx::ConstSRVTexture2D<Real32>,        MS_GGX_E_avg_LUT,                   "Textures/GGX_EAvg_LUT.dds")                             \
+	X(gfx::ConstSRVTexture2D<Real32>,        MS_GGX_E_LUT,                       "Textures/GGX_E_LUT.dds")                                \
+	X(gfx::ConstSRVTexture3D<Real32>,        MS_GGX_THROUGHPUT_LUT,              "Textures/GGX_Throughput_LUT.dds")                       \
+	X(gfx::ConstSRVTexture2D<Real32>,        MS_COAT_GGX_THROUGHPUT_LUT,         "Textures/GGX_Coat_Throughput_LUT.dds")
 
 
 namespace spt::gfx

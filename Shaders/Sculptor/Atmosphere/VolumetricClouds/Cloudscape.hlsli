@@ -26,16 +26,23 @@ float3 SampleCloudscapeIrradiance(in float3 location)
 	return PARAM_CloudscapeProbesParams->cloudscapeIrradianceProbes.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0.f).xyz;
 }
 
-float3 SampleCloudscapeInScattering(in float3 location, in float3 direction)
+float3 SampleCloudscapeInScattering(in float3 location, in float3 direction, in float distance)
 {
 	const float3 cloudscapeIrradiance = SampleCloudscapeIrradiance(location);
+
+	const float w = distance / FOG_SKY_IN_SCATTERING_LUT_MAX_DST;
 
 	float2 skyInScatteringLUTUV;
 	skyInScatteringLUTUV.x = saturate(location.z / HEIGHT_FOG_MAX_HEIGHT);
 	skyInScatteringLUTUV.y =  direction.z * 0.5f + 0.5f;
-	const float3 skyInScattering = PARAM_CloudscapeProbesParams->skyInScatteringLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), skyInScatteringLUTUV, 0);
+	const float3 skyInScattering = PARAM_CloudscapeProbesParams->skyInScatteringLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), float3(skyInScatteringLUTUV, w), 0);
 
 	return cloudscapeIrradiance * skyInScattering;
+}
+
+float3 SampleCloudscapeInScattering(in float3 location, in float3 direction)
+{
+	return SampleCloudscapeInScattering(location, direction, FOG_SKY_IN_SCATTERING_LUT_MAX_DST);
 }
 
 struct CloudscapeSample

@@ -4,7 +4,6 @@
 #include "Lights/LightTypes.h"
 #include "Utils/ScreenSpaceTracer.h"
 #include "EngineFrame.h"
-#include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "MaterialsSubsystem.h"
 #include "SceneRenderer/Utils/DepthBasedUpsampler.h"
 #include "SceneRenderer/RenderStages/Utils/VariableRateTexture.h"
@@ -17,22 +16,6 @@
 
 namespace spt::rsc
 {
-
-namespace params
-{
-
-RendererBoolParameter directionalLightEnableShadows("Enable Directional Shadows", { "Lighting", "Shadows", "Directional"}, true);
-RendererFloatParameter directionalLightMaxShadowTraceDist("Max Shadow Trace Distance", { "Lighting", "Shadows", "Directional"}, 2500.f, 0.f, 200.f);
-RendererFloatParameter directionalLightShadowRayBias("Shadow Ray Bias", { "Lighting", "Shadows", "Directional"}, 0.01f, 0.f, 0.1f);
-
-RendererBoolParameter halfResShadows("Half Res", { "Lighting", "Shadows", "Directional" }, false);
-RendererBoolParameter enableScreenSpaceShadows("Enable Screen Space Shadows", { "Lighting", "Shadows", "Directional" }, true);
-RendererIntParameter screenSpaceShadowsSteps("Screen Space Shadows Steps", { "Lighting", "Shadows", "Directional" }, 32, 1, 64);
-RendererFloatParameter screenSpaceShadowsDistance("Screen Space Shadows Distance", { "Lighting", "Shadows", "Directional" }, 1.f, 0.f, 5.f);
-RendererBoolParameter enableScreenSpaceDebug("Enable Screen Space Debug", { "Lighting", "Shadows", "Directional" }, false);
-
-} // params
-
 
 struct ShadowTracingContext
 {
@@ -104,7 +87,11 @@ static void TraceShadowRays(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 	const rg::RGBufferViewHandle rtTraceCommands     = graphBuilder.CreateBufferView(RG_DEBUG_NAME("RT Trace Commands"), tracesAllocation.rayTraceCommands->GetBufferDefinition(), rhi::EMemoryUsage::GPUOnly);
 	const rg::RGBufferViewHandle rtTraceIndirectArgs = graphBuilder.CreateBufferView(RG_DEBUG_NAME("RT Trace Indirect Args"), tracesAllocation.tracingIndirectArgs->GetBufferDefinition(), rhi::EMemoryUsage::GPUOnly);
 
+	rtTraceCommands->SetNonDeterministic(); // atomics
+
 	graphBuilder.FillBuffer(RG_DEBUG_NAME("Clear RT Indirect Rays Num"), rtTraceIndirectArgs, 0u, sizeof(Uint32), 0u);
+
+	const SunShadowsSettings& settings = viewSpec.GetSettings().sunShadows;
 
 	ScreenSpaceShadowsConstants constants;
 	constants.resolution             = tracingContext.resolution;
@@ -120,12 +107,12 @@ static void TraceShadowRays(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 	constants.frameIdx               = viewSpec.GetFrameIdx();
 	constants.lightDirection         = tracingContext.lightDirection;
 	constants.lightConeAngle         = tracingContext.shadowRayConeAngle;
-	constants.traceDistance          = params::screenSpaceShadowsDistance;
-	constants.rcpTraceDistance       = 1.f / params::screenSpaceShadowsDistance;
-	constants.ssTracerData           = CreateScreenSpaceTracerData(tracingContext.linearDepthTexture, params::screenSpaceShadowsSteps);
+	constants.traceDistance          = settings.screenSpaceDistance;
+	constants.rcpTraceDistance       = 1.f / settings.screenSpaceDistance;
+	constants.ssTracerData           = CreateScreenSpaceTracerData(tracingContext.linearDepthTexture, settings.screenSpaceSteps);
 
 	graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SS Shadows"),
-								  params::enableScreenSpaceDebug ? ScreenSpaceShadowsPSO::debug : ScreenSpaceShadowsPSO::pso,
+								  settings.screenSpaceDebug ? ScreenSpaceShadowsPSO::debug : ScreenSpaceShadowsPSO::pso,
 								  tracesAllocation.dispatchIndirectArgs, 0u,
 								  constants);
 
@@ -192,7 +179,6 @@ BEGIN_SHADER_STRUCT(DirectionalLightShadowUpdateParams)
 	SHADER_STRUCT_FIELD(Real32,                    maxTraceDistance)
 	SHADER_STRUCT_FIELD(math::Vector2u,            resolution)
 	SHADER_STRUCT_FIELD(Real32,                    shadowRayBias)
-	SHADER_STRUCT_FIELD(Real32,                    time)
 	SHADER_STRUCT_FIELD(Real32,                    shadowRayConeAngle)
 	SHADER_STRUCT_FIELD(Bool,                      enableShadows)
 	SHADER_STRUCT_FIELD(gfx::TypedBuffer<Uint16>,  rayContinuationDists)
@@ -244,22 +230,25 @@ static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuil
 {
 	SPT_PROFILER_FUNCTION();
 
+	const SunShadowsSettings& settings = viewSpec.GetSettings().sunShadows;
+
 	vrt::TracesAllocationDefinition tracesAllocationDefinition;
 	tracesAllocationDefinition.debugName                        = RG_DEBUG_NAME("Shadows");
 	tracesAllocationDefinition.resolution                       = tracingContext.resolution;
 	tracesAllocationDefinition.variableRateTexture              = tracingContext.variableRateTexture;
 	tracesAllocationDefinition.vrtPermutationSettings           = tracingContext.vrtPermutationSettings;
-	tracesAllocationDefinition.outputTracesAndDispatchGroupsNum = params::enableScreenSpaceShadows;
+	tracesAllocationDefinition.outputTracesAndDispatchGroupsNum = settings.enableScreenSpace;
 	vrt::TracesAllocation tracesAllocation = AllocateTraces(graphBuilder, tracesAllocationDefinition);
 
 	rhi::BufferDefinition continuationDistBufferDef;
 	continuationDistBufferDef.size = tracingContext.resolution.x() * tracingContext.resolution.y() * sizeof(Uint16);
 	continuationDistBufferDef.usage = rhi::EBufferUsage::Storage;
 	const rg::RGBufferViewHandle continuationDists = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Shadow Rays Continuation Dist"), continuationDistBufferDef, rhi::EMemoryUsage::GPUOnly);
+	continuationDists->SetNonDeterministic(); // Non-deterministic because order of commands is not deterministic
 
 	const rg::RGTextureViewHandle shadowMaskTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Directional Light Shadow Mask"), rg::TextureDef(tracingContext.resolution, rhi::EFragmentFormat::R16_UN_Float));
 
-	if (params::enableScreenSpaceShadows)
+	if (settings.enableScreenSpace)
 	{
 		screen_space::TraceShadowRays(graphBuilder, viewSpec, tracingContext, tracesAllocation, continuationDists, shadowMaskTexture);
 	}
@@ -271,18 +260,17 @@ static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuil
 
 	DirectionalLightShadowUpdateParams updateParams;
 	updateParams.lightDirection       = tracingContext.lightDirection;
-	updateParams.maxTraceDistance     = params::directionalLightMaxShadowTraceDist;
-	updateParams.time                 = renderScene.GetCurrentFrameRef().GetTime();
+	updateParams.maxTraceDistance     = settings.maxTraceDistance;
 	updateParams.shadowRayConeAngle   = tracingContext.shadowRayConeAngle;
-	updateParams.enableShadows        = params::directionalLightEnableShadows;
-	updateParams.shadowRayBias        = params::directionalLightShadowRayBias;
+	updateParams.enableShadows        = settings.enable;
+	updateParams.shadowRayBias        = settings.rayBias;
 	updateParams.resolution           = tracingContext.resolution;
 	updateParams.rayContinuationDists = continuationDists;
-	updateParams.ssTraceDistance      = params::screenSpaceShadowsDistance;
+	updateParams.ssTraceDistance      = settings.screenSpaceDistance;
 	updateParams.shadowMask = shadowMaskTexture;
 
 	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("Directional Light Trace Shadow Rays"),
-								   params::enableScreenSpaceShadows ? ShadowsRayTracingPSO::continuation_pso : ShadowsRayTracingPSO::pso,
+								   settings.enableScreenSpace ? ShadowsRayTracingPSO::continuation_pso : ShadowsRayTracingPSO::pso,
 								   tracesAllocation.tracingIndirectArgs, 0,
 								   rg::ShaderParams(traceShadowRaysParams, updateParams));
 
@@ -375,7 +363,7 @@ void RTShadowMaskRenderer::BeginFrame(const RenderScene& renderScene, ViewRender
 {
 	ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetBlackboard().Get<ShadingViewResourcesUsageInfo>();
 
-	m_renderHalfRes = params::halfResShadows;
+	m_renderHalfRes = viewSpec.GetSettings().sunShadows.halfRes;
 
 	if (m_renderHalfRes)
 	{
@@ -443,7 +431,7 @@ rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& gra
 	// Render variable-rate texture
 
 	{
-		m_variableRateRenderer.Render(graphBuilder, shadowMaskTexture);
+		m_variableRateRenderer.Render(graphBuilder, shadowMaskTexture, depthTexture);
 	}
 
 	if (atmosphereSystem && atmosphereSystem->AreVolumetricCloudsEnabled())

@@ -10,6 +10,7 @@ function ToolsFramework:SetupConfiguration(configuration, platform)
 	self:AddPublicDependency("UICore")
 	self:AddPublicDependency("ScUI")
 	self:AddPublicDependency("RenderGraphCapturer")
+	self:AddPublicDependency("Profiler")
 end
 
 ToolsFramework:SetupProject()

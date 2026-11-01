@@ -4,7 +4,6 @@
 #include "ResourcesManager.h"
 #include "Types/Texture.h"
 #include "RenderScene.h"
-#include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "Lights/LightTypes.h"
 #include "ShadowsRenderingTypes.h"
 #include "ConfigUtils.h"
@@ -38,16 +37,6 @@ struct ShadowMapsSettings
 		serializer.Serialize("LowQualityShadowMaps", lowQualityShadowMaps);
 	}
 };
-
-namespace params
-{
-
-RendererBoolParameter enableShadows("Enable Local Shadows", { "Lighting", "Shadows", "Local" }, true);
-RendererIntParameter maxShadowMapsUpgradedPerFrame("Max ShadowMaps Upgraded Per Frame", { "Lighting", "Shadows", "Local" }, 1, 0, 10);
-RendererIntParameter maxShadowMapsUpdatedPerFrame("Max ShadowMaps Updated Per Frame", { "Lighting", "Shadows", "Local" }, 0, 0, 10);
-
-} // params
-
 
 namespace constants
 {
@@ -329,7 +318,9 @@ void ShadowMapsRenderSystem::AssignShadowMaps(const RenderView& mainView)
 
 	m_lightsWithShadowMapsToUpdate.clear();
 
-	if (!params::enableShadows)
+	const LocalShadowsSettings& settings = GetOwningScene().settings.localShadows;
+
+	if (!settings.enable)
 	{
 		ReleaseAllShadowMaps();
 		return;
@@ -384,7 +375,7 @@ void ShadowMapsRenderSystem::AssignShadowMaps(const RenderView& mainView)
 		if (static_cast<Uint32>(currentQuality) < static_cast<Uint32>(desiredQuality))
 		{
 			// quality is lower than it should. Check if we can upgrade one more shadow map this frame
-			if (shadowMapsToUpgrade.size() < static_cast<SizeType>(params::maxShadowMapsUpgradedPerFrame.GetValue()))
+			if (shadowMapsToUpgrade.size() < settings.maxUpgradedPerFrame)
 			{
 				if (currentQuality != EShadowMapQuality::None)
 				{
@@ -529,7 +520,9 @@ void ShadowMapsRenderSystem::FindShadowMapsToUpdate()
 		}
 	}
 
-	if (m_lightsWithShadowMapsToUpdate.size() < params::maxShadowMapsUpdatedPerFrame)
+	const Uint32 maxUpdatedPerFrame = GetOwningScene().settings.localShadows.maxUpdatedPerFrame;
+
+	if (m_lightsWithShadowMapsToUpdate.size() < maxUpdatedPerFrame)
 	{
 		std::sort(std::begin(m_updatePriorities), std::end(m_updatePriorities),
 				  [](const LightUpdatePriority& lhs, const LightUpdatePriority& rhs)
@@ -538,7 +531,7 @@ void ShadowMapsRenderSystem::FindShadowMapsToUpdate()
 				  });
 
 		// Add lights that have greatest update priority
-		for (SizeType idx = 0; idx < m_updatePriorities.size() && m_lightsWithShadowMapsToUpdate.size() < params::maxShadowMapsUpdatedPerFrame; ++idx)
+		for (SizeType idx = 0; idx < m_updatePriorities.size() && m_lightsWithShadowMapsToUpdate.size() < maxUpdatedPerFrame; ++idx)
 		{
 			const PointLightHandle light = m_updatePriorities[idx].light;
 			if (!lightsToUpdate.contains(light))

@@ -175,7 +175,7 @@ void PlacementSystemBacked::Initialize(lib::MemoryArena& arena, RenderScene& ren
 
 	for (PlacementExe*& exe : m_placementExecutions)
 	{
-		exe = arena.AllocateType<PlacementExe>();
+		exe = arena.Allocate<PlacementExe>();
 		render_impl::InitializePlacementExe(*exe);
 	}
 }

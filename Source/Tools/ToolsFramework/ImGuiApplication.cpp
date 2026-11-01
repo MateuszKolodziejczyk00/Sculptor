@@ -19,6 +19,10 @@
 #include "RenderGraphCapturer.h"
 #include "RenderGraphCaptureSourceContext.h"
 #include "RenderGraphCaptureViewer.h"
+#include "RGDiagnostics.h"
+#include "GPUDiagnose/Profiler/GPUStatisticsCollector.h"
+#include "Profiler/Profiler.h"
+#include "ProfilerUIView.h"
 
 
 namespace spt::tools
@@ -53,6 +57,12 @@ ImGuiApplication::ImGuiApplication(lib::StringView name, math::Vector2u windowRe
 	rdr::UIBackend::Initialize(m_uiContext, lib::Ref(m_window));
 
 	InitializeUIFonts();
+
+	prf::Profiler::Get().Initialize();
+
+	scui::ViewDefinition profilerViewDef("GPU Profiler");
+	profilerViewDef.minimumSize = math::Vector2u(480u, 720u);
+	scui::ApplicationUI::OpenView<prf::ProfilerUIView>(profilerViewDef);
 }
 
 ImGuiApplication::~ImGuiApplication()
@@ -131,6 +141,11 @@ void ImGuiApplication::ExecuteFrame()
 		m_lastFrameWorkload.reset();
 	}
 
+	CollectGPUFrameStatistics();
+
+	m_gpuStatisticsCollector = lib::MakeShared<rdr::GPUStatisticsCollector>().ToSharedPtr();
+	m_gpuFrameResolution     = m_window->GetSwapchainSize();
+
 	rdr::GPUApi::GetDeviceQueuesManager().AdvanceGPUTimelineSection();
 	rdr::GPUApi::FlushCaches();
 	rdr::GPUApi::ScheduleFlushDeferredReleases();
@@ -164,11 +179,26 @@ void ImGuiApplication::ExecuteFrame()
 	RenderUI();
 }
 
+void ImGuiApplication::CollectGPUFrameStatistics()
+{
+	SPT_PROFILER_FUNCTION();
+
+	if (!m_gpuStatisticsCollector)
+	{
+		return;
+	}
+
+	prf::Profiler::Get().SetGPUFrameStatistics(m_gpuFrameResolution, *m_gpuStatisticsCollector);
+
+	m_gpuStatisticsCollector.reset();
+}
+
 void ImGuiApplication::ExecuteRenderGraph()
 {
 	SPT_PROFILER_FUNCTION();
 
 	rg::RenderGraphBuilder graphBuilder(m_frameArena, m_renderGraphResourcesPool);
+	graphBuilder.BindGPUStatisticsCollector(lib::ToSharedRef(m_gpuStatisticsCollector));
 
 	rg::capture::RGCaptureSourceInfo captureSource;
 	captureSource.sourceContext = m_captureSourceContext;
@@ -181,9 +211,13 @@ void ImGuiApplication::ExecuteRenderGraph()
 		m_wantsRenderGraphCapture = false;
 	}
 
-	m_captureSourceContext->ExecuteOnSetupNewGraphBuilder(graphBuilder);
+	{
+		SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Render Graph");
 
-	RenderFrame(graphBuilder);
+		m_captureSourceContext->ExecuteOnSetupNewGraphBuilder(graphBuilder);
+
+		RenderFrame(graphBuilder);
+	}
 
 	rdr::FlushPendingUploads();
 
@@ -231,44 +265,48 @@ void ImGuiApplication::RenderUI()
 																								 renderContext,
 																								 cmdBufferDef);
 
-	if (canPresent)
 	{
-		const lib::SharedPtr<rdr::Texture> swapchainTexture = m_window->GetSwapchainTexture(swapchainTextureHandle);
+		SPT_GPU_STATISTICS_SCOPE(*recorder, m_gpuStatisticsCollector, "UI");
 
-		rhi::TextureViewDefinition viewDefinition;
-		viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
-		const lib::SharedRef<rdr::TextureView> swapchainTextureView = swapchainTexture->CreateView(RENDERER_RESOURCE_NAME("Swapchain Texture View"), viewDefinition);
-
+		if (canPresent)
 		{
-			rhi::RHIDependency dependency;
-			const SizeType barrierIdx = dependency.AddTextureDependency(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
-			dependency.SetLayoutTransition(barrierIdx, rhi::TextureTransition::Undefined, rhi::TextureTransition::ColorRenderTarget);
-			recorder->ExecuteBarrier(dependency);
-		}
+			const lib::SharedPtr<rdr::Texture> swapchainTexture = m_window->GetSwapchainTexture(swapchainTextureHandle);
 
-		{
-			rdr::RenderingDefinition renderingDef(math::Vector2i(0, 0), m_window->GetSwapchainSize());
+			rhi::TextureViewDefinition viewDefinition;
+			viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
+			const lib::SharedRef<rdr::TextureView> swapchainTextureView = swapchainTexture->CreateView(RENDERER_RESOURCE_NAME("Swapchain Texture View"), viewDefinition);
 
-			rdr::RTDefinition renderTarget;
-			renderTarget.textureView    = swapchainTextureView;
-			renderTarget.loadOperation  = rhi::ERTLoadOperation::Clear;
-			renderTarget.storeOperation = rhi::ERTStoreOperation::Store;
-			renderTarget.clearColor.asFloat[0] = 0.f;
-			renderTarget.clearColor.asFloat[1] = 0.f;
-			renderTarget.clearColor.asFloat[2] = 0.f;
-			renderTarget.clearColor.asFloat[3] = 1.f;
-			renderingDef.AddColorRenderTarget(renderTarget);
+			{
+				rhi::RHIDependency dependency;
+				const SizeType barrierIdx = dependency.AddTextureDependency(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+				dependency.SetLayoutTransition(barrierIdx, rhi::TextureTransition::Undefined, rhi::TextureTransition::ColorRenderTarget);
+				recorder->ExecuteBarrier(dependency);
+			}
 
-			recorder->BeginRendering(renderingDef);
-			recorder->RenderUI();
-			recorder->EndRendering();
-		}
+			{
+				rdr::RenderingDefinition renderingDef(math::Vector2i(0, 0), m_window->GetSwapchainSize());
 
-		{
-			rhi::RHIDependency dependency;
-			const SizeType barrierIdx = dependency.AddTextureDependency(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
-			dependency.SetLayoutTransition(barrierIdx, rhi::TextureTransition::PresentSource);
-			recorder->ExecuteBarrier(dependency);
+				rdr::RTDefinition renderTarget;
+				renderTarget.textureView    = swapchainTextureView;
+				renderTarget.loadOperation  = rhi::ERTLoadOperation::Clear;
+				renderTarget.storeOperation = rhi::ERTStoreOperation::Store;
+				renderTarget.clearColor.asFloat[0] = 0.f;
+				renderTarget.clearColor.asFloat[1] = 0.f;
+				renderTarget.clearColor.asFloat[2] = 0.f;
+				renderTarget.clearColor.asFloat[3] = 1.f;
+				renderingDef.AddColorRenderTarget(renderTarget);
+
+				recorder->BeginRendering(renderingDef);
+				recorder->RenderUI();
+				recorder->EndRendering();
+			}
+
+			{
+				rhi::RHIDependency dependency;
+				const SizeType barrierIdx = dependency.AddTextureDependency(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+				dependency.SetLayoutTransition(barrierIdx, rhi::TextureTransition::PresentSource);
+				recorder->ExecuteBarrier(dependency);
+			}
 		}
 	}
 

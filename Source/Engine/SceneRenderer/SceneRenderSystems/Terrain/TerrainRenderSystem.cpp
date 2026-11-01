@@ -1,6 +1,5 @@
 #include "TerrainRenderSystem.h"
 #include "EngineFrame.h"
-#include "Parameters/SceneRendererParams.h"
 #include "RenderSceneConstants.h"
 #include "RenderGraphBuilder.h"
 #include "ResourcesManager.h"
@@ -34,13 +33,6 @@ static const Uint32 grassTilesExtent = 64u;
 
 SPT_REGISTER_SCENE_RENDER_SYSTEM(TerrainRenderSystem);
 
-
-namespace renderer_params
-{
-RendererBoolParameter enableTerrain("Enable Terrain", { "Terrain" }, true);
-RendererBoolParameter enableGrass("Enable Grass", { "Terrain" }, true);
-RendererBoolParameter enableTerrainPOM("Enable Terrain POM", { "Terrain" }, false);
-} // renderer_params
 
 
 namespace utils
@@ -175,6 +167,9 @@ TerrainIndirectDrawParams BuildTerrainDrawTilesCommandsBuffers(rg::RenderGraphBu
 	TerrainIndirectDrawParams buffers;
 	buffers.drawCommands       = graphBuilder.CreateStorageBufferView(RG_DEBUG_NAME("Terrain Draw Commands"), sizeof(TerrainDrawMeshTaskCommand) * maxTilesNum);
 	buffers.drawCommandsCount  = graphBuilder.CreateStorageBufferView(RG_DEBUG_NAME("Terrain Draw Commands Count"), sizeof(Uint32));
+
+	// Non-deterministic because of atomics
+	buffers.drawCommands->SetNonDeterministic();
 
 	graphBuilder.MemZeroBuffer(buffers.drawCommandsCount);
 
@@ -1044,6 +1039,7 @@ static void ProcessLODTransactions(rg::RenderGraphBuilder& graphBuilder, const S
 	scratchBufferDef.size  = scratchSize;
 	scratchBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::ASBuildInputReadOnly);
 	const rg::RGBufferViewHandle scratchBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Terrain BLAS Build Scratch Buffer"), scratchBufferDef, rhi::EMemoryUsage::GPUOnly);
+	scratchBuffer->SetNonDeterministic();
 
 	for (rg::BLASBuildCommand& buildCommand : buildCommands)
 	{
@@ -1142,7 +1138,7 @@ struct TerrainRenderInstance
 
 lib::Span<const RayTracingGeometryDefinition> TerrainRTGeometryProvider::GetRayTracingGeometries() const
 {
-	return renderer_params::enableTerrain && instance ? instance->lodState.rtTiles : lib::Span<const RayTracingGeometryDefinition>();
+	return instance && settings->enable ? instance->lodState.rtTiles : lib::Span<const RayTracingGeometryDefinition>();
 }
 
 
@@ -1195,12 +1191,13 @@ void TerrainRenderSystem::Initialize(lib::MemoryArena& arena, RenderScene& rende
 	const mat::MaterialProxyComponent& materialProxy = material.get<mat::MaterialProxyComponent>();
 	m_terrainMaterialShader = materialProxy.params.shader;
 
-	m_renderInstance = arena.AllocateType<TerrainRenderInstance>();
+	m_renderInstance = arena.Allocate<TerrainRenderInstance>();
 	terrain_renderer::material_cache::InitializeMaterialCache(m_renderInstance->materialCacheState);
 	lod::InitializeLODState(m_renderInstance->lodState, arena, renderScene, tilesRes);
 
 	{
 		m_rtGeometryProvider.instance = m_renderInstance;
+		m_rtGeometryProvider.settings = &renderScene.settings.terrain;
 
 		lib::DynamicArray<ecs::EntityHandle> materialSlotsArray;
 		materialSlotsArray.resize(clipmapTiles.size(), material);
@@ -1274,7 +1271,7 @@ void TerrainRenderSystem::Update(const SceneUpdateContext& context)
 	const math::Vector2i cameraTileCoord = ((cameraLocation + math::Vector2f::Constant(terrain_consts::clipmapExtentMeters)) / terrain_consts::tileSizeMeters).cast<Int32>();
 
 	lib::MemoryArena& memArena = context.rendererInterface.GetSceneRendererFrameArena();
-	lod::LODTransactions* lodTransactions = memArena.AllocateType<lod::LODTransactions>(memArena);
+	lod::LODTransactions* lodTransactions = memArena.Allocate<lod::LODTransactions>(memArena);
 	lod::UpdateLODState(m_renderInstance->lodState, cameraTileCoord, *lodTransactions);
 	m_renderInstance->lodTransactions = lodTransactions;
 
@@ -1401,7 +1398,7 @@ void TerrainRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, c
 
 Bool TerrainRenderSystem::IsEnabled() const
 {
-	return renderer_params::enableTerrain;
+	return GetOwningScene().settings.terrain.enable;
 }
 
 void TerrainRenderSystem::RenderVisibilityBuffer(rg::RenderGraphBuilder& graphBuilder, const TerrainVisibilityRenderParams& params) const
@@ -1436,12 +1433,12 @@ void TerrainRenderSystem::RenderShadowMap(rg::RenderGraphBuilder& graphBuilder, 
 
 const GrassFieldDefinition* TerrainRenderSystem::GetGrassFieldDefinition() const
 {
-	return renderer_params::enableGrass ? &m_grassFieldDef : nullptr;
+	return GetOwningScene().settings.terrain.enableGrass ? &m_grassFieldDef : nullptr;
 }
 
 Bool TerrainRenderSystem::IsTerrainPOMEnabled() const
 {
-	return renderer_params::enableTerrainPOM;
+	return GetOwningScene().settings.terrain.enablePOM;
 }
 
 } // spt::rsc
