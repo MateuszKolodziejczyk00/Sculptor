@@ -1,4 +1,5 @@
 #include "MaterialsRenderer.h"
+#include "ResourcesManager.h"
 #include "RenderGraphBuilder.h"
 #include "Utils/ViewRenderingSpec.h"
 #include "SceneRenderSystems/Terrain/Grass/GrassRenderer.h"

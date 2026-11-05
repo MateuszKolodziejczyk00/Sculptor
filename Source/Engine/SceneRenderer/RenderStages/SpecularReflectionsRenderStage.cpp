@@ -1,4 +1,5 @@
 #include "SpecularReflectionsRenderStage.h"
+#include "ResourcesManager.h"
 #include "SceneRenderSystems/Atmosphere/AtmosphereRenderSystem.h"
 #include "SceneRenderSystems/DDGI/DDGIRenderSystem.h"
 #include "RenderScene.h"

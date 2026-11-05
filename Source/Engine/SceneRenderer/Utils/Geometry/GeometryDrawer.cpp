@@ -1,4 +1,5 @@
 #include "GeometryDrawer.h"
+#include "ResourcesManager.h"
 #include "Utils/TransfersUtils.h"
 
 

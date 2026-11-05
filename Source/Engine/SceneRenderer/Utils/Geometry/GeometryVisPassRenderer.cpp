@@ -1,4 +1,5 @@
 #include "GeometryVisPassRenderer.h"
+#include "ResourcesManager.h"
 #include "Utils/ViewRenderingSpec.h"
 #include "RenderStages/Utils/hiZRenderer.h"
 

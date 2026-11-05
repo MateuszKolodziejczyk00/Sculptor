@@ -1,4 +1,5 @@
 #include "SRSpatiotemporalResampler.h"
+#include "ResourcesManager.h"
 #include "RenderGraphBuilder.h"
 #include "Utils/ScreenSpaceTracer.h"
 #include "View/RenderView.h"

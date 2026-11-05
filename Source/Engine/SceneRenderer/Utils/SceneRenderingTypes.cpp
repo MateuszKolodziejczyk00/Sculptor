@@ -1,4 +1,5 @@
 #include "SceneRenderingTypes.h"
+#include "ResourcesManager.h"
 #include "RenderGraphBuilder.h"
 
 
