@@ -115,7 +115,7 @@ struct LensFlaresSettings
 	[min=0, max=1]
 	Real32 intensity = 0.0006f;
 
-	[min=0, max=1]
+	[meta=(color)]
 	math::Vector3f color = math::Vector3f(1.f, 1.f, 1.f);
 
 	[min=0, max=10]

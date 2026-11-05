@@ -60,6 +60,5 @@ struct SceneRendererDLLModuleAPI
 	spt::lib::RawCallable<void(spt::rsc::SceneRendererHandle& /* handle */)> DestroySceneRenderer;
 	spt::lib::RawCallable<spt::rg::RGTextureViewHandle(spt::rsc::SceneRendererHandle /* renderer */, spt::rg::RenderGraphBuilder& /* graphBuilder */, spt::rsc::RenderScene& /* scene */, spt::rsc::RenderView& /* view */, const spt::rsc::SceneRendererSettings& /* settings */)> ExecuteSceneRendering;
 	spt::lib::RawCallable<void(spt::rsc::SceneRendererHandle /* renderer */, spt::rsc::PlacementProcessor /* processor */, void* /* customData */)> ProcessPlacements;
-	spt::lib::RawCallable<void(void* /* ctx */)> DrawParametersUI;
 	spt::lib::RawCallable<void(void* /* ctx */)> DrawRendererStatsUI;
 };

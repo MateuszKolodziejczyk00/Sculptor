@@ -7,5 +7,5 @@
             "WeatherMapTex": "Source/WeatherMap.dds"
         }
     },
-    "Type": "pt::as::CloudscapeAsset"
+    "Type": "spt::as::CloudscapeAsset"
 }

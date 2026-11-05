@@ -9,5 +9,5 @@
             "Path": "glTF/Sponza.gltf"
         }
     },
-    "Type": "pt::as::MeshAsset"
+    "Type": "spt::as::MeshAsset"
 }

@@ -31,11 +31,14 @@ class SddError(Exception):
 
 
 class Member:
-	def __init__(self, type, name, default, testDefault):
+	def __init__(self, type, name, default, minValue, maxValue, testDefault, metaData):
 		self.type = type
 		self.name = name
 		self.default = default
+		self.minValue = minValue
+		self.maxValue = maxValue
 		self.testDefault = testDefault
+		self.metaData = metaData
 
 
 class Struct:
@@ -147,7 +150,7 @@ class Parser:
 				token = self.ExpectKind('ident')
 				value = None
 				if self.Accept('='):
-					value = self.ParseExpression((',', ']'))
+					value = self.ParseMetaData() if token[1] == 'meta' else self.ParseExpression((',', ']'))
 				elif self.Accept('('):
 					self.ParseAnnotationValue()
 					while self.Accept(','):
@@ -158,6 +161,14 @@ class Parser:
 					break
 			self.Expect(']')
 		return annotations
+
+	def ParseMetaData(self):
+		self.Expect('(')
+		metaData = [ self.ExpectKind('ident')[1] ]
+		while self.Accept(','):
+			metaData.append(self.ExpectKind('ident')[1])
+		self.Expect(')')
+		return metaData
 
 	def ParseAnnotationValue(self):
 		self.Accept('-')
@@ -222,6 +233,9 @@ class Parser:
 
 	def ParseMember(self, annotations):
 		testDefault = None
+		minValue = None
+		maxValue = None
+		metaData = None
 		for token, value in annotations:
 			if token[1] == 'test':
 				if value is None:
@@ -229,6 +243,24 @@ class Parser:
 				if testDefault is not None:
 					self.Fail(token, "duplicate 'test' annotation")
 				testDefault = value
+			if token[1] == 'min':
+				if value is None:
+					self.Fail(token, "'min' annotation requires a value")
+				if minValue is not None:
+					self.Fail(token, "duplicate 'min' annotation")
+				minValue = value
+			if token[1] == 'max':
+				if value is None:
+					self.Fail(token, "'max' annotation requires a value")
+				if maxValue is not None:
+					self.Fail(token, "duplicate 'max' annotation")
+				maxValue = value
+			if token[1] == 'meta':
+				if value is None:
+					self.Fail(token, "'meta' annotation requires a value")
+				if metaData is not None:
+					self.Fail(token, "duplicate 'meta' annotation")
+				metaData = value
 
 		typeTokens = [ self.ExpectKind('ident') ]
 		if self.Peek()[1] == '<':
@@ -247,7 +279,7 @@ class Parser:
 		default = self.ParseExpression((';',)) if self.Accept('=') else None
 
 		self.Expect(';')
-		return Member(JoinTokens(typeTokens, appendFloatSuffix=False), name, default, testDefault)
+		return Member(JoinTokens(typeTokens, appendFloatSuffix=False), name, default, minValue, maxValue, testDefault, metaData)
 
 
 def IsUnsuffixedFloat(text):
@@ -310,11 +342,35 @@ def GenerateHeader(sourceName, sourceHash, includes, items, structNames):
 		'',
 		'#include "SculptorCoreTypes.h"',
 		'#include "Serialization.h"',
+		'#include "RTTI.h"',
 	]
 	lines += [ f'#include {include}' for generator in generators for include in generator.includes ]
 	lines += [ f'#include {include}' for include in includes ]
 	lines += [ '', '' ] + body
 	return '\n'.join(lines).rstrip('\n') + '\n'
+
+
+def GenerateRTTIMemberBuilder(struct, member):
+	lines = []
+	lines.append(f'\t\trtti::builders::RTTIMemberBuilder("{member.name}", lib::TypeInfo<{member.type}>{{}}, offsetof({struct.name}, {member.name}))')
+	if member.minValue is not None:
+		lines.append(f'\t\t.SetMinValue<{member.type}>({member.minValue})')
+	if member.maxValue is not None:
+		lines.append(f'\t\t.SetMaxValue<{member.type}>({member.maxValue})')
+	if member.metaData is not None:
+		metaDataArgs = ', '.join(f'"{name}"' for name in member.metaData)
+		lines.append(f'\t\t.SetMetaData({metaDataArgs})')
+	lines.append('\t\t.Build(),')
+	return lines
+
+
+def GenerateRTTIEnumMemberBuilder(enum, value):
+	lines = []
+	lines.append(f'\t\trtti::builders::RTTIEnumValueBuilder("{value[0]}")')
+	if value[1] is not None:
+		lines.append(f'\t\t.SetValue({value[1]})')
+	lines.append('\t\t.Build(),')
+	return lines
 
 
 def GenerateItems(items, structNames, generators, lines):
@@ -330,6 +386,15 @@ def GenerateItems(items, structNames, generators, lines):
 			lines += [ f'enum class {item.name} : {item.underlyingType}', '{' ]
 			lines += [ f'\t{name},' if value is None else f'\t{name} = {value},' for name, value in item.values ]
 			lines += [ '};', '', '' ]
+
+			lines += [ f'inline void RegisterRTTIType(const {item.name}*)', '{' ]
+			lines += [ f'\trtti::builders::RTTIEnumBuilder builder(lib::TypeInfo<{item.name}>{{}}, sizeof({item.name}));' ]
+			if item.values:
+				lines += [ '\tconst rtti::RTTIEnumValue values[] =', '\t{' ]
+				lines += [ line for value in item.values for line in GenerateRTTIEnumMemberBuilder(item, value) ]
+				lines += [ '\t};', '\tbuilder.SetValues(values);' ]
+			lines += [ '\tbuilder.Build();', '}', '', '' ]
+			lines += [ f'SPT_RTTI_TYPE({item.name});', '', '' ]
 			continue
 
 		struct = item
@@ -344,6 +409,16 @@ def GenerateItems(items, structNames, generators, lines):
 			elif m.type.split('::')[-1] in structNames:
 				testDefaults.append(f'\tApplyTestDefaults(data.{m.name});')
 		lines += [ '', '', f'inline void ApplyTestDefaults({struct.name}&{" data" if testDefaults else ""})', '{' ] + testDefaults + [ '}', '', '' ]
+
+		lines += [ f'inline void RegisterRTTIType(const {struct.name}*)', '{' ]
+		lines += [ f'\trtti::builders::RTTIStructBuilder builder(lib::TypeInfo<{struct.name}>{{}}, sizeof({struct.name}));' ]
+		if struct.members:
+			lines += [ '\tconst rtti::RTTIMember members[] =', '\t{' ]
+			lines += [ line for m in struct.members for line in GenerateRTTIMemberBuilder(struct, m) ]
+			lines += [ '\t};', '\tbuilder.SetMembers(members);' ]
+		lines += [ '\tbuilder.Build();', '}', '', '' ]
+		lines += [ f'SPT_RTTI_TYPE({struct.name});', '', '' ]
+
 
 
 def Generate(sddPath, outDir):

@@ -9,5 +9,5 @@
             "TerrainMaterial": "TerrainMaterial.sptasset"
         }
     },
-    "Type": "pt::as::TerrainAsset"
+    "Type": "spt::as::TerrainAsset"
 }

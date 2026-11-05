@@ -21,7 +21,7 @@ struct SomeData1
 
 struct SomeData2
 {
-	[min=0, max=10]
+	[min=0, max=10, meta=(meta1, meta2)]
 	Int32 w = 9;
 };
 

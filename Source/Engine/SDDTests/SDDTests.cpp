@@ -120,6 +120,19 @@ TEST(SDD, TestDefaults)
 	EXPECT_EQ(data3.c[0], 0u);
 }
 
+
+TEST(SDD, MemberMetaData)
+{
+	const rtti::RTTIStruct* type = rtti::GetType(lib::TypeInfo<SomeData2>{})->AsStruct();
+	ASSERT_NE(type, nullptr);
+	ASSERT_EQ(type->members.size(), 1u);
+
+	const lib::Span<const rtti::RTTIMemberMetaData> metaData = type->members[0].metaData;
+	ASSERT_EQ(metaData.size(), 2u);
+	EXPECT_STREQ(metaData[0].name, "meta1");
+	EXPECT_STREQ(metaData[1].name, "meta2");
+}
+
 } // spt::sdd::tests
 
 

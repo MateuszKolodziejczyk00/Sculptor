@@ -5,7 +5,7 @@
             "spt::as::MaterialTypeInfo"
         ],
         "spt::as::MaterialTypeInfo": {
-            "MaterialType": "pt::as::PBRMaterialInstance"
+            "MaterialType": "spt::as::PBRMaterialInstance"
         },
         "spt::as::PBRMaterialDefinition": {
             "BaseColorFactor": [
@@ -17,5 +17,5 @@
             "RoughnessFactor": 1.0
         }
     },
-    "Type": "pt::as::MaterialAsset"
+    "Type": "spt::as::MaterialAsset"
 }

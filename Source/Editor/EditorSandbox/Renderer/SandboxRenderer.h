@@ -47,6 +47,8 @@ public:
 
 	rsc::RenderView& GetRenderView() const;
 
+	gf::World& GetWorld() const { return *m_world; }
+
 	const lib::SharedPtr<rsc::RenderScene>& GetRenderScene();
 
 	as::TerrainAssetHandle    GetTerrainAsset() const;

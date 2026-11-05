@@ -7,5 +7,5 @@
             "GLTFSourcePath": "glTF/Sponza.gltf"
         }
     },
-    "Type": "pt::as::PrefabAsset"
+    "Type": "spt::as::PrefabAsset"
 }

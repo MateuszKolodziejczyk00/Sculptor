@@ -17,6 +17,8 @@ function EditorSandbox:SetupConfiguration(configuration, platform)
 	self:AddPublicDependency("Assets")
 
 	self:AddPublicDependency("GameFramework")
+
+	self:AddPublicDependency("PropertiesPanel")
 end
 
 EditorSandbox:SetupProject()

@@ -354,11 +354,6 @@ void ProcessPlacements(SceneRendererHandle renderer, PlacementProcessor processo
 	}
 }
 
-void TempDrawParamtersUI(void* ctx)
-{
-	RendererParamsRegistry::DrawParametersUI(ctx);
-}
-
 void TempDrawRendererStatsUI(void* ctx)
 {
 	SceneRendererStatsRegistry::GetInstance().DrawUI(ctx);
@@ -383,7 +378,6 @@ void InitializeModule(const spt::engn::EngineGlobals& engineGlobals, spt::lib::M
 	api.DestroySceneRenderer   = &spt::rsc::DestroySceneRenderer;
 	api.ExecuteSceneRendering  = &spt::rsc::ExecuteSceneRendering;
 	api.ProcessPlacements      = &spt::rsc::ProcessPlacements;
-	api.DrawParametersUI       = &spt::rsc::TempDrawParamtersUI;
 	api.DrawRendererStatsUI    = &spt::rsc::TempDrawRendererStatsUI;
 
 	outModuleDescriptor.api     = &api;

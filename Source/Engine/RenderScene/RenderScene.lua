@@ -14,6 +14,8 @@ function RenderScene:SetupConfiguration(configuration, platform)
 
     self:AddPublicDependency("Blackboard")
 
+    self:AddPublicDependency("RTTI")
+
 	self:AddPublicDefine("SPT_ENABLE_SCENE_RENDERER_STATS=1")
 end
 

@@ -10,7 +10,7 @@ struct HeightFogSettings
 	[min=0, max=10]
 	Real32 extinction = 0.3f;
 
-	[min=0, max=1]
+	[meta=(color)]
 	math::Vector3f albedo = math::Vector3f(1.f, 1.f, 1.f);
 
 	[min=0, max=10]

@@ -3,7 +3,6 @@
 #include "Renderer/SandboxRenderer.h"
 #include "JobSystem.h"
 #include "GPUApi.h"
-#include "RenderScene/RenderSceneSettingsUIView.h"
 #include "RenderScene/SceneRendererStatsUIView.h"
 #include "Types/UIBackend.h"
 #include "Types/Texture.h"
@@ -14,6 +13,7 @@
 #include "UIElements/ApplicationUI.h"
 #include "EngineFrame.h"
 #include "ResourcesManager.h"
+#include "PropertiesPanel.h"
 
 namespace spt::ed
 {
@@ -26,7 +26,6 @@ SandboxUIView::SandboxUIView(const scui::ViewDefinition& definition)
 	, m_sceneViewName(CreateUniqueName("Scene"))
 	, m_sanboxUIViewName(CreateUniqueName("SandboxUI"))
 {
-	RecreateRenderSceneSettings();
 	RecreateSceneRendererStats();
 	RecreateProfilerView();
 
@@ -49,9 +48,7 @@ void SandboxUIView::BuildDefaultLayout(ImGuiID dockspaceID)
 								  ui::DockWindow(m_sceneViewName),
 								  ui::Split(ui::ESplit::Vertical, 0.33f,
 											ui::DockWindow(m_sanboxUIViewName),
-													  ui::Split(ui::ESplit::Vertical, 0.5f,
-																ui::DockWindow(m_renderSceneSettingsName),
-																ui::DockWindow(m_sceneRendererStatsName))))));
+											ui::DockWindow(m_sceneRendererStatsName)))));
 }
 
 void SandboxUIView::DrawUI()
@@ -117,8 +114,8 @@ void SandboxUIView::DrawUI()
 	DrawRendererSettings();
 	ImGui::Separator();
 	
-	ImGui::Text("Shaders");
 #if WITH_SHADERS_HOT_RELOAD
+	ImGui::Text("Shaders");
 	ui::UIContext uiContext = scui::ApplicationUI::GetCurrentContext().GetUIContext();
 
 	const ImGuiID hotReloadShadersID = ImGui::GetID("HotReload Shaders");
@@ -127,7 +124,16 @@ void SandboxUIView::DrawUI()
 	{
 		rdr::GPUApi::HotReloadShaders();
 	}
+	ImGui::Separator();
 #endif WITH_SHADERS_HOT_RELOAD
+
+	const ui::Property props[] = 
+	{
+		ui::Property("Scene Settings", m_renderer.GetWorld().renderSceneSettings),
+		ui::Property("View Settings", m_renderer.GetRenderView().settings)
+	};
+	ui::DrawPropertiesPanel("Renderer Properties", props);
+
 	ImGui::End();
 }
 
@@ -160,11 +166,6 @@ void SandboxUIView::DrawMenuBar()
 		if (ImGui::MenuItem("Profiler"))
 		{
 			RecreateProfilerView();
-		}
-
-		if (ImGui::MenuItem("Render Scene Settings"))
-		{
-			RecreateRenderSceneSettings();
 		}
 
 		if (ImGui::MenuItem("Scene Renderer Stats"))
@@ -284,16 +285,6 @@ void SandboxUIView::FocusWindow(const lib::HashedString& windowName)
 	ImGui::DockBuilderDockWindow(windowName.GetData(), scui::CurrentViewBuildingContext::GetCurrentViewContentClass().ClassId);
 	ImGui::SetWindowCollapsed(windowName.GetData(), false);
 	ImGui::SetWindowFocus(windowName.GetData());
-}
-
-void SandboxUIView::RecreateRenderSceneSettings()
-{
-	RemoveChild(m_renderSceneSettingsView);
-
-	const lib::SharedRef<rsc::RenderSceneSettingsUIView> view = lib::MakeShared<rsc::RenderSceneSettingsUIView>(scui::ViewDefinition("Render Scene Settings"), m_renderer.GetRenderScene());
-	m_renderSceneSettingsView = view.ToSharedPtr();
-	m_renderSceneSettingsName = AddChild(view);
-	m_requestedWindowFocus = m_renderSceneSettingsName;
 }
 
 void SandboxUIView::RecreateSceneRendererStats()

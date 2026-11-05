@@ -34,8 +34,6 @@ private:
 	void DrawMenuBar();
 	void DrawRendererSettings();
 	void FocusWindow(const lib::HashedString& windowName);
-	void RecreateRenderViewSettings();
-	void RecreateRenderSceneSettings();
 	void RecreateSceneRendererStats();
 	void RecreateProfilerView();
 	void RecreateTerrainEditor();
@@ -48,8 +46,6 @@ private:
 	lib::HashedString m_sceneViewName;
 	lib::HashedString m_sanboxUIViewName;
 
-	lib::HashedString m_renderViewSettingsName;
-	lib::HashedString m_renderSceneSettingsName;
 	lib::HashedString m_sceneRendererStatsName;
 	lib::HashedString m_profilerPanelName;
 	lib::HashedString m_terrainEditorName;
@@ -57,8 +53,6 @@ private:
 
 	lib::HashedString m_requestedWindowFocus;
 
-	lib::SharedPtr<scui::UIView> m_renderViewSettingsView;
-	lib::SharedPtr<scui::UIView> m_renderSceneSettingsView;
 	lib::SharedPtr<scui::UIView> m_sceneRendererStatsView;
 	lib::SharedPtr<scui::UIView> m_profilerPanelView;
 	lib::SharedPtr<scui::UIView> m_terrainEditorView;

@@ -27,5 +27,5 @@
             ]
         }
     },
-    "Type": "pt::as::TerrainMaterialAsset"
+    "Type": "spt::as::TerrainMaterialAsset"
 }

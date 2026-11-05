@@ -5,7 +5,7 @@
             "spt::as::PBRGLTFMaterialDefinition"
         ],
         "spt::as::MaterialTypeInfo": {
-            "MaterialType": "pt::as::PBRMaterialInstance"
+            "MaterialType": "spt::as::PBRMaterialInstance"
         },
         "spt::as::PBRGLTFMaterialDefinition": {
             "GLTFSourcePath": "glTF/Sponza.gltf",
@@ -13,5 +13,5 @@
             "MaterialName": ""
         }
     },
-    "Type": "pt::as::MaterialAsset"
+    "Type": "spt::as::MaterialAsset"
 }

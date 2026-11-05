@@ -64,21 +64,29 @@ private:
 
 	static constexpr lib::StringView GetTypeName()
 	{
-		const Uint32 prefixName = 46u; // this has to be updated during rename of this function or class
+		// MSVC signature: "const char *__cdecl spt::lib::TypeInfo<[struct |class |enum |union ]TypeName>::GetNameInternal(void)"
+		lib::StringView name = GetNameInternal();
+		name.remove_prefix(name.find('<') + 1u);
 
-		const char* nameInternal = GetNameInternal();
-		const char* start        = nameInternal + prefixName;
-		const char* end          = start;
-
-		Uint32 depth = 0u;
-
-		while (*end != '\0')
+		for (const lib::StringView keyword : { lib::StringView("struct "), lib::StringView("class "), lib::StringView("enum "), lib::StringView("union ") })
 		{
-			if (*end == '<')
+			if (name.starts_with(keyword))
+			{
+				name.remove_prefix(keyword.size());
+				break;
+			}
+		}
+
+		SizeType end   = 0u;
+		Uint32   depth = 0u;
+
+		for (; end < name.size(); ++end)
+		{
+			if (name[end] == '<')
 			{
 				depth++;
 			}
-			else if (*end == '>')
+			else if (name[end] == '>')
 			{
 				if (depth == 0u)
 				{
@@ -87,11 +95,9 @@ private:
 
 				depth--;
 			}
-
-			++end;
 		}
 
-		return { start, static_cast<SizeType>(end - start) };
+		return name.substr(0u, end);
 	}
 
 	static constexpr Uint32 GetTypeNameLength()
