@@ -47,7 +47,7 @@ private:
 
 	void ExecuteAA(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterface& rendererInterface, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context);
 
-	math::Vector2u SelectDesiredRenderingResolution(math::Vector2u outputResolution) const;
+	math::Vector2u SelectDesiredRenderingResolution(const ViewRenderingSpec& viewSpec, math::Vector2u outputResolution) const;
 
 	Bool m_canRenderAA = false;
 

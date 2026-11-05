@@ -13,11 +13,6 @@ namespace spt::rsc
 SPT_REGISTER_VIEW_RENDER_SYSTEM(TemporalAAViewRenderSystem);
 
 
-RendererFloatParameter renderingResolutionScale("Rendering Resolution Scale", { "Temporal AA" }, 0.7f, 0.1f, 1.f);
-RendererBoolParameter  enableUnifiedDenoising("Enable Unified Denoising", { "Temporal AA" }, true);
-RendererBoolParameter  enableTransformerModel("Enable Transformer Model", { "Temporal AA" }, false);
-RendererBoolParameter  debugDisableJitter("Debug Disable Jitter", { "Temporal AA" }, false);
-
 namespace priv
 {
 
@@ -156,7 +151,7 @@ void TemporalAAViewRenderSystem::PrepareRenderView(ViewRenderingSpec& viewSpec)
 	Bool preparedAA = false;
 
 	const math::Vector2u outputResolution           = viewSpec.GetOutputRes();
-	const math::Vector2u desiredRenderingResolution = SelectDesiredRenderingResolution(outputResolution);
+	const math::Vector2u desiredRenderingResolution = SelectDesiredRenderingResolution(viewSpec, outputResolution);
 
 	if (m_temporalAARendererImpl)
 	{
@@ -165,8 +160,8 @@ void TemporalAAViewRenderSystem::PrepareRenderView(ViewRenderingSpec& viewSpec)
 		aaParams.outputResolution       = viewSpec.GetOutputRes();
 		aaParams.quality                = gfx::ETemporalAAQuality::Ultra;
 		aaParams.flags                  = lib::Flags(gfx::ETemporalAAFlags::HDR, gfx::ETemporalAAFlags::DepthInverted, gfx::ETemporalAAFlags::MotionLowRes);
-		aaParams.enableUnifiedDenoising = enableUnifiedDenoising;
-		aaParams.enableTransformerModel = enableTransformerModel;
+		aaParams.enableUnifiedDenoising = upscalerSettings.enableUnifiedDenoising;
+		aaParams.enableTransformerModel = upscalerSettings.enableTransformerModel;
 
 		preparedAA = lib::CallOverload(*m_temporalAARendererImpl,
 						              [&aaParams](auto& renderer)
@@ -177,7 +172,7 @@ void TemporalAAViewRenderSystem::PrepareRenderView(ViewRenderingSpec& viewSpec)
 
 	if (preparedAA)
 	{
-		if (!debugDisableJitter)
+		if (!upscalerSettings.debugDisableJitter)
 		{
 			const math::Vector2f jitter = lib::CallOverload(*m_temporalAARendererImpl, [this, desiredRenderingResolution, outputResolution](auto& renderer)
 			{
@@ -284,13 +279,15 @@ void TemporalAAViewRenderSystem::ExecuteAA(rg::RenderGraphBuilder& graphBuilder,
 	viewContext.luminance = outputColor;
 }
 
-math::Vector2u TemporalAAViewRenderSystem::SelectDesiredRenderingResolution(math::Vector2u outputResolution) const
+math::Vector2u TemporalAAViewRenderSystem::SelectDesiredRenderingResolution(const ViewRenderingSpec& viewSpec, math::Vector2u outputResolution) const
 {
 	const Bool supportsUpscaling = SupportsUpscaling();
 
 	if (supportsUpscaling)
 	{
-		math::Vector2u resolution = (outputResolution.cast<Real32>() * renderingResolutionScale).cast<Uint32>();
+		const UpscalerSettings& upscalerSettings = viewSpec.GetSettings().upscaler;
+
+		math::Vector2u resolution = (outputResolution.cast<Real32>() * upscalerSettings.renderResolutionScale).cast<Uint32>();
 		resolution.x() = std::min(math::Utils::DivideCeil(resolution.x(), 16u) * 16u, outputResolution.x());
 		resolution.y() = std::min(math::Utils::DivideCeil(resolution.y(), 16u) * 16u, outputResolution.y());
 

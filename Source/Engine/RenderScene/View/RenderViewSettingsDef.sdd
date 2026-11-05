@@ -327,6 +327,15 @@ struct UpscalerSettings
 {
 	[test=EUpscalingMethod::TAA]
 	EUpscalingMethod method = EUpscalingMethod::Accumulation;
+
+	[min=0.f, max=1.f]
+	Real32 renderResolutionScale = 0.7f;
+
+	Bool enableUnifiedDenoising = true;
+
+	Bool enableTransformerModel = false;
+
+	Bool debugDisableJitter = false;
 };
 
 
