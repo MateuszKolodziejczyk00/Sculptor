@@ -5,7 +5,6 @@
 #include "View/RenderView.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "RenderGraphBuilder.h"
-#include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 #include "RenderScene.h"
 #include "SceneRenderer/RenderStages/Utils/TracesAllocator.h"
 #include "Pipelines/PSOsLibraryTypes.h"
@@ -457,7 +456,6 @@ BEGIN_SHADER_STRUCT(ResolveReservoirsParams)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>,   propsTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>,   baseColorTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Uint32>,           variableRateBlocksTexture)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>,   brdfIntegrationLUT)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector4f>,   specularLumHitDistanceTexture)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector4f>,   diffuseLumHitDistanceTexture)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector2f>,   lightDirectionTexture)
@@ -485,7 +483,6 @@ static void ResolveReservoirs(rg::RenderGraphBuilder& graphBuilder, const Resamp
 	shaderConstants.propsTexture                  = params.propsTexture;
 	shaderConstants.baseColorTexture              = params.baseColorTexture;
 	shaderConstants.variableRateBlocksTexture     = params.tracesAllocation.variableRateBlocksTexture;
-	shaderConstants.brdfIntegrationLUT            = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
 	shaderConstants.specularLumHitDistanceTexture = params.outSpecularLuminanceDistTexture;
 	shaderConstants.diffuseLumHitDistanceTexture  = params.outDiffuseLuminanceDistTexture;
 	shaderConstants.lightDirectionTexture         = params.outLightDirectionTexture;

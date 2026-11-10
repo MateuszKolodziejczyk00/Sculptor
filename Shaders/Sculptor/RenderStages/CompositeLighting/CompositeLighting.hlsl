@@ -236,7 +236,7 @@ RTReflections ComputeRTReflectionsLuminance(in uint2 pixel, in float2 uv)
 	const float NdotV     = saturate(dot(sampleNormal, toView));
 	const float roughness = CONSTS->rtReflectionsParams->roughnessTexture.Load(uint3(pixel, 0)).x;
 
-	const float2 integratedBRDF = CONSTS->rtReflectionsParams->brdfIntegrationLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), float2(NdotV, roughness), 0);
+	const float2 integratedBRDF = GLOBALS->brdfIntegrationLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), float2(NdotV, roughness), 0);
 
 	// reverse demodulate specular
 	specularLo *= max((specularColor * integratedBRDF.x + integratedBRDF.y), 0.01f);

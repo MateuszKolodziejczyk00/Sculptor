@@ -1,7 +1,6 @@
 #include "SceneRenderer.h"
 #include "Debug/Stats/SceneRendererStatsView.h"
 #include "EngineFrame.h"
-#include "Parameters/SceneRendererParams.h"
 #include "RenderScene.h"
 #include "RenderSceneConstants.h"
 #include "RenderStages/RenderStage.h"

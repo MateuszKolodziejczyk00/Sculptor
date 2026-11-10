@@ -33,8 +33,9 @@ struct PBRMaterialDefinition
 	lib::Path displacementTexPath; // Displacement is used externally by some systems, e.g. terrain
 	Real32 displacementScale = 1.f;
 
-	Bool doubleSided   = true;
-	Bool customOpacity = false;
+	Bool doubleSided    = true;
+	Bool customOpacity  = false;
+	Bool contributeToDI = true; // If false, emissive is still visible from camera, but it doesn't cast light on other objects
 
 	void Serialize(srl::Serializer& serializer)
 	{
@@ -57,8 +58,9 @@ struct PBRMaterialDefinition
 		serializer.Serialize("ClearCoatWeight",    clearCoatWeight);
 		serializer.Serialize("ClearCoatRoughness", clearCoatRoughness);
 
-		serializer.Serialize("DoubleSided",   doubleSided);
-		serializer.Serialize("CustomOpacity", customOpacity);
+		serializer.Serialize("DoubleSided",    doubleSided);
+		serializer.Serialize("CustomOpacity",  customOpacity);
+		serializer.Serialize("ContributeToDI", contributeToDI);
 	}
 };
 SPT_REGISTER_ASSET_DATA_TYPE(PBRMaterialDefinition);

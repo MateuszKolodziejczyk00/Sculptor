@@ -44,10 +44,10 @@ struct PBRMaterialDataHeader
 	Real32 clearCoatWeight         = 0.f;
 	Real32 clearCoatRoughness      = 0.f;
 
-	Uint8 doubleSided   = 0u;
-	Uint8 customOpacity = 0u;
-	Uint8 transparent   = 0u;
-	Uint8 padding1      = 0u;
+	Uint8 doubleSided    = 0u;
+	Uint8 customOpacity  = 0u;
+	Uint8 transparent    = 0u;
+	Uint8 contributeToDI = 0u;
 
 	MaterialTextureDefinition baseColorTexture;
 	MaterialTextureDefinition metallicRoughnessTexture;

@@ -61,6 +61,11 @@ groupshared MeshPayload s_payload;
 
 bool WasOccludedLastFrame(in Sphere sphere)
 {
+	if(!CULLING->hasHistoryHiZ)
+	{
+		return false;
+	}
+
 	const HiZCullingProcessor occlusionCullingProcessor = HiZCullingProcessor::Create(CULLING->historyHiZTexture, CULLING->historyHiZResolution, VIEW->prevFrameSceneView);
 	return !occlusionCullingProcessor.DoCulling(sphere);
 }
@@ -131,15 +136,6 @@ void GeometryPipeline_TS(in TSInput input)
 	const uint batchElementIdx = occludedMeshlet.batchElemIdx;
 	const uint localMeshletIdx = occludedMeshlet.localMeshletIdx;
 #endif // GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
-
-#if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
-	if(input.globalID.x == 0)
-	{
-		PASS->occludedMeshletsDispatchCommand[0].dispatchGroupsX = 0u;
-		PASS->occludedMeshletsDispatchCommand[0].dispatchGroupsY = 1u;
-		PASS->occludedMeshletsDispatchCommand[0].dispatchGroupsZ = 1u;
-	}
-#endif	// GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
 
 	const GeometryBatchElement batchElement = BATCH->batchElements[batchElementIdx];
 	const SubmeshGPUData submesh            = batchElement.submeshPtr.Load();

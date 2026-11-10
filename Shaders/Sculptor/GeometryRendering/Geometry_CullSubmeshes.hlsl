@@ -81,15 +81,6 @@ void CullSubmeshesCS(CS_INPUT input)
 	const uint batchElementIdx = occludedBatchElem.batchElemIdx;
 #endif // GEOMETRY_PASS_IDX
 
-#if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
-	if(input.globalID.x == 0)
-	{
-		PASS->dispatchOccludedElementsCommand[0].dispatchGroupsX = 0u;
-		PASS->dispatchOccludedElementsCommand[0].dispatchGroupsY = 1u;
-		PASS->dispatchOccludedElementsCommand[0].dispatchGroupsZ = 1u;
-	}
-#endif // GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
-
 	if(batchElementIdx < PARAMS_GEOMETRY_BATCH->elementsNum)
 	{
 		const GeometryBatchElement batchElement = PARAMS_GEOMETRY_BATCH->batchElements[batchElementIdx];

@@ -11,7 +11,6 @@
 #include "RenderGraphBuilder.h"
 #include "Common/ShaderCompilationInput.h"
 #include "ViewShadingInput.h"
-#include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 #include "SceneRenderSystems/Atmosphere/AtmosphereRenderSystem.h"
 #include "ViewRenderSystems/ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 #include "Bindless/BindlessTypes.h"
@@ -418,7 +417,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 {
 	SPT_PROFILER_FUNCTION();
 
-	const Uint32 zClustersNum = 32u;
+	const Uint32 zClustersNum = 256u;
 
 	LightsRenderingDataPerView lightsRenderingDataPerView;
 
@@ -631,7 +630,7 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 
 	if (lightsRenderingData.HasAnyLocalLightsToRender())
 	{
-		const math::Vector3u dispatchZClustersGroupsNum = math::Vector3u(lightsRenderingData.zClustersNum, 1, 1);
+		const math::Vector3u dispatchZClustersGroupsNum = math::Vector3u(math::Utils::DivideCeil<Uint32>(lightsRenderingData.zClustersNum, 32), 1, 1);
 		graphBuilder.Dispatch(RG_DEBUG_NAME("BuildLightsZClusters"),
 							  BuildLightZClustersPSO::pso,
 							  dispatchZClustersGroupsNum,
@@ -786,9 +785,8 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 		lightsParams.hasValidCloudsTransmittanceMap = false;
 	}
 
-	lightsParams.localLights        = localLightsBuffer->GetFullView();
-	lightsParams.directionalLights  = directionalLightsBuffer->GetFullView();
-	lightsParams.brdfIntegrationLUT = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
+	lightsParams.localLights       = localLightsBuffer->GetFullView();
+	lightsParams.directionalLights = directionalLightsBuffer->GetFullView();
 
 	m_globalLightsParams = graphBuilder.CreateGPUData(lightsParams);
 }

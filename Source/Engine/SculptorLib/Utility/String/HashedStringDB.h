@@ -31,7 +31,7 @@ public:
 
 	SPT_NODISCARD static constexpr KeyType HashString(StringView string)
 	{
-		return GetHash(string);
+		return FNV1a::Hash(string);
 	}
 
 private:

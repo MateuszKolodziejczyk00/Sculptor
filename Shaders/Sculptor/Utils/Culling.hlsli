@@ -128,36 +128,49 @@ bool IsSphereBehindHiZ(SRVTexture2D<float> hiZ, float2 hiZResolution, float3 sph
 }
 
 
+bool IsSphereBehindHiZOrthographic(SRVTexture2D<float> hiZ, float2 hiZResolution, float3 sphereCenterVS, float sphereRadius, float4x4 projection)
+{
+    const float2 centerCS = float2(projection[0][1] * sphereCenterVS.y + projection[0][3], projection[1][2] * sphereCenterVS.z + projection[1][3]);
+    const float2 extentCS = sphereRadius * abs(float2(projection[0][1], projection[1][2]));
+
+    const float4 aabb = saturate(float4(centerCS - extentCS, centerCS + extentCS) * 0.5f + 0.5f);
+
+    const float2 sizeTexels = (aabb.zw - aabb.xy) * hiZResolution;
+    const float level = ceil(log2(max(sizeTexels.x, sizeTexels.y)));
+
+    const float sceneMinDepth = hiZ.SampleLevel(BindlessSamplers::LinearMinClampEdge(), (aabb.xy + aabb.zw) * 0.5f, level).x;
+
+    const float sphereMaxDepth = projection[2][0] * (sphereCenterVS.x - sphereRadius) + projection[2][3];
+    return sphereMaxDepth < sceneMinDepth;
+}
+
+
 struct HiZCullingProcessor
 {
 	static HiZCullingProcessor Create(in SRVTexture2D<float> inHiZ, in float2 inRes, in SceneViewData inView)
 	{
 		HiZCullingProcessor processor;
-		processor.hiZTexture = inHiZ;
-		processor.hiZRes     = inRes;
-		processor.nearPlane  = GetNearPlane(inView);
-		processor.p01        = inView.projectionMatrix[0][1];
-		processor.p12        = inView.projectionMatrix[1][2];
-		processor.viewMatrix = inView.viewMatrix;
+		processor.hiZTexture       = inHiZ;
+		processor.hiZRes           = inRes;
 		return processor;
 	}
 
-	bool DoCulling(in Sphere sphere)
+	bool DoCulling(in SceneViewData inView, in Sphere sphere)
 	{
-		sphere.center = mul(viewMatrix, float4(sphere.center, 1.f)).xyz;
-		return !IsSphereBehindHiZ(hiZTexture, hiZRes, sphere.center, sphere.radius, nearPlane, p01, p12);
+		sphere.center = mul(inView.viewMatrix, float4(sphere.center, 1.f)).xyz;
+
+		if (inView.IsOrthographic())
+		{
+			return !IsSphereBehindHiZOrthographic(hiZTexture, hiZRes, sphere.center, sphere.radius, inView.projectionMatrix);
+		}
+		else
+		{
+			return !IsSphereBehindHiZ(hiZTexture, hiZRes, sphere.center, sphere.radius, inView.projectionMatrix[2][3], inView.projectionMatrix[0][1], inView.projectionMatrix[1][2]);
+		}
 	}
 
 	SRVTexture2D<float> hiZTexture;
-
 	float2 hiZRes;
-
-	// View parameters
-	float p01;
-	float p12;
-	float nearPlane;
-
-	float4x4 viewMatrix;
 };
 
 #endif // CULLING_H

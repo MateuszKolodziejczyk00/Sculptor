@@ -9,7 +9,6 @@ namespace spt::gf
 
 class World;
 struct PrefabInstance;
-struct MeshesChunk;
 
 
 struct SpawnContext
@@ -19,8 +18,13 @@ struct SpawnContext
 	PrefabInstance&   prefabInstance;
 
 	const Transform   transform;
+};
 
-	MeshesChunk*      lastMeshesChunk = nullptr;
+
+struct SetParameterContext
+{
+	World&                world;
+	const PrefabInstance& prefabInstance;
 };
 
 
@@ -29,14 +33,25 @@ struct GamePrefabEntityDefinition : public as::PrefabEntityDefinition
 	template<typename TEntityType>
 	static as::PrefabEntitySpawner RegisterSpawner()
 	{
-		return as::PrefabEntitySpawner([](void* context, lib::Span<const Byte> compiledData)
+		return as::PrefabEntitySpawner([](void* context, Uint32 entityIdx, lib::Span<const Byte> compiledData)
 		{
 			SpawnContext& spawnContext = *static_cast<SpawnContext*>(context);
-			TEntityType::Spawn(spawnContext, compiledData);
+			TEntityType::Spawn(spawnContext, entityIdx, compiledData);
 		});
 	}
-	
-	static void Spawn(SpawnContext& context, lib::Span<const Byte> compiledData) {}
+
+	template<typename TEntityType>
+	static as::PrefabEntityParameterApplier RegisterParameterApplier()
+	{
+		return as::PrefabEntityParameterApplier([](const void* context, const as::CompiledPrefabBinding& binding, const as::PrefabParameterPayload& payload)
+		{
+			TEntityType::ApplyParameter(*static_cast<const SetParameterContext*>(context), binding, payload);
+		});
+	}
+
+	static void Spawn(SpawnContext& context, Uint32 entityIdx, lib::Span<const Byte> compiledData) {}
+
+	static void ApplyParameter(const SetParameterContext& context, const as::CompiledPrefabBinding& binding, const as::PrefabParameterPayload& payload) {}
 };
 
 } // spt::gf w w

@@ -8,6 +8,16 @@
 namespace spt::rsc
 {
 
+enum class ELocalLightFlags : Uint32
+{
+	None                   = 0u,
+	ContributeToDI         = BIT(0u),
+	ContributeToScattering = BIT(1u),
+
+	Default = ContributeToScattering | ContributeToDI
+};
+
+
 BEGIN_SHADER_STRUCT(DirectionalLightGPUData)
 	SHADER_STRUCT_FIELD(math::Vector3f, illuminance) // Lux
 	SHADER_STRUCT_FIELD(Real32,         sunDiskEC)
@@ -34,6 +44,7 @@ BEGIN_SHADER_STRUCT(LocalLightGPUData)
 	SHADER_STRUCT_FIELD(math::Vector3f,                 location)
 	SHADER_STRUCT_FIELD(Real32,                         range)
 	SHADER_STRUCT_FIELD(Uint32,                         shadowMapFirstFaceIdx)
+	SHADER_STRUCT_FIELD(Uint32,                         flags)
 	SHADER_STRUCT_FIELD(gfx::ConstSRVTexture2D<Real32>, iesProfile)
 	// Spot only begin
 	SHADER_STRUCT_FIELD(math::Vector3f, direction)
@@ -81,6 +92,8 @@ struct PointLightData
 	math::Vector3f location = math::Vector3f::Zero();
 	Real32         radius   = 1.f;
 
+	ELocalLightFlags flags = ELocalLightFlags::Default;
+
 	lib::SharedPtr<rdr::TextureView> iesProfileTexture;
 };
 
@@ -97,6 +110,10 @@ struct SpotLightData
 	Real32         range          = 1.f;
 	Real32         innerHalfAngle = 22.5f;
 	Real32         outerHalfAngle = 45.f;
+
+	ELocalLightFlags flags = ELocalLightFlags::Default;
+
+	lib::SharedPtr<rdr::TextureView> iesProfileTexture;
 };
 
 
@@ -124,6 +141,7 @@ public:
 		gpuData.location      = lightData.location;
 		gpuData.range         = lightData.radius;
 		gpuData.iesProfile    = lightData.iesProfileTexture;
+		gpuData.flags         = static_cast<Uint32>(lightData.flags);
 		return gpuData;
 	}
 
@@ -152,6 +170,8 @@ public:
 		gpuData.location             = lightData.location;
 		gpuData.range                = lightData.range;
 		gpuData.direction            = lightData.direction;
+		gpuData.iesProfile           = lightData.iesProfileTexture;
+		gpuData.flags                = static_cast<Uint32>(lightData.flags);
 		gpuData.halfAngleCos         = outerAngleCos;
 		gpuData.halfAngleTan         = std::tan(outerAngleRadians);
 		gpuData.boundingSphereRadius = boundingSphereRadius;

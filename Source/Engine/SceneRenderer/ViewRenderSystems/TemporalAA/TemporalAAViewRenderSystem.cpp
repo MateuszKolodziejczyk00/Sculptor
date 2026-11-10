@@ -2,7 +2,6 @@
 #include "Utils/ViewRenderingSpec.h"
 #include "Techniques/TemporalAA/TemporalAATypes.h"
 #include "RenderGraphBuilder.h"
-#include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "SceneRenderer/RenderStages/Utils/RTReflectionsTypes.h"
 #include "ResourcesManager.h"
 

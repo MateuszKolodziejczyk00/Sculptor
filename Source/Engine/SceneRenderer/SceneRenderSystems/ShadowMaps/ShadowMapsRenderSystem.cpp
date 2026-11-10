@@ -11,7 +11,7 @@
 #include "EngineFrame.h"
 #include "SceneRenderer/SceneRenderer.h"
 
-#pragma optimize("", off)
+
 namespace spt::rsc
 {
 
@@ -377,11 +377,6 @@ void ShadowMapsRenderSystem::AssignShadowMaps(const RenderView& mainView)
 			// quality is lower than it should. Check if we can upgrade one more shadow map this frame
 			if (shadowMapsToUpgrade.size() < settings.maxUpgradedPerFrame)
 			{
-				if (currentQuality != EShadowMapQuality::None)
-				{
-					ReleaseShadowMap(currentQuality, ResetPointLightShadowMap(lightEntity));
-				}
-
 				shadowMapsToUpgrade.emplace_back(std::make_pair(lightEntity, desiredQuality));
 			}
 		}
@@ -412,16 +407,54 @@ void ShadowMapsRenderSystem::AssignShadowMaps(const RenderView& mainView)
 	// later we treat this array as stack. Reverse it to start upgrading from lowest quality
 	std::reverse(std::begin(shadowMapsToUpgrade), std::end(shadowMapsToUpgrade));
 
+	// Checks the whole downgrade chain: every light downgraded to free a shadow map must be able to acquire its new one
+	const auto canAcquireShadowMap = [&](EShadowMapQuality quality)
+	{
+		while (quality != EShadowMapQuality::None && m_availableShadowMaps.at(quality).empty())
+		{
+			const auto foundToRelease = shadowMapsToRelease.find(quality);
+			if (foundToRelease == std::cend(shadowMapsToRelease) || foundToRelease->second.empty())
+			{
+				return false;
+			}
+			quality = foundToRelease->second.back().desiredQualityToAcquire;
+		}
+		return true;
+	};
+
 	while (!shadowMapsToUpgrade.empty())
 	{
 		const auto [acquireLightEntity, acquireDesiredQuality] = shadowMapsToUpgrade.back();
 		shadowMapsToUpgrade.pop_back();
 
+		// Make current shadow map available, so lights downgraded by this upgrade can reuse it
+		const EShadowMapQuality currentQuality = GetCurrentShadowMapQuality(acquireLightEntity);
+		if (currentQuality != EShadowMapQuality::None)
+		{
+			ReleaseShadowMap(currentQuality, m_localLightsShadowMaps.At(acquireLightEntity).shadowMapFirstFaceIdx);
+		}
+
+		if (!canAcquireShadowMap(acquireDesiredQuality))
+		{
+			// Upgrade would leave some light without shadow map - keep current one
+			if (currentQuality != EShadowMapQuality::None)
+			{
+				AcquireAvaialableShadowMap(currentQuality);
+			}
+			continue;
+		}
+
+		if (currentQuality != EShadowMapQuality::None)
+		{
+			ResetPointLightShadowMap(acquireLightEntity);
+		}
+
 		Uint32 shadowMapIdx = AcquireAvaialableShadowMap(acquireDesiredQuality);
 		if (shadowMapIdx == idxNone<Uint32>)
 		{
-			// We don't have any available shadow map - try downgrade another light to use its shadow map
+			// We don't have any available shadow map - downgrade another light to use its shadow map
 			lib::DynamicArray<ShadowMapReleaseInfo>& shadowMapsOfQualityToRelease = shadowMapsToRelease[acquireDesiredQuality];
+			SPT_CHECK(!shadowMapsOfQualityToRelease.empty());
 			const ShadowMapReleaseInfo releaseInfo = shadowMapsOfQualityToRelease.back();
 			shadowMapsOfQualityToRelease.pop_back();
 

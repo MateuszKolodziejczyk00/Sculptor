@@ -11,7 +11,6 @@
 #include "Utils/ScreenSpaceTracer.h"
 #include "Utils/TransfersUtils.h"
 #include "Utils/SceneRenderingTypes.h"
-#include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 #include "Utils/ViewRenderingSpec.h"
 #include "ResourcesManager.h"
 
@@ -160,7 +159,6 @@ BEGIN_SHADER_STRUCT(DISpatialResamplingConstants)
 	SHADER_STRUCT_FIELD(SSTracerData,                             ssTracer)
 	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<DIPackedReservoir>,   inReservoirs)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<DIPackedReservoir>, outReservoirs)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>,     brdfIntegrationLUT)
 	SHADER_STRUCT_FIELD(math::Vector2u,                           reservoirsResolution)
 	SHADER_STRUCT_FIELD(Uint32,                                   spatialSamplesNum)
 	SHADER_STRUCT_FIELD(Uint32,                                   spatialResamplingRange)
@@ -205,7 +203,6 @@ BEGIN_SHADER_STRUCT(ResolveStochasticDIConstants)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector3f>, diffuse)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>, lightDirection)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector3f>, rwLuminance)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>, brdfIntegrationLUT)
 	SHADER_STRUCT_FIELD(GPUGBuffer,                           gBuffer)
 END_SHADER_STRUCT();
 
@@ -295,8 +292,6 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterfa
 	const rg::RGTextureViewHandle diffuse         = graphBuilder.CreateTextureView(RG_DEBUG_NAME("DI Diffuse"), rg::TextureDef(resolution, rhi::EFragmentFormat::RGBA16_S_Float));
 	const rg::RGTextureViewHandle lightDirection  = graphBuilder.CreateTextureView(RG_DEBUG_NAME("DI Light Direction"), rg::TextureDef(resolution, rhi::EFragmentFormat::RG16_UN_Float));
 
-	const rg::RGTextureViewHandle brdfIntegrationLUT = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
-
 	{
 		DISpatialResamplingConstants shaderConstants;
 		shaderConstants.rwSpecularHitDist      = specularHitDist;
@@ -306,7 +301,6 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterfa
 		shaderConstants.ssTracer               = ssTracer;
 		shaderConstants.inReservoirs           = reservoirsBuffer;
 		shaderConstants.outReservoirs          = historyReservoirs;
-		shaderConstants.brdfIntegrationLUT     = brdfIntegrationLUT;
 		shaderConstants.reservoirsResolution   = reservoirsResolution;
 		shaderConstants.spatialSamplesNum      = settings.spatialSamples;
 		shaderConstants.spatialResamplingRange = settings.spatialResamplingRange;
@@ -350,12 +344,11 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterfa
 
 	{
 		ResolveStochasticDIConstants shaderConstants;
-		shaderConstants.specular           = specularPostDenoise;
-		shaderConstants.diffuse            = diffusePostDenoise;
-		shaderConstants.lightDirection     = lightDirection;
-		shaderConstants.rwLuminance        = diParams.outputLuminance;
-		shaderConstants.brdfIntegrationLUT = brdfIntegrationLUT;
-		shaderConstants.gBuffer            = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
+		shaderConstants.specular       = specularPostDenoise;
+		shaderConstants.diffuse        = diffusePostDenoise;
+		shaderConstants.lightDirection = lightDirection;
+		shaderConstants.rwLuminance    = diParams.outputLuminance;
+		shaderConstants.gBuffer        = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("Resolve Stochastic DI"),
 							  ResolveStochasticDIPSO::pso,

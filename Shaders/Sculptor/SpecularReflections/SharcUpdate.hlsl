@@ -44,7 +44,7 @@ float3 QueryLuminanceInPreviousCache(in float3 rayDirection, in float3 hitLocati
 
 #if SHARC_DEMODULATE_MATERIALS
 	const float NdotV = dot(-rayDirection, hitResult.normal);
-	const float3 materialDemodulation = ComputeMaterialDemodulation(PARAMS_GLOBAL_LIGHTS->brdfIntegrationLUT, BindlessSamplers::LinearClampEdge(), surface.albedo, surface.f0, NdotV, hitResult.roughness);
+	const float3 materialDemodulation = ComputeMaterialDemodulation(surface.albedo, surface.f0, NdotV, hitResult.roughness);
 	hitData.materialDemodulation = materialDemodulation;
 #endif // SHARC_DEMODULATE_MATERIALS
 
@@ -157,7 +157,7 @@ void SharcUpdateRTG()
 
 #if SHARC_DEMODULATE_MATERIALS
 		const float NdotV = saturate(dot(normal, fromDir));
-		const float3 materialDemodulation = ComputeMaterialDemodulation(PARAMS_GLOBAL_LIGHTS->brdfIntegrationLUT, BindlessSamplers::LinearClampEdge(), shadedSurface.albedo, shadedSurface.f0, NdotV, roughness);
+		const float3 materialDemodulation = ComputeMaterialDemodulation(shadedSurface.albedo, shadedSurface.f0, NdotV, roughness);
 		hitData.materialDemodulation = materialDemodulation;
 #endif // SHARC_DEMODULATE_MATERIALS
 
@@ -258,7 +258,7 @@ void SharcUpdateRTG()
 
 #if SHARC_DEMODULATE_MATERIALS
 				const float NdotV = saturate(dot(normal, fromDir));
-				const float3 materialDemodulation = ComputeMaterialDemodulation(PARAMS_GLOBAL_LIGHTS->brdfIntegrationLUT, BindlessSamplers::LinearClampEdge(), shadedSurface.albedo, shadedSurface.f0, NdotV, roughness);
+				const float3 materialDemodulation = ComputeMaterialDemodulation(shadedSurface.albedo, shadedSurface.f0, NdotV, roughness);
 				hitData.materialDemodulation = materialDemodulation;
 #endif // SHARC_DEMODULATE_MATERIALS
 

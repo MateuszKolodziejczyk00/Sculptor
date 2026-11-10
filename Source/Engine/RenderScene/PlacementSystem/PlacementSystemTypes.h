@@ -1,6 +1,9 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
+#include "ShaderStructs.h"
+#include "Bindless/BindlessTypes.h"
+#include "Utility/Templates/Callable.h"
 
 
 namespace spt::rsc

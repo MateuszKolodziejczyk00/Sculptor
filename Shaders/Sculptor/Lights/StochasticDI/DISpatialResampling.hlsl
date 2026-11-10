@@ -107,7 +107,7 @@ void DISpatialResamplingRTG()
 	diffuseLo /= max(surface.diffuseColor, SMALL_NUMBER);
 
 	const float NdotV = saturate(dot(surface.normal, V));
-	const float2 integratedBRDF = PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->brdfIntegrationLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), float2(NdotV, surface.roughness), 0);
+	const float2 integratedBRDF = GLOBALS->brdfIntegrationLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), float2(NdotV, surface.roughness), 0);
 
 	float3 specularLo = shadingResult.specular;
 	specularLo = LuminanceToExposedLuminance(specularLo);

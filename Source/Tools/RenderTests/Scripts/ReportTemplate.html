@@ -7,14 +7,14 @@
 :root {
 	--bg: #f6f7f9; --panel: #ffffff; --text: #1d2129; --muted: #667085; --border: #e3e6eb;
 	--accent: #3a6ff7; --pass: #1f9d55; --fail: #d64545; --warn: #c98a0b; --none: #8a94a6;
-	--row-hover: #f0f3f8; --chart-line: #3a6ff7; --chart-grid: #e8ebf0;
+	--row-hover: #f0f3f8; --chart-line: #3a6ff7; --chart-grid: #e8ebf0; --flame: #dde3ee;
 	color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
 	:root {
 		--bg: #0f1115; --panel: #171a21; --text: #e6e8ec; --muted: #8b93a3; --border: #262b35;
 		--accent: #6f95ff; --pass: #3cc47c; --fail: #f06a6a; --warn: #e5b23a; --none: #6b7385;
-		--row-hover: #1e232c; --chart-line: #6f95ff; --chart-grid: #232833;
+		--row-hover: #1e232c; --chart-line: #6f95ff; --chart-grid: #232833; --flame: #2b3242;
 		color-scheme: dark;
 	}
 }
@@ -87,6 +87,10 @@ tr.selected { background: var(--row-hover); box-shadow: inset 3px 0 0 var(--acce
 .chart .crosshair { stroke: var(--muted); stroke-dasharray: 3 3; pointer-events: none; }
 .chart .sel { stroke: var(--accent); opacity: .6; pointer-events: none; }
 .chart .lifetime { fill: var(--muted); opacity: .3; pointer-events: none; }
+.chart.flame { height: auto; cursor: pointer; }
+.chart .flame-node { stroke: var(--panel); stroke-width: 1; }
+.chart .flame-node.selected { stroke: var(--accent); stroke-width: 2; }
+.chart text.flame-label { fill: var(--text); pointer-events: none; }
 .resources { max-height: 360px; overflow-y: auto; }
 .resources th { position: sticky; top: 0; background: var(--panel); }
 .legend { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
@@ -163,6 +167,13 @@ details.panel > summary h2 { display: inline; margin: 0; }
 				<svg class="chart" id="samplesChart"></svg>
 				<p class="hint">Every measured frame of the selected run. Orange: compare reference (per frame median of baseline runs, or the selected run).</p>
 			</div>
+		</div>
+		<div class="panel">
+			<h2>GPU time flame graph</h2>
+			<div class="legend" id="flameLegend"></div>
+			<svg class="chart flame" id="flameChart"></svg>
+			<div class="popup" id="flamePopup" hidden></div>
+			<p class="hint">Profiler scopes nested in frame order, width is the median per frame GPU time (repeated passes summed per frame). Color: change vs compare reference (median of baseline runs, or the selected run), red slower, green faster. Click a pass to zoom in and select it, click an ancestor to zoom out.</p>
 		</div>
 		<div class="panel">
 			<h2>Transient memory per pass (MiB)</h2>
@@ -472,6 +483,8 @@ function loadRunScript(store, file, runId, name) {
 const loadSamples = (runId, name) => loadRunScript(perfSamples, "Samples.js", runId, name);
 const loadTransientMemory = (runId, name) => loadRunScript(transientMemory, "TransientMemory.js", runId, name);
 
+const median = vals => { const vs = [...vals].sort((a, b) => a - b), m = vs.length >> 1; return vs.length % 2 ? vs[m] : (vs[m - 1] + vs[m]) / 2; };
+
 let samplesChartToken = 0;
 async function renderSamplesChart() {
 	const token = ++samplesChartToken;
@@ -482,10 +495,7 @@ async function renderSamplesChart() {
 
 	const samples = current && current[state.scope];
 	const refLists = refAll.map(s => s && s[state.scope]).filter(Boolean);
-	const ref = refLists.length ? Array.from({ length: Math.min(...refLists.map(l => l.length)) }, (_, k) => {
-		const vs = refLists.map(l => l[k]).sort((a, b) => a - b), m = vs.length >> 1;
-		return vs.length % 2 ? vs[m] : (vs[m - 1] + vs[m]) / 2;
-	}) : [];
+	const ref = refLists.length ? Array.from({ length: Math.min(...refLists.map(l => l.length)) }, (_, k) => median(refLists.map(l => l[k]))) : [];
 
 	$("samplesTitle").textContent = `${scopeLabel()} per frame samples (ms)`;
 	const svg = $("samplesChart");
@@ -500,6 +510,82 @@ async function renderSamplesChart() {
 
 	svg.innerHTML = grid + line("ref", ref) + line("line samples", samples)
 		+ `<text x="${L}" y="${H - 8}">frame 0</text><text x="${W - R}" y="${H - 8}" text-anchor="end">${framesNum - 1}</text>`;
+}
+
+// Zoomed to the selected scope: its ancestors span the full width, its subtree is scaled to fit
+let flameChartToken = 0;
+async function renderFlameChart() {
+	const token = ++flameChartToken;
+	const name = state.test, run = currentRun(), baseline = run.Tests[name].PerfBaseline;
+	const refIds = state.compare === "baseline" ? baseline?.Runs ?? [] : [state.compare];
+	const [current, ...refAll] = await Promise.all([run.Id, ...refIds].map(id => loadSamples(id, name)));
+	if (token !== flameChartToken) return;
+
+	const svg = $("flameChart"), W = svg.clientWidth || 600, rowH = 20;
+	if (!current) { svg.setAttribute("viewBox", `0 0 ${W} ${rowH}`); svg.style.height = rowH + "px"; svg.innerHTML = `<text x="${W / 2}" y="14" text-anchor="middle">No samples</text>`; return; }
+
+	const refs = refAll.filter(Boolean);
+	const nodes = new Map();
+	for (const [path, samples] of Object.entries(current)) {
+		const refVals = refs.filter(s => s[path]).map(s => median(s[path]));
+		nodes.set(path, { path, name: path.split("/").pop(), depth: path.split("/").length - 1, ms: median(samples), refMs: refVals.length ? median(refVals) : null, children: [] });
+	}
+	for (const node of nodes.values()) nodes.get(node.path.slice(0, node.path.lastIndexOf("/")))?.children.push(node);
+
+	// Children medians may sum above parent median due to noise, then they are shrunk to fit
+	const root = nodes.get("GPU Frame");
+	const layout = node => {
+		const childrenMs = node.children.reduce((sum, c) => sum + c.ms, 0);
+		let x = node.x;
+		for (const c of node.children) { c.x = x; c.w = c.ms * node.w / Math.max(node.ms, childrenMs); x += c.w; layout(c); }
+		node.selfMs = Math.max(0, node.ms - childrenMs);
+	};
+	root.x = 0; root.w = root.ms;
+	layout(root);
+
+	const focus = nodes.get(state.scope) ?? root;
+	const px = v => (v - focus.x) / focus.w * W;
+	const fill = n => {
+		if (n.refMs == null) return "var(--flame)";
+		// Ignores noise of tiny passes: full intensity at 20% and 0.05 ms change
+		const d = n.ms - n.refMs, t = Math.min(1, Math.abs(d) / Math.max(n.refMs, 1e-6) / 0.2) * Math.min(1, Math.abs(d) / 0.05);
+		return `color-mix(in srgb, var(${d > 0 ? "--fail" : "--pass"}) ${Math.round(t * 75)}%, var(--flame))`;
+	};
+
+	let out = "", maxDepth = 0;
+	for (const n of nodes.values()) {
+		if (n.x === undefined) continue;
+		const x0 = Math.max(0, px(n.x)), x1 = Math.min(W, px(n.x + n.w));
+		if (x1 - x0 < 0.5) continue;
+		maxDepth = Math.max(maxDepth, n.depth);
+		const y = n.depth * rowH, chars = Math.floor((x1 - x0 - 8) / 6.5);
+		out += `<rect class="flame-node${n.path === state.scope ? " selected" : ""}" data-path="${esc(n.path)}" x="${x0}" y="${y}" width="${x1 - x0}" height="${rowH}" style="fill:${fill(n)}"/>`;
+		if (chars >= 3) out += `<text class="flame-label" x="${x0 + 4}" y="${y + 14}">${esc(n.name.length <= chars ? n.name : n.name.slice(0, chars - 1) + "…")}</text>`;
+	}
+	const H = (maxDepth + 1) * rowH;
+	svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+	svg.style.height = H + "px";
+	svg.innerHTML = out;
+
+	const refLabel = state.compare === "baseline" ? `baseline (${refs.length} run(s))` : state.compare;
+	$("flameLegend").innerHTML = `<span>GPU frame median: <b>${fmtMs(root.ms)} ms</b></span>`
+		+ (refs.length ? `<span><i class="dot" style="background:var(--fail)"></i>slower</span><span><i class="dot" style="background:var(--pass)"></i>faster vs ${esc(refLabel)}</span>` : `<span>No compare reference</span>`);
+
+	const popup = $("flamePopup"), nodeAt = e => nodes.get(e.target.closest("[data-path]")?.dataset.path);
+	svg.onmousemove = e => {
+		const n = nodeAt(e);
+		if (!n) { popup.hidden = true; return; }
+		const d = n.refMs == null ? null : n.ms - n.refMs;
+		const delta = d == null ? "" : ` <span class="${d > 0 ? "worse" : "better"}">${d >= 0 ? "+" : ""}${d.toFixed(3)} (${d >= 0 ? "+" : ""}${(n.refMs > 0 ? d / n.refMs * 100 : 0).toFixed(1)}%)</span>`;
+		popup.innerHTML = `<b>${esc(n.name)}</b><div class="muted">${esc(n.path)}</div><table>
+			<tr><td class="muted">Median ms</td><td class="num">${fmtMs(n.ms)}</td></tr>
+			<tr><td class="muted">Self ms</td><td class="num">${fmtMs(n.selfMs)}</td></tr>
+			<tr><td class="muted">Of frame</td><td class="num">${(n.ms / root.ms * 100).toFixed(1)}%</td></tr>
+			${refs.length ? `<tr><td class="muted">Compare ms</td><td class="num">${n.refMs == null ? "not in compare" : fmtMs(n.refMs) + delta}</td></tr>` : ""}</table>`;
+		showPopup(popup, e);
+	};
+	svg.onmouseleave = () => { popup.hidden = true; };
+	svg.onclick = e => { const n = nodeAt(e); if (n) selectScope(n.path); };
 }
 
 function sparkline(name, path) {
@@ -579,6 +665,7 @@ function selectScope(path) {
 	state.scope = path;
 	renderHistoryChart();
 	renderSamplesChart();
+	renderFlameChart();
 	renderMemoryChart();
 	renderPassTable();
 }
@@ -735,6 +822,7 @@ function render() {
 		renderSettings();
 		renderHistoryChart();
 		renderSamplesChart();
+		renderFlameChart();
 		renderMemoryChart();
 		renderPassHashes();
 		renderPassTable();
@@ -781,8 +869,8 @@ $("passTable").onmousemove = e => {
 	showPopup(popup, e);
 };
 $("passTable").onmouseleave = () => { $("passPopup").hidden = true; };
-window.addEventListener("scroll", () => { $("passPopup").hidden = true; $("memoryPopup").hidden = true; });
-window.addEventListener("resize", () => { if (state.test) { renderHistoryChart(); renderSamplesChart(); renderMemoryChart(); } });
+window.addEventListener("scroll", () => { $("passPopup").hidden = true; $("memoryPopup").hidden = true; $("flamePopup").hidden = true; });
+window.addEventListener("resize", () => { if (state.test) { renderHistoryChart(); renderSamplesChart(); renderFlameChart(); renderMemoryChart(); } });
 render();
 </script>
 </body>

@@ -29,7 +29,7 @@ void ResolveStochasticDICS(CS_INPUT input)
 	const float3 V = normalize(VIEW->sceneView.viewLocation - surface.location);
 
 	const float NdotV = saturate(dot(surface.normal, V));
-	const float2 integratedBRDF = PARAMS_RESOLVE_STOCHASTIC_D_I_CONSTANTS->brdfIntegrationLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), float2(NdotV, surface.roughness), 0);
+	const float2 integratedBRDF = GLOBALS->brdfIntegrationLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), float2(NdotV, surface.roughness), 0);
 	const float3 specularLo = demodulatedSpecularLo * (surface.specularColor * integratedBRDF.x + integratedBRDF.y);
 
 	const float3 prevLo = PARAMS_RESOLVE_STOCHASTIC_D_I_CONSTANTS->rwLuminance.Load(coords);

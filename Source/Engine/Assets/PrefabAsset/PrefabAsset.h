@@ -57,10 +57,12 @@ struct PrefabEntityDefinitionEntry
 struct PrefabDefinition
 {
 	lib::DynamicArray<PrefabEntityDefinitionEntry> entities;
+	lib::DynamicArray<PrefabParameterDefinition>   parameters;
 
 	void Serialize(srl::Serializer& serializer)
 	{
-		serializer.Serialize("Entities", entities);
+		serializer.Serialize("Entities",   entities);
+		serializer.Serialize("Parameters", parameters);
 	}
 };
 SPT_REGISTER_ASSET_DATA_TYPE(PrefabDefinition);
@@ -86,10 +88,12 @@ private:
 struct GLTFPrefabDefinition
 {
 	lib::Path gltfSourcePath;
+	lib::DynamicArray<PrefabParameterDefinition> parameters;
 
 	void Serialize(srl::Serializer& serializer)
 	{
 		serializer.Serialize("GLTFSourcePath", gltfSourcePath);
+		serializer.Serialize("Parameters",     parameters);
 	}
 };
 SPT_REGISTER_ASSET_DATA_TYPE(GLTFPrefabDefinition);
@@ -130,6 +134,13 @@ public:
 
 	void Spawn(void* context);
 
+	void SetParameter(const void* context, lib::HashedString::KeyType nameKey, const PrefabParameterPayload& payload) const;
+	void SetParameter(const void* context, lib::StringView name, const PrefabParameterPayload& payload) const;
+
+	lib::TypeID GetParameterType(lib::HashedString::KeyType paramName) const;
+
+	Uint32 GetEntitiesNum() const { return static_cast<Uint32>(m_entities.size()); }
+
 protected:
 
 	// Begin AssetInstance overrides
@@ -144,6 +155,9 @@ private:
 	lib::DynamicArray<Byte>                     m_compiledBlob;
 	lib::Span<const CompiledPrefabEntityHeader> m_entities;
 	lib::Span<const Byte>                       m_entitiesData;
+
+	lib::DynamicArray<CompiledPrefabParameter> m_parameters;
+	lib::DynamicArray<CompiledPrefabBinding>   m_bindings;
 
 	lib::DynamicArray<AssetHandle> m_referencedAssets;
 };

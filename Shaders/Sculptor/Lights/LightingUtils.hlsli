@@ -8,6 +8,10 @@
 #define LIGHT_TYPE_SPOT  1
 
 
+#define LIGHT_FLAG_CONTRIBUTE_TO_DI         1u
+#define LIGHT_FLAG_CONTRIBUTE_TO_SCATTERING 2u
+
+
 interface ILightingAccumulator
 {
 	[mutating] void Accumulate(in LightingContribution contribution);
@@ -100,6 +104,16 @@ extension LocalLightGPUData
 	bool IsSpotLight()
 	{
 		return type == LIGHT_TYPE_SPOT;
+	}
+
+	bool ContributesToDI()
+	{
+		return (flags & LIGHT_FLAG_CONTRIBUTE_TO_DI) != 0u;
+	}
+
+	bool ContributesToScattering()
+	{
+		return (flags & LIGHT_FLAG_CONTRIBUTE_TO_SCATTERING) != 0u;
 	}
 };
 

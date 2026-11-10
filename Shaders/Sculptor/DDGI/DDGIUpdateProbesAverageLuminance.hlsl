@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[shader_params(DDGIUpdateProbesAverageLuminanceConsts, PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE)]]
+[[shader_params(DDGIUpdateProbesAverageLuminanceConsts, CONSTS)]]
 
 #include "DDGI/DDGITypes.hlsli"
 
@@ -16,16 +16,16 @@ void DDGIUpdateProbesAverageLuminanceCS(CS_INPUT input)
 {
 	const uint updatedProbeIdx = input.groupID.x;
 
-	const uint3 updatedProbeCoords = ComputeUpdatedProbeCoords(updatedProbeIdx, PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->relitParams->probesToUpdateCoords, PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->relitParams->probesToUpdateCount);
-	const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(*PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->volumeParams, updatedProbeCoords);
+	const uint3 updatedProbeCoords = ComputeUpdatedProbeCoords(updatedProbeIdx, CONSTS->relitParams->probesToUpdateCoords, CONSTS->relitParams->probesToUpdateCount);
+	const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(*CONSTS->volumeParams, updatedProbeCoords);
 
 	// add 1 because of the border
-	const DDGIProbeDataCoords probeDataCoords = ComputeProbeIlluminanceDataOffset(*PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->volumeParams, probeWrappedCoords);
+	const DDGIProbeDataCoords probeDataCoords = ComputeProbeIlluminanceDataOffset(*CONSTS->volumeParams, probeWrappedCoords);
 
-	SRVTexture2D<float3> probeIlluminanceTexture = PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->volumeIlluminanceTextures[probeDataCoords.textureIdx];
+	SRVTexture2D<float3> probeIlluminanceTexture = CONSTS->volumeIlluminanceTextures[probeDataCoords.textureIdx];
 	const uint2 probeDataOffset = probeDataCoords.textureLocalCoords + 1;
 
-	const uint samplesNum = PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->volumeParams->probeIlluminanceDataRes.x * PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->volumeParams->probeIlluminanceDataRes.y;
+	const uint samplesNum = CONSTS->volumeParams->probeIlluminanceDataRes.x * CONSTS->volumeParams->probeIlluminanceDataRes.y;
 
 	float3 averageLuminance = 0.f;
 	for (uint waveSampleIdx = 0; waveSampleIdx < samplesNum; waveSampleIdx += WaveGetLaneCount())
@@ -36,8 +36,8 @@ void DDGIUpdateProbesAverageLuminanceCS(CS_INPUT input)
 		if(sampleIdx < samplesNum)
 		{
 			uint2 sampleOffset;
-			sampleOffset.y = sampleIdx / PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->volumeParams->probeIlluminanceDataRes.x;
-			sampleOffset.x = sampleIdx - sampleOffset.y * PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->volumeParams->probeIlluminanceDataRes.x;
+			sampleOffset.y = sampleIdx / CONSTS->volumeParams->probeIlluminanceDataRes.x;
+			sampleOffset.x = sampleIdx - sampleOffset.y * CONSTS->volumeParams->probeIlluminanceDataRes.x;
 			sampleLuminance = probeIlluminanceTexture.Load(int3(probeDataOffset + sampleOffset, 0)).xyz;
 		}
 
@@ -49,6 +49,7 @@ void DDGIUpdateProbesAverageLuminanceCS(CS_INPUT input)
 
 	if(WaveIsFirstLane())
 	{
-		PARAMS_D_D_G_I_UPDATE_PROBES_AVERAGE_LUMINANCE->probesAverageLuminanceTexture[probeWrappedCoords] = averageLuminance;
+		// We need to multiply by 2 because probes store only cos weighted luminance. Multiplication gives average luminance for the whole hemisphere, without weighting.
+		CONSTS->probesAverageLuminanceTexture[probeWrappedCoords] = averageLuminance * 2.f;
 	}
 }

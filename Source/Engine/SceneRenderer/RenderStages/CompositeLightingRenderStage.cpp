@@ -10,7 +10,6 @@
 #include "Lights/LightTypes.h"
 #include "RenderScene.h"
 #include "SceneRenderer/RenderStages/Utils/RTReflectionsTypes.h"
-#include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 #include "Pipelines/PSOsLibraryTypes.h"
 
 namespace spt::rsc
@@ -47,7 +46,6 @@ BEGIN_SHADER_STRUCT(CompositeRTReflectionsConstants)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, diffuseGI)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         ambientOcclusion)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector2f>, reflectionsInfluenceTexture)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, brdfIntegrationLUT)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, baseColorMetallicTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         roughnessTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>, tangentFrameTexture)
@@ -160,7 +158,6 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 		rtReflectionsConstants.specularGI                  = rtReflectionsData->finalSpecularGI;
 		rtReflectionsConstants.diffuseGI                   = rtReflectionsData->finalDiffuseGI;
 		rtReflectionsConstants.reflectionsInfluenceTexture = rtReflectionsData->reflectionsInfluenceTexture;
-		rtReflectionsConstants.brdfIntegrationLUT          = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
 		rtReflectionsConstants.baseColorMetallicTexture    = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
 		rtReflectionsConstants.roughnessTexture            = viewContext.gBuffer[GBuffer::Texture::Roughness];
 		rtReflectionsConstants.tangentFrameTexture         = viewContext.gBuffer[GBuffer::Texture::TangentFrame];

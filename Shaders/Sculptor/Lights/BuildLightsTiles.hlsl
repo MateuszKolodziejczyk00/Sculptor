@@ -10,7 +10,7 @@
 
 struct VS_INPUT
 {
-    [[vk::builtin("DrawIndex")]] uint drawIndex : DRAW_INDEX;
+    uint drawIndex : SV_DrawIndex;
     uint index : SV_VertexID;
 };
 

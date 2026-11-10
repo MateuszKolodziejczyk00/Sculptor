@@ -19,8 +19,10 @@ struct PrefabMeshEntityDefinition : public GamePrefabEntityDefinition
 
 	virtual lib::RuntimeTypeInfo    GetType() const override { return lib::TypeInfo<PrefabMeshEntityDefinition>(); }
 	virtual lib::DynamicArray<Byte> Compile(as::PrefabCompiler& compiler) const override;
+	virtual lib::TypeID             GetParameterType(const as::PrefabParameterResolveContext& context, lib::HashedString::KeyType member, Uint32 elementIdx) const override;
 
-	static void Spawn(SpawnContext& context, lib::Span<const Byte> compiledData);
+	static void Spawn(SpawnContext& context, Uint32 entityIdx, lib::Span<const Byte> compiledData);
+	static void ApplyParameter(const SetParameterContext& context, const as::CompiledPrefabBinding& binding, const as::PrefabParameterPayload& payload);
 
 	virtual void Serialize(srl::Serializer& serializer) override
 	{
@@ -31,6 +33,9 @@ struct PrefabMeshEntityDefinition : public GamePrefabEntityDefinition
 	}
 };
 SPT_REGISTER_PREFAB_ENTITY_TYPE(PrefabMeshEntityDefinition);
+
+
+using MeshEntityHandle = lib::PagedGenerationalPoolHandle<struct MeshEntity>;
 
 
 struct MeshEntity
@@ -50,28 +55,19 @@ struct MeshEntity
 		rsc::RetainedDrawHandle       draw;
 		rsc::RTInstanceHandle         rtInstance;
 	} render;
-};
 
-
-using MeshesChunkHandle = lib::PagedGenerationalPoolHandle<struct MeshesChunk>;
-
-
-struct MeshesChunk
-{
-	static constexpr Uint32 MaxMeshesNum = 1u;
-	lib::StaticArray<MeshEntity, MaxMeshesNum> meshes;
-	MeshesChunkHandle next;
+	MeshEntityHandle next;
 };
 
 
 struct WorldMeshes
 {
 	WorldMeshes()
-		: chunks("World_MeshesChunksPool")
+		: entities("World_MeshEntitiesPool")
 	{
 	}
 
-	lib::PagedGenerationalPool<MeshesChunk> chunks;
+	lib::PagedGenerationalPool<MeshEntity> entities;
 };
 
 

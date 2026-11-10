@@ -26,7 +26,6 @@ BEGIN_SHADER_STRUCT(GlobalLightsParams)
 	SHADER_STRUCT_FIELD(math::Matrix4f,                               cloudsTransmittanceViewProj)
 	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<LocalLightGPUData>,       localLights)
 	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<DirectionalLightGPUData>, directionalLights)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector2f>,         brdfIntegrationLUT)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,                    cloudsTransmittanceMap) // only for dir light 0
 END_SHADER_STRUCT();
 

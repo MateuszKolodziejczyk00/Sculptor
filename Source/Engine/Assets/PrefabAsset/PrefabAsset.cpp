@@ -22,6 +22,12 @@ struct PrefabDDCHeader
 	Uint32 referencedAssetsNum    = 0u;
 	Uint32 referencedAssetsOffset = 0u;
 
+	Uint32 parametersNum    = 0u;
+	Uint32 parametersOffset = 0u;
+
+	Uint32 bindingsNum    = 0u;
+	Uint32 bindingsOffset = 0u;
+
 	void Serialize(srl::Serializer& serializer)
 	{
 		serializer.Serialize("EntitiesHeadersOffset",  entitiesHeadersOffset);
@@ -30,6 +36,10 @@ struct PrefabDDCHeader
 		serializer.Serialize("EntitiesBlobSize",       entitiesBlobSize);
 		serializer.Serialize("ReferencedAssetsNum",    referencedAssetsNum);
 		serializer.Serialize("ReferencedAssetsOffset", referencedAssetsOffset);
+		serializer.Serialize("ParametersNum",          parametersNum);
+		serializer.Serialize("ParametersOffset",       parametersOffset);
+		serializer.Serialize("BindingsNum",            bindingsNum);
+		serializer.Serialize("BindingsOffset",         bindingsOffset);
 	}
 };
 
@@ -41,6 +51,8 @@ struct PrefabCompilationOutput
 	lib::DynamicArray<CompiledPrefabEntityHeader> entityHeaders;
 	lib::DynamicArray<Byte>                       compiledBlob;
 	lib::DynamicArray<ResourcePathID>             referencedAssets;
+	lib::DynamicArray<CompiledPrefabParameter>    parameters;
+	lib::DynamicArray<CompiledPrefabBinding>      bindings;
 };
 
 
@@ -117,13 +129,57 @@ void PrefabAsset::Spawn(void* context)
 
 	SPT_CHECK(IsInitialized());
 
-	for (const CompiledPrefabEntityHeader& entity : m_entities)
+	for (Uint32 entityIdx = 0u; entityIdx < m_entities.size(); ++entityIdx)
 	{
+		const CompiledPrefabEntityHeader& entity = m_entities[entityIdx];
 		if (const PrefabEntityTypeMetaData* typeMetaData = GetPrefabType(entity.type))
 		{
-			typeMetaData->spawner(context, m_entitiesData.subspan(entity.dataOfffset, entity.dataSize));
+			typeMetaData->spawner(context, entityIdx, m_entitiesData.subspan(entity.dataOfffset, entity.dataSize));
 		}
 	}
+}
+
+void PrefabAsset::SetParameter(const void* context, lib::HashedString::KeyType nameKey, const PrefabParameterPayload& payload) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsInitialized());
+
+	const auto parameterIt = std::find_if(m_parameters.cbegin(), m_parameters.cend(), [nameKey](const CompiledPrefabParameter& parameter) { return parameter.nameKey == nameKey; });
+
+	SPT_CHECK_MSG(parameterIt != m_parameters.cend(), "Prefab parameter {} doesn't exist", nameKey);
+	SPT_CHECK_MSG(parameterIt->type == payload.type, "Invalid value type for prefab parameter {}", nameKey);
+
+	const Uint32 firstBindingIdx = parameterIt->firstBindingIdx;
+	const Uint32 bindingsEndIdx = firstBindingIdx + parameterIt->bindingsNum;
+
+	for (Uint32 bindingIdx = firstBindingIdx; bindingIdx < bindingsEndIdx; ++bindingIdx)
+	{
+		const CompiledPrefabBinding& binding = m_bindings[bindingIdx];
+
+		const PrefabEntityTypeMetaData* typeMetaData = GetPrefabType(m_entities[binding.entityIdx].type);
+		SPT_CHECK(!!typeMetaData && typeMetaData->applier.IsValid());
+
+		typeMetaData->applier(context, binding, payload);
+	}
+}
+
+void PrefabAsset::SetParameter(const void* context, lib::StringView name, const PrefabParameterPayload& payload) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	SetParameter(context, lib::HashedString::HashString(name), payload);
+}
+
+lib::TypeID PrefabAsset::GetParameterType(lib::HashedString::KeyType paramName) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsInitialized());
+
+	const auto parameterIt = std::find_if(m_parameters.cbegin(), m_parameters.cend(), [paramName](const CompiledPrefabParameter& parameter) { return parameter.nameKey == paramName; });
+
+	return (parameterIt != m_parameters.cend()) ? parameterIt->type : lib::TypeID{};
 }
 
 Bool PrefabAsset::Compile()
@@ -137,6 +193,7 @@ Bool PrefabAsset::Compile()
 	else if (const GLTFPrefabDefinition* prefabSourceDef = GetBlackboard().Find<GLTFPrefabDefinition>())
 	{
 		PrefabDefinition importedDef;
+		importedDef.parameters = prefabSourceDef->parameters;
 
 		const lib::Path sourcePath = GetDirectoryPath() / prefabSourceDef->gltfSourcePath;
 		importer::ImportPrefabDefinition(GetOwningSystem(), sourcePath, OUT importedDef);
@@ -175,6 +232,12 @@ void PrefabAsset::OnInitialize()
 	m_entities     = lib::Span<const CompiledPrefabEntityHeader>(reinterpret_cast<const CompiledPrefabEntityHeader*>(m_compiledBlob.data()), dd->header.entitiesNum);
 	m_entitiesData = lib::Span<const Byte>(m_compiledBlob.data() + m_entities.size() * sizeof(CompiledPrefabEntityHeader), dd->header.entitiesBlobSize);
 
+	m_parameters.resize(dd->header.parametersNum);
+	std::memcpy(m_parameters.data(), dd->bin.data() + dd->header.parametersOffset, m_parameters.size() * sizeof(CompiledPrefabParameter));
+
+	m_bindings.resize(dd->header.bindingsNum);
+	memcpy(m_bindings.data(), dd->bin.data() + dd->header.bindingsOffset, m_bindings.size() * sizeof(CompiledPrefabBinding));
+
 	for (const AssetHandle& referencedAsset : m_referencedAssets)
 	{
 		referencedAsset->AwaitInitialization();
@@ -197,6 +260,11 @@ Bool PrefabAsset::CompileDefinition(const PrefabDefinition& def)
 		prefab_compiler_api::CompilePrefabEntity(compiler, entityDef);
 	}
 
+	if (!CompilePrefabParameters(*this, def.parameters, def.entities, OUT compilationOutput.parameters, OUT compilationOutput.bindings))
+	{
+		return false;
+	}
+
 	const Uint32 entityHeadersOffset    = 0u;
 	const Uint32 entityHeadersSize      = static_cast<Uint32>(compilationOutput.entityHeaders.size() * sizeof(CompiledPrefabEntityHeader));
 	const Uint32 entitiesBlobOffset     = entityHeadersOffset + entityHeadersSize;
@@ -204,7 +272,13 @@ Bool PrefabAsset::CompileDefinition(const PrefabDefinition& def)
 	const Uint32 referencedAssetsOffset = entitiesBlobOffset + entitiesBlobSize;
 	const Uint32 referencedAssetsSize   = static_cast<Uint32>(compilationOutput.referencedAssets.size() * sizeof(ResourcePathID));
 
-	const Uint32 blobSize = referencedAssetsOffset + referencedAssetsSize;
+	const Uint32 parametersOffset        = referencedAssetsOffset + referencedAssetsSize;
+	const Uint32 parametersSize          = static_cast<Uint32>(compilationOutput.parameters.size() * sizeof(CompiledPrefabParameter));
+
+	const Uint32 bindingsOffset        = parametersOffset + parametersSize;
+	const Uint32 bindingsSize          = static_cast<Uint32>(compilationOutput.bindings.size() * sizeof(CompiledPrefabBinding));
+
+	const Uint32 blobSize = bindingsOffset + bindingsSize;
 
 	const PrefabDDCHeader ddcHeader
 	{
@@ -214,6 +288,10 @@ Bool PrefabAsset::CompileDefinition(const PrefabDefinition& def)
 		.entitiesBlobSize       = entitiesBlobSize,
 		.referencedAssetsNum    = static_cast<Uint32>(compilationOutput.referencedAssets.size()),
 		.referencedAssetsOffset = referencedAssetsOffset,
+		.parametersNum           = static_cast<Uint32>(compilationOutput.parameters.size()),
+		.parametersOffset        = parametersOffset,
+		.bindingsNum             = static_cast<Uint32>(compilationOutput.bindings.size()),
+		.bindingsOffset          = bindingsOffset
 	};
 
 	CreateDerivedData(*this, ddcHeader, blobSize,
@@ -222,6 +300,8 @@ Bool PrefabAsset::CompileDefinition(const PrefabDefinition& def)
 				std::memcpy(outData.data() + entityHeadersOffset,    compilationOutput.entityHeaders.data(), entityHeadersSize);
 				std::memcpy(outData.data() + entitiesBlobOffset,     compilationOutput.compiledBlob.data(), entitiesBlobSize);
 				std::memcpy(outData.data() + referencedAssetsOffset, compilationOutput.referencedAssets.data(), referencedAssetsSize);
+				std::memcpy(outData.data() + parametersOffset, compilationOutput.parameters.data(), parametersSize);
+				std::memcpy(outData.data() + bindingsOffset, compilationOutput.bindings.data(), bindingsSize);
 			});
 
 	return true;

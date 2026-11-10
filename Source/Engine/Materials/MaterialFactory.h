@@ -20,10 +20,11 @@ struct MaterialDefinition
 
 	lib::HashedString name;
 
-	Uint8 customOpacity : 1;
-	Uint8 doubleSided   : 1;
-	Uint8 emissive      : 1;
-	Uint8 transparent   : 1;
+	Uint8 customOpacity  : 1;
+	Uint8 doubleSided    : 1;
+	Uint8 emissive       : 1;
+	Uint8 transparent    : 1;
+	Uint8 contributeToDI : 1;
 };
 
 

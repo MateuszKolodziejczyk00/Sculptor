@@ -57,7 +57,7 @@ EmissiveSample GenerateSample(RngState rngState, EmissivesSampler sampler)
 	const float3 n2 = UGB().LoadNormal(submeshData.normalsOffset, index2);
 
 	const float3 normalLocal = normalize(u * n0 + v * n1 + (1.f - u - v) * n2);
-	sample.normal = mul((float3x3)emissiveElem.entityPtr.Load().transform, normalLocal);
+	sample.normal = normalize(mul((float3x3)emissiveElem.entityPtr.Load().transform, normalLocal));
 
 	const float2 uv0 = UGB().LoadNormalizedUV(submeshData.uvsOffset, index0);
 	const float2 uv1 = UGB().LoadNormalizedUV(submeshData.uvsOffset, index1);

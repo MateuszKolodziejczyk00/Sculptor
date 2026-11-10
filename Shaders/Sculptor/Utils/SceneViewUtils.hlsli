@@ -5,6 +5,15 @@
 
 [[shader_struct(SceneViewData)]]
 
+extension SceneViewData
+{
+	bool IsOrthographic()
+	{
+		return projectionMatrix[3][3] == 1.f;
+	}
+};
+
+
 float GetNearPlane(in SceneViewData sceneView)
 {
 	return sceneView.projectionMatrix[2][3];

@@ -9,7 +9,6 @@
 #include "SceneRenderSystems/Lights/LightsRenderSystem.h"
 #include "SceneRenderSystems/DDGI/DDGIRenderSystem.h"
 #include "SceneRenderer/Utils/DepthBasedUpsampler.h"
-#include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 #include "ViewRenderSystems/ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 #include "SceneRenderer/RenderStages/Utils/RayBinner.h"
 #include "SceneRenderer/RenderStages/Utils/TracesAllocator.h"

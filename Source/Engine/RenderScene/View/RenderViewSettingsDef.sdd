@@ -296,9 +296,15 @@ struct SharcSettings
 [Gen=ShaderStructGen]
 struct ShadingSettings
 {
+	[test=false]
 	Bool enablePOM                = true;
-	Bool enableStochasticLighting = false;
+
+	[test=false]
+	Bool enableStochasticLighting = true;
+
+	[test=false]
 	Bool enableColoredAO          = true;
+
 	Bool tiledShadingDebug        = false;
 
 	[min=1, max=10]

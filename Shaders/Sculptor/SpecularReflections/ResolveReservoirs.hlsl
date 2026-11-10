@@ -98,7 +98,7 @@ void ResolveReservoirsCS(CS_INPUT input)
 			specularLo = lobes.specular * luminance;
 	
 			const float NdotV = saturate(dot(sampleNormal, toView));
-			const float2 integratedBRDF = CONSTS->brdfIntegrationLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), float2(NdotV, roughness), 0);
+			const float2 integratedBRDF = GLOBALS->brdfIntegrationLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), float2(NdotV, roughness), 0);
 	
 			if(any(isnan(specularLo)) || any(isinf(specularLo)))
 			{

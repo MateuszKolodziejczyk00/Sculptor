@@ -175,7 +175,10 @@ static BatchGPUData CreateGPUBatch(rg::RenderGraphBuilder& graphBuilder, const G
 
 	graphBuilder.MemZeroBuffer(batchGPUData.occludedBatchElementsCount);
 	graphBuilder.MemZeroBuffer(batchGPUData.occludedMeshletsCount);
+	graphBuilder.MemZeroBuffer(batchGPUData.dispatchOccludedBatchElementsCommand);
+	graphBuilder.FillBuffer(RG_DEBUG_NAME("Initialize Dispatch Occluded Batch Elements Command YZ"), batchGPUData.dispatchOccludedBatchElementsCommand, sizeof(Uint32), 2u * sizeof(Uint32), 1u);
 	graphBuilder.MemZeroBuffer(batchGPUData.dispatchOccludedMeshletsCommand);
+	graphBuilder.FillBuffer(RG_DEBUG_NAME("Initialize Dispatch Occluded Meshlets Command YZ"), batchGPUData.dispatchOccludedMeshletsCommand, sizeof(Uint32), 2u * sizeof(Uint32), 1u);
 
 	// Non-deterministic because of atomics
 	batchGPUData.drawCommands->SetNonDeterministic();

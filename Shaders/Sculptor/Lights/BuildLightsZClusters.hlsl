@@ -15,7 +15,7 @@ struct CS_INPUT
 [numthreads(32, 1, 1)]
 void BuildLightsZClustersCS(CS_INPUT input)
 {
-	const uint clusterIdx = input.localID.x;
+	const uint clusterIdx = input.globalID.x;
 
 	if (clusterIdx < CONSTS->lightsData->zClustersNum)
 	{

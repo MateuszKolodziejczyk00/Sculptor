@@ -103,7 +103,7 @@ void HitRaysShadingRTG()
 		query.location = sampledLocation;
 		query.normal   = hitResult.normal;
 #if SHARC_MATERIAL_DEMODULATION
-		query.materialDemodulation = ComputeMaterialDemodulation(PARAMS_GLOBAL_LIGHTS->brdfIntegrationLUT, BindlessSamplers::LinearClampEdge(), surface.albedo, surface.f0, NdotV, surface.roughness);
+		query.materialDemodulation = ComputeMaterialDemodulation(surface.albedo, surface.f0, NdotV, surface.roughness);
 #endif // SHARC_MATERIAL_DEMODULATION
 
 		// We don't want to include emissive in the secondary bounce, because it will be handled by stochastic DI

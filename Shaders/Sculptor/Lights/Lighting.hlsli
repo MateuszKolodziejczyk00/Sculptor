@@ -76,6 +76,12 @@ void CalcReflectedLuminance<TLightingAccumulator : ILightingAccumulator>(in Shad
 
 				const uint lightIdx = i * 32 + maskBitIdx;
 				const LocalLightInterface localLight = PARAM_ViewShadingParams->localLights[lightIdx];
+
+				if (!localLight.ContributesToDI())
+				{
+					lightsMask &= ~(1u << maskBitIdx);
+					continue;
+				}
 			  
 				const float3 toLight = localLight.location - geometry.location;
 
@@ -143,7 +149,7 @@ void TiledShadingDebug(in uint2 pixelCoords, in ShadedSurface surface, in Surfac
 
 	if(lightsNum > 0u)
 	{
-		debug::WriteDebugPixelOnScreen(pixelCoords, float4(lerp(float3(0.f, 1.f, 1.f), float3(1.f, 0.f, 0.f), saturate(lightsNum / 10u)), 0.5f));
+		debug::WriteDebugPixelOnScreen(pixelCoords, float4(lerp(float3(0.f, 1.f, 1.f), float3(1.f, 0.f, 0.f), saturate(lightsNum / 32u)), 0.5f));
 	}
 }
 #endif // SPT_META_PARAM_DEBUG_FEATURES
@@ -209,7 +215,13 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 
 			const uint lightIdx = i * 32 + maskBitIdx;
 			const LocalLightInterface localLight = PARAM_ViewShadingParams->localLights[lightIdx];
-		  
+
+			if (!localLight.ContributesToScattering())
+			{
+				lightsMask &= ~(1u << maskBitIdx);
+				continue;
+			}
+
 			const float3 toLight = localLight.location - params.worldLocation;
 
 			const float distToLight = length(toLight);
@@ -305,6 +317,11 @@ float3 CalcReflectedLuminance_Direct(in ShadedSurface surface, in SurfaceGeometr
 		for(uint lightIdx = 0; lightIdx < PARAM_GlobalLightsParams->localLightsNum; ++lightIdx)
 		{
 			const LocalLightInterface localLight = PARAM_GlobalLightsParams->localLights[lightIdx];
+
+			if (!localLight.ContributesToDI())
+			{
+				continue;
+			}
 			
 			const float3 toLight = localLight.location - geometry.location;
 
@@ -361,7 +378,7 @@ float3 CalcReflectedLuminance_Indirect(in ShadedSurface surface, in SurfaceGeome
 
 	const float NdotL = dot(surface.normal, specularDominantDirection);
 	const float NdotV = saturate(dot(surface.normal, viewDir));
-	const float2 integratedBRDF = PARAM_GlobalLightsParams->brdfIntegrationLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), float2(NdotV, surface.roughness), 0);
+	const float2 integratedBRDF = GLOBALS->brdfIntegrationLUT.SampleLevel(BindlessSamplers::LinearClampEdge(), float2(NdotV, surface.roughness), 0);
 	luminance += indirectLuminance * (surface.f0 * integratedBRDF.x + integratedBRDF.y) * indirectMultiplier * NdotL;
 
 	luminance += brdf_utils::lambert::Evaluate(indirectIlluminance) * surface.albedo * indirectMultiplier * (1.f - integratedBRDF.x);

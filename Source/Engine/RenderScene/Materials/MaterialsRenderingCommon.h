@@ -88,6 +88,20 @@ struct SceneMaterials
 		return firstChunkHandle;
 	}
 
+	void WriteMaterialSlotsChain(MaterialSlotsChunkHandle firstChunkHandle, lib::Span<const ecs::EntityHandle> slotsArray)
+	{
+		MaterialSlotsChunk* chunk = &slots.GetRef(firstChunkHandle);
+		for (SizeType slotIdx = 0u; slotIdx < slotsArray.size(); ++slotIdx)
+		{
+			if (slotIdx > 0u && slotIdx % chunk->slots.size() == 0u)
+			{
+				chunk = &slots.GetRef(chunk->next);
+			}
+
+			chunk->slots[slotIdx % chunk->slots.size()] = slotsArray[slotIdx];
+		}
+	}
+
 	void DestroyMaterialSlotsChain(MaterialSlotsChunkHandle firstChunkHandle)
 	{
 		MaterialSlotsChunkHandle currentHandle = firstChunkHandle;

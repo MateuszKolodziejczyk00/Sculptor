@@ -52,6 +52,11 @@ public:
 	using KeyType		= typename DataBaseType::KeyType;
 	using ThisType		= HashedString<DataBaseType>;
 
+	static constexpr KeyType HashString(StringView string)
+	{
+		return DataBaseType::HashString(string);
+	}
+
 	HashedString()
 		: m_key(DataBaseType::keyNone)
 	{ }

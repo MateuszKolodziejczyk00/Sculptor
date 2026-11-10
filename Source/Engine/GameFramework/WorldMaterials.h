@@ -36,6 +36,18 @@ struct WorldMaterialSlots
 
 	lib::PagedGenerationalPool<MaterialAssetSlotsChunk> slots;
 
+	void SetMaterial(MaterialAssetSlotsChunkHandle firstChunkHandle, Uint32 slotIdx, const as::MaterialAssetHandle& material)
+	{
+		MaterialAssetSlotsChunkHandle currentHandle = firstChunkHandle;
+		for (Uint32 chunkIdx = 0u; chunkIdx < slotIdx / MaterialAssetSlotsChunk::MaxMaterialsNum; ++chunkIdx)
+		{
+			currentHandle = slots.GetRef(currentHandle).next;
+		}
+
+		MaterialAssetSlot& slot = slots.GetRef(currentHandle).slots[slotIdx % MaterialAssetSlotsChunk::MaxMaterialsNum];
+		slot.material = material;
+	}
+
 	MaterialAssetSlotsChunkHandle CreateMaterialSlotsChain(lib::Span<as::MaterialAssetHandle> slotsArray)
 	{
 		if (slotsArray.empty())

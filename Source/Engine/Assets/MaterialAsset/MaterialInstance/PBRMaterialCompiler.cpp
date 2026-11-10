@@ -317,9 +317,10 @@ struct PBRMaterialCompilationInput
 	lib::SharedPtr<rdr::TextureView> displacementTex;
 	Real32 displacementScale = 1.f;
 
-	Bool doubleSided   = true;
-	Bool customOpacity = false;
-	Bool transparent   = false;
+	Bool doubleSided    = true;
+	Bool customOpacity  = false;
+	Bool transparent    = false;
+	Bool contributeToDI = true;
 };
 
 
@@ -340,6 +341,7 @@ static lib::DynamicArray<Byte> CompilePBRMaterialImpl(const AssetInstance& asset
 	headerData.doubleSided        = compilationInput.doubleSided   ? 1u : 0u;
 	headerData.customOpacity      = compilationInput.customOpacity ? 1u : 0u;
 	headerData.transparent        = compilationInput.transparent   ? 1u : 0u;
+	headerData.contributeToDI     = (compilationInput.emissionFactor != math::Vector3f::Zero() && compilationInput.contributeToDI) ? 1u : 0u;
 
 	lib::DynamicArray<Byte> compiledData;
 	compiledData.resize(sizeof(PBRMaterialDataHeader));
@@ -693,6 +695,7 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 	compilationInput.maxDepthCm           = definition.maxDepthCm;
 	compilationInput.doubleSided          = definition.doubleSided;
 	compilationInput.customOpacity        = definition.customOpacity;
+	compilationInput.contributeToDI       = definition.contributeToDI;
 
 	rdr::FlushPendingUploads();
 
@@ -892,6 +895,7 @@ lib::DynamicArray<Byte> CompilePBRMaterial(const AssetInstance& asset, const PBR
 	compilationInput.doubleSided          = srcMat->double_sided;
 	compilationInput.customOpacity        = isMasked;
 	compilationInput.transparent          = isTransparent;
+	compilationInput.contributeToDI       = true;
 
 	rdr::FlushPendingUploads();
 

@@ -266,7 +266,7 @@ void SceneView::UpdateCullingData()
 	}
 	else
 	{
-		m_viewCullingData.cullingPlanes[4] = viewProjection.row(3) - viewProjection.row(2);	// far plane:	z < w  ---> w - z > 0
+		m_viewCullingData.cullingPlanes[4] = viewProjection.row(2);	// far plane (reverse Z):	z > 0
 	}
 
 	// normalize planes (we need normals to compare with bounding spheres radius)

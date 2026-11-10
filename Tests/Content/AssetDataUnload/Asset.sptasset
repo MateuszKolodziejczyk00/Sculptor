@@ -12,5 +12,5 @@
             "Value2": 42
         }
     },
-    "Type": "pt::as::tests::TestAssetType"
+    "Type": "spt::as::tests::TestAssetType"
 }

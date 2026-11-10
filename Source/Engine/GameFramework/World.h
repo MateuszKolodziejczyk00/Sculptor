@@ -44,6 +44,10 @@ public:
 	PrefabInstanceHandle SpawnPrefab(const as::PrefabAssetHandle& prefab, const SpawnParams& params);
 	void                 DestroyPrefabInstance(PrefabInstanceHandle instanceHandle);
 
+	template<typename TParameterType>
+	void SetPrefabParameter(PrefabInstanceHandle instanceHandle, lib::StringView name, const TParameterType& value);
+	void SetPrefabParameter(PrefabInstanceHandle instanceHandle, lib::StringView name, const as::PrefabParameterPayload& payload);
+
 	void                  SetBiome(const rsc::BiomeDefinition& biome, lib::DynamicArray<as::PrefabAssetHandle> placementAssets);
 	void                  ProcessPlacements(rsc::SceneRendererHandle sceneRenderer);
 	rsc::PlacementCommand CreatePlacementCommand(engn::FrameContext& frame, math::Vector3f location);
@@ -56,7 +60,9 @@ public:
 
 	struct WorldPrefabs&       prefabs;
 	struct WorldMeshes&        meshes;
+	struct WorldLights&        lights;
 	struct WorldMaterialSlots& materials;
+	struct WorldEntities&      entities;
 
 	struct rsc::RenderSceneSettings& renderSceneSettings;
 
@@ -71,5 +77,17 @@ private:
 	as::TerrainAssetHandle    m_terrainAsset;
 	as::CloudscapeAssetHandle m_cloudscapeAsset;
 };
+
+template<typename TParameterType>
+void World::SetPrefabParameter(PrefabInstanceHandle instanceHandle, lib::StringView name, const TParameterType& value)
+{
+	const as::PrefabParameterPayload payload
+	{
+		.type = lib::TypeInfo<TParameterType>::id,
+		.data = &value
+	};
+
+	SetPrefabParameter(instanceHandle, name, payload);
+}
 
 } // spt::gf

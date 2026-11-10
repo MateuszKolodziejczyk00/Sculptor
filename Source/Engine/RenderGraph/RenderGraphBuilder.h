@@ -116,6 +116,7 @@ public:
 	// Utility ================================================
 
 	void BindGPUStatisticsCollector(const lib::SharedRef<rdr::GPUStatisticsCollector>& collector);
+	const lib::SharedPtr<rdr::GPUStatisticsCollector>& GetGPUStatisticsCollector() const { return m_statisticsCollector; }
 
 	void AddDebugDecorator(const lib::SharedRef<RenderGraphDebugDecorator>& debugDecorator);
 

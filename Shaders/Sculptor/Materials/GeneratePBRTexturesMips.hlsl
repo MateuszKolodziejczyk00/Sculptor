@@ -36,7 +36,7 @@ void DownsampleLinear<T : ITexelElement & IFloat>(in SRVTexture2D<T> inputTextur
 			const int2 sampleCoords = min(int2(inputCoords) + int2(x, y), inputRes - 1);
 
 			const T sample = inputTexture.Load(sampleCoords);
-			float weight = 1.f - abs(frac(inputCoords.x) - x) * (1.f - abs(frac(inputCoords.y) - y));
+			float weight = (1.f - abs(frac(inputCoords.x) - x)) * (1.f - abs(frac(inputCoords.y) - y));
 
 			if (PARAMS_GENERATE_P_B_R_TEXTURES_MIPS_CONSTANTS->inAlpha.IsValid())
 			{
