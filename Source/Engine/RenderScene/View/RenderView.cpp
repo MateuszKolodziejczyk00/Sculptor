@@ -18,13 +18,22 @@ RenderView::~RenderView()
 {
 }
 
-void RenderView::BeginFrame(math::Vector2u renderingRes)
+void RenderView::BeginFrame(math::Vector2u renderingRes, Bool isFirstFrame)
 {
 	SPT_PROFILER_FUNCTION();
 
-	CachePrevFrameRenderingData();
+	if (!isFirstFrame)
+	{
+		CachePrevFrameRenderingData();
+	}
+
 	UpdateViewRenderingData(renderingRes);
 	UpdateCullingData();
+
+	if (isFirstFrame)
+	{
+		CachePrevFrameRenderingData();
+	}
 }
 
 void RenderView::SetOutputRes(const math::Vector2u& resolution)

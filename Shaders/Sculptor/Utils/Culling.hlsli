@@ -55,6 +55,33 @@ bool IsConeVisible(float3 center, float radius, float3 coneAxis, float coneCutof
 }
 
 
+float SampleHiZFurthestDepth(SRVTexture2D<float> hiZ, SamplerState minSampler, float2 hiZResolution, float4 aabbUV)
+{
+    SPT_CHECK_MSG(all(aabbUV.xy <= aabbUV.zw), L"SampleHiZFurthestDepth: Invalid rect - {}", aabbUV);
+
+    aabbUV = saturate(aabbUV);
+
+    const float2 sizeTexels = (aabbUV.zw - aabbUV.xy) * hiZResolution;
+
+    // In this mip rect is at most 2 texels wide, so it may overlap 3 texels
+    float level = max(ceil(log2(max(sizeTexels.x, sizeTexels.y))) - 1.f, 0.f);
+
+    float2 mipRes = max(floor(hiZResolution / exp2(level)), 1.f);
+    float2 minTexel = floor(aabbUV.xy * mipRes);
+    const float2 maxTexel = min(floor(aabbUV.zw * mipRes), mipRes - 1.f);
+
+    if (any(maxTexel - minTexel > 1.f))
+    {
+        // In next mip rect is at most 1 texel wide, so it always overlaps at most 2x2 texels
+        level += 1.f;
+        mipRes = max(floor(mipRes * 0.5f), 1.f);
+        minTexel = floor(aabbUV.xy * mipRes);
+    }
+
+    return hiZ.SampleLevel(minSampler, (minTexel + 1.f) / mipRes, level).x;
+}
+
+
 bool IsSphereCenterBehindHiZ(SRVTexture2D<float> hiZ, SamplerState hiZSampler, float2 hiZResolution, float3 sphereCenterVS, float sphereRadius, float near, float p01, float p12, out float4 aabb)
 {
     if(sphereCenterVS.x - sphereRadius - near <= 0.001f)
@@ -65,13 +92,7 @@ bool IsSphereCenterBehindHiZ(SRVTexture2D<float> hiZ, SamplerState hiZSampler, f
 
     if (GetProjectedSphereAABB(sphereCenterVS, sphereRadius, near, p01, p12, aabb))
     {
-        const float width = (aabb.z - aabb.x) * hiZResolution.x;
-        const float height = (aabb.w - aabb.y) * hiZResolution.y;
-
-        const float level = ceil(log2(max(width, height)));
-
-        const float2 uv = float2((aabb.x + aabb.z) * 0.5f, (aabb.y + aabb.w) * 0.5f);
-        const float sceneMinDepth = hiZ.SampleLevel(hiZSampler, uv, level).x;
+        const float sceneMinDepth = SampleHiZFurthestDepth(hiZ, hiZSampler, hiZResolution, aabb);
 
         const float sphereFrontDepth = near / (sphereCenterVS.x - sphereRadius);
         // Use "<" because we use inverse depth
@@ -98,13 +119,7 @@ bool IsSphereBehindHiZ(SRVTexture2D<float> hiZ, float2 hiZResolution, float3 sph
 
     if (GetProjectedSphereAABB(sphereCenterVS, sphereRadius, near, p01, p12, aabb))
     {
-        const float width = (aabb.z - aabb.x) * hiZResolution.x;
-        const float height = (aabb.w - aabb.y) * hiZResolution.y;
-
-        const float level = ceil(log2(max(width, height)));
-
-        const float2 uv = float2((aabb.x + aabb.z) * 0.5f, (aabb.y + aabb.w) * 0.5f);
-        const float sceneMinDepth = hiZ.SampleLevel(BindlessSamplers::LinearMinClampEdge(), uv, level).x;
+        const float sceneMinDepth = SampleHiZFurthestDepth(hiZ, BindlessSamplers::LinearMinClampEdge(), hiZResolution, aabb);
 
         const float sphereMaxDepth = near / (sphereCenterVS.x - sphereRadius);
         // Use "<" because we use inverse depth
@@ -133,12 +148,9 @@ bool IsSphereBehindHiZOrthographic(SRVTexture2D<float> hiZ, float2 hiZResolution
     const float2 centerCS = float2(projection[0][1] * sphereCenterVS.y + projection[0][3], projection[1][2] * sphereCenterVS.z + projection[1][3]);
     const float2 extentCS = sphereRadius * abs(float2(projection[0][1], projection[1][2]));
 
-    const float4 aabb = saturate(float4(centerCS - extentCS, centerCS + extentCS) * 0.5f + 0.5f);
+    const float4 aabb = float4(centerCS - extentCS, centerCS + extentCS) * 0.5f + 0.5f;
 
-    const float2 sizeTexels = (aabb.zw - aabb.xy) * hiZResolution;
-    const float level = ceil(log2(max(sizeTexels.x, sizeTexels.y)));
-
-    const float sceneMinDepth = hiZ.SampleLevel(BindlessSamplers::LinearMinClampEdge(), (aabb.xy + aabb.zw) * 0.5f, level).x;
+    const float sceneMinDepth = SampleHiZFurthestDepth(hiZ, BindlessSamplers::LinearMinClampEdge(), hiZResolution, aabb);
 
     const float sphereMaxDepth = projection[2][0] * (sphereCenterVS.x - sphereRadius) + projection[2][3];
     return sphereMaxDepth < sceneMinDepth;

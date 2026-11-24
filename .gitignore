@@ -365,6 +365,7 @@ Shaders/Sharc/**
 
 DDC/**
 Tests/DDC/**
+Tests/GoldenImages/Goldens/
 
 compile_commands.json
 .clangd
@@ -373,3 +374,9 @@ RunPresets.txt
 tmp/*
 
 .github/*
+
+Source/ThirdParty/Slang/Slang/**
+
+Source/Generated/
+
+Source/ThirdParty/**/Generated/**

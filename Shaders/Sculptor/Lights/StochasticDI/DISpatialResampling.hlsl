@@ -3,7 +3,7 @@
 [[shader_params(RenderSceneConstants, SCENE)]]
 [[shader_params(GPURenderView, VIEW)]]
 
-[[shader_params(DISpatialResamplingConstants , PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS)]]
+[[shader_params(DISpatialResamplingConstants , CONSTS)]]
 
 #include "RayTracing/RayTracingHelpers.hlsli"
 #include "Lights/StochasticDI/StochasticDI.hlsli"
@@ -20,7 +20,7 @@ void DISpatialResamplingRTG()
 {
 	const uint2 coords = DispatchRaysIndex().xy;
 
-	const GBufferInterface gBuffer = GBufferInterface(PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->gBuffer);
+	const GBufferInterface gBuffer = GBufferInterface(CONSTS->gBuffer);
 
 	const SurfaceInfo surface = gBuffer.GetSurfaceInfo(coords);
 
@@ -28,8 +28,19 @@ void DISpatialResamplingRTG()
 
 	DIReservoir reservoir = DIReservoir::Create();
 
-	const uint reservoirIdx = GetScreenReservoirIdx(coords, PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->reservoirsResolution);
-	const DIReservoir initialReservoir = UnpackDIReservoir(PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->inReservoirs.Load(reservoirIdx));
+	const uint reservoirIdx = GetScreenReservoirIdx(coords, CONSTS->reservoirsResolution);
+
+	// Emissive lighting of these pixels is handled by RT GI
+	if (surface.roughness < RTClosure::RoughnessNoResamplingThreshold)
+	{
+		CONSTS->outReservoirs.Store(reservoirIdx, PackDIReservoir(reservoir));
+		CONSTS->rwSpecularHitDist.Store(coords, 0.f);
+		CONSTS->rwDiffuse.Store(coords, 0.f);
+		CONSTS->rwLightDirection.Store(coords, 0.f);
+		return;
+	}
+
+	const DIReservoir initialReservoir = UnpackDIReservoir(CONSTS->inReservoirs.Load(reservoirIdx));
 
 	if (initialReservoir.IsValid())
 	{
@@ -45,8 +56,8 @@ void DISpatialResamplingRTG()
 
 	RngState rngState = RngState::Create(coords, SCENE->gpuScene.frameIdx + 7u);
 
-	const int range       = PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->spatialResamplingRange;
-	const uint samplesNum = PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->spatialSamplesNum;
+	const int range       = CONSTS->spatialResamplingRange;
+	const uint samplesNum = CONSTS->spatialSamplesNum;
 
 	for (uint i = 0u; i < samplesNum; ++i)
 	{
@@ -57,13 +68,13 @@ void DISpatialResamplingRTG()
 #endif
 
 		int2 sampleCoords = abs(int2(coords) + offset);
-		if (sampleCoords.x >= PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->gBuffer.resolution.x)
+		if (sampleCoords.x >= CONSTS->gBuffer.resolution.x)
 		{
-			sampleCoords.x = 2 * (PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->gBuffer.resolution.x - 1) - sampleCoords.x;
+			sampleCoords.x = 2 * (CONSTS->gBuffer.resolution.x - 1) - sampleCoords.x;
 		}
-		if (sampleCoords.y >= PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->gBuffer.resolution.y)
+		if (sampleCoords.y >= CONSTS->gBuffer.resolution.y)
 		{
-			sampleCoords.y = 2 * (PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->gBuffer.resolution.y - 1) - sampleCoords.y;
+			sampleCoords.y = 2 * (CONSTS->gBuffer.resolution.y - 1) - sampleCoords.y;
 		}
 
 #if ENABLE_SURFACE_CHECK
@@ -74,8 +85,8 @@ void DISpatialResamplingRTG()
 		}
 #endif
 
-		const uint sampleReservoirIdx = GetScreenReservoirIdx(sampleCoords, PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->reservoirsResolution);
-		const DIReservoir sampleReservoir = UnpackDIReservoir(PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->inReservoirs.Load(sampleReservoirIdx));
+		const uint sampleReservoirIdx = GetScreenReservoirIdx(sampleCoords, CONSTS->reservoirsResolution);
+		const DIReservoir sampleReservoir = UnpackDIReservoir(CONSTS->inReservoirs.Load(sampleReservoirIdx));
 
 		if (!sampleReservoir.IsValid())
 		{
@@ -91,14 +102,25 @@ void DISpatialResamplingRTG()
 
 	// Update visibility
 	{
-		const float ssLenght = PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->ssrtRange;
-		if (!PerformDIVisibilityTest(PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->ssTracer, VIEW->sceneView, surface, reservoir.sample, ssLenght, rngState.Next()))
+		const float ssLenght = CONSTS->ssrtRange;
+		if (!PerformDIVisibilityTest(CONSTS->ssTracer, VIEW->sceneView, surface, reservoir.sample, ssLenght, rngState.Next()))
 		{
 			reservoir.weightSum = 0.f;
 		}
 	}
 
-	PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->outReservoirs.Store(reservoirIdx, PackDIReservoir(reservoir));
+	CONSTS->outReservoirs.Store(reservoirIdx, PackDIReservoir(reservoir));
+
+	// Decorrelation
+	{
+		RngState decorrelationRng = RngState::Create(coords, SCENE->gpuScene.frameIdx + 29278u);
+
+		const float decorrelationProbability = VIEW->settings.stochasticDI.decorrelationProbability;
+		if (decorrelationRng.Next() < decorrelationProbability)
+		{
+			reservoir = UnpackDIReservoir(CONSTS->initialReservoirs.Load(reservoirIdx));
+		}
+	}
 
 	const StochasticDIShadingResult shadingResult = FinalDIShading(surface, V, reservoir.sample, reservoir.weightSum);
 
@@ -113,7 +135,7 @@ void DISpatialResamplingRTG()
 	specularLo = LuminanceToExposedLuminance(specularLo);
 	specularLo /= max((surface.specularColor * integratedBRDF.x + integratedBRDF.y), 0.01f);
 
-	PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->rwSpecularHitDist.Store(coords, float4(specularLo, shadingResult.hitDistance));
-	PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->rwDiffuse.Store(coords, diffuseLo);
-	PARAMS_D_I_SPATIAL_RESAMPLING_CONSTANTS->rwLightDirection.Store(coords, OctahedronEncodeNormal(shadingResult.lightDirection));
+	CONSTS->rwSpecularHitDist.Store(coords, float4(specularLo, shadingResult.hitDistance));
+	CONSTS->rwDiffuse.Store(coords, diffuseLo);
+	CONSTS->rwLightDirection.Store(coords, OctahedronEncodeNormal(shadingResult.lightDirection));
 }

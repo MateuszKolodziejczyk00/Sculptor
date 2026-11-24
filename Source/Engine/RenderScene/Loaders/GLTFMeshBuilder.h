@@ -2,7 +2,7 @@
 
 #include "MeshBuilder.h"
 
-#include "TinyGLTF.h"
+#include "CGLTFWrapper.h"
 
 
 namespace spt::rsc
@@ -18,11 +18,11 @@ public:
 
 	explicit GLTFMeshBuilder(const MeshBuildParameters& parameters);
 
-	void BuildMesh(lib::MemoryArena& memoryArena, const tinygltf::Mesh& mesh, const tinygltf::Model& model);
+	void BuildMesh(lib::MemoryArena& memoryArena, const cgltf_mesh& mesh);
 
 private:
 
-	const tinygltf::Accessor* GetAttributeAccessor(const tinygltf::Primitive& prim, const tinygltf::Model& model, const lib::String& name);
+	const cgltf_accessor* GetAttributeAccessor(const cgltf_primitive& prim, cgltf_attribute_type type, cgltf_int index);
 };
 
 } // spt::rsc

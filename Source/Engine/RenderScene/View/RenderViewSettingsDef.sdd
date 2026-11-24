@@ -215,6 +215,7 @@ struct SunShadowsSettings
 [Gen=ShaderStructGen]
 struct ReflectionsSettings
 {
+	Bool enable                      = true;
 	Bool halfRes                     = false;
 	Bool forceFullRateTracing        = true;
 	Bool useLargeTile                = false;
@@ -250,6 +251,9 @@ struct ReflectionsSettings
 
 	[min=0, max=1]
 	Real32 ssrtTraceLength = 0.15f;
+
+	[min=0, max=1]
+	Real32 decorrelationProbability = 0.5f;
 };
 
 
@@ -257,7 +261,9 @@ struct ReflectionsSettings
 struct StochasticDISettings
 {
 	[min=1, max=20]
-	Uint32 risSamples = 2;
+	Uint32 risSamples = 8;
+
+	Bool enablePresampling = true;
 
 	Bool enableTemporalResampling = true;
 
@@ -274,6 +280,9 @@ struct StochasticDISettings
 
 	[min=0, max=100]
 	Uint32 ssrtSteps = 10;
+
+	[min=0, max=1]
+	Real32 decorrelationProbability = 0.5f;
 };
 
 
@@ -332,7 +341,7 @@ enum EUpscalingMethod
 struct UpscalerSettings
 {
 	[test=EUpscalingMethod::TAA]
-	EUpscalingMethod method = EUpscalingMethod::Accumulation;
+	EUpscalingMethod method = EUpscalingMethod::DLSS;
 
 	[min=0.f, max=1.f]
 	Real32 renderResolutionScale = 0.7f;

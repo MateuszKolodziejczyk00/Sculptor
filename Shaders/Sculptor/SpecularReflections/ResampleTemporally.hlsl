@@ -344,7 +344,7 @@ void ResampleTemporallyCS(CS_INPUT input)
 			resampler = SRTemporalResampler::Create(centerPixelSurface, reservoir, wasSampleTraced);
 		}
 
-		if (centerPixelSurface.roughness >= RTClosure::RoughnessDeltaThreshold)
+		if (centerPixelSurface.roughness >= RTClosure::RoughnessNoResamplingThreshold)
 		{
 			const float2 uv = (float2(pixel) + 0.5f) * PARAMS_S_R_TEMPORAL_RESAMPLING->resamplingConstants->pixelSize;
 			

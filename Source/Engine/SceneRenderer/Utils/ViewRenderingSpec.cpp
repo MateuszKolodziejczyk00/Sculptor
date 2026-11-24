@@ -140,7 +140,9 @@ void ViewRenderingSpec::BeginFrame(rg::RenderGraphBuilder& graphBuilder, const R
 		m_renderingRes = m_renderView->GetOutputRes();
 	}
 
-	m_renderView->BeginFrame(m_renderingRes);
+	const Bool isFirstFrame = m_renderView->frameIdx == 0u;
+
+	m_renderView->BeginFrame(m_renderingRes, isFirstFrame);
 
 	RenderViewData renderViewData;
 	renderViewData.renderingResolution = GetRenderingRes();

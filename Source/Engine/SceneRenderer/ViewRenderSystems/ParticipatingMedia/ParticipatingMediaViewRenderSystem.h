@@ -43,6 +43,8 @@ public:
 
 	HeightFogParams GetHeightFogParams() const;
 
+	static HeightFogParams CreateHeightFogParams(const struct HeightFogSettings& fogSettings);
+
 private:
 
 	void RenderParticipatingMedia(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context);

@@ -12,37 +12,31 @@ namespace spt::gf
 
 SPT_REGISTER_PREFAB_IMPORTER(GLTFPrefabImporter, ".gltf");
 
-static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
+static math::Affine3f GetNodeTransform(const cgltf_node& node)
 {
-	if (!node.matrix.empty())
+	if (node.has_matrix)
 	{
-		SPT_CHECK(node.matrix.size() == 16);
-		const math::Matrix4f matrix(math::Map<const math::Matrix4d>(node.matrix.data()).cast<float>());
+		const math::Matrix4f matrix(math::Map<const math::Matrix4f>(node.matrix));
 		return math::Affine3f(matrix);
 	}
 
 	math::Affine3f transform = math::Affine3f::Identity();
 
-	if (!node.scale.empty())
+	if (node.has_scale)
 	{
-		SPT_CHECK(node.scale.size() == 3);
-		const math::Map<const math::Vector3d> nodeScaleDouble(node.scale.data());
-		const math::Vector3f nodeScale = nodeScaleDouble.cast<float>();
+		const math::Vector3f nodeScale = math::Map<const math::Vector3f>(node.scale);
 		transform.prescale(nodeScale);
 	}
 
-	if (!node.rotation.empty())
+	if (node.has_rotation)
 	{
-		SPT_CHECK(node.rotation.size() == 4);
-		const math::Vector4f nodeQuaternion = math::Map<const math::Vector4d>(node.rotation.data()).cast<float>();
-		const math::Quaternionf quaternion(nodeQuaternion.w(), nodeQuaternion.x(), nodeQuaternion.y(), nodeQuaternion.z());
+		const math::Quaternionf quaternion(node.rotation[3], node.rotation[0], node.rotation[1], node.rotation[2]);
 		transform.prerotate(quaternion);
 	}
 
-	if (!node.translation.empty())
+	if (node.has_translation)
 	{
-		SPT_CHECK(node.translation.size() == 3);
-		const math::Vector3f nodeTranslation = math::Map<const math::Vector3d>(node.translation.data()).cast<float>();
+		const math::Vector3f nodeTranslation = math::Map<const math::Vector3f>(node.translation);
 		transform.pretranslate(nodeTranslation);
 	}
 
@@ -50,9 +44,9 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 }
 
 
-static lib::Path GetMaterialAssetRelativePath(const tinygltf::Material& material, int materialIdx)
+static lib::Path GetMaterialAssetRelativePath(const cgltf_material& material, SizeType materialIdx)
 {
-	if (material.name.empty())
+	if (!material.name || material.name[0] == 0)
 	{
 		return lib::String("Material_") + std::to_string(materialIdx) + ".sptasset";
 	}
@@ -63,9 +57,9 @@ static lib::Path GetMaterialAssetRelativePath(const tinygltf::Material& material
 }
 
 
-static lib::Path GetMeshAssetRelativePath(const tinygltf::Mesh& mesh, int meshIdx)
+static lib::Path GetMeshAssetRelativePath(const cgltf_mesh& mesh, SizeType meshIdx)
 {
-	if (mesh.name.empty())
+	if (!mesh.name || mesh.name[0] == 0)
 	{
 		return lib::String("Mesh_") + std::to_string(meshIdx) + ".sptasset";
 	}
@@ -80,32 +74,32 @@ void ImportPrefabDefinitionImpl(const rsc::GLTFModel& model, as::PrefabDefinitio
 {
 	struct NodeSpawnInfo
 	{
-		int idx = -1;
+		const cgltf_node* node = nullptr;
 		math::Affine3f transform = math::Affine3f::Identity();
 	};
 
 	lib::DynamicArray<NodeSpawnInfo> nodesToSpawn;
-	for (const tinygltf::Scene& scene : model.scenes)
+	for (const cgltf_scene& scene : lib::Span<const cgltf_scene>(model->scenes, model->scenes_count))
 	{
-		for (const int nodeIdx : scene.nodes)
+		for (const cgltf_node* sceneNode : lib::Span<const cgltf_node* const>(scene.nodes, scene.nodes_count))
 		{
-			nodesToSpawn.emplace_back(NodeSpawnInfo{ .idx = nodeIdx, });
+			nodesToSpawn.emplace_back(NodeSpawnInfo{ .node = sceneNode });
 		}
 	}
 
 	while (!nodesToSpawn.empty())
 	{
-		const NodeSpawnInfo node = nodesToSpawn[nodesToSpawn.size() - 1u];
+		const NodeSpawnInfo spawnInfo = nodesToSpawn[nodesToSpawn.size() - 1u];
 		nodesToSpawn.pop_back();
 
-		const tinygltf::Node& nodeData = model.nodes[node.idx];
+		const cgltf_node& nodeData = *spawnInfo.node;
 
 		const math::Affine3f localTransform = GetNodeTransform(nodeData);
-		const math::Affine3f transform = node.transform * localTransform;
+		const math::Affine3f transform = spawnInfo.transform * localTransform;
 
-		if (nodeData.mesh != -1)
+		if (nodeData.mesh)
 		{
-			const tinygltf::Mesh& mesh = model.meshes[nodeData.mesh];
+			const cgltf_mesh& mesh = *nodeData.mesh;
 
 			const Real32 sx = transform.matrix().block<3, 1>(0, 0).norm();
 			const Real32 sy = transform.matrix().block<3, 1>(0, 1).norm();
@@ -119,15 +113,19 @@ void ImportPrefabDefinitionImpl(const rsc::GLTFModel& model, as::PrefabDefinitio
 			const math::Vector3f eulerAngles = rotationMat.eulerAngles(0, 1, 2);
 
 			lib::UniquePtr<gf::PrefabMeshEntityDefinition> meshEntity = lib::MakeUnique<gf::PrefabMeshEntityDefinition>();
+			meshEntity->name     = lib::String(nodeData.name ? nodeData.name : "Node") + "_" + std::to_string(cgltf_node_index(&*model, &nodeData));
 			meshEntity->location = transform.translation();
 			meshEntity->rotation = math::Vector3f(math::Utils::RadiansToDegrees(eulerAngles.x()), math::Utils::RadiansToDegrees(eulerAngles.y()), math::Utils::RadiansToDegrees(eulerAngles.z()));
 			meshEntity->scale    = math::Vector3f(sx, sy, sz);
 
-			meshEntity->mesh = GetMeshAssetRelativePath(mesh, nodeData.mesh);
+			meshEntity->mesh = GetMeshAssetRelativePath(mesh, cgltf_mesh_index(&*model, nodeData.mesh));
 
-			for (const tinygltf::Primitive& prim : mesh.primitives)
+			for (const cgltf_primitive& prim : lib::Span<const cgltf_primitive>(mesh.primitives, mesh.primitives_count))
 			{
-				meshEntity->materials.emplace_back(GetMaterialAssetRelativePath(model.materials[prim.material], prim.material));
+				if (prim.material)
+				{
+					meshEntity->materials.emplace_back(GetMaterialAssetRelativePath(*prim.material, cgltf_material_index(&*model, prim.material)));
+				}
 			}
 
 			as::PrefabEntityDefinitionEntry entityDef;
@@ -135,9 +133,9 @@ void ImportPrefabDefinitionImpl(const rsc::GLTFModel& model, as::PrefabDefinitio
 			prefabDef.entities.emplace_back(std::move(entityDef));
 		}
 
-		for (int childIdx : nodeData.children)
+		for (const cgltf_node* child : lib::Span<const cgltf_node* const>(nodeData.children, nodeData.children_count))
 		{
-			nodesToSpawn.emplace_back(NodeSpawnInfo{ .idx = childIdx, .transform = transform });
+			nodesToSpawn.emplace_back(NodeSpawnInfo{ .node = child, .transform = transform });
 		}
 	}
 }
@@ -175,17 +173,17 @@ void ImportGLTF(as::AssetsSystem& assetsSystem, const PrefabImportParams& params
 
 	const lib::Path relativeGLTFPath = std::filesystem::relative(params.srcGLTFPath, params.assetsSystem.GetContentPath() / params.dstContentPath);
 
-	for (SizeType meshIdx = 0u; meshIdx < model->meshes.size(); ++meshIdx)
+	for (SizeType meshIdx = 0u; meshIdx < (*model)->meshes_count; ++meshIdx)
 	{
-		const tinygltf::Mesh& mesh = model->meshes[meshIdx];
+		const cgltf_mesh& mesh = (*model)->meshes[meshIdx];
 
-		const lib::Path meshPath = params.dstContentPath / GetMeshAssetRelativePath(mesh, static_cast<int>(meshIdx));
+		const lib::Path meshPath = params.dstContentPath / GetMeshAssetRelativePath(mesh, meshIdx);
 
 		const as::MeshSourceDefinition meshSource
 		{
 			.path     = relativeGLTFPath,
 			.meshIdx  = static_cast<Uint32>(meshIdx),
-			.meshName = mesh.name
+			.meshName = mesh.name ? mesh.name : ""
 		};
 		as::MeshDataInitializer meshInitializer(meshSource);
 
@@ -199,16 +197,16 @@ void ImportGLTF(as::AssetsSystem& assetsSystem, const PrefabImportParams& params
 		SPT_LOG_INFO(GLTFImporter, "Imported mesh asset: {} from GLTF: {}", meshPath.generic_string(), params.srcGLTFPath.generic_string());
 	}
 
-	for (SizeType materialIdx = 0u; materialIdx < model->materials.size(); ++materialIdx)
+	for (SizeType materialIdx = 0u; materialIdx < (*model)->materials_count; ++materialIdx)
 	{
-		const tinygltf::Material& material = model->materials[materialIdx];
+		const cgltf_material& material = (*model)->materials[materialIdx];
 
-		const lib::Path materialPath = params.dstContentPath / GetMaterialAssetRelativePath(material, static_cast<int>(materialIdx));
+		const lib::Path materialPath = params.dstContentPath / GetMaterialAssetRelativePath(material, materialIdx);
 
 		const as::PBRGLTFMaterialDefinition materialDefinition
 		{
 			.gltfSourcePath = relativeGLTFPath,
-			.materialName   = material.name,
+			.materialName   = material.name ? material.name : "",
 			.materialIdx    = static_cast<Uint32>(materialIdx)
 		};
 		as::PBRGLTFMaterialInitializer materialInitializer(materialDefinition);

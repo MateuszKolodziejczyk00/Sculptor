@@ -582,7 +582,7 @@ float4 SampleCirrusClouds(in Ray ray, in float noise, in float3 ambient)
 
 		const float3 sampledCloud = cs.SampleCirrusDensity(sampleLocation);
 
-    	const float cloudDensity = sampledCloud.x;
+    	const float cloudDensity = sampledCloud.x * cloudscape.cirrusCloudsDensityMultiplier;
     	const float skyVisibility = sampledCloud.y;
 
     	float3 sampleInScattering = 0.f;

@@ -33,6 +33,15 @@ struct BufferInspectParams
 };
 
 
+enum class ERawDataFormat : Int32
+{
+	Hex,
+	Uint,
+	Int,
+	Float
+};
+
+
 class BufferInspector : public scui::UIView
 {
 protected:
@@ -50,13 +59,19 @@ public:
 
 private:
 
+	void DrawBoundData(lib::Span<const Byte> bufferData);
+	void DrawRawData(lib::Span<const Byte> bufferData);
+
 	void DrawStruct(lib::StringView name, lib::HashedString typeName, lib::Span<const Byte> data, Uint32 currentOffset);
+	void DrawValue(const lib::String& typeName, lib::Span<const Byte> data);
 
 	lib::HashedString m_boundDataPanelName;
 	lib::HashedString m_bufferDataPanelName;
 
 	Int32 m_byteViewerOffset   = 0;
 	Int32 m_dataViewerBeginidx = 0;
+
+	ERawDataFormat m_rawDataFormat = ERawDataFormat::Hex;
 
 	BufferInspectParams m_inspectParams;
 

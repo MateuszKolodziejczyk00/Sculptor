@@ -10,8 +10,10 @@
 #include "DDC.h"
 #include "JobSystem/Job.h"
 
+
 #define SPT_REGISTER_ASSET_DATA_TYPE(DataType) \
-	SPT_REGISTER_TYPE_FOR_BLACKBOARD_SERIALIZATION(DataType)
+	SPT_REGISTER_TYPE_FOR_BLACKBOARD_SERIALIZATION(DataType) \
+	inline spt::as::AssetDefinitionRegistry::AssetDefinitionRegistryInitializer<DataType> SPT_SCOPE_NAME_EVAL(assetDefRegistrator##DataType, __LINE__)
 
 
 namespace spt::as
@@ -37,6 +39,80 @@ static AssetTypeKey CreateAssetTypeKey()
 {
 	return CreateAssetType<TAssetType>().id;
 }
+
+
+struct AssetReferencerContext
+{
+public:
+
+	AssetReferencerContext(const lib::Path& assetPath, lib::DynamicArray<ResourcePath>& referencedAssets)
+		: m_referencePath(assetPath.parent_path())
+		, m_referencedAssets(referencedAssets)
+	{ }
+
+	void AddRelatedAsset(const lib::Path& relativePath)
+	{
+		m_referencedAssets.emplace_back(ResolveAssetRelativePath(relativePath));
+	}
+
+private:
+
+	ResourcePath ResolveAssetRelativePath(const lib::Path& relativePath) const
+	{
+		return ResourcePath(m_referencePath / relativePath);
+	}
+
+	lib::Path m_referencePath;
+
+	lib::DynamicArray<ResourcePath>& m_referencedAssets;
+};
+
+
+struct AssetDefinitionEntry
+{
+	using CollectReferencesFunc = lib::RawCallable<void(const void* /* dataDef */, const AssetReferencerContext& /* context */)>;
+
+	CollectReferencesFunc collectReferencesFunc;
+};
+
+
+namespace AssetDefinitionRegistry
+{
+
+template<typename TAssetDefType>
+AssetDefinitionEntry CreateAssetDefinitionEntry()
+{
+	AssetDefinitionEntry entry;
+
+	if constexpr (requires(const TAssetDefType& def, const AssetReferencerContext& context) {
+		{ def.CollectReferencedAssets(context) };
+	})
+	{
+		entry.collectReferencesFunc = [](const void* dataDef, const AssetReferencerContext& context)
+		{
+			const TAssetDefType& def = *reinterpret_cast<const TAssetDefType*>(dataDef);
+			def.CollectReferencedAssets(context);
+		};
+	}
+
+	return entry;
+}
+
+
+ASSETS_SYSTEM_API void RegisterAssetDefinition(lib::RuntimeTypeInfo assetDefType, AssetDefinitionEntry entry);
+ASSETS_SYSTEM_API const AssetDefinitionEntry* GetAssetDefinitionEntry(lib::RuntimeTypeInfo assetDefType);
+
+
+template<typename TAssetDefType>
+struct AssetDefinitionRegistryInitializer
+{
+	AssetDefinitionRegistryInitializer()
+	{
+		RegisterAssetDefinition(lib::TypeInfo<TAssetDefType>(), CreateAssetDefinitionEntry<TAssetDefType>());
+	}
+};
+
+} // AssetDefinitionRegistry
 
 
 class ASSETS_SYSTEM_API AssetDataInitializer

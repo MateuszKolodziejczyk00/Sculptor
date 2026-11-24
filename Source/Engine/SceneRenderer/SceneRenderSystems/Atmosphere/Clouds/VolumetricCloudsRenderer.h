@@ -19,9 +19,15 @@ public:
 
 	VolumetricCloudsRenderer();
 
+	void Update(const RenderScene& renderScene);
+
 	void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const lib::DynamicPushArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings);
 
 	const CloudsTransmittanceMap& GetCloudsTransmittanceMap() const { return m_cloudsTransmittanceMap; }
+
+	const lib::SharedPtr<rdr::TextureView>& GetCloudsTransmittanceTexture() const { return m_cloudscapeTransmittance; }
+
+	math::Matrix4f ComputeCloudsTransmittanceMapViewProj(const math::Vector3f& lightDirection) const;
 
 	Bool AreVolumetricCloudsEnabled() const { return m_volumetricCloudsEnabled; }
 

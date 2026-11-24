@@ -13,6 +13,7 @@
 #include "DeviceQueues/GPUWorkload.h"
 #include "Utils/TransfersUtils.h"
 #include "UIContextManager.h"
+#include "UIUtils.h"
 #include "ImGui/SculptorImGui.h"
 #include "EngineFrame.h"
 #include "UIElements/ApplicationUI.h"
@@ -49,6 +50,10 @@ ImGuiApplication::ImGuiApplication(lib::StringView name, math::Vector2u windowRe
 	ImGuiIO& imGuiIO = ImGui::GetIO();
 	imGuiIO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	imGuiIO.IniFilename = m_imGuiConfigPath.c_str();
+
+	const ImFont* font = imGuiIO.Fonts->AddFontFromFileTTF((engn::GetEngine().GetPaths().contentPath / "Fonts/Inter-Regular.ttf").string().c_str(), 15.f);
+	SPT_CHECK(!!font);
+	ui::UIUtils::InitializeStyle();
 
 	m_window->InitializeUI(m_uiContext);
 
@@ -169,6 +174,7 @@ void ImGuiApplication::ExecuteFrame()
 
 	DrawUI();
 
+	ui::UIUtils::DrawDockTabsAccent();
 	ImGui::Render();
 
 	frame->BeginAdvancingStages();

@@ -11,6 +11,7 @@
 #include "Utils/VariableRate/VariableRate.hlsli"
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
 #include "Atmosphere/VolumetricClouds/Cloudscape.hlsli"
+#include "Utils/Random.hlsli"
 
 struct CS_INPUT
 {
@@ -33,6 +34,21 @@ void ResolveReservoirsCS(CS_INPUT input)
 		const uint2 traceCoords = GetVariableTraceCoords(CONSTS->variableRateBlocksTexture, pixel);
 
 		const bool isTracingCoord = all(pixel == traceCoords);
+
+		if(isTracingCoord)
+		{
+			RngState rng = RngState::Create(pixel, CONSTS->resamplingConstants->frameIdx + 19278u);
+
+			const float decorrelationProbability = VIEW->settings.reflections.decorrelationProbability;
+			if(rng.Next() < decorrelationProbability)
+			{
+				const SRReservoir initialReservoir = UnpackReservoir(CONSTS->initialReservoirsBuffer[reservoirIdx]);
+				if(initialReservoir.IsValid() && initialReservoir.HasValidResult())
+				{
+					reservoir = initialReservoir;
+				}
+			}
+		}
 
 		const bool canUseReservoir = reservoir.IsValid() && reservoir.HasValidResult();
 

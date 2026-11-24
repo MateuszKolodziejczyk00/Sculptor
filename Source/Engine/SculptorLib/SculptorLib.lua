@@ -8,6 +8,7 @@ function SculptorLib:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("Platform")
 
     self:AddPrivateDependency("TileableVolumeNoise")
+    self:AddPrivateDependency("Ws2_32.lib")
 
     self:AddPublicDefine("WITH_LOGGER=1")
 

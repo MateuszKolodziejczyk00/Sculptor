@@ -6,7 +6,6 @@
 #include "RenderGraphBuilder.h"
 #include "Utils/SceneRenderingTypes.h"
 #include "Utils/ScreenSpaceTracer.h"
-#include "SceneRenderSystems/Lights/LightsRenderSystem.h"
 #include "SceneRenderSystems/DDGI/DDGIRenderSystem.h"
 #include "SceneRenderer/Utils/DepthBasedUpsampler.h"
 #include "ViewRenderSystems/ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
@@ -310,7 +309,6 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const SceneRender
 
 	const ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
 
-	const LightsRenderSystem& lightsRenderSystem = rendererInterface.GetRenderSystemChecked<LightsRenderSystem>();
 
 	const ddgi::DDGIRenderSystem& ddgiRenderSystem = rendererInterface.GetRenderSystemChecked<ddgi::DDGIRenderSystem>();
 
@@ -330,8 +328,7 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const SceneRender
 								   shadingParams.shadingIndirectArgs, ComputeHitShadingIndirectArgsOffset(),
 								   rg::ShaderParams(shadingConstants,
 													ddgiRenderSystem.GetDDGIGPUScene(),
-													shadingViewContext.sharcCacheParams,
-													lightsRenderSystem.GetGlobalLightsParams()));
+													shadingViewContext.sharcCacheParams));
 }
 
 } // hit_rays
@@ -618,9 +615,16 @@ void SpecularReflectionsRenderStage::BeginFrame(const RenderScene& renderScene, 
 {
 	Base::BeginFrame(renderScene, viewSpec);
 
-	ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetBlackboard().Get<ShadingViewResourcesUsageInfo>();
-
 	const ReflectionsSettings& settings = viewSpec.GetSettings().reflections;
+
+	if (!settings.enable)
+	{
+		m_sharcCache.reset();
+		m_denoiser.InvalidateHistory();
+		return;
+	}
+
+	ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetBlackboard().Get<ShadingViewResourcesUsageInfo>();
 
 	m_renderHalfResReflections = settings.halfRes;
 
@@ -651,7 +655,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 {
 	SPT_PROFILER_FUNCTION();
 
-	if (rdr::GPUApi::IsRayTracingEnabled())
+	if (rdr::GPUApi::IsRayTracingEnabled() && viewSpec.GetSettings().reflections.enable)
 	{
 		SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "RT Reflections");
 
@@ -893,6 +897,8 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		reflectionsViewData.halfResReflections           = isHalfRes;
 
 		viewSpec.GetBlackboard().Create<RTReflectionsViewData>(reflectionsViewData);
+
+		viewSpec.GetShadingViewContext().specularHitDistance = specularReflectionsFullRes;
 
 		viewSpec.GetRenderViewEntry(ERenderViewEntry::RenderVariableRateTexture).AddRawMember(this, &SpecularReflectionsRenderStage::RenderVariableRateTexture);
 

@@ -93,6 +93,29 @@ static EmissivesSampler CreateEmissivesSampler(rg::RenderGraphBuilder& graphBuil
 	return sampler;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Presample Emissives ===========================================================================
+
+static constexpr Uint32 presampledTilesNum = 128u;
+static constexpr Uint32 presampledTileSize = 1024u;
+
+
+BEGIN_SHADER_STRUCT(PackedEmissiveSample)
+	SHADER_STRUCT_FIELD(math::Vector3f, location)
+	SHADER_STRUCT_FIELD(Uint32,         packedLuminance)
+	SHADER_STRUCT_FIELD(math::Vector2f, normal)
+	SHADER_STRUCT_FIELD(Real32,         pdf_A)
+END_SHADER_STRUCT();
+
+
+BEGIN_SHADER_STRUCT(PresampleEmissivesConstants)
+	SHADER_STRUCT_FIELD(EmissivesSampler,                            emissivesSampler)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<PackedEmissiveSample>, rwPresampledEmissives)
+END_SHADER_STRUCT();
+
+
+SIMPLE_COMPUTE_PSO(PresampleEmissivesPSO, "Sculptor/Lights/StochasticDI/PresampleEmissives.hlsl", PresampleEmissivesCS);
+
 // TODO: this is temporary, reservoir should be "attached" to a sample, so it can detect sample that is not valid anymore. For now storing just location and normal is simpler because orded or emissive elements can change
 BEGIN_SHADER_STRUCT(DIPackedReservoir)
 	SHADER_STRUCT_FIELD(math::Vector3f, location)
@@ -110,8 +133,12 @@ BEGIN_SHADER_STRUCT(StochasticDIInitialSamplingConstants)
 	SHADER_STRUCT_FIELD(GPUGBuffer,                               gBuffer)
 	SHADER_STRUCT_FIELD(SSTracerData,                             ssTracer)
 	SHADER_STRUCT_FIELD(EmissivesSampler,                         emissivesSampler)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<PackedEmissiveSample>,    presampledEmissives)
+	SHADER_STRUCT_FIELD(Uint32,                                   presampledTilesNum)
+	SHADER_STRUCT_FIELD(Uint32,                                   presampledTileSize)
 	SHADER_STRUCT_FIELD(gfx::TypedBuffer<DIPackedReservoir>,      historyReservoirs)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<DIPackedReservoir>, outReservoirs)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<DIPackedReservoir>, outInitialReservoirs)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,                historyDepth)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>,        historyNormal)
 	SHADER_STRUCT_FIELD(math::Vector2u,                           reservoirsResolution)
@@ -121,11 +148,18 @@ BEGIN_SHADER_STRUCT(StochasticDIInitialSamplingConstants)
 END_SHADER_STRUCT();
 
 
+BEGIN_SHADER_STRUCT(DIInitialSamplingPermutationDomain)
+	SHADER_STRUCT_FIELD(Bool, ENABLE_PRESAMPLING)
+END_SHADER_STRUCT();
+
+
 RT_PSO(DIInitialSamplingPSO)
 {
 	RAY_GEN_SHADER("Sculptor/Lights/StochasticDI/InitialSampling.hlsl", InitialSamplingRTG);
 
 	MISS_SHADERS(SHADER_ENTRY("Sculptor/Lights/StochasticDI/InitialSampling.hlsl", GenericRTM));
+
+	PERMUTATION_DOMAIN(DIInitialSamplingPermutationDomain);
 
 	HIT_GROUP
 	{
@@ -134,12 +168,15 @@ RT_PSO(DIInitialSamplingPSO)
 		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
 	};
 
-	PRESET(pso);
-
 	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
 	{
 		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
-		pso = CompilePSO(compiler, psoDefinition, mat::MaterialsSubsystem::Get().GetRTHitGroups<HitGroup>());
+
+		const lib::DynamicArray<HitGroup> hitGroups = mat::MaterialsSubsystem::Get().GetRTHitGroups<HitGroup>();
+
+		CompilePermutation(compiler, psoDefinition, hitGroups, DIInitialSamplingPermutationDomain{ .ENABLE_PRESAMPLING = false });
+
+		CompilePermutation(compiler, psoDefinition, hitGroups, DIInitialSamplingPermutationDomain{ .ENABLE_PRESAMPLING = true });
 	}
 };
 
@@ -158,6 +195,7 @@ BEGIN_SHADER_STRUCT(DISpatialResamplingConstants)
 	SHADER_STRUCT_FIELD(GPUGBuffer,                               gBuffer)
 	SHADER_STRUCT_FIELD(SSTracerData,                             ssTracer)
 	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<DIPackedReservoir>,   inReservoirs)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<DIPackedReservoir>,   initialReservoirs)
 	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<DIPackedReservoir>, outReservoirs)
 	SHADER_STRUCT_FIELD(math::Vector2u,                           reservoirsResolution)
 	SHADER_STRUCT_FIELD(Uint32,                                   spatialSamplesNum)
@@ -257,19 +295,45 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterfa
 
 	const math::Vector2u reservoirsResolution = ComputeReservoirsResolution(resolution);
 
-	rg::RGBufferViewHandle reservoirsBuffer = CreateDIReservoirs(graphBuilder, reservoirsResolution);
+	rg::RGBufferViewHandle reservoirsBuffer        = CreateDIReservoirs(graphBuilder, reservoirsResolution);
+	rg::RGBufferViewHandle initialReservoirsBuffer = CreateDIReservoirs(graphBuilder, reservoirsResolution);
 
 	const StochasticDISettings& settings = viewSpec.GetSettings().stochasticDI;
 
 	const SSTracerData ssTracer = CreateScreenSpaceTracerData(viewContext.linearDepth, settings.ssrtSteps);
+
+	const EmissivesSampler emissivesSampler = CreateEmissivesSampler(graphBuilder, rendererInterface, renderScene);
+
+	rg::RGBufferViewHandle presampledEmissives;
+
+	if (settings.enablePresampling)
+	{
+		rhi::BufferDefinition presampledEmissivesDef;
+		presampledEmissivesDef.size  = presampledTilesNum * presampledTileSize * sizeof(rdr::HLSLStorage<PackedEmissiveSample>);
+		presampledEmissivesDef.usage = rhi::EBufferUsage::Storage;
+		presampledEmissives = graphBuilder.CreateBufferView(RG_DEBUG_NAME("DI Presampled Emissives"), presampledEmissivesDef, rhi::EMemoryUsage::GPUOnly);
+
+		PresampleEmissivesConstants shaderConstants;
+		shaderConstants.emissivesSampler      = emissivesSampler;
+		shaderConstants.rwPresampledEmissives = presampledEmissives;
+
+		graphBuilder.Dispatch(RG_DEBUG_NAME("DI Presample Emissives"),
+							  PresampleEmissivesPSO::pso,
+							  math::Vector3u(presampledTilesNum * presampledTileSize / 64u, 1u, 1u),
+							  shaderConstants);
+	}
 
 	{
 		StochasticDIInitialSamplingConstants shaderConstants;
 		shaderConstants.motion                   = viewContext.motion;
 		shaderConstants.gBuffer                  = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
 		shaderConstants.ssTracer                 = ssTracer;
-		shaderConstants.emissivesSampler         = CreateEmissivesSampler(graphBuilder, rendererInterface, renderScene);
+		shaderConstants.emissivesSampler         = emissivesSampler;
+		shaderConstants.presampledEmissives      = presampledEmissives;
+		shaderConstants.presampledTilesNum       = presampledTilesNum;
+		shaderConstants.presampledTileSize       = presampledTileSize;
 		shaderConstants.outReservoirs            = reservoirsBuffer;
+		shaderConstants.outInitialReservoirs     = initialReservoirsBuffer;
 		shaderConstants.reservoirsResolution     = reservoirsResolution;
 		shaderConstants.risSamplesNum            = settings.risSamples;
 		shaderConstants.enableTemporalResampling = settings.enableTemporalResampling;
@@ -282,8 +346,11 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterfa
 			shaderConstants.historyNormal     = viewContext.historyOctahedronNormals;
 		}
 
+		DIInitialSamplingPermutationDomain permutation;
+		permutation.ENABLE_PRESAMPLING = settings.enablePresampling;
+
 		graphBuilder.TraceRays(RG_DEBUG_NAME("DI Initial Sampling"),
-							   DIInitialSamplingPSO::pso,
+							   DIInitialSamplingPSO::GetPermutation(permutation),
 							   resolution,
 							   rg::ShaderParams(shaderConstants));
 	}
@@ -300,6 +367,7 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterfa
 		shaderConstants.gBuffer                = viewContext.gBuffer.GetGPUGBuffer(viewContext.depth);
 		shaderConstants.ssTracer               = ssTracer;
 		shaderConstants.inReservoirs           = reservoirsBuffer;
+		shaderConstants.initialReservoirs      = initialReservoirsBuffer;
 		shaderConstants.outReservoirs          = historyReservoirs;
 		shaderConstants.reservoirsResolution   = reservoirsResolution;
 		shaderConstants.spatialSamplesNum      = settings.spatialSamples;
@@ -340,6 +408,10 @@ void Renderer::Render(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterfa
 
 		diffusePostDenoise  = denoiserResult.denoisedDiffuse;
 		specularPostDenoise = denoiserResult.denoisedSpecular;
+	}
+	else
+	{
+		viewSpec.GetShadingViewContext().specularHitDistance = specularHitDist;
 	}
 
 	{

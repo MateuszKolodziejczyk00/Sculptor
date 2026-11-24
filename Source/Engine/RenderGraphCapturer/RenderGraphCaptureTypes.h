@@ -3,6 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "RHI/RHICore/RHIPipelineTypes.h"
 #include "Types/Texture.h"
+#include "GPUDiagnose/Profiler/GPUStatisticsCollector.h"
 
 
 namespace spt::rg::capture
@@ -97,6 +98,9 @@ struct CapturedPass
 
 	PassExecutionProperties execProps;
 
+	Uint32 diagnosticsScopeDepth = 0u;
+	const rdr::GPUStatisticsScopeData* gpuStatistics = nullptr;
+
 	lib::DynamicArray<CapturedTextureBinding> textures;
 	lib::DynamicArray<CapturedBufferBinding>  buffers;
 
@@ -136,6 +140,10 @@ struct RGCapture
 
 	lib::HashMap<Uint32, CapturedTexture*> descriptorIdxToTexture;
 	lib::HashMap<Uint32, CapturedBuffer*>  descriptorIdxToBuffer;
+
+	// Query results are available only after the captured graph finished on GPU, so statistics are collected lazily by the viewer
+	lib::SharedPtr<rdr::GPUStatisticsCollector> gpuStatisticsCollector;
+	lib::UniquePtr<rdr::GPUStatisticsData>      gpuStatistics;
 
 	Bool wantsClose = false;
 };

@@ -66,7 +66,7 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 	rdr::GPUApi::Initialize();
 
 	rhi::RHIWindowInitializationInfo windowInitInfo;
-	windowInitInfo.framebufferSize = math::Vector2u(1920, 1080);
+	windowInitInfo.framebufferSize = math::Vector2u(1920, 1060);
 	windowInitInfo.enableVSync     = false;
 	m_window = rdr::ResourcesManager::CreateRenderWindow("SculptorEd", windowInitInfo);
 
@@ -105,7 +105,12 @@ void SculptorEdApplication::OnRun()
 
 	imGuiIO.IniFilename = engn::GetEngine().GetPaths().imguiConfigPath.c_str();
 
+	const ImFont* font = imGuiIO.Fonts->AddFontFromFileTTF((engn::GetEngine().GetPaths().contentPath / "Fonts/Inter-Regular.ttf").string().c_str(), 15.f);
+	SPT_CHECK(!!font);
+	ui::UIUtils::InitializeStyle();
+
 	m_window->InitializeUI(uiContext);
+	m_window->GetPlatformWindow().EnableCustomTitleBar();
 
 	ui::UIContextManager::SetGlobalContext(uiContext);
 
@@ -293,14 +298,130 @@ void SculptorEdApplication::UpdateUI(EditorFrameContext& frame)
 
 	ImGui::NewFrame();
 
+	DrawTitleBar();
+
 	scui::Context uiDrawContext(frame, uiContext, m_window->GetRHI().GetFragmentFormat());
 	scui::ApplicationUI::Draw(uiDrawContext);
+}
+
+void SculptorEdApplication::DrawTitleBar()
+{
+	SPT_PROFILER_FUNCTION();
+
+	if (!ImGui::BeginMainMenuBar())
+	{
+		return;
+	}
+
+	platf::PlatformWindow& window = m_window->GetPlatformWindow();
+
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.f, 0.f));
+
+	const Real32 height = ImGui::GetFrameHeight();
+	const ImVec2 buttonSize(height * 1.5f, height);
+	const Real32 iconExtent = height * 0.2f;
+
+	ImDrawList* drawList = ImGui::GetWindowDrawList();
+	const ImU32 iconColor    = ImGui::GetColorU32(ImGuiCol_Text);
+	const ImU32 hoveredColor = ImGui::GetColorU32(ImGuiCol_ButtonHovered);
+
+	const ImVec2 barPos   = ImGui::GetWindowPos();
+	const Real32 barWidth = ImGui::GetWindowWidth();
+
+	drawList->AddLine(ImVec2(barPos.x, barPos.y + height - 0.5f), ImVec2(barPos.x + barWidth, barPos.y + height - 0.5f), ImGui::GetColorU32(ImGuiCol_Border));
+
+	// Centered application name: accent diamond followed by letter-spaced name
+	{
+		const Real32 tracking       = 2.5f;
+		const Real32 diamondExtent  = 3.5f;
+		const Real32 diamondSpacing = 10.f;
+		const Real32 wordSpacing    = 8.f;
+
+		// Returns x after the text
+		const auto drawTracked = [&](Real32 x, lib::StringView text, ImU32 color, Bool draw) -> Real32
+		{
+			const Real32 y = barPos.y + (height - ImGui::GetFontSize()) * 0.5f;
+			for (const char& c : text)
+			{
+				if (draw)
+				{
+					drawList->AddText(ImVec2(x, y), color, &c, &c + 1);
+				}
+				x += ImGui::CalcTextSize(&c, &c + 1).x + tracking;
+			}
+			return x - tracking;
+		};
+
+		const lib::StringView appName  = "SCULPTOR";
+		const lib::StringView appScope = "EDITOR";
+
+		const Real32 nameWidth = 2.f * diamondExtent + diamondSpacing + drawTracked(0.f, appName, 0u, false) + wordSpacing + drawTracked(0.f, appScope, 0u, false);
+
+		const ImVec2 diamondCenter(barPos.x + (barWidth - nameWidth) * 0.5f + diamondExtent, barPos.y + height * 0.5f);
+		drawList->AddQuadFilled(ImVec2(diamondCenter.x, diamondCenter.y - diamondExtent),
+								ImVec2(diamondCenter.x + diamondExtent, diamondCenter.y),
+								ImVec2(diamondCenter.x, diamondCenter.y + diamondExtent),
+								ImVec2(diamondCenter.x - diamondExtent, diamondCenter.y),
+								ImGui::GetColorU32(ImGuiCol_CheckMark));
+
+		const Real32 nameEnd = drawTracked(diamondCenter.x + diamondExtent + diamondSpacing, appName, ImGui::GetColorU32(ImGuiCol_Text), true);
+		drawTracked(nameEnd + wordSpacing, appScope, ImGui::GetColorU32(ImGuiCol_TextDisabled), true);
+	}
+
+	// Free space before buttons is used for dragging the window
+	ImGui::InvisibleButton("##DragArea", ImVec2(barWidth - 3.f * buttonSize.x - ImGui::GetCursorPosX(), height));
+	if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+	{
+		window.ToggleMaximize();
+	}
+	else if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+	{
+		window.BeginDragMove();
+	}
+
+	const auto titleBarButton = [&](const char* id, ImU32 buttonHoveredColor, auto&& drawIcon) -> Bool
+	{
+		ImGui::SameLine();
+		const Bool clicked = ImGui::InvisibleButton(id, buttonSize);
+		const ImVec2 min = ImGui::GetItemRectMin();
+		const ImVec2 max = ImGui::GetItemRectMax();
+		if (ImGui::IsItemHovered())
+		{
+			drawList->AddRectFilled(min, max, buttonHoveredColor);
+		}
+		drawIcon(ImVec2((min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f));
+		return clicked;
+	};
+
+	if (titleBarButton("##Minimize", hoveredColor, [&](ImVec2 c) { drawList->AddLine(ImVec2(c.x - iconExtent, c.y), ImVec2(c.x + iconExtent, c.y), iconColor); }))
+	{
+		window.Minimize();
+	}
+
+	if (titleBarButton("##Maximize", hoveredColor, [&](ImVec2 c) { drawList->AddRect(ImVec2(c.x - iconExtent, c.y - iconExtent), ImVec2(c.x + iconExtent, c.y + iconExtent), iconColor); }))
+	{
+		window.ToggleMaximize();
+	}
+
+	if (titleBarButton("##Close", IM_COL32(196, 43, 28, 255), [&](ImVec2 c)
+					   {
+						   drawList->AddLine(ImVec2(c.x - iconExtent, c.y - iconExtent), ImVec2(c.x + iconExtent, c.y + iconExtent), iconColor);
+						   drawList->AddLine(ImVec2(c.x - iconExtent, c.y + iconExtent), ImVec2(c.x + iconExtent, c.y - iconExtent), iconColor);
+					   }))
+	{
+		window.Close();
+	}
+
+	ImGui::PopStyleVar();
+
+	ImGui::EndMainMenuBar();
 }
 
 std::pair<lib::SharedRef<rdr::RenderContext>, lib::SharedRef<rdr::GPUWorkload>> SculptorEdApplication::RecordUICommands(EditorFrameContext& frame, rhi::EFragmentFormat rtFormat) const
 {
 	SPT_PROFILER_FUNCTION();
 
+	ui::UIUtils::DrawDockTabsAccent();
 	ImGui::Render();
 
 	lib::MemoryArena tempArena = frame.GetFrameMemoryArena().CreateSubArena("Record UI Commands Temp Arena", 8u * 1024u);

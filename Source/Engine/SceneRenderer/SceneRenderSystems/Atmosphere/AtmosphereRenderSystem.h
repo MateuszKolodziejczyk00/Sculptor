@@ -33,6 +33,10 @@ public:
 
 	Bool AreVolumetricCloudsEnabled() const { return m_volumetricCloudsRenderer.AreVolumetricCloudsEnabled(); }
 
+	const lib::SharedPtr<rdr::TextureView>& GetCloudsTransmittanceTexture() const { return m_volumetricCloudsRenderer.GetCloudsTransmittanceTexture(); }
+
+	math::Matrix4f ComputeCloudsTransmittanceMapViewProj() const;
+
 	const DirectionalLightIlluminance& GetDirectionalLightIlluminance() const { return m_directionalLightIlluminance; }
 
 private:

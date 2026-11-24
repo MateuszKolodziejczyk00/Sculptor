@@ -3,7 +3,6 @@
 #define RT_MATERIAL_TRACING
 
 [[shader_params(RenderSceneConstants, SCENE)]]
-[[shader_params(GlobalLightsParams, PARAMS_GLOBAL_LIGHTS)]]
 [[shader_params(DDGIGPUScene, PARAMS_DDGI_SCENE)]]
 [[shader_params(CloudscapeProbesParams, PARAMS_CLOUDSCAPE_PROBES)]]
 [[shader_params(DDGITraceRaysConsts, CONSTS)]]
@@ -89,13 +88,21 @@ void DDGIProbeRaysRTG()
 
 	if (!isBackface)
 	{
-		const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(PARAMS_GLOBAL_LIGHTS->heightFog, probeWorldLocation, traceEndLocation);
+		const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(SCENE->lights.heightFog, probeWorldLocation, traceEndLocation);
 		luminance *= fogTransmittance;
 	}
 
 	if (traceResult.visibility.isMiss)
 	{
 		luminance += SampleCloudscapeInScattering(probeWorldLocation, rayDirection);
+	}
+
+	// wave-size anti firefly
+	const float brightness = max(luminance.r, max(luminance.g, luminance.b));
+	const float averageBrightness = WaveActiveSum(brightness) / WaveGetLaneCount();
+	if (brightness > averageBrightness * 10.f)
+	{
+		luminance = 0.f;
 	}
 
 	CONSTS->traceRaysResultTexture[dispatchIdx] = float4(luminance, distanceTraveled);

@@ -20,6 +20,7 @@
 #include "SerializationHelper.h"
 #include "ThreadContext.h"
 #include "RGOutputHasher.h"
+#include "Techniques/TemporalAA/DLSSRenderer.h"
 
 #if SPT_SHADERS_DEBUG_FEATURES
 #include "Debug/ShaderDebugUtils.h"
@@ -94,6 +95,19 @@ struct SceneTestCamera
 };
 
 
+struct SceneTestSun
+{
+	void Serialize(srl::Serializer& serializer)
+	{
+		serializer.Serialize("Illuminance", illuminance);
+		serializer.Serialize("Direction", direction);
+	}
+
+	Real32         illuminance = 120000.f; // lux at zenith
+	math::Vector3f direction   = math::Vector3f(-0.5f, -0.3f, -1.7f);
+};
+
+
 struct SceneTestDefinition
 {
 	void Serialize(srl::Serializer& serializer)
@@ -102,6 +116,7 @@ struct SceneTestDefinition
 		serializer.Serialize("Prefab", prefab);
 		serializer.Serialize("Spawn", spawn);
 		serializer.Serialize("Camera", camera);
+		serializer.Serialize("Sun", sun);
 		serializer.Serialize("Resolution", resolution);
 		serializer.Serialize("WarmupFrames", warmupFrames);
 		serializer.Serialize("PerfFrames", perfFrames);
@@ -119,6 +134,7 @@ struct SceneTestDefinition
 	lib::String     prefab;
 	SceneTestSpawn  spawn;
 	SceneTestCamera camera;
+	SceneTestSun    sun;
 
 	math::Vector2u resolution = math::Vector2u(1920u, 1080u);
 
@@ -342,8 +358,8 @@ void SceneTest::InitializeScene()
 	{
 		rsc::DirectionalLightData directionalLightData;
 		directionalLightData.color                  = math::Vector3f(1.f, 0.956f, 0.839f);
-		directionalLightData.zenithIlluminance      = 120000.f;
-		directionalLightData.direction              = math::Vector3f(-0.5f, -0.3f, -1.7f).normalized();
+		directionalLightData.zenithIlluminance      = m_definition.sun.illuminance;
+		directionalLightData.direction              = m_definition.sun.direction.normalized();
 		directionalLightData.lightConeAngle         = 0.0046f;
 		directionalLightData.sunDiskAngleMultiplier = 3.8f;
 		directionalLightData.sunDiskEC              = 13.4f;
@@ -396,6 +412,7 @@ void SceneTest::ExecuteFrame(Uint32 frameIdx)
 	const Bool captureResult     = frameIdx + 1u == m_definition.GetFramesNum();
 	const Bool collectStatistics = !captureResult && frameIdx >= m_definition.warmupFrames;
 	const Uint32 perfStatisticsFrameIdx = collectStatistics ? frameIdx - m_definition.warmupFrames : idxNone<Uint32>;
+
 
 	const lib::SharedPtr<engn::FrameContext> frame = engn::EngineFramesManager::CreateFrame<engn::FrameContext>();
 
@@ -492,6 +509,7 @@ void SceneTest::RenderView(engn::FrameContext& frame, Uint32 perfStatisticsFrame
 
 	rdr::FlushPendingUploads();
 
+
 	graphBuilder.Execute();
 
 	frame.SetFrameFinishedOnGPUWaitable(lib::MakeShared<TestFrameFinishedWaitable>(graphBuilder.GetGPUFinishedEvent()));
@@ -521,6 +539,7 @@ void SceneTest::RenderView(engn::FrameContext& frame, Uint32 perfStatisticsFrame
 					   .SetPriority(js::EJobPriority::High)
 					   .ExecuteBefore(m_perfCollectionFinishedEvent));
 	}
+
 
 	m_world->GetRenderScene()->EndFrame();
 }
@@ -615,6 +634,10 @@ int main()
 	}
 
 	render_tests::g_testSuiteState.saveTextureJobs = tcx::Scratch().AllocateArray<js::JobWithResult<Bool>>(tests.Size());
+
+	// Also links DLSS RHI plugin into the executable, which enables extensions required by NGX
+	const Bool dlssInitialized = gfx::DLSSRenderer::InitializeDLSS();
+	SPT_CHECK_MSG(dlssInitialized, "Failed to initialize DLSS");
 
 	engn::Engine::Get().GetModulesManager().LoadModule("SceneRenderer");
 

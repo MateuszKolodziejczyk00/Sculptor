@@ -1,8 +1,0 @@
-Environment: 0
-GenerateDebugInfo: true
-CompileWithDebugs: true
-UseCompiledShadersCache: true
-CacheSeparateSpvFile: true
-ShadersPath: ""
-ShadersCachePath: ""
-ErrorLogsPath: ""

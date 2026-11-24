@@ -14,26 +14,36 @@ FilterText::FilterText(lib::HashedString name)
 	m_text[0] = '\0';
 }
 
-void FilterText::Draw()
+void FilterText::Draw(const char* hint)
 {
-	const ImGuiID id = ImGui::GetID(m_name.GetData());
+	const lib::String inputLabel = "##" + m_name.ToString();
+	const ImGuiID id = ImGui::GetID(inputLabel.c_str());
 	ui::UIContext uiContext = scui::ApplicationUI::GetCurrentContext().GetUIContext();
 	ui::UIUtils::SetShortcut(uiContext, id, ui::ShortcutBinding::Create(inp::EKey::LCtrl, inp::EKey::F));
 
-	ImGui::Columns(2);
-	if (ImGui::InputText(m_name.GetData(), m_text.data(), m_text.size()))
+	const ImGuiStyle& style = ImGui::GetStyle();
+	const Real32 matchCaseWidth = ImGui::GetFrameHeight() + style.ItemInnerSpacing.x + ImGui::CalcTextSize("Aa").x;
+	const Real32 clearWidth     = ImGui::CalcTextSize("Clear").x + style.FramePadding.x * 2.f;
+
+	ImGui::SetNextItemWidth(-(matchCaseWidth + clearWidth + style.ItemSpacing.x * 2.f));
+	if (ImGui::InputTextWithHint(inputLabel.c_str(), hint, m_text.data(), m_text.size()))
 	{
 		OnTextChanged();
 	}
-	ImGui::NextColumn();
+
+	ImGui::SameLine();
+	ImGui::Checkbox("Aa", &m_matchCase);
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::SetTooltip("Match case");
+	}
+
+	ImGui::SameLine();
 	if (ImGui::Button("Clear"))
 	{
 		m_text[0] = '\0';
 		OnTextChanged();
 	}
-	ImGui::EndColumns();
-
-	ImGui::Checkbox("Match case", &m_matchCase);
 }
 
 void FilterText::OnTextChanged()

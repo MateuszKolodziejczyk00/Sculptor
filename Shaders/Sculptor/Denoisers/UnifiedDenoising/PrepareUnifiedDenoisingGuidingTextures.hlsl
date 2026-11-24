@@ -59,6 +59,16 @@ void PrepareUnifiedDenoisingGuidingTexturesCS(CS_INPUT input)
 {
     const uint2 pixel = input.globalID.xy;
 
+    const float depth = PARAMS_PREPARE_UNIFIED_DENOISING_GUIDING_TEXTURES->depth.Load(uint3(pixel, 0u));
+
+    if (depth == 0.f)
+    {
+        PARAMS_PREPARE_UNIFIED_DENOISING_GUIDING_TEXTURES->rwDiffuseAlbedo[pixel]  = 0.f;
+        PARAMS_PREPARE_UNIFIED_DENOISING_GUIDING_TEXTURES->rwSpecularAlbedo[pixel] = 0.f;
+        PARAMS_PREPARE_UNIFIED_DENOISING_GUIDING_TEXTURES->rwNormals[pixel]        = 0.f;
+        return;
+    }
+
     const float3 normal = DecodeGBufferNormal(PARAMS_PREPARE_UNIFIED_DENOISING_GUIDING_TEXTURES->tangentFrame.Load(uint3(pixel, 0u)));
 
     const float4 baseColorMetallic = PARAMS_PREPARE_UNIFIED_DENOISING_GUIDING_TEXTURES->baseColorMetallic.Load(uint3(pixel, 0u));
@@ -67,7 +77,6 @@ void PrepareUnifiedDenoisingGuidingTexturesCS(CS_INPUT input)
     float3 specularColor;
     ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, OUT diffuseColor, OUT specularColor);
 
-    const float depth = PARAMS_PREPARE_UNIFIED_DENOISING_GUIDING_TEXTURES->depth.Load(uint3(pixel, 0u));
     const float2 uv = (pixel + 0.5f) * PARAMS_PREPARE_UNIFIED_DENOISING_GUIDING_TEXTURES->rcpResolution;
 
     const float3 worldLocation = NDCToWorldSpace(float3(uv * 2.f - 1.f, depth), VIEW->sceneView);

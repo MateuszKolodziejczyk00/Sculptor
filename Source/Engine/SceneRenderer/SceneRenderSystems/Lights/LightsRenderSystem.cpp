@@ -16,6 +16,7 @@
 #include "Bindless/BindlessTypes.h"
 #include "Pipelines/PSOsLibraryTypes.h"
 #include "Utils/TransfersUtils.h"
+#include "RenderSceneConstants.h"
 
 namespace spt::rsc
 {
@@ -145,7 +146,7 @@ static lib::DynamicArray<math::Vector3f> CreateSpotLightProxyVertices(Uint32 bas
 
 	const Real32 angleStep = (2.f * pi<Real32>) / static_cast<Real32>(baseEdges);
 
-	const Real32 baseRadius = std::cos(angleStep * 0.5f);
+	const Real32 baseRadius = 1.f / std::cos(angleStep * 0.5f);
 
 	lib::DynamicArray<math::Vector3f> vertices;
 
@@ -173,35 +174,35 @@ static lib::DynamicArray<math::Vector3f> CreateSpotLightProxyVertices(Uint32 bas
 static lib::DynamicArray<math::Vector3f> CreatePointLightProxyVertices()
 {
 	return {
-		math::Vector3f(0.634456f, 0.634456f, 0.634456f), math::Vector3f(0.773488f, 0.000000f, 0.773488f), math::Vector3f(1.065260f, -0.000000f, 0.000000f), math::Vector3f(0.634456f, 0.634456f, 0.634456f), math::Vector3f(1.065260f, -0.000000f, 0.000000f),
-		math::Vector3f(0.773488f, 0.773488f, -0.000000f), math::Vector3f(0.773488f, 0.000000f, 0.773488f), math::Vector3f(0.634456f, -0.634456f, 0.634456f), math::Vector3f(0.773488f, -0.773488f, 0.000000f), math::Vector3f(0.773488f, 0.000000f, 0.773488f),
-		math::Vector3f(0.773488f, -0.773488f, 0.000000f), math::Vector3f(1.065260f, -0.000000f, 0.000000f), math::Vector3f(1.065260f, -0.000000f, 0.000000f), math::Vector3f(0.773488f, -0.773488f, 0.000000f), math::Vector3f(0.634456f, -0.634456f, -0.634456f),
-		math::Vector3f(1.065260f, -0.000000f, 0.000000f), math::Vector3f(0.634456f, -0.634456f, -0.634456f), math::Vector3f(0.773489f, -0.000000f, -0.773489f), math::Vector3f(0.773488f, 0.773488f, -0.000000f), math::Vector3f(1.065260f, -0.000000f, 0.000000f),
-		math::Vector3f(0.773489f, -0.000000f, -0.773489f), math::Vector3f(0.773488f, 0.773488f, -0.000000f), math::Vector3f(0.773489f, -0.000000f, -0.773489f), math::Vector3f(0.634456f, 0.634456f, -0.634456f), math::Vector3f(-0.634456f, 0.634456f, -0.634456f),
-		math::Vector3f(0.000000f, 0.773489f, -0.773488f), math::Vector3f(0.000000f, 0.000000f, -1.065260f), math::Vector3f(-0.634456f, 0.634456f, -0.634456f), math::Vector3f(0.000000f, 0.000000f, -1.065260f), math::Vector3f(-0.773488f, -0.000000f, -0.773488f),
-		math::Vector3f(0.000000f, 0.773489f, -0.773488f), math::Vector3f(0.634456f, 0.634456f, -0.634456f), math::Vector3f(0.773489f, -0.000000f, -0.773489f), math::Vector3f(0.000000f, 0.773489f, -0.773488f), math::Vector3f(0.773489f, -0.000000f, -0.773489f),
-		math::Vector3f(0.000000f, 0.000000f, -1.065260f), math::Vector3f(0.000000f, 0.000000f, -1.065260f), math::Vector3f(0.773489f, -0.000000f, -0.773489f), math::Vector3f(0.634456f, -0.634456f, -0.634456f), math::Vector3f(0.000000f, 0.000000f, -1.065260f),
-		math::Vector3f(0.634456f, -0.634456f, -0.634456f), math::Vector3f(-0.000000f, -0.773488f, -0.773489f), math::Vector3f(-0.773488f, -0.000000f, -0.773488f), math::Vector3f(0.000000f, 0.000000f, -1.065260f), math::Vector3f(-0.000000f, -0.773488f, -0.773489f),
-		math::Vector3f(-0.773488f, -0.000000f, -0.773488f), math::Vector3f(-0.000000f, -0.773488f, -0.773489f), math::Vector3f(-0.634456f, -0.634456f, -0.634456f), math::Vector3f(-0.634456f, -0.634456f, -0.634456f), math::Vector3f(-0.000000f, -0.773488f, -0.773489f),
-		math::Vector3f(0.000000f, -1.065260f, 0.000000f), math::Vector3f(-0.634456f, -0.634456f, -0.634456f), math::Vector3f(0.000000f, -1.065260f, 0.000000f), math::Vector3f(-0.773489f, -0.773488f, 0.000000f), math::Vector3f(-0.000000f, -0.773488f, -0.773489f),
-		math::Vector3f(0.634456f, -0.634456f, -0.634456f), math::Vector3f(0.773488f, -0.773488f, 0.000000f), math::Vector3f(-0.000000f, -0.773488f, -0.773489f), math::Vector3f(0.773488f, -0.773488f, 0.000000f), math::Vector3f(0.000000f, -1.065260f, 0.000000f),
-		math::Vector3f(0.000000f, -1.065260f, 0.000000f), math::Vector3f(0.773488f, -0.773488f, 0.000000f), math::Vector3f(0.634456f, -0.634456f, 0.634456f), math::Vector3f(0.000000f, -1.065260f, 0.000000f), math::Vector3f(0.634456f, -0.634456f, 0.634456f),
-		math::Vector3f(-0.000000f, -0.773489f, 0.773488f), math::Vector3f(-0.773489f, -0.773488f, 0.000000f), math::Vector3f(0.000000f, -1.065260f, 0.000000f), math::Vector3f(-0.000000f, -0.773489f, 0.773488f), math::Vector3f(-0.773489f, -0.773488f, 0.000000f),
-		math::Vector3f(-0.000000f, -0.773489f, 0.773488f), math::Vector3f(-0.634456f, -0.634456f, 0.634456f), math::Vector3f(-0.634456f, -0.634456f, 0.634456f), math::Vector3f(-0.773488f, 0.000000f, 0.773488f), math::Vector3f(-1.065260f, 0.000000f, -0.000000f),
-		math::Vector3f(-0.634456f, -0.634456f, 0.634456f), math::Vector3f(-1.065260f, 0.000000f, -0.000000f), math::Vector3f(-0.773489f, -0.773488f, 0.000000f), math::Vector3f(-0.773488f, 0.000000f, 0.773488f), math::Vector3f(-0.634456f, 0.634457f, 0.634456f),
-		math::Vector3f(-0.773488f, 0.773488f, -0.000000f), math::Vector3f(-0.773488f, 0.000000f, 0.773488f), math::Vector3f(-0.773488f, 0.773488f, -0.000000f), math::Vector3f(-1.065260f, 0.000000f, -0.000000f), math::Vector3f(-1.065260f, 0.000000f, -0.000000f),
-		math::Vector3f(-0.773488f, 0.773488f, -0.000000f), math::Vector3f(-0.634456f, 0.634456f, -0.634456f), math::Vector3f(-1.065260f, 0.000000f, -0.000000f), math::Vector3f(-0.634456f, 0.634456f, -0.634456f), math::Vector3f(-0.773488f, -0.000000f, -0.773488f),
-		math::Vector3f(-0.773489f, -0.773488f, 0.000000f), math::Vector3f(-1.065260f, 0.000000f, -0.000000f), math::Vector3f(-0.773488f, -0.000000f, -0.773488f), math::Vector3f(-0.773489f, -0.773488f, 0.000000f), math::Vector3f(-0.773488f, -0.000000f, -0.773488f),
-		math::Vector3f(-0.634456f, -0.634456f, -0.634456f), math::Vector3f(-0.634456f, 0.634457f, 0.634456f), math::Vector3f(0.000000f, 0.773488f, 0.773489f), math::Vector3f(0.000000f, 1.065260f, 0.000000f), math::Vector3f(-0.634456f, 0.634457f, 0.634456f),
-		math::Vector3f(0.000000f, 1.065260f, 0.000000f), math::Vector3f(-0.773488f, 0.773488f, -0.000000f), math::Vector3f(0.000000f, 0.773488f, 0.773489f), math::Vector3f(0.634456f, 0.634456f, 0.634456f), math::Vector3f(0.773488f, 0.773488f, -0.000000f),
-		math::Vector3f(0.000000f, 0.773488f, 0.773489f), math::Vector3f(0.773488f, 0.773488f, -0.000000f), math::Vector3f(0.000000f, 1.065260f, 0.000000f), math::Vector3f(0.000000f, 1.065260f, 0.000000f), math::Vector3f(0.773488f, 0.773488f, -0.000000f),
-		math::Vector3f(0.634456f, 0.634456f, -0.634456f), math::Vector3f(0.000000f, 1.065260f, 0.000000f), math::Vector3f(0.634456f, 0.634456f, -0.634456f), math::Vector3f(0.000000f, 0.773489f, -0.773488f), math::Vector3f(-0.773488f, 0.773488f, -0.000000f),
-		math::Vector3f(0.000000f, 1.065260f, 0.000000f), math::Vector3f(0.000000f, 0.773489f, -0.773488f), math::Vector3f(-0.773488f, 0.773488f, -0.000000f), math::Vector3f(0.000000f, 0.773489f, -0.773488f), math::Vector3f(-0.634456f, 0.634456f, -0.634456f),
-		math::Vector3f(-0.634456f, -0.634456f, 0.634456f), math::Vector3f(-0.000000f, -0.773489f, 0.773488f), math::Vector3f(0.000000f, 0.000000f, 1.065260f), math::Vector3f(-0.634456f, -0.634456f, 0.634456f), math::Vector3f(0.000000f, 0.000000f, 1.065260f),
-		math::Vector3f(-0.773488f, 0.000000f, 0.773488f), math::Vector3f(-0.000000f, -0.773489f, 0.773488f), math::Vector3f(0.634456f, -0.634456f, 0.634456f), math::Vector3f(0.773488f, 0.000000f, 0.773488f), math::Vector3f(-0.000000f, -0.773489f, 0.773488f),
-		math::Vector3f(0.773488f, 0.000000f, 0.773488f), math::Vector3f(0.000000f, 0.000000f, 1.065260f), math::Vector3f(0.000000f, 0.000000f, 1.065260f), math::Vector3f(0.773488f, 0.000000f, 0.773488f), math::Vector3f(0.634456f, 0.634456f, 0.634456f),
-		math::Vector3f(0.000000f, 0.000000f, 1.065260f), math::Vector3f(0.634456f, 0.634456f, 0.634456f), math::Vector3f(0.000000f, 0.773488f, 0.773489f), math::Vector3f(-0.773488f, 0.000000f, 0.773488f), math::Vector3f(0.000000f, 0.000000f, 1.065260f),
-		math::Vector3f(0.000000f, 0.773488f, 0.773489f), math::Vector3f(-0.773488f, 0.000000f, 0.773488f), math::Vector3f(0.000000f, 0.773488f, 0.773489f), math::Vector3f(-0.634456f, 0.634457f, 0.634456f)
+		math::Vector3f(0.689107f, 0.689107f, 0.689107f), math::Vector3f(0.840115f, 0.000000f, 0.840115f), math::Vector3f(1.157020f, -0.000000f, 0.000000f), math::Vector3f(0.689107f, 0.689107f, 0.689107f), math::Vector3f(1.157020f, -0.000000f, 0.000000f),
+		math::Vector3f(0.840115f, 0.840115f, -0.000000f), math::Vector3f(0.840115f, 0.000000f, 0.840115f), math::Vector3f(0.689107f, -0.689107f, 0.689107f), math::Vector3f(0.840115f, -0.840115f, 0.000000f), math::Vector3f(0.840115f, 0.000000f, 0.840115f),
+		math::Vector3f(0.840115f, -0.840115f, 0.000000f), math::Vector3f(1.157020f, -0.000000f, 0.000000f), math::Vector3f(1.157020f, -0.000000f, 0.000000f), math::Vector3f(0.840115f, -0.840115f, 0.000000f), math::Vector3f(0.689107f, -0.689107f, -0.689107f),
+		math::Vector3f(1.157020f, -0.000000f, 0.000000f), math::Vector3f(0.689107f, -0.689107f, -0.689107f), math::Vector3f(0.840117f, -0.000000f, -0.840117f), math::Vector3f(0.840115f, 0.840115f, -0.000000f), math::Vector3f(1.157020f, -0.000000f, 0.000000f),
+		math::Vector3f(0.840117f, -0.000000f, -0.840117f), math::Vector3f(0.840115f, 0.840115f, -0.000000f), math::Vector3f(0.840117f, -0.000000f, -0.840117f), math::Vector3f(0.689107f, 0.689107f, -0.689107f), math::Vector3f(-0.689107f, 0.689107f, -0.689107f),
+		math::Vector3f(0.000000f, 0.840117f, -0.840115f), math::Vector3f(0.000000f, 0.000000f, -1.157020f), math::Vector3f(-0.689107f, 0.689107f, -0.689107f), math::Vector3f(0.000000f, 0.000000f, -1.157020f), math::Vector3f(-0.840115f, -0.000000f, -0.840115f),
+		math::Vector3f(0.000000f, 0.840117f, -0.840115f), math::Vector3f(0.689107f, 0.689107f, -0.689107f), math::Vector3f(0.840117f, -0.000000f, -0.840117f), math::Vector3f(0.000000f, 0.840117f, -0.840115f), math::Vector3f(0.840117f, -0.000000f, -0.840117f),
+		math::Vector3f(0.000000f, 0.000000f, -1.157020f), math::Vector3f(0.000000f, 0.000000f, -1.157020f), math::Vector3f(0.840117f, -0.000000f, -0.840117f), math::Vector3f(0.689107f, -0.689107f, -0.689107f), math::Vector3f(0.000000f, 0.000000f, -1.157020f),
+		math::Vector3f(0.689107f, -0.689107f, -0.689107f), math::Vector3f(-0.000000f, -0.840115f, -0.840117f), math::Vector3f(-0.840115f, -0.000000f, -0.840115f), math::Vector3f(0.000000f, 0.000000f, -1.157020f), math::Vector3f(-0.000000f, -0.840115f, -0.840117f),
+		math::Vector3f(-0.840115f, -0.000000f, -0.840115f), math::Vector3f(-0.000000f, -0.840115f, -0.840117f), math::Vector3f(-0.689107f, -0.689107f, -0.689107f), math::Vector3f(-0.689107f, -0.689107f, -0.689107f), math::Vector3f(-0.000000f, -0.840115f, -0.840117f),
+		math::Vector3f(0.000000f, -1.157020f, 0.000000f), math::Vector3f(-0.689107f, -0.689107f, -0.689107f), math::Vector3f(0.000000f, -1.157020f, 0.000000f), math::Vector3f(-0.840117f, -0.840115f, 0.000000f), math::Vector3f(-0.000000f, -0.840115f, -0.840117f),
+		math::Vector3f(0.689107f, -0.689107f, -0.689107f), math::Vector3f(0.840115f, -0.840115f, 0.000000f), math::Vector3f(-0.000000f, -0.840115f, -0.840117f), math::Vector3f(0.840115f, -0.840115f, 0.000000f), math::Vector3f(0.000000f, -1.157020f, 0.000000f),
+		math::Vector3f(0.000000f, -1.157020f, 0.000000f), math::Vector3f(0.840115f, -0.840115f, 0.000000f), math::Vector3f(0.689107f, -0.689107f, 0.689107f), math::Vector3f(0.000000f, -1.157020f, 0.000000f), math::Vector3f(0.689107f, -0.689107f, 0.689107f),
+		math::Vector3f(-0.000000f, -0.840117f, 0.840115f), math::Vector3f(-0.840117f, -0.840115f, 0.000000f), math::Vector3f(0.000000f, -1.157020f, 0.000000f), math::Vector3f(-0.000000f, -0.840117f, 0.840115f), math::Vector3f(-0.840117f, -0.840115f, 0.000000f),
+		math::Vector3f(-0.000000f, -0.840117f, 0.840115f), math::Vector3f(-0.689107f, -0.689107f, 0.689107f), math::Vector3f(-0.689107f, -0.689107f, 0.689107f), math::Vector3f(-0.840115f, 0.000000f, 0.840115f), math::Vector3f(-1.157020f, 0.000000f, -0.000000f),
+		math::Vector3f(-0.689107f, -0.689107f, 0.689107f), math::Vector3f(-1.157020f, 0.000000f, -0.000000f), math::Vector3f(-0.840117f, -0.840115f, 0.000000f), math::Vector3f(-0.840115f, 0.000000f, 0.840115f), math::Vector3f(-0.689107f, 0.689108f, 0.689107f),
+		math::Vector3f(-0.840115f, 0.840115f, -0.000000f), math::Vector3f(-0.840115f, 0.000000f, 0.840115f), math::Vector3f(-0.840115f, 0.840115f, -0.000000f), math::Vector3f(-1.157020f, 0.000000f, -0.000000f), math::Vector3f(-1.157020f, 0.000000f, -0.000000f),
+		math::Vector3f(-0.840115f, 0.840115f, -0.000000f), math::Vector3f(-0.689107f, 0.689107f, -0.689107f), math::Vector3f(-1.157020f, 0.000000f, -0.000000f), math::Vector3f(-0.689107f, 0.689107f, -0.689107f), math::Vector3f(-0.840115f, -0.000000f, -0.840115f),
+		math::Vector3f(-0.840117f, -0.840115f, 0.000000f), math::Vector3f(-1.157020f, 0.000000f, -0.000000f), math::Vector3f(-0.840115f, -0.000000f, -0.840115f), math::Vector3f(-0.840117f, -0.840115f, 0.000000f), math::Vector3f(-0.840115f, -0.000000f, -0.840115f),
+		math::Vector3f(-0.689107f, -0.689107f, -0.689107f), math::Vector3f(-0.689107f, 0.689108f, 0.689107f), math::Vector3f(0.000000f, 0.840115f, 0.840117f), math::Vector3f(0.000000f, 1.157020f, 0.000000f), math::Vector3f(-0.689107f, 0.689108f, 0.689107f),
+		math::Vector3f(0.000000f, 1.157020f, 0.000000f), math::Vector3f(-0.840115f, 0.840115f, -0.000000f), math::Vector3f(0.000000f, 0.840115f, 0.840117f), math::Vector3f(0.689107f, 0.689107f, 0.689107f), math::Vector3f(0.840115f, 0.840115f, -0.000000f),
+		math::Vector3f(0.000000f, 0.840115f, 0.840117f), math::Vector3f(0.840115f, 0.840115f, -0.000000f), math::Vector3f(0.000000f, 1.157020f, 0.000000f), math::Vector3f(0.000000f, 1.157020f, 0.000000f), math::Vector3f(0.840115f, 0.840115f, -0.000000f),
+		math::Vector3f(0.689107f, 0.689107f, -0.689107f), math::Vector3f(0.000000f, 1.157020f, 0.000000f), math::Vector3f(0.689107f, 0.689107f, -0.689107f), math::Vector3f(0.000000f, 0.840117f, -0.840115f), math::Vector3f(-0.840115f, 0.840115f, -0.000000f),
+		math::Vector3f(0.000000f, 1.157020f, 0.000000f), math::Vector3f(0.000000f, 0.840117f, -0.840115f), math::Vector3f(-0.840115f, 0.840115f, -0.000000f), math::Vector3f(0.000000f, 0.840117f, -0.840115f), math::Vector3f(-0.689107f, 0.689107f, -0.689107f),
+		math::Vector3f(-0.689107f, -0.689107f, 0.689107f), math::Vector3f(-0.000000f, -0.840117f, 0.840115f), math::Vector3f(0.000000f, 0.000000f, 1.157020f), math::Vector3f(-0.689107f, -0.689107f, 0.689107f), math::Vector3f(0.000000f, 0.000000f, 1.157020f),
+		math::Vector3f(-0.840115f, 0.000000f, 0.840115f), math::Vector3f(-0.000000f, -0.840117f, 0.840115f), math::Vector3f(0.689107f, -0.689107f, 0.689107f), math::Vector3f(0.840115f, 0.000000f, 0.840115f), math::Vector3f(-0.000000f, -0.840117f, 0.840115f),
+		math::Vector3f(0.840115f, 0.000000f, 0.840115f), math::Vector3f(0.000000f, 0.000000f, 1.157020f), math::Vector3f(0.000000f, 0.000000f, 1.157020f), math::Vector3f(0.840115f, 0.000000f, 0.840115f), math::Vector3f(0.689107f, 0.689107f, 0.689107f),
+		math::Vector3f(0.000000f, 0.000000f, 1.157020f), math::Vector3f(0.689107f, 0.689107f, 0.689107f), math::Vector3f(0.000000f, 0.840115f, 0.840117f), math::Vector3f(-0.840115f, 0.000000f, 0.840115f), math::Vector3f(0.000000f, 0.000000f, 1.157020f),
+		math::Vector3f(0.000000f, 0.840115f, 0.840117f), math::Vector3f(-0.840115f, 0.000000f, 0.840115f), math::Vector3f(0.000000f, 0.840115f, 0.840117f), math::Vector3f(-0.689107f, 0.689108f, 0.689107f)
 	};
 }
 
@@ -375,34 +376,6 @@ static LightsInfo CreateLocalLightsData(rg::RenderGraphBuilder& graphBuilder, co
 	};
 }
 
-static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, ViewShadingParams& viewShadingParams)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
-	SPT_CHECK(shadingViewContext.dirLightShadowMask.IsValid())
-
-	viewShadingParams.shadowMask = shadingViewContext.dirLightShadowMask;
-
-	const AtmosphereRenderSystem& atmosphereSystem = rendererInterface.GetRenderSystemChecked<AtmosphereRenderSystem>();
-
-	const DirectionalLightGPUData lightGPUData = GPUDataBuilder::CreateDirectionalLightGPUData(renderScene.lighting.GetDirectionalLight(), atmosphereSystem.GetDirectionalLightIlluminance());
-
-	rdr::HLSLStorage<DirectionalLightGPUData> directionalLightData = lightGPUData;
-
-	const Uint64 directionalLightsBufferSize = sizeof(rdr::HLSLStorage<DirectionalLightGPUData>);
-	const rhi::BufferDefinition directionalLightsBufferDefinition(directionalLightsBufferSize, rhi::EBufferUsage::Storage);
-	const lib::SharedRef<rdr::Buffer> directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("View Directional Lights Buffer"), directionalLightsBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
-	rdr::UploadDataToBuffer(directionalLightsBuffer, 0, reinterpret_cast<const Byte*>(&directionalLightData), directionalLightsBufferSize);
-
-	graphBuilder.AcquireExternalBufferView(directionalLightsBuffer->GetFullView());
-
-	viewShadingParams.directionalLights = directionalLightsBuffer->GetFullView();
-
-	return 1u;
-}
-
-
 struct LightsRenderingParams
 {
 	lib::SharedPtr<rdr::Buffer> pointLightProxyVerticesBuffer;
@@ -432,11 +405,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 	lightsRenderingDataPerView.spotLightsToRenderNum  = lightsInfo.spotLightsNum;
 	lightsRenderingDataPerView.pointLightsToRenderNum = lightsInfo.pointLightsNum;
 
-	const ParticipatingMediaViewRenderSystem& pmSystem = viewSpec.GetRenderSystemChecked<ParticipatingMediaViewRenderSystem>();
-
 	ViewShadingParams viewShadingParams;
-
-	lightsData.heightFog = pmSystem.GetHeightFogParams();
 
 	if (lightsRenderingDataPerView.HasAnyLocalLightsToRender())
 	{
@@ -444,13 +413,12 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		const math::Vector2u tilesNum = (renderingRes - math::Vector2u(1, 1)) / 8 + math::Vector2u(1, 1);
 		const math::Vector2f tileSize = math::Vector2f(1.f / static_cast<Real32>(tilesNum.x()), 1.f / static_cast<Real32>(tilesNum.y()));
 
-		lightsData.localLightsNum        = localLightsNum;
-		lightsData.localLights32Num      = math::Utils::DivideCeil(localLightsNum, 32u);
-		lightsData.zClusterLength        = viewSpec.GetSettings().shading.lightsZClusterLength;
-		lightsData.zClustersNum          = zClustersNum;
-		lightsData.tilesNum              = tilesNum;
-		lightsData.tileSize              = tileSize;
-		lightsData.ambientLightIntensity = renderScene.settings.lighting.ambientIntensity;
+		lightsData.localLightsNum   = localLightsNum;
+		lightsData.localLights32Num = math::Utils::DivideCeil(localLightsNum, 32u);
+		lightsData.zClusterLength   = viewSpec.GetSettings().shading.lightsZClusterLength;
+		lightsData.zClustersNum     = zClustersNum;
+		lightsData.tilesNum         = tilesNum;
+		lightsData.tileSize         = tileSize;
 
 		rg::RGBufferViewHandle pointLightDrawCommands;
 		rg::RGBufferViewHandle pointLightDrawCommandsCount;
@@ -528,19 +496,12 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		lightsRenderingDataPerView.spotLightDrawCommandsCountBuffer = spotLightDrawCommandsCount;
 	}
 
-	const Uint32 directionalLightsNum = CreateDirectionalLightsData(graphBuilder, rendererInterface, renderScene, viewSpec, INOUT viewShadingParams);
-	lightsData.directionalLightsNum = directionalLightsNum;
-
 	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
+	SPT_CHECK(viewContext.dirLightShadowMask.IsValid());
+
+	viewShadingParams.shadowMask              = viewContext.dirLightShadowMask;
 	viewShadingParams.ambientOcclusionTexture = viewContext.ambientOcclusion;
-
-	const AtmosphereRenderSystem& atmosphereSystem = rendererInterface.GetRenderSystemChecked<AtmosphereRenderSystem>();
-	const AtmosphereContext& atmosphereContext     = atmosphereSystem.GetAtmosphereContext();
-
-	viewShadingParams.transmittanceLUT = graphBuilder.AcquireExternalTextureView(atmosphereContext.transmittanceLUT);
-	viewShadingParams.atmosphereParams = atmosphereContext.atmosphereParams;
-	
-	viewShadingParams.lightsData = lightsDataPtr;
+	viewShadingParams.lightsData              = lightsDataPtr;
 	
 	lightsRenderingDataPerView.viewShadingParams = graphBuilder.CreateGPUData(viewShadingParams);
 
@@ -574,6 +535,78 @@ LightsRenderSystem::LightsRenderSystem(lib::MemoryArena& arena, RenderScene& own
 	rdr::UploadDataToBuffer(lib::Ref(m_pointLightProxyVertices), 0u, reinterpret_cast<const Byte*>(pointLightProxyVertices.data()), pointLightProxyVertices.size() * sizeof(math::Vector3f));
 }
 
+void LightsRenderSystem::UpdateGPUSceneData(const SceneUpdateContext& context, RenderSceneConstants& sceneData)
+{
+	SPT_PROFILER_FUNCTION();
+
+	Super::UpdateGPUSceneData(context, sceneData);
+
+	const RenderScene& scene = GetOwningScene();
+
+	const SizeType localLightsNum = scene.lighting.pointLights.GetNum() + scene.lighting.spotLights.GetNum();
+
+	// Buffer is bound even if there are no local lights, so it can't be empty
+	const Uint64 localLightsDataSize = std::max<SizeType>(localLightsNum, 1u) * sizeof(rdr::HLSLStorage<LocalLightGPUData>);
+	m_sceneLocalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Scene Local Lights Buffer"), rhi::BufferDefinition(localLightsDataSize, rhi::EBufferUsage::Storage), rhi::EMemoryUsage::CPUToGPU);
+	{
+		rhi::RHIMappedBuffer<rdr::HLSLStorage<LocalLightGPUData>> localLightsData(m_sceneLocalLightsBuffer->GetRHI());
+
+		SizeType localLightIdx = 0;
+
+		const ShadowMapsRenderSystem& smSystem  = context.rendererInterface.GetRenderSystemChecked<ShadowMapsRenderSystem>();
+		const LocalLightsShadowMaps& shadowMaps = smSystem.GetLocalLightsShadowMaps();
+
+		auto shadowMapIt = shadowMaps.begin();
+
+		const auto processPointLight = [&](PointLightHandle handle, const PointLightData& pointLight)
+		{
+			LocalLightGPUData gpuLightData = GPUDataBuilder::CreatePointLightGPUData(pointLight);
+			gpuLightData.shadowMapFirstFaceIdx = idxNone<Uint32>;
+
+			if (shadowMapIt != shadowMaps.end() && shadowMapIt->first == handle)
+			{
+				gpuLightData.shadowMapFirstFaceIdx = shadowMapIt->second.shadowMapFirstFaceIdx;
+				++shadowMapIt;
+			}
+
+			localLightsData[localLightIdx++] = gpuLightData;
+		};
+
+		const auto processSpotLight = [&](SpotLightHandle handle, const SpotLightData& spotLight)
+		{
+			LocalLightGPUData gpuLightData = GPUDataBuilder::CreateSpotLightGPUData(spotLight);
+			gpuLightData.shadowMapFirstFaceIdx = idxNone<Uint32>;
+
+			localLightsData[localLightIdx++] = gpuLightData;
+		};
+
+		scene.lighting.pointLights.ForEach(processPointLight);
+		scene.lighting.spotLights.ForEach(processSpotLight);
+
+		SPT_CHECK(localLightIdx == localLightsNum);
+	}
+
+	const AtmosphereRenderSystem& atmosphereSystem = context.rendererInterface.GetRenderSystemChecked<AtmosphereRenderSystem>();
+	const AtmosphereContext& atmosphereContext     = atmosphereSystem.GetAtmosphereContext();
+	SPT_CHECK(!!atmosphereContext.directionalLightsBuffer);
+
+	SceneLightsData lightsData;
+	lightsData.heightFog                      = ParticipatingMediaViewRenderSystem::CreateHeightFogParams(scene.settings.fog);
+	lightsData.localLightsNum                 = static_cast<Uint32>(localLightsNum);
+	lightsData.directionalLightsNum           = atmosphereSystem.GetAtmosphereParams().directionalLightsNum;
+	lightsData.localLights                    = m_sceneLocalLightsBuffer->GetFullView();
+	lightsData.directionalLights              = atmosphereContext.directionalLightsBuffer->GetFullView();
+	lightsData.hasValidCloudsTransmittanceMap = atmosphereSystem.AreVolumetricCloudsEnabled();
+
+	if (lightsData.hasValidCloudsTransmittanceMap)
+	{
+		lightsData.cloudsTransmittanceViewProj = atmosphereSystem.ComputeCloudsTransmittanceMapViewProj();
+		lightsData.cloudsTransmittanceMap      = atmosphereSystem.GetCloudsTransmittanceTexture();
+	}
+
+	sceneData.lights = lightsData;
+}
+
 void LightsRenderSystem::CollectRenderViews(const SceneRendererInterface& rendererInterface, const RenderScene& renderScene, const RenderView& mainRenderView, INOUT RenderViewsCollector& viewsCollector)
 {
 	SPT_PROFILER_FUNCTION();
@@ -597,11 +630,6 @@ void LightsRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, co
 
 	for (ViewRenderingSpec* viewSpec : viewSpecs)
 	{
-		if (viewSpec->SupportsStage(ERenderStage::GlobalIllumination))
-		{
-			viewSpec->GetRenderViewEntry(ERenderViewEntry::CreateGlobalLightsDS).AddRawMember(this, &LightsRenderSystem::CacheGlobalLightsDS);
-		}
-
 		SPT_CHECK(!!viewSpec);
 		RenderPerView(graphBuilder, renderScene, *viewSpec);
 	}
@@ -690,105 +718,6 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 	ViewSpecShadingParameters shadingParams;
 	shadingParams.viewShadingParams = lightsRenderingData.viewShadingParams;
 	viewSpec.GetBlackboard().Create<ViewSpecShadingParameters>(shadingParams);
-}
-
-void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterface& rendererInterface, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context)
-{
-	const ParticipatingMediaViewRenderSystem& pmSystem = viewSpec.GetRenderSystemChecked<ParticipatingMediaViewRenderSystem>();
-
-	const SizeType localLightsNum = scene.lighting.pointLights.GetNum() + scene.lighting.spotLights.GetNum();
-
-
-	lib::SharedPtr<rdr::Buffer> localLightsBuffer;
-	{
-		// Buffer is bound even if there are no local lights, so it can't be empty
-		const Uint64 localLightsDataSize = std::max<SizeType>(localLightsNum, 1u) * sizeof(rdr::HLSLStorage<LocalLightGPUData>);
-		const rhi::BufferDefinition localLightsDataBufferDef(localLightsDataSize, rhi::EBufferUsage::Storage);
-		localLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Local Lights Buffer"), localLightsDataBufferDef, rhi::EMemoryUsage::CPUToGPU);
-		rhi::RHIMappedBuffer<rdr::HLSLStorage<LocalLightGPUData>> localLightsData(localLightsBuffer->GetRHI());
-
-		graphBuilder.AcquireExternalBufferView(localLightsBuffer->GetFullView());
-
-		SizeType localLightIdx = 0;
-
-		const ShadowMapsRenderSystem& smSystem = rendererInterface.GetRenderSystemChecked<ShadowMapsRenderSystem>();
-		const LocalLightsShadowMaps& shadowMaps =  smSystem.GetLocalLightsShadowMaps();
-	
-		auto shadowMapIt = shadowMaps.begin();
-
-		const auto processPointLight = [&](PointLightHandle handle, const PointLightData& pointLight)
-		{
-			LocalLightGPUData gpuLightData = GPUDataBuilder::CreatePointLightGPUData(pointLight);
-			gpuLightData.shadowMapFirstFaceIdx = idxNone<Uint32>;
-
-			if (shadowMapIt != shadowMaps.end() && shadowMapIt->first == handle)
-			{
-				gpuLightData.shadowMapFirstFaceIdx = shadowMapIt->second.shadowMapFirstFaceIdx;
-				++shadowMapIt;
-			}
-
-			localLightsData[localLightIdx++] = gpuLightData;
-		};
-
-		const auto processSpotLight = [&](SpotLightHandle handle, const SpotLightData& spotLight)
-		{
-			LocalLightGPUData gpuLightData = GPUDataBuilder::CreateSpotLightGPUData(spotLight);
-			gpuLightData.shadowMapFirstFaceIdx = idxNone<Uint32>;
-
-			localLightsData[localLightIdx++] = gpuLightData;
-		};
-
-		scene.lighting.pointLights.ForEach(processPointLight);
-		scene.lighting.spotLights.ForEach(processSpotLight);
-	}
-
-	const SizeType directionalLightsNum = 1u;
-
-	lib::SharedPtr<rdr::Buffer> directionalLightsBuffer;
-	{
-		const Uint64 directionalLightsDataSize = directionalLightsNum * sizeof(rdr::HLSLStorage<DirectionalLightGPUData>);
-		const rhi::BufferDefinition directionalLightsDataBufferDef(directionalLightsDataSize, rhi::EBufferUsage::Storage);
-		directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Global Directional Lights Buffer"), directionalLightsDataBufferDef, rhi::EMemoryUsage::CPUToGPU);
-		rhi::RHIMappedBuffer<rdr::HLSLStorage<DirectionalLightGPUData>> directionalLightsData(directionalLightsBuffer->GetRHI());
-
-		graphBuilder.AcquireExternalBufferView(directionalLightsBuffer->GetFullView());
-
-		const AtmosphereRenderSystem& atmosphereSystem = rendererInterface.GetRenderSystemChecked<AtmosphereRenderSystem>();
-
-		const DirectionalLightData& directionalLight   = scene.lighting.GetDirectionalLight();
-		const DirectionalLightIlluminance& illuminance = atmosphereSystem.GetDirectionalLightIlluminance();
-
-		DirectionalLightGPUData lightGPUData = GPUDataBuilder::CreateDirectionalLightGPUData(directionalLight, illuminance);
-
-		directionalLightsData[0u] = lightGPUData;
-	}
-
-	GlobalLightsParams lightsParams;
-	lightsParams.localLightsNum       = static_cast<Uint32>(localLightsNum);
-	lightsParams.directionalLightsNum = static_cast<Uint32>(directionalLightsNum);
-	lightsParams.heightFog            = pmSystem.GetHeightFogParams();
-
-	AtmosphereRenderSystem* atmosphere = rendererInterface.GetRenderSystem<AtmosphereRenderSystem>();
-	if (atmosphere && atmosphere->AreVolumetricCloudsEnabled())
-	{
-		const clouds::CloudsTransmittanceMap& cloudsTransmittanceMap = atmosphere->GetCloudsTransmittanceMap();
-
-		lightsParams.hasValidCloudsTransmittanceMap = true;
-		lightsParams.cloudsTransmittanceViewProj    = cloudsTransmittanceMap.viewProjectionMatrix;
-
-		SPT_CHECK(!!cloudsTransmittanceMap.cloudsTransmittanceTexture);
-
-		lightsParams.cloudsTransmittanceMap = cloudsTransmittanceMap.cloudsTransmittanceTexture;
-	}
-	else
-	{
-		lightsParams.hasValidCloudsTransmittanceMap = false;
-	}
-
-	lightsParams.localLights       = localLightsBuffer->GetFullView();
-	lightsParams.directionalLights = directionalLightsBuffer->GetFullView();
-
-	m_globalLightsParams = graphBuilder.CreateGPUData(lightsParams);
 }
 
 } // spt::rsc

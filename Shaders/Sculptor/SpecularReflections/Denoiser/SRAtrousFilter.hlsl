@@ -8,6 +8,7 @@
 #include "Utils/Wave.hlsli"
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 #include "SpecularReflections/Denoiser/RTDenoising.hlsli"
+#include "Shading/Shading.hlsli"
 
 
 struct CS_INPUT

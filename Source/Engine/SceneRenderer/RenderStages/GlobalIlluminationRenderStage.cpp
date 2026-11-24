@@ -12,7 +12,6 @@ void GlobalIlluminationRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilde
 {
 	SPT_PROFILER_FUNCTION();
 
-	viewSpec.GetRenderViewEntry(ERenderViewEntry::CreateGlobalLightsDS).Broadcast(graphBuilder, rendererInterface, renderScene, viewSpec, RenderViewEntryContext{});
 	viewSpec.GetRenderViewEntry(ERenderViewEntry::RenderGI).Broadcast(graphBuilder, rendererInterface, renderScene, viewSpec, RenderViewEntryContext{});
 }
 

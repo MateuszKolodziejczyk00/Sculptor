@@ -132,8 +132,8 @@ struct CloudsSampler
 
     float2 SampleDensityBase(in float3 location, in int detailLevel, in float totalH, in float4 weatherMap)
     {
-        float cloudsCoverage = weatherMap.r * 0.9f;
-        float cloudsType     = weatherMap.g;
+        float cloudsCoverage = weatherMap.r * 0.9f * params.globalCoverageMultiplier + params.globalCoverageOffset;
+        float cloudsType     = weatherMap.g * params.globalCloudsHeightMultiplier + params.globalCloudsHeightOffset;
 		float bottomType     = 1.f - weatherMap.b;
 
 		if (cloudsType < 0.001f)

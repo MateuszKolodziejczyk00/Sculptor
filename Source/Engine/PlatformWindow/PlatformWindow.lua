@@ -5,12 +5,10 @@ function PlatformWindow:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("UICore")
     self:AddPublicDependency("Input")
 
-    self:AddPrivateDependency("ImGuiGLFWBackend")
+    self:AddPrivateDependency("ImGuiWin32Backend")
 
     if platform == EPlatform.Windows then
-        self:AddPrivateDependency("GLFW")
-
-        self:AddPublicDefine("USE_GLFW=1")
+        self:AddPublicDefine("USE_WIN32=1")
     end
 end
 

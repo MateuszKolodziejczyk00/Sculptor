@@ -32,7 +32,6 @@ static rdr::PipelineStateID GetTemporalAccumulationPipeline()
 TemporalAccumulationRenderer::TemporalAccumulationRenderer()
 {
 	m_name = "Temporal Accumulation";
-	m_executesUnifiedDenoising = true;
 }
 
 Bool TemporalAccumulationRenderer::Initialize(const TemporalAAInitSettings& initSettings)
@@ -54,6 +53,8 @@ Bool TemporalAccumulationRenderer::PrepareForRendering(const TemporalAAParams& p
 	{
 		return false;
 	}
+
+	m_executesUnifiedDenoising = params.enableUnifiedDenoising;
 
 	SPT_CHECK(params.inputResolution == params.outputResolution);
 

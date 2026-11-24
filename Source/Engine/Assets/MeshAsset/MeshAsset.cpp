@@ -135,7 +135,7 @@ Bool MeshAsset::Compile()
 
 	rsc::MeshBuildParameters meshBuildParams{};
 	rsc::GLTFMeshBuilder meshBuilder(meshBuildParams);
-	meshBuilder.BuildMesh(memArena, gltfModel->meshes[sourceDef.meshIdx], *gltfModel);
+	meshBuilder.BuildMesh(memArena, (*gltfModel)->meshes[sourceDef.meshIdx]);
 	meshBuilder.Build();
 
 	rsc::MeshDefinition meshDef = meshBuilder.CreateMeshDefinition();

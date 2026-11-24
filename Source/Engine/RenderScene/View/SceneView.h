@@ -105,7 +105,7 @@ private:
 	SceneViewData			m_viewRenderingData = {};
 	SceneViewCullingData	m_viewCullingData   = {};
 
-	SceneViewData			m_prevFrameRenderingData = {};
+	SceneViewData m_prevFrameRenderingData = {};
 };
 
 } // spt::rsc

@@ -20,7 +20,7 @@ struct HeightFogSettings
 	Real32 heightAbsorption = 1.f;
 
 	[min=0, max=1]
-	Real32 phaseAnisotropy = 0.84f;
+	Real32 phaseAnisotropy = 0.55f;
 };
 
 
@@ -33,7 +33,7 @@ struct CloudsSettings
 	Real32 density = 1.f;
 
 	[min=-1, max=1]
-	Real32 coverageOffset = 0.4f;
+	Real32 coverageOffset = 0.0f;
 
 	[min=-2, max=2]
 	Real32 coverageMultiplier = 1.f;
@@ -73,6 +73,9 @@ struct CloudsSettings
 
 	[min=1, max=64]
 	Uint32 shadowsCacheResZ = 16;
+
+	[min=0, max=5]
+	Real32 cirrusCloudsDensityMultiplier;
 
 	Bool forceTransmittanceMapFullUpdates = false;
 	Bool forceHighResProbeFullUpdates     = false;

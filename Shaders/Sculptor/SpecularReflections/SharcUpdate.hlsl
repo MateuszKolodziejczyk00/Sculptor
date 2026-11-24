@@ -6,7 +6,6 @@
 [[shader_params(RenderSceneConstants, SCENE)]]
 [[shader_params(GPURenderView, VIEW)]]
 [[shader_params(SharcUpdateParams, CONSTS)]]
-[[shader_params(GlobalLightsParams, PARAMS_GLOBAL_LIGHTS)]]
 [[shader_params(CloudscapeProbesParams, PARAMS_CLOUDSCAPE_PROBES)]]
 
 #include "SpecularReflections/RTGITracingUtils.hlsli"
@@ -66,7 +65,7 @@ float3 ShadeMissRay(in float3 rayOrigin, in float3 rayDirection)
 	const CloudscapeSample cloudscapeSample = SampleHighResCloudscape(rayDirection);
 	luminance = cloudscapeSample.inScattering + luminance * cloudscapeSample.transmittance;
 
-	const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(PARAMS_GLOBAL_LIGHTS->heightFog, rayOrigin, rayOrigin + rayDirection * 1000.f);
+	const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(SCENE->lights.heightFog, rayOrigin, rayOrigin + rayDirection * 1000.f);
 	luminance *= fogTransmittance;
 
 	luminance += SampleCloudscapeInScattering(rayOrigin, rayDirection);

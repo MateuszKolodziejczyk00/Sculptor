@@ -12,9 +12,9 @@ namespace spt::rdr
 
 namespace consts
 {
-// Skip mesh shader on purpose, from some reason it tanks performance on my GPU (RTX 4080, driver 616.92)
-static constexpr rhi::EQueryStatisticsType queryFlags = lib::Flags(rhi::EQueryStatisticsType::TSInvocations, rhi::EQueryStatisticsType::TSInvocations, rhi::EQueryStatisticsType::FSInvocations, rhi::EQueryStatisticsType::CSInvocations);
-constexpr Uint32 statisticsNum = 3u;
+// Skip task and mesh shader on purpose, they serialize task/mesh work and tank performance on my GPU (RTX 4080, driver 616.92)
+static constexpr rhi::EQueryStatisticsType queryFlags = lib::Flags(/*rhi::EQueryStatisticsType::TSInvocations, rhi::EQueryStatisticsType::MSInvocations,*/ rhi::EQueryStatisticsType::FSInvocations, rhi::EQueryStatisticsType::CSInvocations);
+constexpr Uint32 statisticsNum = 2u;
 } // namespace consts
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -24,7 +24,7 @@ void GPUStatisticsScopeDefinition::EmitScopeResult(const StatisticsContext& cont
 {
 	FillScopeResultData(context, INOUT scopeData);
 
-	scopeData.children = context.statisticsData->scopesPool.EmplaceRangeUninitialized(children.size());
+	scopeData.children = context.statisticsData->scopesPool.EmplaceRange(children.size());
 
 	for (SizeType childIdx = 0u; childIdx < children.size(); ++childIdx)
 	{
@@ -114,7 +114,7 @@ void GPUStatisticsCollector::BeginScope(CommandRecorder& recoder, const lib::Has
 		if (lib::HasAnyFlag(queryFlags, EQueryFlags::Rasterization))
 		{
 			newScope.fragmentShaderInvocationsIdx	= statisticsBeginIndex + 0u;
-			newScope.taskShaderInvocationsIdx		= statisticsBeginIndex + 2u;
+			//newScope.taskShaderInvocationsIdx		= statisticsBeginIndex + 2u;
 		}
 
 		if (lib::HasAnyFlag(queryFlags, EQueryFlags::Compute))

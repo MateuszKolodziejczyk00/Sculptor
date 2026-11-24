@@ -5,13 +5,6 @@
 #include "PrefabAsset.h"
 
 
-namespace tinygltf
-{
-struct Material;
-struct Mesh;
-} // tinygltf
-
-
 namespace spt::as
 {
 

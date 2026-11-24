@@ -7,7 +7,6 @@
 #include "Common/ShaderCompilationInput.h"
 #include "SceneRenderSystems/Atmosphere/AtmosphereTypes.h"
 #include "MaterialsSubsystem.h"
-#include "SceneRenderSystems/Lights/LightsRenderSystem.h"
 #include "DDGIVolume.h"
 #include "Pipelines/PSOsLibraryTypes.h"
 #include "ConfigUtils.h"
@@ -413,14 +412,12 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 	traceRaysConsts.relitParams            = relitParams.relitParams;
 	traceRaysConsts.volumeParams           = relitParams.volumeParams;
 
-	LightsRenderSystem& lightsRenderSystem = rendererInterface.GetRenderSystemChecked<LightsRenderSystem>();
 
 	graphBuilder.TraceRays(RG_DEBUG_NAME("DDGI Trace Rays"),
 						   pipelines::DDGITraceRaysPSO::pso,
 						   math::Vector3u(probesToUpdateNum, relitParams.raysNumPerProbe, 1u),
 						   rg::ShaderParams(traceRaysConsts,
 											relitParams.ddgiGPUScene,
-											lightsRenderSystem.GetGlobalLightsParams(),
 											viewContext.cloudscapeProbesParams));
 
 	return probesTraceResultTexture;

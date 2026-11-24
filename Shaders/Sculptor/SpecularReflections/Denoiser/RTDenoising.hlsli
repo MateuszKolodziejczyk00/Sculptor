@@ -7,7 +7,7 @@ struct RTSphericalBasis
 {
 	float val;
 
-	void Encode(in float value, in float3 dir)
+	[mutating] void Encode(in float value, in float3 dir)
 	{
 		val = value;
 	}
@@ -21,28 +21,29 @@ struct RTSphericalBasis
 	{
 		return val;
 	}
-
-	RTSphericalBasis operator+(in RTSphericalBasis b)
-	{
-		RTSphericalBasis result;
-		result.val = val + b.val;
-		return result;
-	}
-	
-	RTSphericalBasis operator*(in float b)
-	{
-		RTSphericalBasis result;
-		result.val = val * b;
-		return result;
-	}
-
-	RTSphericalBasis operator/(in float b)
-	{
-		RTSphericalBasis result;
-		result.val = val / b;
-		return result;
-	}
 };
+
+
+RTSphericalBasis operator+(in RTSphericalBasis a, in RTSphericalBasis b)
+{
+	RTSphericalBasis result;
+	result.val = a.val + b.val;
+	return result;
+}
+
+RTSphericalBasis operator*(in RTSphericalBasis a, in float b)
+{
+	RTSphericalBasis result;
+	result.val = a.val * b;
+	return result;
+}
+
+RTSphericalBasis operator/(in RTSphericalBasis a, in float b)
+{
+	RTSphericalBasis result;
+	result.val = a.val / b;
+	return result;
+}
 
 
 RTSphericalBasis RawToRTSphericalBasis(in float basis)

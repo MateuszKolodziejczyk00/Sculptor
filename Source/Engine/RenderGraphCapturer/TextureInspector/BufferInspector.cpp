@@ -14,6 +14,13 @@ namespace spt::rg::capture
 namespace priv
 {
 
+constexpr Uint32 elementsPerPage = 100u;
+
+constexpr SizeType rawBytesPerWord = sizeof(Uint32);
+constexpr SizeType rawWordsPerRow  = 4u;
+constexpr SizeType rawBytesPerRow  = rawBytesPerWord * rawWordsPerRow;
+constexpr SizeType rawBytesPerPage = 1024u;
+
 Uint32 GetTypeSize(const lib::HashedString typeName)
 {
 #if SHADER_STRUCTS_RTTI
@@ -99,6 +106,78 @@ Uint32 GetTypeSize(const lib::HashedString typeName)
 	return 0u;
 }
 
+Int32 AlignToRawRow(Uint64 offset)
+{
+	return static_cast<Int32>(offset - offset % rawBytesPerRow);
+}
+
+lib::String FormatRawWord(const Byte* word, ERawDataFormat format)
+{
+	switch (format)
+	{
+	case ERawDataFormat::Hex:   return std::format("{:08X}", *reinterpret_cast<const Uint32*>(word));
+	case ERawDataFormat::Uint:  return std::format("{}", *reinterpret_cast<const Uint32*>(word));
+	case ERawDataFormat::Int:   return std::format("{}", *reinterpret_cast<const Int32*>(word));
+	case ERawDataFormat::Float: return std::format("{}", *reinterpret_cast<const Real32*>(word));
+	}
+
+	SPT_CHECK_NO_ENTRY();
+	return {};
+}
+
+template<typename TScalar>
+void DrawScalars(lib::Span<const Byte> data, Uint32 scalarsNum)
+{
+	const TScalar* values = reinterpret_cast<const TScalar*>(data.data());
+
+	lib::String text = std::format("{}", values[0]);
+	for (Uint32 idx = 1u; idx < scalarsNum; ++idx)
+	{
+		text += std::format(", {}", values[idx]);
+	}
+
+	ImGui::TextUnformatted(scalarsNum > 1u ? std::format("[ {} ]", text).c_str() : text.c_str());
+}
+
+template<typename TScalar>
+Bool TryDrawVector(lib::StringView typeName, lib::StringView scalarName, lib::Span<const Byte> data)
+{
+	if (!typeName.starts_with(scalarName))
+	{
+		return false;
+	}
+
+	const lib::StringView dimension = typeName.substr(scalarName.size());
+	if (dimension.empty())
+	{
+		DrawScalars<TScalar>(data, 1u);
+		return true;
+	}
+
+	if (dimension.size() == 1u && dimension[0] >= '2' && dimension[0] <= '4')
+	{
+		DrawScalars<TScalar>(data, static_cast<Uint32>(dimension[0] - '0'));
+		return true;
+	}
+
+	return false;
+}
+
+Bool BeginBoundDataRow(lib::StringView name, ImGuiTreeNodeFlags flags)
+{
+	ImGui::TableNextRow();
+	ImGui::TableNextColumn();
+	return ImGui::TreeNodeEx("##Row", flags | ImGuiTreeNodeFlags_SpanFullWidth, "%.*s", static_cast<Int32>(name.size()), name.data());
+}
+
+void DrawRowTypeAndOffset(const char* typeName, Uint32 offset)
+{
+	ImGui::TableSetColumnIndex(2);
+	ImGui::TextDisabled("%s", typeName);
+	ImGui::TableNextColumn();
+	ImGui::TextDisabled("0x%X", offset);
+}
+
 } // priv
 
 BufferInspector::BufferInspector(const scui::ViewDefinition& definition, RGNodeCaptureViewer& parentNodeViewer, const BufferInspectParams& inspectParams)
@@ -108,13 +187,14 @@ BufferInspector::BufferInspector(const scui::ViewDefinition& definition, RGNodeC
 	, m_boundDataPanelName(CreateUniqueName("Bound Data"))
 	, m_bufferDataPanelName(CreateUniqueName("Buffer Data"))
 {
+	m_byteViewerOffset = priv::AlignToRawRow(inspectParams.offset);
 }
 
 void BufferInspector::BuildDefaultLayout(ImGuiID dockspaceID)
 {
 	Super::BuildDefaultLayout(dockspaceID);
 
-	ui::Build(dockspaceID, ui::Split(ui::ESplit::Horizontal, 0.7f,
+	ui::Build(dockspaceID, ui::Split(ui::ESplit::Horizontal, 0.6f,
 									 ui::DockWindow(m_boundDataPanelName),
 									 ui::DockWindow(m_bufferDataPanelName)));
 }
@@ -125,140 +205,240 @@ void BufferInspector::DrawUI()
 	SPT_PROFILER_FUNCTION();
 
 	Super::DrawUI();
-	
-	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 
+	const Bool isDownloading = !!m_inspectParams.bufferVersion->downloadedBuffer;
+	const lib::Span<const Byte> bufferData = m_inspectParams.bufferVersion->bufferData;
+
+	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 	ImGui::Begin(m_boundDataPanelName.GetData());
 
-	if (m_inspectParams.bufferVersion->downloadedBuffer)
+	if (isDownloading)
 	{
-		ImGui::Text("Downloading buffer...");
+		ImGui::TextDisabled("Downloading buffer...");
 	}
 	else
 	{
-		const lib::Span<const Byte> bufferData = m_inspectParams.bufferVersion->bufferData;
-
-		if (m_inspectParams.structTypeName.IsValid() && !bufferData.empty())
-		{
-			ImGui::Columns(3);
-
-			const Uint32 typeSize = priv::GetTypeSize(m_inspectParams.structTypeName);
-			if(typeSize != 0u)
-			{
-				Uint32 beginIdx = 0u;
-				Uint32 endIdx   = 0u;
-
-				if (m_inspectParams.elementsRange.has_value())
-				{
-					beginIdx = m_inspectParams.elementsRange->first;
-					endIdx   = m_inspectParams.elementsRange->second;
-				}
-				else
-				{
-					const Uint64 viewSize = m_inspectParams.size > 0u ? m_inspectParams.size : m_inspectParams.bufferVersion->bufferData.size() - m_inspectParams.offset;
-					const Uint32 elementsNum = static_cast<Uint32>(viewSize / typeSize);
-
-					ImGui::SliderInt("Begin Idx", &m_dataViewerBeginidx, 0, std::max<Int32>(elementsNum - 100, 0));
-
-					beginIdx = static_cast<Uint32>(m_dataViewerBeginidx);
-					endIdx = std::min(beginIdx + 100u, elementsNum);
-				}
-
-				for (Uint32 idx = beginIdx; idx < endIdx; ++idx)
-				{
-					const Uint32 elemOffset = idx * typeSize;
-					const lib::String elemName = lib::String("[") + std::to_string(idx) + "]";
-					DrawStruct(elemName, m_inspectParams.structTypeName, bufferData.subspan(m_inspectParams.offset + elemOffset, typeSize), elemOffset);
-				}
-			}
-			else
-			{
-				ImGui::Text("No size data for type: %s", m_inspectParams.structTypeName.GetData());
-			}
-
-			ImGui::EndColumns();
-			ImGui::Separator();
-		}
-
-		ImGui::End();
-
-		ImGui::Begin(m_bufferDataPanelName.GetData());
-
-		ImGui::SliderInt("Byte Offset", &m_byteViewerOffset, 0, std::max(static_cast<Int32>(bufferData.size()) - 1024, 0));
-
-		ImGui::Columns(11);
-		// Display data in rows of 16 bytes
-		const SizeType end = std::min<SizeType>(bufferData.size(), m_byteViewerOffset + 1024); // limit to first 1KB for performance
-		for (SizeType i = m_byteViewerOffset; i < end; i += 16)
-		{
-			ImGui::Text("%d: ", static_cast<Uint32>(i));
-			ImGui::NextColumn();
-
-			for (SizeType j = 0; j < 4; ++j)
-			{
-				if (i + j < bufferData.size())
-				{
-					ImGui::Text("%u ", *reinterpret_cast<const Uint32*>(&bufferData[i + j * sizeof(Uint32)]));
-					ImGui::NextColumn();
-				}
-				else
-				{
-					ImGui::Text("   ");
-					ImGui::NextColumn();
-				}
-			}
-			ImGui::NextColumn();
-			for (SizeType j = 0; j < 4; ++j)
-			{
-				if (i + j < bufferData.size())
-				{
-					ImGui::Text("%f ", *reinterpret_cast<const Real32*>(&bufferData[i + j * sizeof(Real32)]));
-					ImGui::NextColumn();
-				}
-				else
-				{
-					ImGui::Text(" ");
-					ImGui::NextColumn();
-				}
-			}
-
-			if (m_inspectParams.offset >= i && m_inspectParams.offset < i + 16)
-			{
-				ImGui::SameLine();
-				ImGui::Text("<- Bound Data");
-			}
-			ImGui::NextColumn();
-		}
+		DrawBoundData(bufferData);
 	}
 
 	ImGui::End();
 
+	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
+	ImGui::Begin(m_bufferDataPanelName.GetData());
+
+	if (isDownloading)
+	{
+		ImGui::TextDisabled("Downloading buffer...");
+	}
+	else
+	{
+		DrawRawData(bufferData);
+	}
+
+	ImGui::End();
 #endif // SHADER_STRUCTS_RTTI
+}
+
+void BufferInspector::DrawBoundData(lib::Span<const Byte> bufferData)
+{
+	if (bufferData.empty() || !m_inspectParams.structTypeName.IsValid())
+	{
+		ImGui::TextDisabled("No typed data was captured for this binding");
+		return;
+	}
+
+	const Uint32 typeSize = priv::GetTypeSize(m_inspectParams.structTypeName);
+	if (typeSize == 0u)
+	{
+		ImGui::TextDisabled("No size data for type: %s", m_inspectParams.structTypeName.GetData());
+		return;
+	}
+
+	const auto& elementsRange = m_inspectParams.elementsRange;
+
+	const Uint64 viewSize    = m_inspectParams.size > 0u ? m_inspectParams.size : bufferData.size() - m_inspectParams.offset;
+	const Uint32 elementsNum = elementsRange ? elementsRange->second - elementsRange->first : static_cast<Uint32>(viewSize / typeSize);
+
+	ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_CheckMark), "%s", m_inspectParams.bufferVersion->owningBuffer->name.GetData());
+	ImGui::SameLine();
+	ImGui::TextDisabled("%s, %u elements, version %u", m_inspectParams.structTypeName.GetData(), elementsNum, m_inspectParams.bufferVersion->versionIdx);
+
+	if (!elementsRange && elementsNum > priv::elementsPerPage)
+	{
+		ImGui::SliderInt("First Element", &m_dataViewerBeginidx, 0, static_cast<Int32>(elementsNum - priv::elementsPerPage));
+	}
+
+	const Uint32 beginIdx = elementsRange ? elementsRange->first : static_cast<Uint32>(m_dataViewerBeginidx);
+	const Uint32 endIdx   = elementsRange ? elementsRange->second : std::min(beginIdx + priv::elementsPerPage, elementsNum);
+
+	const ImGuiTableFlags tableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY | ImGuiTableFlags_NoSavedSettings;
+	if (ImGui::BeginTable("##BoundData", 4, tableFlags))
+	{
+		ImGui::TableSetupScrollFreeze(0, 1);
+		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch, 0.35f);
+		ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.4f);
+		ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthStretch, 0.25f);
+		ImGui::TableSetupColumn("Offset", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableHeadersRow();
+
+		for (Uint32 idx = beginIdx; idx < endIdx; ++idx)
+		{
+			if (endIdx - beginIdx > 1u)
+			{
+				ImGui::SetNextItemOpen(false, ImGuiCond_Once);
+			}
+
+			const Uint64 elemOffset = m_inspectParams.offset + idx * typeSize;
+			DrawStruct(std::format("[{}]", idx), m_inspectParams.structTypeName, bufferData.subspan(elemOffset, typeSize), static_cast<Uint32>(elemOffset));
+		}
+
+		ImGui::EndTable();
+	}
+}
+
+void BufferInspector::DrawRawData(lib::Span<const Byte> bufferData)
+{
+	const char* formats[] = { "Hex", "Uint", "Int", "Float" };
+
+	ImGui::SetNextItemWidth(ImGui::CalcTextSize("Float").x + ImGui::GetFrameHeight() * 2.f);
+	ImGui::Combo("Format", reinterpret_cast<int*>(&m_rawDataFormat), formats, SPT_ARRAY_SIZE(formats));
+
+	const Uint64 boundBegin = m_inspectParams.offset;
+	const Uint64 boundEnd   = boundBegin + (m_inspectParams.size > 0u ? m_inspectParams.size : bufferData.size() - boundBegin);
+
+	ImGui::SameLine();
+	if (ImGui::Button("Go To Bound Data"))
+	{
+		m_byteViewerOffset = priv::AlignToRawRow(boundBegin);
+	}
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::SetTooltip("Bound range (highlighted): 0x%llX - 0x%llX", boundBegin, boundEnd);
+	}
+
+	if (ImGui::SliderInt("Byte Offset", &m_byteViewerOffset, 0, std::max(static_cast<Int32>(bufferData.size()) - static_cast<Int32>(priv::rawBytesPerPage), 0)))
+	{
+		m_byteViewerOffset = priv::AlignToRawRow(m_byteViewerOffset);
+	}
+
+	const ImGuiTableFlags tableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_ScrollY | ImGuiTableFlags_NoSavedSettings;
+	if (ImGui::BeginTable("##RawData", 1 + static_cast<Int32>(priv::rawWordsPerRow), tableFlags))
+	{
+		ImGui::TableSetupScrollFreeze(0, 1);
+		ImGui::TableSetupColumn("Offset", ImGuiTableColumnFlags_WidthFixed);
+		for (const char* wordColumn : { "+0", "+4", "+8", "+C" })
+		{
+			ImGui::TableSetupColumn(wordColumn);
+		}
+		ImGui::TableHeadersRow();
+
+		const SizeType end = std::min<SizeType>(bufferData.size(), m_byteViewerOffset + priv::rawBytesPerPage);
+		for (SizeType rowOffset = m_byteViewerOffset; rowOffset < end; rowOffset += priv::rawBytesPerRow)
+		{
+			ImGui::TableNextRow();
+
+			if (rowOffset < boundEnd && rowOffset + priv::rawBytesPerRow > boundBegin)
+			{
+				ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, ImGui::GetColorU32(ImGuiCol_Header));
+			}
+
+			ImGui::TableNextColumn();
+			ImGui::TextDisabled("%08zX", rowOffset);
+
+			for (SizeType wordIdx = 0u; wordIdx < priv::rawWordsPerRow; ++wordIdx)
+			{
+				ImGui::TableNextColumn();
+
+				const SizeType wordOffset = rowOffset + wordIdx * priv::rawBytesPerWord;
+				if (wordOffset + priv::rawBytesPerWord <= bufferData.size())
+				{
+					const Byte* word = &bufferData[wordOffset];
+					ImGui::TextUnformatted(priv::FormatRawWord(word, m_rawDataFormat).c_str());
+					if (ImGui::IsItemHovered())
+					{
+						ImGui::SetTooltip("Offset: 0x%zX\nHex: %s\nUint: %s\nInt: %s\nFloat: %s",
+										  wordOffset,
+										  priv::FormatRawWord(word, ERawDataFormat::Hex).c_str(),
+										  priv::FormatRawWord(word, ERawDataFormat::Uint).c_str(),
+										  priv::FormatRawWord(word, ERawDataFormat::Int).c_str(),
+										  priv::FormatRawWord(word, ERawDataFormat::Float).c_str());
+					}
+				}
+			}
+		}
+
+		ImGui::EndTable();
+	}
 }
 
 void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeName, lib::Span<const Byte> data, Uint32 currentOffset)
 {
 #if SHADER_STRUCTS_RTTI
-	const RGCapture& capture = m_parentNodeViewer.GetCapture();
-
 	ImGui::PushID(currentOffset);
-
-	ImGui::EndColumns();
-	ImGui::Separator();
-	ImGui::Columns(3);
-
-	ImGui::Text(name.data());
-
-	ImGui::NextColumn();
-
-	ImGui::Text("offset: %d\t\t%s", currentOffset, typeName.GetView().data());
-
-	ImGui::NextColumn();
 
 	const lib::String typeNameStr = typeName.ToString();
 
-	const rdr::ShaderStructMetaData* memberStructMetaData = rdr::ShaderStructsRegistry::GetStructMetaData(typeNameStr);
-	if (typeName == lib::HashedString("MaterialDataHandle"))
+	const rdr::ShaderStructMetaData* structMetaData = typeName == lib::HashedString("MaterialDataHandle") ? nullptr : rdr::ShaderStructsRegistry::GetStructMetaData(typeNameStr);
+	if (structMetaData)
+	{
+		const Bool isOpen = priv::BeginBoundDataRow(name, ImGuiTreeNodeFlags_DefaultOpen);
+		priv::DrawRowTypeAndOffset(typeNameStr.c_str(), currentOffset);
+
+		if (isOpen)
+		{
+			for (const rdr::ShaderStructMemberRTTI& member : structMetaData->GetRTTI().members)
+			{
+				if (member.elementsNum > 1u)
+				{
+					ImGui::PushID(member.offset);
+
+					const Bool isArrayOpen = priv::BeginBoundDataRow(std::format("{} [{}]", member.memberName, member.elementsNum), ImGuiTreeNodeFlags_None);
+					priv::DrawRowTypeAndOffset(member.memberTypeName.c_str(), currentOffset + member.offset);
+
+					if (isArrayOpen)
+					{
+						for (Uint32 i = 0u; i < member.elementsNum; ++i)
+						{
+							const Uint32 elemDataOffset = member.offset + i * member.stride;
+							DrawStruct(std::format("[{}]", i), member.memberTypeName, data.subspan(elemDataOffset, member.stride), currentOffset + elemDataOffset);
+						}
+						ImGui::TreePop();
+					}
+
+					ImGui::PopID();
+				}
+				else
+				{
+					DrawStruct(member.memberName, member.memberTypeName, data.subspan(member.offset), currentOffset + member.offset);
+				}
+			}
+			ImGui::TreePop();
+		}
+	}
+	else
+	{
+		priv::BeginBoundDataRow(name, ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+		ImGui::TableNextColumn();
+		DrawValue(typeNameStr, data);
+		priv::DrawRowTypeAndOffset(typeNameStr.c_str(), currentOffset);
+	}
+
+	ImGui::PopID();
+#endif // SHADER_STRUCTS_RTTI
+}
+
+void BufferInspector::DrawValue(const lib::String& typeName, lib::Span<const Byte> data)
+{
+	if (priv::TryDrawVector<Uint32>(typeName, "uint", data)
+		|| priv::TryDrawVector<Int32>(typeName, "int", data)
+		|| priv::TryDrawVector<Real32>(typeName, "float", data))
+	{
+		return;
+	}
+
+	const RGCapture& capture = m_parentNodeViewer.GetCapture();
+
+	if (typeName == "MaterialDataHandle")
 	{
 		if (ImGui::BeginPopup("Material Data Selection"))
 		{
@@ -291,7 +471,7 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 			ImGui::EndPopup();
 		}
 
-		if(ImGui::Button(name.data()))
+		if (ImGui::SmallButton("Open"))
 		{
 			const CapturedPass& pass = m_parentNodeViewer.GetCapturedPass();
 
@@ -308,138 +488,48 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 
 		ImGui::Text("Handle ID: %u", *reinterpret_cast<const Uint16*>(data.data()));
 	}
-	else if (memberStructMetaData)
+	else if (typeName == "float4x4")
 	{
-		const rdr::ShaderStructRTTI& rtti = memberStructMetaData->GetRTTI();
-		ImGui::Indent();
-		ImGui::PushID(currentOffset);
-		for (const rdr::ShaderStructMemberRTTI& member : rtti.members)
+		for (Uint32 rowIdx = 0u; rowIdx < 4u; ++rowIdx)
 		{
-			ImGui::NextColumn();
-
-			const Bool isArray = member.elementsNum > 1;
-			if (isArray)
-			{
-				for(Uint32 i = 0; i < member.elementsNum; ++i)
-				{
-					const lib::String elemName = lib::String("[") + std::to_string(i) + "]";
-					const Uint32 elemOffset = currentOffset + member.offset + i * member.stride;
-					DrawStruct(elemName.c_str(), member.memberTypeName, data.subspan(member.offset + i * member.stride, member.stride), elemOffset);
-				}
-			}
-			else
-			{
-				DrawStruct(member.memberName, member.memberTypeName, data.subspan(member.offset), currentOffset + member.offset);
-			}
+			priv::DrawScalars<Real32>(data.subspan(rowIdx * 4u * sizeof(Real32)), 4u);
 		}
-		ImGui::Unindent();
-		ImGui::PopID();
 	}
-	else if (typeName == lib::HashedString("uint"))
+	else if (typeName == "uint16_t")
 	{
-		const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());
-		ImGui::Text("%u", typedData[0]);
+		priv::DrawScalars<Uint16>(data, 1u);
 	}
-	else if (typeName == lib::HashedString("uint2"))
+	else if (typeName == "bool")
 	{
-		const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());
-		ImGui::Text("[ %u, %u ]", typedData[0], typedData[1]);
+		ImGui::TextUnformatted(*reinterpret_cast<const Uint32*>(data.data()) > 0u ? "True" : "False");
 	}
-	else if (typeName == lib::HashedString("uint3"))
-	{
-		const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());
-		ImGui::Text("[ %u, %u, %u ]", typedData[0], typedData[1], typedData[2]);
-	}
-	else if (typeName == lib::HashedString("uint4"))
-	{
-		const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());
-		ImGui::Text("[ %u, %u, %u, %u ]", typedData[0], typedData[1], typedData[2], typedData[3]);
-	}
-	else if (typeName == lib::HashedString("int"))
-	{
-		const Int32* typedData = reinterpret_cast<const Int32*>(data.data());
-		ImGui::Text("%d", typedData[0]);
-	}
-	else if (typeName == lib::HashedString("int2"))
-	{
-		const Int32* typedData = reinterpret_cast<const Int32*>(data.data());
-		ImGui::Text("[ %d, %d ]", typedData[0], typedData[0 + 1]);
-	}
-	else if (typeName == lib::HashedString("int3"))
-	{
-		const Int32* typedData = reinterpret_cast<const Int32*>(data.data());
-		ImGui::Text("[ %d, %d, %d ]", typedData[0], typedData[1], typedData[2]);
-	}
-	else if (typeName == lib::HashedString("int4"))
-	{
-		const Int32* typedData = reinterpret_cast<const Int32*>(data.data());
-		ImGui::Text("[ %d, %d, %d, %d ]", typedData[0], typedData[1], typedData[2], typedData[3]);
-	}
-	else if (typeName == lib::HashedString("float"))
-	{
-		const Real32* typedData = reinterpret_cast<const Real32*>(data.data());
-		ImGui::Text("%f", typedData[0]);
-	}
-	else if (typeName == lib::HashedString("float2"))
-	{
-		const Real32* typedData = reinterpret_cast<const Real32*>(data.data());
-		ImGui::Text("[ %f, %f ]", typedData[0], typedData[0 + 1]);
-	}
-	else if (typeName == lib::HashedString("float3"))
-	{
-		const Real32* typedData = reinterpret_cast<const Real32*>(data.data());
-		ImGui::Text("[ %f, %f, %f ]", typedData[0], typedData[1], typedData[2]);
-	}
-	else if (typeName == lib::HashedString("float4"))
-	{
-		const Real32* typedData = reinterpret_cast<const Real32*>(data.data());
-		ImGui::Text("[ %f, %f, %f, %f ]", typedData[0], typedData[1], typedData[2], typedData[3]);
-	}
-	else if (typeName == lib::HashedString("float4x4"))
-	{
-		const Real32* typedData = reinterpret_cast<const Real32*>(data.data());
-		ImGui::Text("%f, %f, %f, %f", typedData[0], typedData[0 * 16 + 1], typedData[0 * 16 + 2], typedData[0 * 16 + 3]);
-		ImGui::Text("%f, %f, %f, %f", typedData[4], typedData[0 * 16 + 5], typedData[0 * 16 + 6], typedData[0 * 16 + 7]);
-		ImGui::Text("%f, %f, %f, %f", typedData[8], typedData[0 * 16 + 9], typedData[0 * 16 + 10], typedData[0 * 16 + 11]);
-		ImGui::Text("%f, %f, %f, %f", typedData[12], typedData[0 * 16 + 13], typedData[0 * 16 + 14], typedData[0 * 16 + 15]);
-	}
-	else if (typeName == lib::HashedString("uint16_t"))
-	{
-		const Uint16* typedData = reinterpret_cast<const Uint16*>(data.data());
-		ImGui::Text("[ %u ]", Uint32(typedData[0]));
-	}
-	else if (typeName == lib::HashedString("bool"))
-	{
-		const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());
-		ImGui::Text(typedData[0] > 0 ? "True" : "False");
-	}
-	else if (typeName == lib::HashedString("NamedBufferDescriptorIdx"))
+	else if (typeName == "NamedBufferDescriptorIdx")
 	{
 		const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());
 		const Uint32 descriptorIdx = typedData[0];
 
 		if (descriptorIdx != idxNone<Uint32>)
 		{
-		const auto bufferIt = capture.descriptorIdxToBuffer.find(descriptorIdx);
-		const CapturedBuffer* capturedBuffer = bufferIt != capture.descriptorIdxToBuffer.cend() ? bufferIt->second : nullptr;
-		if (capturedBuffer)
-		{
-			if (ImGui::Button(capturedBuffer->name.GetData()))
+			const auto bufferIt = capture.descriptorIdxToBuffer.find(descriptorIdx);
+			const CapturedBuffer* capturedBuffer = bufferIt != capture.descriptorIdxToBuffer.cend() ? bufferIt->second : nullptr;
+			if (capturedBuffer)
 			{
-				// TODO
+				if (ImGui::SmallButton(capturedBuffer->name.GetData()))
+				{
+					// TODO
+				}
+			}
+			else
+			{
+				ImGui::TextDisabled("Unknown buffer");
 			}
 		}
 		else
 		{
-			ImGui::Text("Unknown buffer");
-		}
-		}
-		else
-		{
-			ImGui::Text("Null Descriptor");
+			ImGui::TextDisabled("Null Descriptor");
 		}
 	}
-	else if (typeNameStr.starts_with("UAVTexture") || typeNameStr.starts_with("SRVTexture"))
+	else if (typeName.starts_with("UAVTexture") || typeName.starts_with("SRVTexture"))
 	{
 		const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());
 		const Uint32 descriptorIdx = typedData[0];
@@ -450,7 +540,7 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 			const CapturedTexture* capturedTexture = textureIt != capture.descriptorIdxToTexture.cend() ? textureIt->second : nullptr;
 			if (capturedTexture)
 			{
-				if (ImGui::Button(capturedTexture->name.GetData()))
+				if (ImGui::SmallButton(capturedTexture->name.GetData()))
 				{
 					const CapturedPass& pass = m_parentNodeViewer.GetCapturedPass();
 					// Find binding for this texture in current pass
@@ -478,25 +568,25 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 			}
 			else
 			{
-				ImGui::Text("Unknown texture");
+				ImGui::TextDisabled("Unknown texture");
 			}
 		}
 		else
 		{
-			ImGui::Text("Null Descriptor");
+			ImGui::TextDisabled("Null Descriptor");
 		}
 	}
-	else if (typeNameStr.starts_with("GPUNamedElemPtr"))
+	else if (typeName.starts_with("GPUNamedElemPtr"))
 	{
-		SizeType namedBufferBegin = typeNameStr.find('_');
+		SizeType namedBufferBegin = typeName.find('_');
 		SPT_CHECK(namedBufferBegin != lib::String::npos);
 		namedBufferBegin += 1u;
 
-		const SizeType namedBufferEnd = typeNameStr.find(',');
+		const SizeType namedBufferEnd = typeName.find(',');
 		SPT_CHECK(namedBufferEnd != lib::String::npos);
 		SPT_CHECK(namedBufferEnd > namedBufferBegin);
 
-		const lib::HashedString namedBuffer = typeNameStr.substr(namedBufferBegin, namedBufferEnd - namedBufferBegin);
+		const lib::HashedString namedBuffer = typeName.substr(namedBufferBegin, namedBufferEnd - namedBufferBegin);
 
 		const CapturedPass& pass = m_parentNodeViewer.GetCapturedPass();
 		const auto foundNamedBuffer = pass.namedBuffersCaptures.find(namedBuffer);
@@ -504,7 +594,7 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 		{
 			const CapturedBufferBinding& buffer = pass.buffers[foundNamedBuffer->second];
 
-			if (ImGui::Button(name.data()))
+			if (ImGui::SmallButton("Open"))
 			{
 				const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());
 
@@ -520,17 +610,17 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 
 		ImGui::Text("Element Idx: %u", *reinterpret_cast<const Uint32*>(data.data()));
 	}
-	else if (typeNameStr.starts_with("GPUNamedElemsSpan"))
+	else if (typeName.starts_with("GPUNamedElemsSpan"))
 	{
-		SizeType namedBufferBegin = typeNameStr.find('_');
+		SizeType namedBufferBegin = typeName.find('_');
 		SPT_CHECK(namedBufferBegin != lib::String::npos);
 		namedBufferBegin += 1u;
 
-		const SizeType namedBufferEnd = typeNameStr.find(',');
+		const SizeType namedBufferEnd = typeName.find(',');
 		SPT_CHECK(namedBufferEnd != lib::String::npos);
 		SPT_CHECK(namedBufferEnd > namedBufferBegin);
 
-		const lib::HashedString namedBuffer = typeNameStr.substr(namedBufferBegin, namedBufferEnd - namedBufferBegin);
+		const lib::HashedString namedBuffer = typeName.substr(namedBufferBegin, namedBufferEnd - namedBufferBegin);
 
 		const CapturedPass& pass = m_parentNodeViewer.GetCapturedPass();
 		const auto foundNamedBuffer = pass.namedBuffersCaptures.find(namedBuffer);
@@ -538,7 +628,7 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 		{
 			const CapturedBufferBinding& buffer = pass.buffers[foundNamedBuffer->second];
 
-			if (ImGui::Button(name.data()))
+			if (ImGui::SmallButton("Open"))
 			{
 				const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());
 
@@ -554,15 +644,15 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 
 		ImGui::Text("Begin Idx: %u, Size: %u", *reinterpret_cast<const Uint32*>(data.data()), *reinterpret_cast<const Uint32*>(data.data() + sizeof(Uint32)));
 	}
-	else if (typeNameStr.starts_with("NamedBufferDescriptor") || typeNameStr.starts_with("TypedBuffer"))
+	else if (typeName.starts_with("NamedBufferDescriptor") || typeName.starts_with("TypedBuffer"))
 	{
-		if (ImGui::Button(name.data()))
+		if (ImGui::SmallButton("Open"))
 		{
-			SizeType typeBegin = typeNameStr.find('<');
+			SizeType typeBegin = typeName.find('<');
 			SPT_CHECK(typeBegin != lib::String::npos);
 			typeBegin += 1u;
 
-			const SizeType typeEnd = typeNameStr.find('>');
+			const SizeType typeEnd = typeName.find('>');
 			SPT_CHECK(typeEnd != lib::String::npos);
 			SPT_CHECK(typeEnd > typeBegin);
 
@@ -574,7 +664,7 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 			{
 				const CapturedBuffer& capturedBuffer = *foundBuffer->second;
 
-				lib::HashedString structTypeName = typeNameStr.substr(typeBegin, typeEnd - typeBegin);
+				lib::HashedString structTypeName = typeName.substr(typeBegin, typeEnd - typeBegin);
 
 				BufferInspectParams inspectParams;
 				inspectParams.bufferVersion  = capturedBuffer.versions.front().get();
@@ -585,11 +675,8 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 	}
 	else
 	{
-		ImGui::Text("Unsupported type");
+		ImGui::TextDisabled("Unsupported type");
 	}
-
-	ImGui::PopID();
-#endif // SHADER_STRUCTS_RTTI
 }
 
 } // spt::rg::capture

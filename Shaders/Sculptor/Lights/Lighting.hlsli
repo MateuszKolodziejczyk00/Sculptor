@@ -12,6 +12,10 @@
 
 #ifdef PARAM_ViewShadingParams
 
+#ifndef PARAM_RenderSceneConstants
+#error "View shading requires scene constants (directional lights and height fog)"
+#endif // PARAM_RenderSceneConstants
+
 // Based on https://themaister.net/blog/2020/01/10/clustered-shading-evolution-in-granite/
 uint ClusterMaskRange(uint mask, uint2 range, uint startIdx)
 {
@@ -34,9 +38,9 @@ void CalcReflectedLuminance<TLightingAccumulator : ILightingAccumulator>(in Shad
 	// Directional Lights
 
 	{
-		for (uint i = 0; i < PARAM_ViewShadingParams->lightsData->directionalLightsNum; ++i)
+		for (uint i = 0; i < SCENE->lights.directionalLightsNum; ++i)
 		{
-			const DirectionalLightGPUData directionalLight = PARAM_ViewShadingParams->directionalLights[i];
+			const DirectionalLightGPUData directionalLight = SCENE->lights.directionalLights[i];
 
 			const float3 illuminance = directionalLight.illuminance;
 
@@ -46,7 +50,7 @@ void CalcReflectedLuminance<TLightingAccumulator : ILightingAccumulator>(in Shad
 
 				if(visibility > 0.f)
 				{
-					const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(PARAM_ViewShadingParams->lightsData->heightFog, geometry.location, geometry.location - directionalLight.direction * 1500.f);
+					const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(SCENE->lights.heightFog, geometry.location, geometry.location - directionalLight.direction * 1500.f);
 
 					const float attenuation = fogTransmittance * visibility;
 					const LightingContribution shadingRes = CalcLighting(surface, -directionalLight.direction, viewDir, illuminance) * attenuation;
@@ -64,7 +68,6 @@ void CalcReflectedLuminance<TLightingAccumulator : ILightingAccumulator>(in Shad
 	const uint2 clusterRange = clusterIdx < PARAM_ViewShadingParams->lightsData->zClustersNum ? PARAM_ViewShadingParams->clustersRanges[clusterIdx] : uint2(0u, 0u);
 	
 	{
-
 		for(uint i = 0; i < PARAM_ViewShadingParams->lightsData->localLights32Num; ++i)
 		{
 			uint lightsMask = PARAM_ViewShadingParams->tilesLightsMask[tileLightsDataOffset + i];
@@ -178,9 +181,9 @@ float3 ComputeDirectionalLightsInScattering(in InScatteringParams params)
 {
 	float3 inScattering = 0.f;
 
-	for (uint i = 0; i < PARAM_ViewShadingParams->lightsData->directionalLightsNum; ++i)
+	for (uint i = 0; i < SCENE->lights.directionalLightsNum; ++i)
 	{
-		const DirectionalLightGPUData directionalLight = PARAM_ViewShadingParams->directionalLights[i];
+		const DirectionalLightGPUData directionalLight = SCENE->lights.directionalLights[i];
 
 		const float3 illuminance = directionalLight.illuminance;
 
@@ -204,26 +207,38 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 	const uint clusterIdx = params.linearDepth / PARAM_ViewShadingParams->lightsData->zClusterLength;
 	const uint2 clusterRange = clusterIdx < PARAM_ViewShadingParams->lightsData->zClustersNum ? PARAM_ViewShadingParams->clustersRanges[clusterIdx] : uint2(0u, 0u);
 	
+	// Lights are culled once per wave against the bounds of all lanes' locations, so that the shading loop below is wave-uniform
+	const float3 waveBoundsMin = WaveActiveMin(params.worldLocation);
+	const float3 waveBoundsMax = WaveActiveMax(params.worldLocation);
+
+	const uint activeLanesNum = WaveActiveCountBits(true);
+	const uint laneRank = WavePrefixCountBits(true);
+
 	for(uint i = 0; i < PARAM_ViewShadingParams->lightsData->localLights32Num; ++i)
 	{
-		uint lightsMask = PARAM_ViewShadingParams->tilesLightsMask[tileLightsDataOffset + i];
-		lightsMask = ClusterMaskRange(lightsMask, clusterRange, i << 5u);
+		const uint candidatesMask = WaveActiveBitOr(ClusterMaskRange(PARAM_ViewShadingParams->tilesLightsMask[tileLightsDataOffset + i], clusterRange, i << 5u));
+
+		uint lightsMask = 0u;
+		for (uint bitIdx = laneRank; WaveActiveAnyTrue(bitIdx < 32u); bitIdx += activeLanesNum)
+		{
+			bool isLightVisible = false;
+			if (bitIdx < 32u && (candidatesMask & (1u << bitIdx)) != 0u)
+			{
+				const LocalLightInterface candidateLight = PARAM_ViewShadingParams->localLights[i * 32u + bitIdx];
+				const float3 closestPoint = clamp(candidateLight.location, waveBoundsMin, waveBoundsMax);
+				isLightVisible = candidateLight.ContributesToScattering() && Dist2(closestPoint, candidateLight.location) < Pow2(candidateLight.range);
+			}
+			lightsMask |= WaveActiveBitOr(isLightVisible ? (1u << bitIdx) : 0u);
+		}
 
 		while(lightsMask)
 		{
 			const uint maskBitIdx = firstbitlow(lightsMask);
+			lightsMask &= ~(1u << maskBitIdx);
 
-			const uint lightIdx = i * 32 + maskBitIdx;
-			const LocalLightInterface localLight = PARAM_ViewShadingParams->localLights[lightIdx];
-
-			if (!localLight.ContributesToScattering())
-			{
-				lightsMask &= ~(1u << maskBitIdx);
-				continue;
-			}
+			const LocalLightInterface localLight = PARAM_ViewShadingParams->localLights[i * 32u + maskBitIdx];
 
 			const float3 toLight = localLight.location - params.worldLocation;
-
 			const float distToLight = length(toLight);
 
 			if(distToLight < localLight.range)
@@ -245,8 +260,6 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 					}
 				}
 			}
-
-			lightsMask &= ~(1u << maskBitIdx);
 		}
 	}
 
@@ -255,9 +268,7 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 	return inScattering;
 }
 
-#endif // PARAM_ViewShadingParams
-
-#ifdef PARAM_GlobalLightsParams
+#elif defined(PARAM_RenderSceneConstants)
 
 struct ShadowRayPayload
 {
@@ -272,26 +283,26 @@ float3 CalcReflectedLuminance_Direct(in ShadedSurface surface, in SurfaceGeometr
 	// Directional Lights
 
 	{
-		for (uint i = 0; i < PARAM_GlobalLightsParams->directionalLightsNum; ++i)
+		for (uint i = 0; i < SCENE->lights.directionalLightsNum; ++i)
 		{
-			const DirectionalLightGPUData directionalLight = PARAM_GlobalLightsParams->directionalLights[i];
+			const DirectionalLightGPUData directionalLight = SCENE->lights.directionalLights[i];
 
 			float3 lightIlluminance = directionalLight.illuminance;
 
 			float cloudsTransmittance = 1.f;
-			if(i == 0u && PARAM_GlobalLightsParams->hasValidCloudsTransmittanceMap)
+			if(i == 0u && SCENE->lights.hasValidCloudsTransmittanceMap)
 			{
-				const float4 ctmCS = mul(PARAM_GlobalLightsParams->cloudsTransmittanceViewProj, float4(geometry.location, 1.f));
+				const float4 ctmCS = mul(SCENE->lights.cloudsTransmittanceViewProj, float4(geometry.location, 1.f));
 				if(all(ctmCS.xy <= ctmCS.w) && all(ctmCS.xy >= -ctmCS.w))
 				{
 					const float2 ctmUV = (ctmCS.xy / ctmCS.w) *	0.5f + 0.5f;
-					cloudsTransmittance = PARAM_GlobalLightsParams->cloudsTransmittanceMap.SampleLevel(BindlessSamplers::LinearClampEdge(), ctmUV, 0.f);
+					cloudsTransmittance = SCENE->lights.cloudsTransmittanceMap.SampleLevel(BindlessSamplers::LinearClampEdge(), ctmUV, 0.f);
 				}
 			}
 
 			lightIlluminance *= cloudsTransmittance;
 
-			const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(PARAM_GlobalLightsParams->heightFog, geometry.location, geometry.location - directionalLight.direction * 1500.f);
+			const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(SCENE->lights.heightFog, geometry.location, geometry.location - directionalLight.direction * 1500.f);
 			lightIlluminance *= fogTransmittance;
 
 			if (any(lightIlluminance > 0.f) && dot(-directionalLight.direction, surface.normal) > 0.f)
@@ -314,9 +325,9 @@ float3 CalcReflectedLuminance_Direct(in ShadedSurface surface, in SurfaceGeometr
 	// Local Lights
 
 	{
-		for(uint lightIdx = 0; lightIdx < PARAM_GlobalLightsParams->localLightsNum; ++lightIdx)
+		for(uint lightIdx = 0; lightIdx < SCENE->lights.localLightsNum; ++lightIdx)
 		{
-			const LocalLightInterface localLight = PARAM_GlobalLightsParams->localLights[lightIdx];
+			const LocalLightInterface localLight = SCENE->lights.localLights[lightIdx];
 
 			if (!localLight.ContributesToDI())
 			{
@@ -401,4 +412,4 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in SurfaceGeometry geome
 			);
 }
 
-#endif // PARAM_GlobalLightsParams
+#endif // PARAM_ViewShadingParams / PARAM_RenderSceneConstants

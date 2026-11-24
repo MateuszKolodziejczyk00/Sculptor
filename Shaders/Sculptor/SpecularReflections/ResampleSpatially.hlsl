@@ -172,7 +172,7 @@ void ResampleSpatiallyCS(CS_INPUT input)
 		return;
 	}
 
-	if(centerPixelSurface.roughness <= RTClosure::RoughnessDeltaThreshold)
+	if(centerPixelSurface.roughness < RTClosure::RoughnessNoResamplingThreshold)
 	{
 		PARAMS_S_R_SPATIAL_RESAMPLING->outReservoirsBuffer[reservoirIdx] = packedReservoir;
 		return;

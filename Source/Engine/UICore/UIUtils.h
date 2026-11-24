@@ -26,6 +26,11 @@ class UI_CORE_API UIUtils
 {
 public:
 
+	static void InitializeStyle();
+
+	// Must be called after all windows are submitted, before ImGui::Render()
+	static void DrawDockTabsAccent();
+
 	static math::Vector2f GetWindowContentSize();
 
 	static void SetShortcut(ui::UIContext uiContext, ImGuiID itemID, const ShortcutBinding& binding);

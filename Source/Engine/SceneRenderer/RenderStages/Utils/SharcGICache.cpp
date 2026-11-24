@@ -7,7 +7,6 @@
 #include "Utils/ViewRenderingSpec.h"
 #include "RenderGraphBuilder.h"
 #include "RenderScene.h"
-#include "SceneRenderSystems/Lights/LightsRenderSystem.h"
 #include "FileSystem/File.h"
 #include "Common/ShaderCompilationEnvironment.h"
 #include "SceneRenderSystems/DDGi/DDGIRenderSystem.h"
@@ -227,7 +226,6 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 	updateParams.voxelDataPrev            = prevVoxelDataView;
 	updateParams.sharcConstants           = shaderConstants;
 
-	const LightsRenderSystem& lightsRenderSystem   = rendererInterface.GetRenderSystemChecked<LightsRenderSystem>();
 	const ddgi::DDGIRenderSystem& ddgiRenderSystem = rendererInterface.GetRenderSystemChecked<ddgi::DDGIRenderSystem>();
 
 	const SharcShadersPermutation permutation = GetShadersPermutation(settings);
@@ -235,7 +233,7 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const SceneRende
 	graphBuilder.TraceRays(RG_DEBUG_NAME("Update Sharc GI Cache"),
 						   sharc_passes::SharcUpdatePSO::GetPermutation(permutation),
 						   tracesNum,
-						   rg::ShaderParams(updateParams, ddgiRenderSystem.GetDDGIGPUScene(), lightsRenderSystem.GetGlobalLightsParams(), viewContext.cloudscapeProbesParams));
+						   rg::ShaderParams(updateParams, ddgiRenderSystem.GetDDGIGPUScene(), viewContext.cloudscapeProbesParams));
 
 	sharc_passes::SharcResolveParams resolveParams;
 	resolveParams.hashEntries    = m_hashEntriesBuffer->GetFullView();

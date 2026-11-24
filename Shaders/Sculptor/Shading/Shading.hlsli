@@ -80,6 +80,7 @@ interface IClosure
 struct OpaqueClosure : IClosure
 {
 	static float RoughnessDeltaThreshold = 0.01f;
+	static float RoughnessNoResamplingThreshold = 0.1f;
 
 	static BRDFLobes Evaluate<let allowDeltaBRDF : bool>(in ShadedSurface surface, in float3 viewDir, in float3 lightDir)
 	{
@@ -231,10 +232,17 @@ struct OpaqueClosure : IClosure
 		const float3 clearCoatThroughput = 1.f - clearCoatEnvBRDF;
 		const float3 specularThroughput = (1.f - envBRDF);
 	
-		const float clearCoatLum = Luminance(clearCoatEnvBRDF);
-		const float specLum = Luminance(envBRDF * clearCoatThroughput);
-		const float diffLum = Luminance(surface.albedo * specularThroughput * clearCoatThroughput);
+		//const float clearCoatLum = Luminance(clearCoatEnvBRDF);
+		//const float specLum = Luminance(envBRDF * clearCoatThroughput);
+		//const float diffLum = Luminance(surface.albedo * specularThroughput * clearCoatThroughput);
+		//const float totalLum = specLum + diffLum + clearCoatLum;
+
+		const float clearCoatLum = Luminance(clearCoatEnvBRDF) * (1.f + 4.f * Pow2(1.f - surface.clearCoatRoughness));
+		const float specLum      = Luminance(envBRDF * clearCoatThroughput) * (1.f + 4.f * Pow2(1.f - surface.roughness));
+		const float diffLum      = Luminance(surface.albedo * specularThroughput * clearCoatThroughput);
 		const float totalLum = specLum + diffLum + clearCoatLum;
+
+		//const float diffuseProbability = diffLum > 0.f ? clamp(diffLum / totalLum, 0.05f, 0.9f) : 0.f;
 	
 		if (totalLum <= 0.f)
 		{

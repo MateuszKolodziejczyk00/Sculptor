@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
 [[shader_params(GPURenderView, VIEW)]]
-[[shader_params(CloudscapeConstants, PARAMS_CLOUDSCAPE)]]
+[[shader_params(CloudscapeConstants, COUDSCAPE)]]
 
 [[shader_params(RenderCirrusCloudsConstants, PARAMS_RENDER_CIRRUS_CLOUDS_CONSTANTS)]]
 

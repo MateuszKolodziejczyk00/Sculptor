@@ -53,8 +53,8 @@ public:
 
 	using Handle = PagedGenerationalPoolHandle<TType>;
 
-	PagedGenerationalPool(const char* memoryArenaName, Uint32 commitedNumElements = 128u, Uint32 reservedNumElements = 32u * 1024u)
-		: m_pagesArena("RTSceneInstancesStorage_PagesArena", math::Utils::DivideCeil<Uint32>(commitedNumElements, 64u) * sizeof(Page), math::Utils::DivideCeil<Uint32>(reservedNumElements, 64u) * sizeof(Page))
+	PagedGenerationalPool(const char* memoryArenaName, Uint32 commitedNumElements = 128u, Uint32 reservedNumElements = 128u * 1024u)
+		: m_pagesArena("Paged Arena", math::Utils::DivideCeil<Uint32>(commitedNumElements, 64u) * sizeof(Page), math::Utils::DivideCeil<Uint32>(reservedNumElements, 64u) * sizeof(Page))
 	{
 		const Uint64 initialNumPages = math::Utils::DivideCeil(commitedNumElements, 64u);
 

@@ -1,16 +1,16 @@
 #pragma once
 
 
-#if USE_GLFW
+#if USE_WIN32
 
 namespace spt::platf
 {
 
-class GLFWWindow;
+class Win32Window;
 
-using PlatformWindow = GLFWWindow;
+using PlatformWindow = Win32Window;
 
 
 } // spt::plat
 
-#endif // USE_GLFW
+#endif // USE_WIN32

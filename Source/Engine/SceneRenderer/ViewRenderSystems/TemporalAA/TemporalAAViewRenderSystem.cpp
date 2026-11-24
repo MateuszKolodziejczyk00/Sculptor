@@ -2,7 +2,6 @@
 #include "Utils/ViewRenderingSpec.h"
 #include "Techniques/TemporalAA/TemporalAATypes.h"
 #include "RenderGraphBuilder.h"
-#include "SceneRenderer/RenderStages/Utils/RTReflectionsTypes.h"
 #include "ResourcesManager.h"
 
 
@@ -68,13 +67,13 @@ gfx::UnifiedDenoisingParams PrepareGuidingTextures(rg::RenderGraphBuilder& graph
 						  math::Vector2u(math::Utils::DivideCeil(resolution.x(), 8u), math::Utils::DivideCeil(resolution.y(), 8u)),
 						  rg::ShaderParams(shaderConstants));
 
-	const RTReflectionsViewData& reflectionsViewData = viewSpec.GetBlackboard().Get<RTReflectionsViewData>();
+	SPT_CHECK_MSG(viewContext.specularHitDistance.IsValid(), "Unified denoising requires a stochastic effect that provides specular hit distance");
 
 	rhi::TextureViewDefinition specularHitDistViewDef;
 	specularHitDistViewDef.componentMappings.r = rhi::ETextureComponentMapping::A;
 
 	const rg::RGTextureViewHandle specularHitDistanceView = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Hit Distance"),
-																							reflectionsViewData.finalSpecularGI->GetTexture(),
+																							viewContext.specularHitDistance->GetTexture(),
 																							specularHitDistViewDef);
 
 	const SceneViewData& sceneViewData = renderView.GetViewRenderingData();
@@ -154,12 +153,14 @@ void TemporalAAViewRenderSystem::PrepareRenderView(ViewRenderingSpec& viewSpec)
 
 	if (m_temporalAARendererImpl)
 	{
+		const Bool hasStochasticEffects = viewSpec.GetSettings().reflections.enable || viewSpec.GetSettings().shading.enableStochasticLighting;
+
 		gfx::TemporalAAParams aaParams;
 		aaParams.inputResolution        = desiredRenderingResolution;
 		aaParams.outputResolution       = viewSpec.GetOutputRes();
 		aaParams.quality                = gfx::ETemporalAAQuality::Ultra;
 		aaParams.flags                  = lib::Flags(gfx::ETemporalAAFlags::HDR, gfx::ETemporalAAFlags::DepthInverted, gfx::ETemporalAAFlags::MotionLowRes);
-		aaParams.enableUnifiedDenoising = upscalerSettings.enableUnifiedDenoising;
+		aaParams.enableUnifiedDenoising = upscalerSettings.enableUnifiedDenoising && hasStochasticEffects;
 		aaParams.enableTransformerModel = upscalerSettings.enableTransformerModel;
 
 		preparedAA = lib::CallOverload(*m_temporalAARendererImpl,

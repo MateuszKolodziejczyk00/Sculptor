@@ -14,6 +14,8 @@
 #include "EngineFrame.h"
 #include "ResourcesManager.h"
 #include "PropertiesPanel.h"
+#include "MeshPrefab.h"
+#include "LightPrefab.h"
 
 namespace spt::ed
 {
@@ -125,9 +127,26 @@ void SandboxUIView::DrawUI()
 		rdr::GPUApi::HotReloadShaders();
 	}
 	ImGui::Separator();
+
+	// Camera location
+	{
+		const math::Vector3f cameraLocation = m_renderer.GetRenderView().GetLocation();
+		ImGui::Text("Camera Location: (%.2f, %.2f, %.2f)", cameraLocation.x(), cameraLocation.y(), cameraLocation.z());
+	}
+
+	ImGui::Separator();
 #endif WITH_SHADERS_HOT_RELOAD
 
-	const ui::Property props[] = 
+	{
+		const gf::World& world = m_renderer.GetWorld();
+		ImGui::Text("Prefab Instances: %u", world.prefabs.instances.GetNum());
+		ImGui::Text("Mesh Entities: %u", world.meshes.entities.GetNum());
+		ImGui::Text("Light Entities: %u", world.lights.entities.GetNum());
+	}
+
+	ImGui::Separator();
+
+	const ui::Property props[] =
 	{
 		ui::Property("Scene Settings", m_renderer.GetWorld().renderSceneSettings),
 		ui::Property("View Settings", m_renderer.GetRenderView().settings)

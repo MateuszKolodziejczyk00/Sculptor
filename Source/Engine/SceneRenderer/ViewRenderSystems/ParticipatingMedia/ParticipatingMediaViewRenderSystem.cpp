@@ -157,8 +157,6 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 
 	const AtmosphereRenderSystem& atmosphereRenderSystem = rendererInterface.GetRenderSystemChecked<AtmosphereRenderSystem>();
 
-	const ViewSpecShadingParameters& shadingParams = viewSpec.GetBlackboard().Get<ViewSpecShadingParameters>();
-
 	const clouds::CloudsTransmittanceMap* transmittanceMap = atmosphereRenderSystem.AreVolumetricCloudsEnabled() ? &atmosphereRenderSystem.GetCloudsTransmittanceMap() : nullptr;
 
 	VolumetricFogShadowTermConstants shadowTermConstants;
@@ -186,7 +184,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Compute Directional Light Shadow Term"),
 						  pipline,
 						  dispatchSize,
-						  rg::ShaderParams(shadowTermConstants, fogRenderingParams.volumetricFogData, shadingParams.viewShadingParams));
+						  rg::ShaderParams(shadowTermConstants, fogRenderingParams.volumetricFogData));
 }
 
 } // shadow_term
@@ -216,7 +214,7 @@ static Bool Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	SPT_PROFILER_FUNCTION();
 
 	const ddgi::DDGIRenderSystem* ddgiRenderSystem = rendererInterface.GetRenderSystem<ddgi::DDGIRenderSystem>();
-	const rdr::GPUPtr<ddgi::DDGIGPUScene>& ddgiGPUScene = ddgiRenderSystem ? ddgiRenderSystem->GetDDGIGPUScene() : nullptr;
+	const rdr::GPUPtr<ddgi::DDGIGPUScene>& ddgiGPUScene = ddgiRenderSystem && ddgiRenderSystem->IsDDGIEnabled() ? ddgiRenderSystem->GetDDGIGPUScene() : nullptr;
 
 	if (!ddgiGPUScene.IsValid())
 	{
@@ -255,6 +253,8 @@ BEGIN_SHADER_STRUCT(VolumetricFogInScatteringParams)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<Real32>,         directionalLightShadowTerm)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture3D<math::Vector4f>, inScatteringTexture)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture3D<math::Vector3f>, indirectInScatteringTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,         hiZTexture)
+	SHADER_STRUCT_FIELD(math::Vector2f,                    hiZResolution)
 END_SHADER_STRUCT();
 
 
@@ -282,6 +282,8 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const SceneRendererInte
 	inScatteringParams.directionalLightShadowTerm            = fogParams.directionalLightShadowTerm;
 	inScatteringParams.inScatteringTexture                   = fogParams.inScatteringTextureView;
 	inScatteringParams.indirectInScatteringTexture           = fogParams.indirectInScatteringTextureView;
+	inScatteringParams.hiZTexture                            = viewSpec.GetShadingViewContext().hiZ;
+	inScatteringParams.hiZResolution                         = viewSpec.GetShadingViewContext().hiZ->GetResolution2D().cast<Real32>();
 
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(4u, 4u, 4u));
 
@@ -360,12 +362,17 @@ const VolumetricFogParams& ParticipatingMediaViewRenderSystem::GetVolumetricFogP
 
 HeightFogParams ParticipatingMediaViewRenderSystem::GetHeightFogParams() const
 {
+	return CreateHeightFogParams(*m_sceneFogSettings);
+}
+
+HeightFogParams ParticipatingMediaViewRenderSystem::CreateHeightFogParams(const HeightFogSettings& fogSettings)
+{
 	HeightFogParams heightFogParams;
-	heightFogParams.density              = m_sceneFogSettings->globalDensity;
-	heightFogParams.extinction           = m_sceneFogSettings->extinction;
-	heightFogParams.albedo               = m_sceneFogSettings->albedo;
-	heightFogParams.heightFalloff        = m_sceneFogSettings->heightFalloff;
-	heightFogParams.absorptionPercentage = m_sceneFogSettings->heightAbsorption;
+	heightFogParams.density              = fogSettings.globalDensity;
+	heightFogParams.extinction           = fogSettings.extinction;
+	heightFogParams.albedo               = fogSettings.albedo;
+	heightFogParams.heightFalloff        = fogSettings.heightFalloff;
+	heightFogParams.absorptionPercentage = fogSettings.heightAbsorption;
 	return heightFogParams;
 }
 

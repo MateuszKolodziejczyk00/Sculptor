@@ -8,85 +8,29 @@ namespace spt::rsc
 namespace priv
 {
 
-template<typename TDestType, typename TSourceType>
-void CopyData(lib::Span<TDestType> dst, lib::Span<TSourceType> src)
-{
-	SPT_CHECK(dst.size() == src.size());
-
-	if constexpr (std::is_same_v<TDestType, TSourceType>)
-	{
-		memcpy(dst.data(), src.data(), src.size() * sizeof(TDestType));
-	}
-	else
-	{
-		for (SizeType idx = 0; idx < src.size(); ++idx)
-		{
-			dst[idx] = static_cast<TDestType>(src[idx]);
-		}
-	}
-}
-
-template<typename TDestType>
-static lib::Span<TDestType> CopyAccessorData(lib::MemoryArena& memoryArena, const tinygltf::Accessor& accessor, const tinygltf::Model& model)
+static lib::Span<Real32> UnpackFloats(lib::MemoryArena& memoryArena, const cgltf_accessor& accessor)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const Int32 bufferViewIdx = accessor.bufferView;
-	SPT_CHECK(bufferViewIdx != -1);
+	const SizeType valuesNum = cgltf_accessor_unpack_floats(&accessor, nullptr, 0u);
 
-	const tinygltf::BufferView& bufferView = model.bufferViews[bufferViewIdx];
-	const Int32 bufferIdx = bufferView.buffer;
-	SPT_CHECK(bufferIdx != -1);
+	lib::Span<Real32> outData = memoryArena.AllocateSpanUninitialized<Real32>(valuesNum);
+	cgltf_accessor_unpack_floats(&accessor, outData.data(), valuesNum);
 
-	const tinygltf::Buffer& buffer = model.buffers[bufferIdx];
+	return outData;
+}
 
-	const unsigned char* srcData = buffer.data.data() + accessor.byteOffset + bufferView.byteOffset;
+static lib::Span<Uint32> UnpackIndices(lib::MemoryArena& memoryArena, const cgltf_accessor& accessor)
+{
+	SPT_PROFILER_FUNCTION();
 
-	const SizeType elementsNum = accessor.count;
-	const SizeType componentsNum = tinygltf::GetNumComponentsInType(accessor.type);
-	const Int32 componentType = accessor.componentType;
+	const SizeType indicesNum = accessor.count;
 
-	const SizeType valuesNum = elementsNum * componentsNum;
-
-	lib::Span<TDestType> outData = memoryArena.AllocateSpanUninitialized<TDestType>(valuesNum);
-
-	const auto copyImpl = [outData, valuesNum]<typename TSourceType>(const TSourceType* srcPtr)
-	{
-		CopyData(outData, lib::Span<const TSourceType>(reinterpret_cast<const TSourceType*>(srcPtr), valuesNum));
-	};
-
-	switch (componentType)
-	{
-	case TINYGLTF_COMPONENT_TYPE_BYTE:
-		copyImpl(reinterpret_cast<const char*>(srcData));
-		break;
-	case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
-		copyImpl(reinterpret_cast<const unsigned char*>(srcData));
-		break;
-	case TINYGLTF_COMPONENT_TYPE_SHORT:
-		copyImpl(reinterpret_cast<const short*>(srcData));
-		break;
-	case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-		copyImpl(reinterpret_cast<const unsigned short*>(srcData));
-		break;
-	case TINYGLTF_COMPONENT_TYPE_INT:
-		copyImpl(reinterpret_cast<const Int32*>(srcData));
-		break;
-	case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
-		copyImpl(reinterpret_cast<const Uint32*>(srcData));
-		break;
-	case TINYGLTF_COMPONENT_TYPE_FLOAT:
-		copyImpl(reinterpret_cast<const Real32*>(srcData));
-		break;
-	case TINYGLTF_COMPONENT_TYPE_DOUBLE:
-		copyImpl(reinterpret_cast<const Real64*>(srcData));
-		break;
-	default:
-		SPT_CHECK_NO_ENTRY();
-	}
+	lib::Span<Uint32> outData = memoryArena.AllocateSpanUninitialized<Uint32>(indicesNum);
+	cgltf_accessor_unpack_indices(&accessor, outData.data(), sizeof(Uint32), indicesNum);
 
 	// value must be lower because maxValue is reserved for "invalid"
-	SPT_CHECK(elementsNum < maxValue<Uint32>);
+	SPT_CHECK(indicesNum < maxValue<Uint32>);
 	return outData;
 }
 
@@ -96,14 +40,13 @@ GLTFMeshBuilder::GLTFMeshBuilder(const MeshBuildParameters& parameters) : Super(
 {
 }
 
-void GLTFMeshBuilder::BuildMesh(lib::MemoryArena& memoryArena, const tinygltf::Mesh& mesh, const tinygltf::Model& model)
+void GLTFMeshBuilder::BuildMesh(lib::MemoryArena& memoryArena, const cgltf_mesh& mesh)
 {
 	SPT_PROFILER_FUNCTION();
 
-
-	for (const tinygltf::Primitive& prim : mesh.primitives)
+	for (const cgltf_primitive& prim : lib::Span<const cgltf_primitive>(mesh.primitives, mesh.primitives_count))
 	{
-		if (prim.material == -1)
+		if (!prim.material || !prim.indices)
 		{
 			continue;
 		}
@@ -113,29 +56,27 @@ void GLTFMeshBuilder::BuildMesh(lib::MemoryArena& memoryArena, const tinygltf::M
 		{
 			lib::MemoryArenaScope memScope(memoryArena);
 
-			const lib::Span<Uint32> indices = priv::CopyAccessorData<Uint32>(memoryArena, model.accessors[prim.indices], model);
+			const lib::Span<Uint32> indices = priv::UnpackIndices(memoryArena, *prim.indices);
 
 			submesh.indicesNum = static_cast<Uint32>(indices.size());
 			submesh.indicesOffset = AppendData(indices);
 		}
 
-		const static lib::String locationsAccessorName = "POSITION";
-		if (const tinygltf::Accessor* locationsAccessor = GetAttributeAccessor(prim, model, locationsAccessorName))
+		if (const cgltf_accessor* locationsAccessor = GetAttributeAccessor(prim, cgltf_attribute_type_position, 0))
 		{
 			lib::MemoryArenaScope memScope(memoryArena);
 
-			const lib::Span<Real32> locationsVals = priv::CopyAccessorData<Real32>(memoryArena, *locationsAccessor, model);
+			const lib::Span<Real32> locationsVals = priv::UnpackFloats(memoryArena, *locationsAccessor);
 			const lib::Span<math::Vector3f> locations = lib::Span<math::Vector3f>(reinterpret_cast<math::Vector3f*>(locationsVals.data()), locationsVals.size() / 3);
 			submesh.verticesNum     = static_cast<Uint32>(locations.size());
 			submesh.locationsOffset = AppendData(locations);
 		}
 
-		const static lib::String normalsAccessorName = "NORMAL";
-		if (const tinygltf::Accessor* normalsAccessor = GetAttributeAccessor(prim, model, normalsAccessorName))
+		if (const cgltf_accessor* normalsAccessor = GetAttributeAccessor(prim, cgltf_attribute_type_normal, 0))
 		{
 			lib::MemoryArenaScope memScope(memoryArena);
 
-			const lib::Span<Real32> normalVals = priv::CopyAccessorData<Real32>(memoryArena, *normalsAccessor, model);
+			const lib::Span<Real32> normalVals = priv::UnpackFloats(memoryArena, *normalsAccessor);
 			const lib::Span<math::Vector3f> normals = lib::Span<math::Vector3f>(reinterpret_cast<math::Vector3f*>(normalVals.data()), normalVals.size() / 3);
 
 			lib::Span<Uint32> encodedNormals = memoryArena.AllocateSpanUninitialized<Uint32>(normals.size());
@@ -145,12 +86,11 @@ void GLTFMeshBuilder::BuildMesh(lib::MemoryArena& memoryArena, const tinygltf::M
 			submesh.normalsOffset = AppendData(encodedNormals);
 		}
 
-		const static lib::String tangentsAccessorName = "TANGENT";
-		if (const tinygltf::Accessor* tangentsAccessor = GetAttributeAccessor(prim, model, tangentsAccessorName))
+		if (const cgltf_accessor* tangentsAccessor = GetAttributeAccessor(prim, cgltf_attribute_type_tangent, 0))
 		{
 			lib::MemoryArenaScope memScope(memoryArena);
 
-			const lib::Span<Real32> tangentVals = priv::CopyAccessorData<Real32>(memoryArena, *tangentsAccessor, model);
+			const lib::Span<Real32> tangentVals = priv::UnpackFloats(memoryArena, *tangentsAccessor);
 			const lib::Span<math::Vector4f> tangents = lib::Span<math::Vector4f>(reinterpret_cast<math::Vector4f*>(tangentVals.data()), tangentVals.size() / 4);
 
 			lib::Span<Uint32> encodedTangents = memoryArena.AllocateSpanUninitialized<Uint32>(tangents.size());
@@ -160,12 +100,11 @@ void GLTFMeshBuilder::BuildMesh(lib::MemoryArena& memoryArena, const tinygltf::M
 			submesh.tangentsOffset = AppendData(encodedTangents);
 		}
 
-		const static lib::String uvsAccessorName = "TEXCOORD_0";
-		if (const tinygltf::Accessor* uvsAccessor = GetAttributeAccessor(prim, model, uvsAccessorName))
+		if (const cgltf_accessor* uvsAccessor = GetAttributeAccessor(prim, cgltf_attribute_type_texcoord, 0))
 		{
 			lib::MemoryArenaScope memScope(memoryArena);
 
-			const lib::Span<Real32> uvsVals = priv::CopyAccessorData<Real32>(memoryArena, *uvsAccessor, model);
+			const lib::Span<Real32> uvsVals = priv::UnpackFloats(memoryArena, *uvsAccessor);
 			const lib::Span<math::Vector2f> uvs = lib::Span<math::Vector2f>(reinterpret_cast<math::Vector2f*>(uvsVals.data()), uvsVals.size() / 2);
 
 			const lib::Span<Uint32> encodedUVs = memoryArena.AllocateSpanUninitialized<Uint32>(uvs.size());
@@ -181,11 +120,17 @@ void GLTFMeshBuilder::BuildMesh(lib::MemoryArena& memoryArena, const tinygltf::M
 	}
 }
 
-const tinygltf::Accessor* GLTFMeshBuilder::GetAttributeAccessor(const tinygltf::Primitive& prim, const tinygltf::Model& model, const lib::String& name)
+const cgltf_accessor* GLTFMeshBuilder::GetAttributeAccessor(const cgltf_primitive& prim, cgltf_attribute_type type, cgltf_int index)
 {
-	const auto foundAccessorIdxIt = prim.attributes.find(name);
-	const Int32 foundAccessorIdx = foundAccessorIdxIt != std::cend(prim.attributes) ? foundAccessorIdxIt->second : -1;
-	return foundAccessorIdx != -1 ? &model.accessors[foundAccessorIdx] : nullptr;
+	for (const cgltf_attribute& attribute : lib::Span<const cgltf_attribute>(prim.attributes, prim.attributes_count))
+	{
+		if (attribute.type == type && attribute.index == index)
+		{
+			return attribute.data;
+		}
+	}
+
+	return nullptr;
 }
 
 } // spt::rsc

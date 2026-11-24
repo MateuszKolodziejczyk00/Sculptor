@@ -31,6 +31,16 @@ void TemporalFilterCS(CS_INPUT input)
 		const float2 pixelSize = rcp(float2(outputRes));
 		const float2 uv = (float2(pixel) + 0.5f) * pixelSize;
 
+		const float currentDepth = CONSTS->depthTexture.Load(int3(pixel, 0));
+
+		if (currentDepth == 0.f)
+		{
+			CONSTS->accumulatedSamplesNumTexture[pixel] = 0u;
+			CONSTS->temporalMomentsTexture[pixel]       = 0.f;
+			CONSTS->varianceTexture[pixel]              = 0.f;
+			return;
+		}
+
 		const float2 moments = CONSTS->spatialMomentsTexture.SampleLevel(BindlessSamplers::NearestClampEdge(), uv, 0.f).xx;
 		const float neighbourhoodMean = moments.x;
 		const float neighbourhoodVariance = abs(moments.x - Pow2(moments.y));
@@ -53,7 +63,6 @@ void TemporalFilterCS(CS_INPUT input)
 
 		if (all(historyUV >= 0.f) && all(historyUV <= 1.f))
 		{
-			const float currentDepth = CONSTS->depthTexture.SampleLevel(BindlessSamplers::LinearClampEdge(), uv, 0.f);
 			const float3 currentNDC = float3(uv * 2.f - 1.f, currentDepth);
 			const float3 currentSampleWS = NDCToWorldSpaceNoJitter(currentNDC, VIEW->sceneView);
 

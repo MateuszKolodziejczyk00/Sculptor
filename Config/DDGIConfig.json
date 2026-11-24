@@ -65,9 +65,9 @@
             "ForwardAlignment": 0.0,
             "HeightAlignment": 0.10000000149011612,
             "ProbesSpacing": [
-                1000.0,
-                1000.0,
-                1000.0
+                500.0,
+                500.0,
+                100.0
             ],
             "RelitPriority": 0.5,
             "RelitZoneResolution": [

@@ -2,7 +2,6 @@
 #include "RenderGraphCaptureTypes.h"
 #include "Types/Texture.h"
 #include "Types/UIBackend.h"
-#include "UIUtils.h"
 #include "ImGui/DockBuilder.h"
 #include "TextureInspector/TextureInspector.h"
 #include "TextureInspector/BufferInspector.h"
@@ -41,6 +40,109 @@ lib::String BuildBufferBindingLabel(const CapturedBufferBinding& binding)
 	}
 
 	return label;
+}
+
+// View panel names contain per-instance IDs, so saved table settings would only pile up in the ImGui config
+constexpr ImGuiTableFlags listTableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings;
+
+constexpr lib::StaticArray<const char*, 4u> textureColumns = { "Name", "Resolution", "Format", "Mips" };
+constexpr lib::StaticArray<const char*, 3u> bufferColumns  = { "Name", "Type", "Size" };
+
+lib::String FormatRange(Uint32 base, Uint32 num)
+{
+	return num == 1u ? std::to_string(base) : std::format("{}-{}", base, base + num - 1u);
+}
+
+lib::String FormatBytes(Uint64 bytes)
+{
+	if (bytes < 1024u)
+	{
+		return std::format("{} B", bytes);
+	}
+
+	return bytes < 1024u * 1024u
+		? std::format("{:.1f} KB", static_cast<Real64>(bytes) / 1024.0)
+		: std::format("{:.1f} MB", static_cast<Real64>(bytes) / (1024.0 * 1024.0));
+}
+
+const char* GetProducingPassName(const CapturedPass* producingPass)
+{
+	return producingPass ? producingPass->name.GetData() : "External";
+}
+
+// Scopes tree interleaves RG diagnostics scopes with node scopes (and capture copy nodes), all in execution order.
+// Node scope is the next scope with matching name at the depth of node's diagnostics record
+void AssignPassesGPUStatistics(lib::Span<const rdr::GPUStatisticsScopeData> scopes, Uint32 depth, const lib::DynamicArray<lib::UniquePtr<CapturedPass>>& passes, INOUT SizeType& passIdx)
+{
+	for (const rdr::GPUStatisticsScopeData& scope : scopes)
+	{
+		if (passIdx < passes.size() && passes[passIdx]->diagnosticsScopeDepth == depth && passes[passIdx]->name == scope.name)
+		{
+			passes[passIdx++]->gpuStatistics = &scope;
+		}
+		else
+		{
+			AssignPassesGPUStatistics(scope.children, depth + 1u, passes, INOUT passIdx);
+		}
+	}
+}
+
+void ResolveGPUStatistics(RGCapture& capture)
+{
+	capture.gpuStatistics = std::make_unique<rdr::GPUStatisticsData>();
+	capture.gpuStatisticsCollector->CollectStatistics(OUT *capture.gpuStatistics);
+	capture.gpuStatisticsCollector.reset();
+
+	if (const rdr::GPUStatisticsScopeData* frameScope = capture.gpuStatistics->fullScope)
+	{
+		SizeType passIdx = 0u;
+		AssignPassesGPUStatistics(frameScope->children, 0u, capture.passes, INOUT passIdx);
+		SPT_CHECK_MSG(passIdx == capture.passes.size(), "Failed to match GPU statistics for pass {}", capture.passes[passIdx]->name.GetData());
+	}
+}
+
+template<typename TBinding, typename TDrawRow>
+void DrawBindingsSection(const char* title, const lib::DynamicArray<TBinding>& bindings, Bool writable, lib::Span<const char* const> columns, TDrawRow&& drawRow)
+{
+	const auto hasMatchingAccess = [writable](const TBinding& binding) { return binding.writable == writable; };
+
+	const SizeType bindingsNum = static_cast<SizeType>(std::count_if(bindings.cbegin(), bindings.cend(), hasMatchingAccess));
+
+	const Bool isOpen = ImGui::CollapsingHeader(std::format("{} ({})###{}", title, bindingsNum, title).c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+
+	if (isOpen && bindingsNum > 0u && ImGui::BeginTable(title, static_cast<Int32>(columns.size()), listTableFlags))
+	{
+		for (SizeType columnIdx = 0u; columnIdx < columns.size(); ++columnIdx)
+		{
+			ImGui::TableSetupColumn(columns[columnIdx], columnIdx == 0u ? ImGuiTableColumnFlags_WidthStretch : ImGuiTableColumnFlags_WidthFixed);
+		}
+		ImGui::TableHeadersRow();
+
+		for (const TBinding& binding : bindings)
+		{
+			if (hasMatchingAccess(binding))
+			{
+				ImGui::PushID(&binding);
+				ImGui::TableNextRow();
+				drawRow(binding);
+				ImGui::PopID();
+			}
+		}
+
+		ImGui::EndTable();
+	}
+}
+
+Bool DrawMatchedResourceRow(const lib::String& label, const char* resourceType, Bool writable)
+{
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(1);
+	ImGui::Indent();
+	ImGui::TextColored(ImGui::GetStyleColorVec4(writable ? ImGuiCol_CheckMark : ImGuiCol_TextDisabled), "%s %s", writable ? "Out" : "In", resourceType);
+	ImGui::SameLine();
+	const Bool clicked = ImGui::Selectable(label.c_str(), false, ImGuiSelectableFlags_SpanAllColumns);
+	ImGui::Unindent();
+	return clicked;
 }
 
 } // priv
@@ -84,6 +186,56 @@ ImGuiWindowFlags RGNodeCaptureViewer::GetWindowFlags() const
 	return Super::GetWindowFlags()
 		| ImGuiWindowFlags_NoScrollbar
 		| ImGuiWindowFlags_NoScrollWithMouse;
+}
+
+void RGNodeCaptureViewer::DrawNodeGPUStatistics(const rdr::GPUStatisticsScopeData& statistics)
+{
+	if (!ImGui::CollapsingHeader("GPU Statistics", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		return;
+	}
+
+	if (ImGui::BeginTable("##GPUStatistics", 2, priv::listTableFlags))
+	{
+		ImGui::TableSetupColumn("Statistic", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableHeadersRow();
+
+		const auto drawRow = [](const char* name, const lib::String& value)
+		{
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::TextUnformatted(name);
+			ImGui::TableNextColumn();
+			ImGui::TextUnformatted(value.c_str());
+		};
+
+		const auto drawOptionalRow = [&drawRow](const char* name, const auto& value)
+		{
+			if (value.has_value())
+			{
+				drawRow(name, std::to_string(*value));
+			}
+		};
+
+		drawRow("Duration", std::format("{:.3f} ms", statistics.GetDurationInMs()));
+		drawOptionalRow("Task Shader Invocations", statistics.taskShaderInvocations);
+		drawOptionalRow("Mesh Shader Invocations", statistics.meshShaderInvocations);
+		drawOptionalRow("Fragment Shader Invocations", statistics.fragmentShaderInvocations);
+		drawOptionalRow("Compute Shader Invocations", statistics.computeShaderInvocations);
+
+		if (statistics.transientMemoryUsage.has_value())
+		{
+			drawRow("Transient Memory", priv::FormatBytes(*statistics.transientMemoryUsage));
+		}
+
+		for (const rdr::GPUStatisticsScopeData& subpass : statistics.children)
+		{
+			drawRow(subpass.name.GetData(), std::format("{:.3f} ms", subpass.GetDurationInMs()));
+		}
+
+		ImGui::EndTable();
+	}
 }
 
 void RGNodeCaptureViewer::OpenTextureCapture(const TextureInspectParams& inspectParams)
@@ -167,83 +319,88 @@ void RGNodeCaptureViewer::DrawNodeDetails(const CapturedPass& pass)
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 	ImGui::Begin(m_nodeDetailsPanelName.GetData());
 
-	ImGui::Text("Node: %s", pass.name.GetData());
+	ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_CheckMark), "%s", pass.name.GetData());
+	ImGui::SameLine();
+	ImGui::TextDisabled("%zu textures, %zu buffers", pass.textures.size(), pass.buffers.size());
 
 	ImGui::Separator();
 
-	const math::Vector2f contentSize = ui::UIUtils::GetWindowContentSize();
-
-	ImGui::Columns(2);
-
-	if (ImGui::CollapsingHeader("Input Textures", ImGuiTreeNodeFlags_DefaultOpen))
+	const auto drawTextureRow = [this](const CapturedTextureBinding& binding)
 	{
-		for (const CapturedTextureBinding& binding : pass.textures)
-		{
-			if (!binding.writable)
-			{
-				const lib::HashedString name = binding.textureVersion->owningTexture->name;
-				if (ImGui::Button(name.GetData(), ImVec2(contentSize.x() * 0.5f, 26.f)))
-				{
-					OpenTextureCapture(binding);
-				}
-			}
-		}
-	}
+		const CapturedTexture::Version& version = *binding.textureVersion;
+		const CapturedTexture& texture          = *version.owningTexture;
+		const math::Vector3u& resolution        = texture.definition.resolution.AsVector();
 
-	if (ImGui::CollapsingHeader("Output Textures", ImGuiTreeNodeFlags_DefaultOpen))
+		ImGui::TableNextColumn();
+		if (ImGui::Selectable(texture.name.GetData(), false, ImGuiSelectableFlags_SpanAllColumns))
+		{
+			OpenTextureCapture(binding);
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("%s\nVersion: %u\nArray layers: %s\nProduced by: %s",
+							  texture.name.GetData(),
+							  version.versionIdx,
+							  priv::FormatRange(binding.baseArrayLayer, binding.arrayLayersNum).c_str(),
+							  priv::GetProducingPassName(version.producingPass));
+		}
+
+		ImGui::TableNextColumn();
+		if (resolution.z() > 1u)
+		{
+			ImGui::TextDisabled("%ux%ux%u", resolution.x(), resolution.y(), resolution.z());
+		}
+		else
+		{
+			ImGui::TextDisabled("%ux%u", resolution.x(), resolution.y());
+		}
+
+		ImGui::TableNextColumn();
+		ImGui::TextDisabled("%s", rhi::GetFormatName(texture.definition.format).c_str());
+
+		ImGui::TableNextColumn();
+		ImGui::TextDisabled("%s", priv::FormatRange(binding.baseMipLevel, binding.mipLevelsNum).c_str());
+	};
+
+	const auto drawBufferRow = [this](const CapturedBufferBinding& binding)
 	{
-		for (const CapturedTextureBinding& binding : pass.textures)
-		{
-			if (binding.writable)
-			{
-				const lib::HashedString name = binding.textureVersion->owningTexture->name;
-				if (ImGui::Button(name.GetData(), ImVec2(contentSize.x() * 0.5f, 26.f)))
-				{
-					OpenTextureCapture(binding);
-				}
-			}
-		}
-	}
+		const CapturedBuffer::Version& version = *binding.bufferVersion;
+		const CapturedBuffer& buffer           = *version.owningBuffer;
 
-	ImGui::NextColumn();
-	
-	if (ImGui::CollapsingHeader("Input Buffers", ImGuiTreeNodeFlags_DefaultOpen))
+		ImGui::TableNextColumn();
+		if (ImGui::Selectable(buffer.name.GetData(), false, ImGuiSelectableFlags_SpanAllColumns))
+		{
+			OpenBufferCapture(binding);
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("%s\nVersion: %u\nOffset: %llu\nElements: %u\nProduced by: %s",
+							  buffer.name.GetData(),
+							  version.versionIdx,
+							  binding.offset,
+							  binding.elementsNum,
+							  priv::GetProducingPassName(version.producingPass));
+		}
+
+		ImGui::TableNextColumn();
+		ImGui::TextDisabled("%s", binding.structTypeName.IsValid() ? binding.structTypeName.GetData() : "-");
+
+		ImGui::TableNextColumn();
+		ImGui::TextDisabled("%s", priv::FormatBytes(binding.size).c_str());
+	};
+
+	if (ImGui::BeginTable("##Bindings", 2, ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoSavedSettings))
 	{
-		for (const CapturedBufferBinding& binding : pass.buffers)
-		{
-			if(!binding.writable)
-			{
-				lib::String name = binding.structTypeName.ToString();
-				name += " ";
-				name += binding.bufferVersion->owningBuffer->name.ToString();
+		ImGui::TableNextColumn();
+		priv::DrawBindingsSection("Input Textures", pass.textures, false, priv::textureColumns, drawTextureRow);
+		priv::DrawBindingsSection("Output Textures", pass.textures, true, priv::textureColumns, drawTextureRow);
 
-				if (ImGui::Button(name.c_str(), ImVec2(contentSize.x() * 0.5f, 26.f)))
-				{
-					OpenBufferCapture(binding);
-				}
-			}
-		}
+		ImGui::TableNextColumn();
+		priv::DrawBindingsSection("Input Buffers", pass.buffers, false, priv::bufferColumns, drawBufferRow);
+		priv::DrawBindingsSection("Output Buffers", pass.buffers, true, priv::bufferColumns, drawBufferRow);
+
+		ImGui::EndTable();
 	}
-	
-	if (ImGui::CollapsingHeader("Output Buffers", ImGuiTreeNodeFlags_DefaultOpen))
-	{
-		for (const CapturedBufferBinding& binding : pass.buffers)
-		{
-			if(binding.writable)
-			{
-				lib::String name = binding.structTypeName.ToString();
-				name += " ";
-				name += binding.bufferVersion->owningBuffer->name.ToString();
-
-				if (ImGui::Button(name.c_str(), ImVec2(contentSize.x() * 0.5f, 26.f)))
-				{
-					OpenBufferCapture(binding);
-				}
-			}
-		}
-	}
-
-	ImGui::EndColumns();
 
 	ImGui::End();
 }
@@ -255,10 +412,15 @@ void RGNodeCaptureViewer::DrawNodeProperties(const CapturedPass& node)
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 	ImGui::Begin(m_nodePropertiesPanelName.GetData());
 
+	if (node.gpuStatistics)
+	{
+		DrawNodeGPUStatistics(*node.gpuStatistics);
+	}
+
 	std::visit(lib::Overload
 			   {
 				   [this](const RGCapturedComputeProperties& properties) { DrawNodeComputeProperties(properties); },
-				   [](const RGCapturedNullProperties& properties) { ImGui::Text("No properties were captured"); }
+				   [](const RGCapturedNullProperties& properties) { ImGui::TextDisabled("No properties were captured"); }
 			   },
 			   node.execProps);
 
@@ -275,32 +437,35 @@ void RGNodeCaptureViewer::DrawNodeComputeProperties(const RGCapturedComputePrope
 						   {
 							   [](Bool value) { ImGui::Text("%s", value ? "true" : "false"); },
 							   [](Uint64 value) { ImGui::Text("%llu", value); },
-							   [](Int64 value) { ImGui::Text("%ll", value); },
+							   [](Int64 value) { ImGui::Text("%lld", value); },
 							   [](Real64 value) { ImGui::Text("%f", static_cast<Real32>(value)); }
 						   },
 						   value);
 			};
 
-		ImGui::Columns(2);
-
-		for (const rhi::PipelineStatistic& stat : properties.pipelineStatistics.statistics)
+		if (ImGui::BeginTable("##Statistics", 2, priv::listTableFlags))
 		{
-			ImGui::Text(stat.name.c_str());
-			if(ImGui::IsItemHovered())
+			ImGui::TableSetupColumn("Statistic", ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableHeadersRow();
+
+			for (const rhi::PipelineStatistic& stat : properties.pipelineStatistics.statistics)
 			{
-				ImGui::BeginTooltip();
-				ImGui::Text(stat.description.c_str());
-				ImGui::EndTooltip();
+				ImGui::TableNextRow();
+
+				ImGui::TableNextColumn();
+				ImGui::TextUnformatted(stat.name.c_str());
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("%s", stat.description.c_str());
+				}
+
+				ImGui::TableNextColumn();
+				displayStatisticValue(stat.value);
 			}
 
-			ImGui::NextColumn();
-
-			displayStatisticValue(stat.value);
-
-			ImGui::NextColumn();
+			ImGui::EndTable();
 		}
-
-		ImGui::EndColumns();
 	}
 }
 
@@ -371,6 +536,12 @@ RenderGraphCaptureViewer::RenderGraphCaptureViewer(const scui::ViewDefinition& d
 	, m_nodesListFilter(CreateUniqueName("Nodes Filter"))
 	, m_capture(std::move(capture))
 {
+	if (m_capture->gpuStatisticsCollector)
+	{
+		// Viewer is always created after captured graph finished on GPU
+		priv::ResolveGPUStatistics(*m_capture);
+	}
+
 	js::Launch(SPT_GENERIC_JOB_NAME, [capture = m_capture]()
 			   {
 				   for (const lib::UniquePtr<CapturedBuffer>& buffer : capture->buffers)
@@ -409,14 +580,9 @@ void RenderGraphCaptureViewer::DrawNodesList(const RGCapture& capture)
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 	ImGui::Begin(m_nodesListPanelName.GetData());
 
-	m_nodesListFilter.Draw();
+	m_nodesListFilter.Draw("pass | resource  (Ctrl+F)");
 
-	ImGui::Dummy(ImVec2(0.f, 30.f));
-
-	ImGui::BeginChild("Nodes", ImVec2{}, true);
-
-	const math::Vector2f contentSize = ui::UIUtils::GetWindowContentSize();
-	const auto openPassCapture = [this](const CapturedPass& pass)
+	const auto openPassCapture = [this](Uint32 passIdx, const CapturedPass& pass)
 	{
 		scui::ViewDefinition nodeViewDefinition;
 		nodeViewDefinition.name = pass.name;
@@ -424,85 +590,99 @@ void RenderGraphCaptureViewer::DrawNodesList(const RGCapture& capture)
 		lib::SharedRef<RGNodeCaptureViewer> nodeViewer = lib::MakeShared<RGNodeCaptureViewer>(nodeViewDefinition, m_capture, pass);
 		const lib::HashedString& childName = AddChild(nodeViewer);
 		m_nodeDetailsDockStack.Push(childName);
+		m_lastOpenedPassIdx = passIdx;
 
 		return nodeViewer;
 	};
 
-	for (Uint32 passIdx = 0u; passIdx < capture.passes.size(); ++passIdx)
-	{
-		const lib::UniquePtr<CapturedPass>& pass = capture.passes[passIdx];
+	const auto isTextureMatching = [this](const CapturedTextureBinding& binding) { return m_nodesListFilter.IsMatching(priv::BuildTextureBindingLabel(binding), 1u); };
+	const auto isBufferMatching  = [this](const CapturedBufferBinding& binding) { return m_nodesListFilter.IsMatching(priv::BuildBufferBindingLabel(binding), 1u); };
 
-		if (m_nodesListFilter.IsMatching(pass->name.GetView()))
+	const Bool filterResources = m_nodesListFilter.GetElementsNum() > 1u;
+
+	if (ImGui::BeginTable("##Passes", 5, priv::listTableFlags | ImGuiTableFlags_ScrollY))
+	{
+		ImGui::TableSetupScrollFreeze(0, 1);
+		ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("Pass", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn("GPU ms", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("Tex", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("Buf", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableHeadersRow();
+
+		for (Uint32 passIdx = 0u; passIdx < capture.passes.size(); ++passIdx)
 		{
+			const CapturedPass& pass = *capture.passes[passIdx];
+
+			const Bool isPassVisible = m_nodesListFilter.IsMatching(pass.name.GetView())
+				&& (!filterResources
+					|| std::any_of(pass.textures.cbegin(), pass.textures.cend(), isTextureMatching)
+					|| std::any_of(pass.buffers.cbegin(), pass.buffers.cend(), isBufferMatching));
+
+			if (!isPassVisible)
+			{
+				continue;
+			}
+
 			ImGui::PushID(static_cast<Int32>(passIdx));
 
-			if (ImGui::Button(std::format("{}: {}", passIdx, pass->name.GetData()).c_str(), ImVec2(contentSize.x(), 26.f)))
+			ImGui::TableNextRow();
+
+			ImGui::TableNextColumn();
+			ImGui::TextDisabled("%u", passIdx);
+
+			ImGui::TableNextColumn();
+			if (ImGui::Selectable(pass.name.GetData(), passIdx == m_lastOpenedPassIdx, ImGuiSelectableFlags_SpanAllColumns))
 			{
-				openPassCapture(*pass);
+				openPassCapture(passIdx, pass);
 			}
 
-			if (m_nodesListFilter.GetElementsNum() > 1)
+			ImGui::TableNextColumn();
+			if (pass.gpuStatistics)
 			{
-				const float resourceButtonWidth = std::max(contentSize.x() - ImGui::GetStyle().IndentSpacing, 1.f);
-				Bool hasFilteredResources = false;
+				ImGui::TextDisabled("%.3f", pass.gpuStatistics->GetDurationInMs());
+			}
 
-				ImGui::Indent();
+			ImGui::TableNextColumn();
+			ImGui::TextDisabled("%zu", pass.textures.size());
 
-				ImGui::PushID("Textures");
-				for (Uint32 textureIdx = 0u; textureIdx < pass->textures.size(); ++textureIdx)
+			ImGui::TableNextColumn();
+			ImGui::TextDisabled("%zu", pass.buffers.size());
+
+			if (filterResources)
+			{
+				for (const CapturedTextureBinding& binding : pass.textures)
 				{
-					const CapturedTextureBinding& binding = pass->textures[textureIdx];
-					const lib::String label = priv::BuildTextureBindingLabel(binding);
-					if (m_nodesListFilter.IsMatching(label, 1u))
+					if (isTextureMatching(binding))
 					{
-						hasFilteredResources = true;
-
-						ImGui::PushID(static_cast<Int32>(textureIdx));
-						const lib::String buttonLabel = std::format("{} Texture: {}", binding.writable ? "Output" : "Input", label);
-						if (ImGui::Button(buttonLabel.c_str(), ImVec2(resourceButtonWidth, 24.f)))
+						ImGui::PushID(&binding);
+						if (priv::DrawMatchedResourceRow(priv::BuildTextureBindingLabel(binding), "Tex", binding.writable))
 						{
-							openPassCapture(*pass)->OpenTextureCapture(binding);
+							openPassCapture(passIdx, pass)->OpenTextureCapture(binding);
 						}
 						ImGui::PopID();
 					}
 				}
-				ImGui::PopID();
 
-				ImGui::PushID("Buffers");
-				for (Uint32 bufferIdx = 0u; bufferIdx < pass->buffers.size(); ++bufferIdx)
+				for (const CapturedBufferBinding& binding : pass.buffers)
 				{
-					const CapturedBufferBinding& binding = pass->buffers[bufferIdx];
-					const lib::String label = priv::BuildBufferBindingLabel(binding);
-					if (m_nodesListFilter.IsMatching(label, 1u))
+					if (isBufferMatching(binding))
 					{
-						hasFilteredResources = true;
-
-						ImGui::PushID(static_cast<Int32>(bufferIdx));
-						const lib::String buttonLabel = std::format("{} Buffer: {}", binding.writable ? "Output" : "Input", label);
-						if (ImGui::Button(buttonLabel.c_str(), ImVec2(resourceButtonWidth, 24.f)))
+						ImGui::PushID(&binding);
+						if (priv::DrawMatchedResourceRow(priv::BuildBufferBindingLabel(binding), "Buf", binding.writable))
 						{
-							openPassCapture(*pass)->OpenBufferCapture(binding);
+							openPassCapture(passIdx, pass)->OpenBufferCapture(binding);
 						}
 						ImGui::PopID();
 					}
 				}
-				ImGui::PopID();
-
-				if (hasFilteredResources)
-				{
-					ImGui::Spacing();
-				}
-
-				ImGui::Unindent();
 			}
 
-
-			ImGui::Spacing();
 			ImGui::PopID();
 		}
-	}
 
-	ImGui::EndChild();
+		ImGui::EndTable();
+	}
 
 	ImGui::End();
 }

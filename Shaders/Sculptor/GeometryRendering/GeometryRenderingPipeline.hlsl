@@ -67,14 +67,14 @@ bool WasOccludedLastFrame(in Sphere sphere)
 	}
 
 	const HiZCullingProcessor occlusionCullingProcessor = HiZCullingProcessor::Create(CULLING->historyHiZTexture, CULLING->historyHiZResolution, VIEW->prevFrameSceneView);
-	return !occlusionCullingProcessor.DoCulling(sphere);
+	return !occlusionCullingProcessor.DoCulling(VIEW->sceneView, sphere);
 }
 
 
 bool IsOccludedCurrentFrame(in Sphere sphere)
 {
 	const HiZCullingProcessor occlusionCullingProcessor = HiZCullingProcessor::Create(CULLING->hiZTexture, CULLING->hiZResolution, VIEW->sceneView);
-	return !occlusionCullingProcessor.DoCulling(sphere);
+	return !occlusionCullingProcessor.DoCulling(VIEW->sceneView, sphere);
 }
 
 

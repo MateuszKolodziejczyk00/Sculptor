@@ -99,6 +99,10 @@ void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 	CapturedPass& pass = *m_capture->passes.back();
 	pass.name = node.GetName().ToString();
 
+#if RG_ENABLE_DIAGNOSTICS
+	pass.diagnosticsScopeDepth = static_cast<Uint32>(node.GetDiagnosticsRecord().size());
+#endif // RG_ENABLE_DIAGNOSTICS
+
 	if (node.GetType() == ERenderGraphNodeType::Dispatch)
 	{
 #if DEBUG_RENDER_GRAPH
@@ -347,6 +351,7 @@ void RenderGraphCapturer::Capture(RenderGraphBuilder& graphBuilder)
 	SPT_PROFILER_FUNCTION();
 
 	m_debugDecorator = lib::MakeShared<impl::RGCapturerDecorator>(m_captureParams, m_captureSource);
+	m_debugDecorator->GetCapture()->gpuStatisticsCollector = graphBuilder.GetGPUStatisticsCollector();
 	graphBuilder.AddDebugDecorator(lib::Ref(m_debugDecorator));
 }
 

@@ -87,6 +87,8 @@ public:
 
 	math::Vector2u				GetSwapchainSize() const;
 
+	platf::PlatformWindow&		GetPlatformWindow() const { return *m_platformWindow; }
+
 private:
 
 	void						OnWindowResized(Uint32 newWidth, Uint32 newHeight);

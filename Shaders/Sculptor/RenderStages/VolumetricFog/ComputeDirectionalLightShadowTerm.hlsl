@@ -3,7 +3,6 @@
 [[shader_params(VolumetricFogConstants, PARAMS_RENDER_VOLUMETRIC_FOG)]]
 [[shader_params(GPURenderView, VIEW)]]
 [[shader_params(RenderSceneConstants, SCENE)]]
-[[shader_params(ViewShadingParams, PARAMS_VIEW_SHADING_INPUT)]]
 [[shader_params(VolumetricFogShadowTermConstants, PARAMS_COMPUTE_DIRECTIONAL_LIGHT_SHADOW_TERM)]]
 
 
@@ -22,18 +21,18 @@ float ComputeShadowTerm(in float3 worldLocation, in float3 toView, in float3 fro
 {
 	// Directional Lights
 
-	SPT_CHECK_MSG(PARAMS_VIEW_SHADING_INPUT->lightsData->directionalLightsNum <= 1u, L"Volumetric Fog supports shadow term only for 1 directional light!");
+	SPT_CHECK_MSG(SCENE->lights.directionalLightsNum <= 1u, L"Volumetric Fog supports shadow term only for 1 directional light!");
 
-	if(PARAMS_VIEW_SHADING_INPUT->lightsData->directionalLightsNum == 0u)
+	if(SCENE->lights.directionalLightsNum == 0u)
 	{
 		return 0.f;
 	}
 
-	const DirectionalLightGPUData directionalLight = PARAMS_VIEW_SHADING_INPUT->directionalLights[0];
+	const DirectionalLightGPUData directionalLight = SCENE->lights.directionalLights[0];
 
 	float visibility = WSC().SampleShadows(worldLocation);
 
-	const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(PARAMS_VIEW_SHADING_INPUT->lightsData->heightFog, worldLocation, worldLocation - directionalLight.direction * 1500.f);
+	const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(SCENE->lights.heightFog, worldLocation, worldLocation - directionalLight.direction * 1500.f);
 	visibility *= fogTransmittance;
 
 	return visibility;

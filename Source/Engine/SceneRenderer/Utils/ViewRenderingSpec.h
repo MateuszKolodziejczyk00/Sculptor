@@ -110,7 +110,6 @@ enum class ERenderViewEntry
 	RenderCloudsTransmittanceMap,
 	RenderParticipatingMedia,
 	RenderToShadowMap,
-	CreateGlobalLightsDS,
 	RenderGI,
 	BuildLightsTiles,
 	RenderVolumetricClouds,
@@ -223,6 +222,8 @@ struct ShadingViewContext
 	rdr::GPUPtr<ViewShadingParams> viewShadingParams;
 
 	rdr::GPUPtr<SharcCacheParams> sharcCacheParams;
+
+	rg::RGTextureViewHandle specularHitDistance;
 
 	rg::RGTextureViewHandle luminance;
 

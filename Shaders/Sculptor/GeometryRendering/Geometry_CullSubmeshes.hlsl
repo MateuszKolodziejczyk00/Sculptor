@@ -104,7 +104,7 @@ void CullSubmeshesCS(CS_INPUT input)
 			if(PARAMS_GEOMETRY_CULLING->hasHistoryHiZ)
 			{
 				const HiZCullingProcessor occlusionCullingProcessor = HiZCullingProcessor::Create(PARAMS_GEOMETRY_CULLING->historyHiZTexture, PARAMS_GEOMETRY_CULLING->historyHiZResolution, VIEW->prevFrameSceneView);
-				isOccluded = !occlusionCullingProcessor.DoCulling(submeshBoundingSphere);
+				isOccluded = !occlusionCullingProcessor.DoCulling(VIEW->sceneView, submeshBoundingSphere);
 			}
 
 			if(isOccluded)
@@ -120,7 +120,7 @@ void CullSubmeshesCS(CS_INPUT input)
 #elif GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
 
 		const HiZCullingProcessor occlusionCullingProcessor = HiZCullingProcessor::Create(PARAMS_GEOMETRY_CULLING->hiZTexture, PARAMS_GEOMETRY_CULLING->hiZResolution, VIEW->sceneView);
-		isSubmeshVisible = occlusionCullingProcessor.DoCulling(submeshBoundingSphere);
+		isSubmeshVisible = occlusionCullingProcessor.DoCulling(VIEW->sceneView, submeshBoundingSphere);
 
 #endif // GEOMETRY_PASS_IDX
 

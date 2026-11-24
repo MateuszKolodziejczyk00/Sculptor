@@ -6,6 +6,7 @@
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
 #include "SpecularReflections/Denoiser/RTDenoising.hlsli"
+#include "Shading/Shading.hlsli"
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 
 

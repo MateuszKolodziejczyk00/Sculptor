@@ -6,6 +6,28 @@
 namespace spt::scui
 {
 
+namespace priv
+{
+
+// Tab bars of skipped dockspace host are never laid out, so ImGui never consumes pending selection and focuses its window every frame (stealing ActiveId from other windows)
+static void ClearPendingTabSelections(ImGuiDockNode& node)
+{
+	if (node.TabBar)
+	{
+		node.TabBar->NextSelectedTabId = 0;
+	}
+
+	for (ImGuiDockNode* child : node.ChildNodes)
+	{
+		if (child)
+		{
+			ClearPendingTabSelections(*child);
+		}
+	}
+}
+
+} // priv
+
 UIView::UIView(const ViewDefinition& definition)
 	: m_id(UIViewID::GenerateID())
 	, m_minimumSize(definition.minimumSize.cast<Real32>())
@@ -47,6 +69,13 @@ EViewDrawResultActions UIView::Draw(const UIViewDrawParams& params)
 		contentClass.ClassId = dockspaceID;
 
 		ImGui::DockSpace(dockspaceID, ui::UIUtils::GetWindowContentSize(), 0, &contentClass);
+
+		ImGuiDockNode* dockspaceNode = ImGui::DockBuilderGetNode(dockspaceID);
+		SPT_CHECK(!!dockspaceNode && !!dockspaceNode->HostWindow);
+		if (dockspaceNode->HostWindow->SkipItems)
+		{
+			priv::ClearPendingTabSelections(*dockspaceNode);
+		}
 
 		const ViewBuildingScope scope(contentClass);
 

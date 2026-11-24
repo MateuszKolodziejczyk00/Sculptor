@@ -44,6 +44,7 @@ void GenerateRayDirectionsCS(CS_INPUT input)
 		const ShadingSample sample = RTClosure::Sample(surfaceInfo.GetShadingSurface(), toView, rng);
 
 		CONSTS->rwRaysDirections[traceCommandIndex] = PackHalf2x16Norm(OctahedronEncodeNormal(sample.direction));
-		CONSTS->rwRaysPdfs[traceCommandIndex]       = sample.pdf;
+		// Negative pdf marks traces that are not resampled (see LoadGeneratedRayPDF)
+		CONSTS->rwRaysPdfs[traceCommandIndex]       = surfaceInfo.roughness < RTClosure::RoughnessNoResamplingThreshold ? -abs(sample.pdf) : sample.pdf;
 	}
 }

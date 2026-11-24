@@ -45,6 +45,7 @@ private:
 	js::Event ExecuteFrame(EditorFrameContext& frame);
 
 	void UpdateUI(EditorFrameContext& frame);
+	void DrawTitleBar();
 
 	std::pair<lib::SharedRef<rdr::RenderContext>, lib::SharedRef<rdr::GPUWorkload>> RecordUICommands(EditorFrameContext& frame, rhi::EFragmentFormat rtFormat) const;
 

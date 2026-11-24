@@ -118,7 +118,7 @@ void TextureInspector::DrawTextureViewPanel()
 	SPT_PROFILER_FUNCTION();
 
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
-	ImGui::Begin(m_textureViewPanelName.GetData(), nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar);
+	ImGui::Begin(m_textureViewPanelName.GetData(), nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoTitleBar);
 
 	{
 		ImGui::Columns(5);
@@ -187,9 +187,10 @@ void TextureInspector::DrawTextureViewPanel()
 
 	UpdateDisplayedTexture(inspectedTexture);
 
-	const math::Vector2f panelSize = ui::UIUtils::GetWindowContentSize();
-	
-	const math::Vector2f windowSize = panelSize - math::Vector2f(0.f, 65.f);
+	const math::Vector2f availableSize = ImGui::GetContentRegionAvail();
+	const Real32 footerHeight = ImGui::GetTextLineHeightWithSpacing();
+
+	const math::Vector2f windowSize(availableSize.x(), availableSize.y() - footerHeight);
 
 	ImGui::BeginChild("TextureView", windowSize, false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar);
 	const math::Vector2f textureResolution = inspectedTexture->GetResolution2D().cast<Real32>();

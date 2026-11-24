@@ -65,7 +65,7 @@ void GenerateRTGIRaysRTG()
 			hitResult.roughness         = hitSurfaceInfo.roughness;
 			hitResult.baseColor         = hitSurfaceInfo.baseColorMetallic.rgb;
 			hitResult.metallic          = hitSurfaceInfo.baseColorMetallic.a;
-			hitResult.emissive          = 0.f;
+			hitResult.emissive          = hitSurfaceInfo.emissive;
 			hitResult.hitType           = RTGBUFFER_HIT_TYPE_VALID_HIT;
 			hitResult.hitDistance       = ssResult.hitDist;
 

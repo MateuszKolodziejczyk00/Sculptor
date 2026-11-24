@@ -12,6 +12,7 @@
 namespace spt::rdr
 {
 class TextureView;
+struct GPUStatisticsScopeData;
 } // spt::rdr
 
 
@@ -58,6 +59,7 @@ private:
 	void DrawNodeDetails(const CapturedPass& pass);
 
 	void DrawNodeProperties(const CapturedPass& node);
+	void DrawNodeGPUStatistics(const rdr::GPUStatisticsScopeData& statistics);
 	void DrawNodeComputeProperties(const RGCapturedComputeProperties& properties);
 
 
@@ -101,6 +103,8 @@ private:
 	ui::DockStack m_nodeDetailsDockStack;
 
 	scui::FilterText m_nodesListFilter;
+
+	Uint32 m_lastOpenedPassIdx = idxNone<Uint32>;
 
 	lib::SharedRef<RGCapture> m_capture;
 };

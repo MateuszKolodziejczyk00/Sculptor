@@ -24,7 +24,7 @@ public:
 	RenderView();
 	~RenderView();
 
-	void BeginFrame(math::Vector2u renderingRes);
+	void BeginFrame(math::Vector2u renderingRes, Bool isFirstFrame);
 
 	void                  SetOutputRes(const math::Vector2u& resolution);
 	const math::Vector2u& GetOutputRes() const;

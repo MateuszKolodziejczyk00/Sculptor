@@ -281,6 +281,15 @@ void AtmosphereRenderSystem::Update(const SceneUpdateContext& context)
 		UpdateAtmosphereContext();
 		m_isAtmosphereTextureDirty = true;
 	}
+
+	m_volumetricCloudsRenderer.Update(GetOwningScene());
+}
+
+math::Matrix4f AtmosphereRenderSystem::ComputeCloudsTransmittanceMapViewProj() const
+{
+	SPT_CHECK(m_atmosphereContext.mainDirectionalLight.has_value());
+
+	return m_volumetricCloudsRenderer.ComputeCloudsTransmittanceMapViewProj(m_atmosphereContext.mainDirectionalLight->direction);
 }
 
 void AtmosphereRenderSystem::UpdateGPUSceneData(const SceneUpdateContext& context, RenderSceneConstants& sceneData)
@@ -396,11 +405,9 @@ void AtmosphereRenderSystem::InitializeResources()
 
 void AtmosphereRenderSystem::UpdateAtmosphereContext()
 {
+	// Recreated instead of rewritten, because frames in flight may still read the previous light data
 	const Uint64 requiredBufferSize = sizeof(rdr::HLSLStorage<DirectionalLightGPUData>);
-	if (!m_atmosphereContext.directionalLightsBuffer || m_atmosphereContext.directionalLightsBuffer->GetSize() < requiredBufferSize)
-	{
-		m_atmosphereContext.directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Atmosphere Directional Light Buffer"), rhi::BufferDefinition(requiredBufferSize, rhi::EBufferUsage::Storage), rhi::EMemoryUsage::CPUToGPU);
-	}
+	m_atmosphereContext.directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Atmosphere Directional Light Buffer"), rhi::BufferDefinition(requiredBufferSize, rhi::EBufferUsage::Storage), rhi::EMemoryUsage::CPUToGPU);
 
 	rhi::RHIMappedBuffer<rdr::HLSLStorage<DirectionalLightGPUData>> lightGPUData(m_atmosphereContext.directionalLightsBuffer->GetRHI());
 

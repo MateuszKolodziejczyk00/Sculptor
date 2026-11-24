@@ -31,7 +31,7 @@ GeneratedRayPDF LoadGeneratedRayPDF(in TypedBuffer<float> rayPdfs, in uint rayId
 	const bool isSpecular = pdf < 0.f;
 
 	GeneratedRayPDF rayPdf;
-	rayPdf.pdf             = isSpecular ? 1.f : pdf;
+	rayPdf.pdf             = abs(pdf);
 	rayPdf.isSpecularTrace = isSpecular;
 
 	return rayPdf;

@@ -11,21 +11,6 @@ struct CS_INPUT
 };
 
 
-float LoadTraceVRBlockVisibility(in uint2 blockCoords)
-{
-	const uint vrBlockInfo = PARAMS_V_R_T_VISIBILITY_RESOLVE->vrBlocksTexture.Load(uint3(blockCoords, 0)).x;
-
-	uint2 localTraceOffset = 0;
-	uint vrMask = 0;
-	UnpackVRBlockInfo(vrBlockInfo, OUT localTraceOffset, OUT vrMask);
-
-	blockCoords &= ~(GetVariableRateTileSize(vrMask) - 1);
-	const uint2 traceCoods = blockCoords + localTraceOffset;
-
-	return PARAMS_V_R_T_VISIBILITY_RESOLVE->inputTexture.Load(uint3(traceCoods, 0)).x;
-}
-
-
 struct VariableRateSolver
 {
 	static VariableRateSolver Create(in float visibilitySample)
@@ -57,6 +42,25 @@ struct VariableRateSolver
 };
 
 
+void AccumulateTraceVRBlockVisibility(inout VariableRateSolver vrSolver, in uint2 blockCoords)
+{
+	const uint vrBlockInfo = PARAMS_V_R_T_VISIBILITY_RESOLVE->vrBlocksTexture.Load(uint3(blockCoords, 0)).x;
+
+	uint2 localTraceOffset = 0;
+	uint vrMask = 0;
+	UnpackVRBlockInfo(vrBlockInfo, OUT localTraceOffset, OUT vrMask);
+
+	blockCoords &= ~(GetVariableRateTileSize(vrMask) - 1);
+	const uint2 traceCoods = blockCoords + localTraceOffset;
+
+	// Sky has no traces, so visibility isn't written there
+	if (!isinf(PARAMS_V_R_T_VISIBILITY_RESOLVE->linearDepthTexture.Load(uint3(traceCoods, 0))))
+	{
+		vrSolver.AccumulateBlock(PARAMS_V_R_T_VISIBILITY_RESOLVE->inputTexture.Load(uint3(traceCoods, 0)).x);
+	}
+}
+
+
 [numthreads(8, 4, 1)]
 void ResolveVRTVisibilityCS(CS_INPUT input)
 {
@@ -85,17 +89,17 @@ void ResolveVRTVisibilityCS(CS_INPUT input)
 
 		if(offsetFromTrace.x != 0)
 		{
-			vrSolver.AccumulateBlock(LoadTraceVRBlockVisibility(uint2(otherBlockXCoord, blockCoords.y)));
+			AccumulateTraceVRBlockVisibility(vrSolver, uint2(otherBlockXCoord, blockCoords.y));
 		}
 
 		if(offsetFromTrace.y != 0)
 		{
-			vrSolver.AccumulateBlock(LoadTraceVRBlockVisibility(uint2(blockCoords.x, otherBlockYCoord)));
+			AccumulateTraceVRBlockVisibility(vrSolver, uint2(blockCoords.x, otherBlockYCoord));
 		}
 
 		if(offsetFromTrace.x != 0 && offsetFromTrace.y != 0)
 		{
-			vrSolver.AccumulateBlock(LoadTraceVRBlockVisibility(uint2(otherBlockXCoord, otherBlockYCoord)));
+			AccumulateTraceVRBlockVisibility(vrSolver, uint2(otherBlockXCoord, otherBlockYCoord));
 		}
 
 		PARAMS_V_R_T_VISIBILITY_RESOLVE->outputTexture[pixelCoords] = vrSolver.GetVisibility();

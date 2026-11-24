@@ -4,7 +4,6 @@
 [[shader_params(GPURenderView, VIEW)]]
 
 [[shader_params(RTShadingConstants, CONSTS)]]
-[[shader_params(GlobalLightsParams, PARAMS_GLOBAL_LIGHTS)]]
 
 #ifndef USE_DDGI
 #error "USE_DDGI must be defined"
@@ -117,6 +116,12 @@ void HitRaysShadingRTG()
 #endif // USE_DDGI
 
 		const GeneratedRayPDF rayPdf = LoadGeneratedRayPDF(CONSTS->rayPdfs, traceCommandIndex);
+
+		// Stochastic DI is skipped for pixels with non-resampled traces, so emissive has to be included here
+		if(rayPdf.isSpecularTrace)
+		{
+			luminance += hitResult.emissive;
+		}
 
 		SRReservoir reservoir = SRReservoir::Create(hitLocation, hitResult.normal, luminance, rayPdf.pdf);
 

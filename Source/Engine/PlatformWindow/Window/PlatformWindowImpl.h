@@ -1,9 +1,9 @@
 #pragma once
 
-#if USE_GLFW
+#if USE_WIN32
 
-#include "GLFW/GLFWWindow.h"
+#include "Win32/Win32Window.h"
 
-#endif // USE_GLFW
+#endif // USE_WIN32
 
 #include "PlatformWindowFwd.h"

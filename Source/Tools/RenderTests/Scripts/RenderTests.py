@@ -1,11 +1,11 @@
 """Render tests orchestrator: golden images (NVIDIA FLIP) + GPU performance regression tracking.
 
 Usage (or RunRenderTests.bat in engine directory with the same arguments, "run" if none given):
-  python RenderTests.py run [--mode fast|robust] [--filter <glob>] [--config Development] [--label <text>] [--no-open]
+  python RenderTests.py run [--mode robust|fast] [--filter <glob>] [--config Development] [--label <text>] [--no-open]
   python RenderTests.py accept [<test> ...] [--failed] [--passed] [--run <run id>]
   python RenderTests.py report [--no-open]
 
-Tests:   Tests/GoldenImages/Scenes/<Test>.json (+ golden <Test>.png)
+Tests:   Tests/GoldenImages/Scenes/<Test>.json, goldens: Tests/GoldenImages/Goldens/<Test>.*
 Results: Saved/RenderTests/Runs/<run id>/, dashboard: Saved/RenderTests/Report.html
 Requires: pip install flip-evaluator pillow numpy
 """
@@ -32,6 +32,7 @@ from PIL import Image
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ENGINE_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "..", "..", ".."))
 SCENE_TESTS_DIR = os.path.join(ENGINE_DIR, "Tests", "GoldenImages", "Scenes")
+GOLDENS_DIR = os.path.join(ENGINE_DIR, "Tests", "GoldenImages", "Goldens")
 OUTPUT_DIR = os.path.join(ENGINE_DIR, "Saved", "RenderTests")
 RUNS_DIR = os.path.join(OUTPUT_DIR, "Runs")
 LOCAL_OUTPUT_DIR = os.path.join(OUTPUT_DIR, "Local")
@@ -74,7 +75,7 @@ def DiscoverTests(pattern):
     tests = {}
     for fileName in sorted(os.listdir(SCENE_TESTS_DIR)):
         name, ext = os.path.splitext(fileName)
-        if ext == ".json" and not fileName.endswith((GOLDEN_HASHES_SUFFIX, GOLDEN_PIPELINE_STATISTICS_SUFFIX, GOLDEN_SETTINGS_SUFFIX, GOLDEN_WORKLOAD_SUFFIX)) and fnmatch.fnmatch(name, pattern):
+        if ext == ".json" and fnmatch.fnmatch(name, pattern):
             tests[name] = os.path.join(SCENE_TESTS_DIR, fileName)
     return tests
 
@@ -450,7 +451,7 @@ def EvaluateRun(args, runDir, runInfo, testPaths, failures, previousRuns):
         result = { "ImageStatus": failures.get(name), "PerfStatus": None, "MaxFlipMean": maxFlipMean, "Flip": None, "Perf": None, "Command": subprocess.list2cmdline(command) }
 
         if name not in failures:
-            result["ImageStatus"], result["Flip"] = EvaluateImage(testDir, os.path.join(SCENE_TESTS_DIR, name + ".png"), maxFlipMean)
+            result["ImageStatus"], result["Flip"] = EvaluateImage(testDir, os.path.join(GOLDENS_DIR, name + ".png"), maxFlipMean)
 
             perf = AggregatePerf(LoadJson(os.path.join(testDir, PERF_FILE)))
             baseline = ComputeBaseline(previousRuns, runInfo, name, args.baseline_runs)
@@ -460,10 +461,10 @@ def EvaluateRun(args, runDir, runInfo, testPaths, failures, previousRuns):
             result["PerfBaseline"] = baseline
 
             result["Settings"] = LoadJson(os.path.join(testDir, SETTINGS_FILE))
-            result["SettingsChanges"] = EvaluateSettings(result["Settings"], os.path.join(SCENE_TESTS_DIR, name + GOLDEN_SETTINGS_SUFFIX))
-            result["PipelineStatisticsChanges"] = EvaluatePipelineStatistics(perf, os.path.join(SCENE_TESTS_DIR, name + GOLDEN_PIPELINE_STATISTICS_SUFFIX))
-            result["WorkloadChanges"] = EvaluateWorkload(perf, os.path.join(SCENE_TESTS_DIR, name + GOLDEN_WORKLOAD_SUFFIX))
-            result["PassHashes"] = EvaluatePassHashes(testDir, os.path.join(SCENE_TESTS_DIR, name + GOLDEN_HASHES_SUFFIX))
+            result["SettingsChanges"] = EvaluateSettings(result["Settings"], os.path.join(GOLDENS_DIR, name + GOLDEN_SETTINGS_SUFFIX))
+            result["PipelineStatisticsChanges"] = EvaluatePipelineStatistics(perf, os.path.join(GOLDENS_DIR, name + GOLDEN_PIPELINE_STATISTICS_SUFFIX))
+            result["WorkloadChanges"] = EvaluateWorkload(perf, os.path.join(GOLDENS_DIR, name + GOLDEN_WORKLOAD_SUFFIX))
+            result["PassHashes"] = EvaluatePassHashes(testDir, os.path.join(GOLDENS_DIR, name + GOLDEN_HASHES_SUFFIX))
             if result["PassHashes"]:
                 result["PassHashes"]["ScopeStatus"], result["PassHashes"]["ScopeMismatches"] = MapPassHashesToScopes(result["PassHashes"], perf)
 
@@ -536,19 +537,20 @@ def CommandAccept(args):
     if args.passed:
         names += [name for name, result in run["Tests"].items() if result["ImageStatus"] == "Pass"]
 
+    os.makedirs(GOLDENS_DIR, exist_ok=True)
     for name in names:
         resultPath = os.path.join(RUNS_DIR, run["Id"], name, "Result.png")
         if not os.path.exists(resultPath):
             print("[{}] no result image in run {}, skipped".format(name, run["Id"]))
             continue
-        shutil.copyfile(resultPath, os.path.join(SCENE_TESTS_DIR, name + ".png"))
-        shutil.copyfile(os.path.join(RUNS_DIR, run["Id"], name, HASHES_FILE), os.path.join(SCENE_TESTS_DIR, name + GOLDEN_HASHES_SUFFIX))
-        shutil.copyfile(os.path.join(RUNS_DIR, run["Id"], name, SETTINGS_FILE), os.path.join(SCENE_TESTS_DIR, name + GOLDEN_SETTINGS_SUFFIX))
+        shutil.copyfile(resultPath, os.path.join(GOLDENS_DIR, name + ".png"))
+        shutil.copyfile(os.path.join(RUNS_DIR, run["Id"], name, HASHES_FILE), os.path.join(GOLDENS_DIR, name + GOLDEN_HASHES_SUFFIX))
+        shutil.copyfile(os.path.join(RUNS_DIR, run["Id"], name, SETTINGS_FILE), os.path.join(GOLDENS_DIR, name + GOLDEN_SETTINGS_SUFFIX))
         scopes = run["Tests"][name]["Perf"]["Scopes"]
         pipelineStatistics = { path: scope["PipelineStatistics"] for path, scope in scopes.items() if "PipelineStatistics" in scope }
-        SaveJson(os.path.join(SCENE_TESTS_DIR, name + GOLDEN_PIPELINE_STATISTICS_SUFFIX), pipelineStatistics)
+        SaveJson(os.path.join(GOLDENS_DIR, name + GOLDEN_PIPELINE_STATISTICS_SUFFIX), pipelineStatistics)
         # All scopes are stored, so scopes without invocations are compared too
-        SaveJson(os.path.join(SCENE_TESTS_DIR, name + GOLDEN_WORKLOAD_SUFFIX), { path: { key: scope[key] for key in WORKLOAD_KEYS if key in scope } for path, scope in scopes.items() })
+        SaveJson(os.path.join(GOLDENS_DIR, name + GOLDEN_WORKLOAD_SUFFIX), { path: { key: scope[key] for key in WORKLOAD_KEYS if key in scope } for path, scope in scopes.items() })
 
         print("[{}] golden updated from run {}".format(name, run["Id"]))
 
@@ -626,7 +628,7 @@ def main():
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     runParser = subparsers.add_parser("run", help="Run tests, compare with goldens and track performance")
-    runParser.add_argument("--mode", choices=["fast", "robust"], default="fast", help="fast: one engine instance for all tests, robust: engine instance per test")
+    runParser.add_argument("--mode", choices=["fast", "robust"], default="robust", help="fast: one engine instance for all tests, robust: engine instance per test")
     runParser.add_argument("--filter", default="*", help="Glob on test names")
     runParser.add_argument("--config", default="Development", choices=["Debug", "Development", "Release"])
     runParser.add_argument("--label", default="", help="Free text stored with the run")

@@ -14,7 +14,7 @@ public:
 
 	explicit FilterText(lib::HashedString name);
 
-	void Draw();
+	void Draw(const char* hint);
 
 	Bool IsMatching(lib::StringView text, Uint32 elementIdx = 0u) const;
 

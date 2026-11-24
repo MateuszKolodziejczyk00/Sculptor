@@ -32,8 +32,6 @@ static rdr::PipelineStateID GetTemporalAAPipeline()
 StandardTAARenderer::StandardTAARenderer()
 {
 	m_name = "Standard TAA";
-
-	m_executesUnifiedDenoising = true;
 }
 
 Bool StandardTAARenderer::Initialize(const TemporalAAInitSettings& initSettings)
@@ -55,6 +53,8 @@ Bool StandardTAARenderer::PrepareForRendering(const TemporalAAParams& params)
 	{
 		return false;
 	}
+
+	m_executesUnifiedDenoising = params.enableUnifiedDenoising;
 
 	SPT_CHECK(params.inputResolution == params.outputResolution);
 
