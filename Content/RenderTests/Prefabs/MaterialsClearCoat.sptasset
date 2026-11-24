@@ -1,0 +1,162 @@
+{
+    "Blackboard": {
+        "BlackboardContent": [
+            "spt::as::PrefabDefinition"
+        ],
+        "spt::as::PrefabDefinition": {
+            "Entities": [
+                {
+                    "Entity": {
+                        "Name": "Plane0",
+                        "Location": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            20.0,
+                            20.0,
+                            1.0
+                        ],
+                        "Mesh": "../Meshes/Plane.sptasset",
+                        "Materials": [
+                            "../Materials/Floor.sptasset"
+                        ]
+                    },
+                    "EntityType": "spt::gf::PrefabMeshEntityDefinition"
+                },
+                {
+                    "Entity": {
+                        "Name": "Sphere1",
+                        "Location": [
+                            0.0,
+                            -2.4,
+                            0.5
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "Mesh": "../Meshes/Sphere.sptasset",
+                        "Materials": [
+                            "../Materials/Red.sptasset"
+                        ]
+                    },
+                    "EntityType": "spt::gf::PrefabMeshEntityDefinition"
+                },
+                {
+                    "Entity": {
+                        "Name": "Sphere2",
+                        "Location": [
+                            0.0,
+                            -1.2,
+                            0.5
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "Mesh": "../Meshes/Sphere.sptasset",
+                        "Materials": [
+                            "../Materials/ClearCoat0.sptasset"
+                        ]
+                    },
+                    "EntityType": "spt::gf::PrefabMeshEntityDefinition"
+                },
+                {
+                    "Entity": {
+                        "Name": "Sphere3",
+                        "Location": [
+                            0.0,
+                            0.0,
+                            0.5
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "Mesh": "../Meshes/Sphere.sptasset",
+                        "Materials": [
+                            "../Materials/ClearCoat1.sptasset"
+                        ]
+                    },
+                    "EntityType": "spt::gf::PrefabMeshEntityDefinition"
+                },
+                {
+                    "Entity": {
+                        "Name": "Sphere4",
+                        "Location": [
+                            0.0,
+                            1.2,
+                            0.5
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "Mesh": "../Meshes/Sphere.sptasset",
+                        "Materials": [
+                            "../Materials/ClearCoatHalf.sptasset"
+                        ]
+                    },
+                    "EntityType": "spt::gf::PrefabMeshEntityDefinition"
+                },
+                {
+                    "Entity": {
+                        "Name": "Sphere5",
+                        "Location": [
+                            0.0,
+                            2.4,
+                            0.5
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "Mesh": "../Meshes/Sphere.sptasset",
+                        "Materials": [
+                            "../Materials/ClearCoatGold.sptasset"
+                        ]
+                    },
+                    "EntityType": "spt::gf::PrefabMeshEntityDefinition"
+                }
+            ]
+        }
+    },
+    "Type": "spt::as::PrefabAsset"
+}

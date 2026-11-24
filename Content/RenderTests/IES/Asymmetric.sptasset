@@ -1,0 +1,11 @@
+{
+    "Blackboard": {
+        "BlackboardContent": [
+            "spt::as::IESProfileSourceDefinition"
+        ],
+        "spt::as::IESProfileSourceDefinition": {
+            "Path": "Asymmetric.ies"
+        }
+    },
+    "Type": "spt::as::IESProfileAsset"
+}

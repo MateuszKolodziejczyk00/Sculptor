@@ -1,0 +1,237 @@
+{
+    "Blackboard": {
+        "BlackboardContent": [
+            "spt::as::PrefabDefinition"
+        ],
+        "spt::as::PrefabDefinition": {
+            "Entities": [
+                {
+                    "Entity": {
+                        "Name": "Plane0",
+                        "Location": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            20.0,
+                            20.0,
+                            1.0
+                        ],
+                        "Mesh": "../Meshes/Plane.sptasset",
+                        "Materials": [
+                            "../Materials/Floor.sptasset"
+                        ]
+                    },
+                    "EntityType": "spt::gf::PrefabMeshEntityDefinition"
+                },
+                {
+                    "Entity": {
+                        "Name": "Sphere1",
+                        "Location": [
+                            1.0,
+                            -2.0,
+                            0.5
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "Mesh": "../Meshes/Sphere.sptasset",
+                        "Materials": [
+                            "../Materials/DielectricRed2.sptasset"
+                        ]
+                    },
+                    "EntityType": "spt::gf::PrefabMeshEntityDefinition"
+                },
+                {
+                    "Entity": {
+                        "Name": "Sphere2",
+                        "Location": [
+                            2.5,
+                            -1.4,
+                            0.5
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "Mesh": "../Meshes/Sphere.sptasset",
+                        "Materials": [
+                            "../Materials/DielectricWhite2.sptasset"
+                        ]
+                    },
+                    "EntityType": "spt::gf::PrefabMeshEntityDefinition"
+                },
+                {
+                    "Entity": {
+                        "Name": "Sphere3",
+                        "Location": [
+                            4.0,
+                            -0.8,
+                            0.5
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "Mesh": "../Meshes/Sphere.sptasset",
+                        "Materials": [
+                            "../Materials/DielectricRed2.sptasset"
+                        ]
+                    },
+                    "EntityType": "spt::gf::PrefabMeshEntityDefinition"
+                },
+                {
+                    "Entity": {
+                        "Name": "Sphere4",
+                        "Location": [
+                            5.5,
+                            -0.20000000000000018,
+                            0.5
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "Mesh": "../Meshes/Sphere.sptasset",
+                        "Materials": [
+                            "../Materials/DielectricWhite2.sptasset"
+                        ]
+                    },
+                    "EntityType": "spt::gf::PrefabMeshEntityDefinition"
+                },
+                {
+                    "Entity": {
+                        "Name": "Sphere5",
+                        "Location": [
+                            7.0,
+                            0.3999999999999999,
+                            0.5
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "Mesh": "../Meshes/Sphere.sptasset",
+                        "Materials": [
+                            "../Materials/DielectricRed2.sptasset"
+                        ]
+                    },
+                    "EntityType": "spt::gf::PrefabMeshEntityDefinition"
+                },
+                {
+                    "Entity": {
+                        "Name": "Sphere6",
+                        "Location": [
+                            8.5,
+                            1.0,
+                            0.5
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "Mesh": "../Meshes/Sphere.sptasset",
+                        "Materials": [
+                            "../Materials/DielectricWhite2.sptasset"
+                        ]
+                    },
+                    "EntityType": "spt::gf::PrefabMeshEntityDefinition"
+                },
+                {
+                    "Entity": {
+                        "Name": "Sphere7",
+                        "Location": [
+                            10.0,
+                            1.5999999999999996,
+                            0.5
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "Mesh": "../Meshes/Sphere.sptasset",
+                        "Materials": [
+                            "../Materials/DielectricRed2.sptasset"
+                        ]
+                    },
+                    "EntityType": "spt::gf::PrefabMeshEntityDefinition"
+                },
+                {
+                    "Entity": {
+                        "Name": "Sphere8",
+                        "Location": [
+                            11.5,
+                            2.2,
+                            0.5
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "Mesh": "../Meshes/Sphere.sptasset",
+                        "Materials": [
+                            "../Materials/DielectricWhite2.sptasset"
+                        ]
+                    },
+                    "EntityType": "spt::gf::PrefabMeshEntityDefinition"
+                }
+            ]
+        }
+    },
+    "Type": "spt::as::PrefabAsset"
+}

@@ -1,0 +1,27 @@
+{
+    "Blackboard": {
+        "BlackboardContent": [
+            "spt::as::PBRMaterialDefinition",
+            "spt::as::MaterialTypeInfo"
+        ],
+        "spt::as::MaterialTypeInfo": {
+            "MaterialType": "spt::as::PBRMaterialInstance"
+        },
+        "spt::as::PBRMaterialDefinition": {
+            "BaseColorFactor": [
+                0.8,
+                0.8,
+                0.8
+            ],
+            "MetallicFactor": 0.0,
+            "RoughnessFactor": 0.4,
+            "EmissionFactor": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "NormalsTexPath": "../Textures/Tiles_Normal.png"
+        }
+    },
+    "Type": "spt::as::MaterialAsset"
+}

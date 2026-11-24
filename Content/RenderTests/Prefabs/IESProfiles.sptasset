@@ -1,0 +1,164 @@
+{
+    "Blackboard": {
+        "BlackboardContent": [
+            "spt::as::PrefabDefinition"
+        ],
+        "spt::as::PrefabDefinition": {
+            "Entities": [
+                {
+                    "Entity": {
+                        "Name": "Plane0",
+                        "Location": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            20.0,
+                            20.0,
+                            1.0
+                        ],
+                        "Mesh": "../Meshes/Plane.sptasset",
+                        "Materials": [
+                            "../Materials/Floor.sptasset"
+                        ]
+                    },
+                    "EntityType": "spt::gf::PrefabMeshEntityDefinition"
+                },
+                {
+                    "Entity": {
+                        "Name": "Cube1",
+                        "Location": [
+                            2.1,
+                            0.0,
+                            2.0
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            0.2,
+                            10.0,
+                            4.0
+                        ],
+                        "Mesh": "../Meshes/Cube.sptasset",
+                        "Materials": [
+                            "../Materials/Wall.sptasset"
+                        ]
+                    },
+                    "EntityType": "spt::gf::PrefabMeshEntityDefinition"
+                },
+                {
+                    "Entity": {
+                        "Name": "Light2",
+                        "Location": [
+                            1.6,
+                            -2.0,
+                            2.4
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "Type": 0,
+                        "Color": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "LuminousPower": 5026.548245743669,
+                        "Range": 8.0,
+                        "InnerHalfAngle": 0.0,
+                        "OuterHalfAngle": 0.0,
+                        "IESProfile": "../IES/Downlight.sptasset",
+                        "ContributeToDI": true,
+                        "ContributeToScattering": true
+                    },
+                    "EntityType": "spt::gf::PrefabLightEntityDefinition"
+                },
+                {
+                    "Entity": {
+                        "Name": "Light3",
+                        "Location": [
+                            1.6,
+                            0.0,
+                            2.4
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "Type": 0,
+                        "Color": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "LuminousPower": 5026.548245743669,
+                        "Range": 8.0,
+                        "InnerHalfAngle": 0.0,
+                        "OuterHalfAngle": 0.0,
+                        "IESProfile": "../IES/Batwing.sptasset",
+                        "ContributeToDI": true,
+                        "ContributeToScattering": true
+                    },
+                    "EntityType": "spt::gf::PrefabLightEntityDefinition"
+                },
+                {
+                    "Entity": {
+                        "Name": "Light4",
+                        "Location": [
+                            1.6,
+                            2.0,
+                            2.4
+                        ],
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "Type": 0,
+                        "Color": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "LuminousPower": 5026.548245743669,
+                        "Range": 8.0,
+                        "InnerHalfAngle": 0.0,
+                        "OuterHalfAngle": 0.0,
+                        "IESProfile": "../IES/Asymmetric.sptasset",
+                        "ContributeToDI": true,
+                        "ContributeToScattering": true
+                    },
+                    "EntityType": "spt::gf::PrefabLightEntityDefinition"
+                }
+            ]
+        }
+    },
+    "Type": "spt::as::PrefabAsset"
+}

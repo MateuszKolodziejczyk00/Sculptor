@@ -1,0 +1,27 @@
+{
+    "Blackboard": {
+        "BlackboardContent": [
+            "spt::as::PBRMaterialDefinition",
+            "spt::as::MaterialTypeInfo"
+        ],
+        "spt::as::MaterialTypeInfo": {
+            "MaterialType": "spt::as::PBRMaterialInstance"
+        },
+        "spt::as::PBRMaterialDefinition": {
+            "BaseColorFactor": [
+                0.955,
+                0.638,
+                0.538
+            ],
+            "MetallicFactor": 1.0,
+            "RoughnessFactor": 1.0,
+            "EmissionFactor": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "RoughnessTexPath": "../Textures/Stripes_Roughness.png"
+        }
+    },
+    "Type": "spt::as::MaterialAsset"
+}

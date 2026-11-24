@@ -1,0 +1,87 @@
+{
+	"Type": "Scene",
+	"Prefab": "RenderTests/Prefabs/Clouds.sptasset",
+	"Camera": {
+		"Location": [
+			0.0,
+			0.0,
+			1.7
+		],
+		"Rotation": [
+			0.06395,
+			-0.30928,
+			0.20737
+		],
+		"FOV": 80.0,
+		"Near": 0.05,
+		"Far": 1000.0
+	},
+	"Sun": {
+		"Illuminance": 120000.0,
+		"Direction": [
+			-0.5,
+			-0.6,
+			-0.5
+		]
+	},
+	"WarmupFrames": 32,
+	"ViewSettings": {
+		"exposure": {
+			"enableAutoExposure": false,
+			"manualEV100": 14.0
+		},
+		"localTonemap": {
+			"enableLocalExposure": false
+		},
+		"tonemap": {
+			"enableColorDithering": false
+		},
+		"bloom": {
+			"enable": false
+		},
+		"lensFlares": {
+			"enable": false
+		},
+		"dof": {
+			"enable": false
+		},
+		"volumetricFog": {
+			"enableDirLightsInScattering": false
+		},
+		"sunShadows": {
+			"enable": false
+		},
+		"reflections": {
+			"enable": false
+		},
+		"shading": {
+			"enablePOM": false,
+			"enableStochasticLighting": false,
+			"enableColoredAO": false
+		},
+		"upscaler": {
+			"method": 0
+		}
+	},
+	"SceneSettings": {
+		"fog": {
+			"globalDensity": 0.0
+		},
+		"clouds": {
+			"enable": true
+		},
+		"lighting": {
+			"ambientIntensity": 0.0
+		},
+		"localShadows": {
+			"enable": false
+		},
+		"terrain": {
+			"enable": false,
+			"enableGrass": false
+		},
+		"ddgi": {
+			"enable": false
+		}
+	}
+}

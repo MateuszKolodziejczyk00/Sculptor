@@ -1,0 +1,26 @@
+{
+    "Blackboard": {
+        "BlackboardContent": [
+            "spt::as::PBRMaterialDefinition",
+            "spt::as::MaterialTypeInfo"
+        ],
+        "spt::as::MaterialTypeInfo": {
+            "MaterialType": "spt::as::PBRMaterialInstance"
+        },
+        "spt::as::PBRMaterialDefinition": {
+            "BaseColorFactor": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "MetallicFactor": 0.0,
+            "RoughnessFactor": 1.0,
+            "EmissionFactor": [
+                8000.0,
+                5200.0,
+                2400.0
+            ]
+        }
+    },
+    "Type": "spt::as::MaterialAsset"
+}
