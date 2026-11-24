@@ -11,6 +11,10 @@ namespace spt::rsc::wsc
 namespace constants
 {
 static constexpr Uint32 cascadeCount = 2u;
+static constexpr Uint32 shadowMapRes = 2048u;
+
+static constexpr lib::StaticArray<Uint32, cascadeCount> cascadeTilesPerAxis = { 2u, 4u };
+static constexpr Uint32 maxTilesPerAxis = 4u;
 } // constants
 
 

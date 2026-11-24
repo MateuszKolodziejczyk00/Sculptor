@@ -157,7 +157,15 @@ void ShadowMapRenderStage::RenderCSM(rg::RenderGraphBuilder& graphBuilder, Scene
 	const StaticMeshesRenderSystem& staticMeshesSystem = rendererInterface.GetRenderSystemChecked<StaticMeshesRenderSystem>();
 	const GeometryPassDataCollection& cachedGeometryPassData = staticMeshesSystem.GetCachedOpaqueGeometryPassData();
 
-	const rg::RGTextureViewHandle shadowMapView = graphBuilder.CreateTextureMipView(shadowMap, 0u);
+	const rg::RGTextureViewHandle shadowMapMipView = graphBuilder.CreateTextureMipView(shadowMap, 0u);
+
+	const ShadowMapViewComponent& shadowMapViewData = viewSpec.GetRenderView().GetBlackboard().Get<ShadowMapViewComponent>();
+	const Bool isTile = shadowMapViewData.shadowMapType == EShadowMapType::DirectionalLightCascade && shadowMap->GetResolution2D() != res;
+	SPT_CHECK(isTile || shadowMapViewData.tileOffset.isZero());
+
+	const rg::RGTextureViewHandle shadowMapView = isTile
+	                                            ? graphBuilder.CreateTextureView(RG_DEBUG_NAME("Shadow Map Tile"), rg::TextureDef(res, shadowMap->GetFormat()))
+	                                            : shadowMapMipView;
 
 	gp::GeometryPassParams geometryPassParams(viewSpec, cachedGeometryPassData);
 	geometryPassParams.historyHiZ = historyHiZ;
@@ -184,6 +192,12 @@ void ShadowMapRenderStage::RenderCSM(rg::RenderGraphBuilder& graphBuilder, Scene
 	HiZ::CreateHierarchicalZ(graphBuilder, shadowMapView, currentHiZ->GetTexture());
 
 	depth_only::FinishPipelineExecution(graphBuilder, depthOnlyExecutor);
+
+	if (isTile)
+	{
+		const math::Vector3i tileOffset(static_cast<Int32>(shadowMapViewData.tileOffset.x()), static_cast<Int32>(shadowMapViewData.tileOffset.y()), 0);
+		graphBuilder.CopyTexture(RG_DEBUG_NAME("Copy Shadow Map Tile"), shadowMapView, math::Vector3i::Zero(), shadowMapMipView, tileOffset, math::Vector3u(res.x(), res.y(), 1u));
+	}
 
 	std::swap(m_currentHiZ, m_historyHiZ);
 }

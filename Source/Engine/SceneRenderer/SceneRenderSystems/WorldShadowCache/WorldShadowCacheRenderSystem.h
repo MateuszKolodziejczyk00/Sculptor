@@ -30,47 +30,40 @@ public:
 
 private:
 
-	struct PerLightData
+	// Shaders sample the front shadow map, while tiles of the next placement are rendered to the back one. Swapped when all tiles are rendered.
+	struct CascadeData
 	{
-		PerLightData() = default;
-		~PerLightData();
+		CascadeData() = default;
+		~CascadeData();
 
-		PerLightData(const PerLightData&) = delete;
-		PerLightData& operator=(const PerLightData&) = delete;
+		CascadeData(const CascadeData&) = delete;
+		CascadeData& operator=(const CascadeData&) = delete;
 
-		PerLightData(PerLightData&& other)
-			: shadowMaps(std::move(other.shadowMaps))
-			, shadowMapsViews(std::move(other.shadowMapsViews))
-			, shadowCascadeViews(std::move(other.shadowCascadeViews))
-		{
-			std::fill(other.shadowCascadeViews.begin(), other.shadowCascadeViews.end(), nullptr);
-		}
+		lib::StaticArray<lib::SharedPtr<rdr::Texture>,     2u> shadowMaps;
+		lib::StaticArray<lib::SharedPtr<rdr::TextureView>, 2u> shadowMapsViews;
 
-		PerLightData& operator=(PerLightData&& other)
-		{
-			if (this != &other)
-			{
-				shadowMaps = std::move(other.shadowMaps);
-				shadowMapsViews = std::move(other.shadowMapsViews);
-				shadowCascadeViews = std::move(other.shadowCascadeViews);
-				std::fill(other.shadowCascadeViews.begin(), other.shadowCascadeViews.end(), nullptr);
-			}
-			return *this;
-		}
+		lib::StaticArray<RenderView*, constants::maxTilesPerAxis * constants::maxTilesPerAxis> tileViews = {};
 
-		lib::StaticArray<lib::SharedPtr<rdr::Texture>,     constants::cascadeCount> shadowMaps;
-		lib::StaticArray<lib::SharedPtr<rdr::TextureView>, constants::cascadeCount> shadowMapsViews;
+		math::Matrix4f frontViewProj   = math::Matrix4f::Identity();
+		math::Matrix4f pendingViewProj = math::Matrix4f::Identity();
 
-		lib::StaticArray<RenderView*, constants::cascadeCount> shadowCascadeViews;
+		Uint32 frontIdx    = 0u;
+		Uint32 nextTileIdx = 0u;
 	};
 
-	PerLightData CreatePerLightData() const;
+	void InitializeCascade(CascadeData& cascade, Uint32 cascadeIdx) const;
 
-	void UpdateCascadeViewsMatrices(const RenderView& mainView, PerLightData& dirLightData, Uint32 cascadeIdx) const;
+	void BeginCycle(const RenderView& mainView, CascadeData& cascade, Uint32 cascadeIdx, Uint32 tilesPerAxis) const;
 
-	PerLightData m_dirLightData;
+	RenderView* RenderNextTile(const RenderView& mainView, CascadeData& cascade, Uint32 cascadeIdx, Uint32 tilesPerAxis) const;
 
-	lib::Span<RenderView*> m_cascadesToUpdate;
+	Uint32 GetTilesPerAxis(Uint32 cascadeIdx) const;
+
+	lib::StaticArray<CascadeData, constants::cascadeCount> m_cascades;
+
+	Bool m_timeSlicingEnabled = false;
+
+	lib::Span<RenderView*> m_viewsToUpdate;
 };
 
 } // spt::rsc::wsc

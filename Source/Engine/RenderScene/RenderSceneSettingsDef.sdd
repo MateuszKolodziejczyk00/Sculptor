@@ -105,6 +105,13 @@ struct LocalShadowsSettings
 
 
 [Gen=ShaderStructGen]
+struct WorldShadowCacheSettings
+{
+	Bool enableTimeSlicing = true;
+};
+
+
+[Gen=ShaderStructGen]
 struct TerrainSettings
 {
 	[test=false]
@@ -130,8 +137,9 @@ struct RenderSceneSettings
 	HeightFogSettings    fog;
 	CloudsSettings       clouds;
 	LightingSettings     lighting;
-	LocalShadowsSettings localShadows;
-	TerrainSettings      terrain;
+	LocalShadowsSettings     localShadows;
+	WorldShadowCacheSettings wsc;
+	TerrainSettings          terrain;
 	DDGISettings         ddgi;
 };
 

@@ -44,6 +44,7 @@ struct ShadowMapViewComponent
 	lib::SharedPtr<rdr::Texture>           shadowMap;
 	LocalLightHandle                       owningLight;
 	Uint32                                 faceIdx;
+	math::Vector2u                         tileOffset = math::Vector2u::Zero(); // Only for time-sliced DirectionalLightCascade
 	EShadowMapType                         shadowMapType;
 	std::optional<EShadowMappingTechnique> techniqueOverride;
 };
