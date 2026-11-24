@@ -74,6 +74,19 @@ END_SHADER_STRUCT();
 
 
 
+BEGIN_SHADER_STRUCT(BuildLightsGridConstants)
+	SHADER_STRUCT_FIELD(gfx::ConstTypedBufferRef<LocalLightGPUData>, localLights)
+	SHADER_STRUCT_FIELD(Uint32,                                      localLightsNum)
+	SHADER_STRUCT_FIELD(LightsGridCascades,                          cascades)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<Uint16>,               rwCells)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<Uint16>,               rwNodes)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<Uint32>,               rwNodesCounter)
+END_SHADER_STRUCT();
+
+
+SIMPLE_COMPUTE_PSO(BuildLightsGridPSO, "Sculptor/Lights/BuildLightsGrid.hlsl", BuildLightsGridCS);
+
+
 BEGIN_RG_NODE_PARAMETERS_STRUCT(LightTilesIndirectDrawCommandsParameters)
 	RG_BUFFER_VIEW(pointLightDrawCommandsBuffer,      rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
 	RG_BUFFER_VIEW(pointLightDrawCommandsCountBuffer, rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
@@ -533,6 +546,12 @@ LightsRenderSystem::LightsRenderSystem(lib::MemoryArena& arena, RenderScene& own
 
 	rdr::UploadDataToBuffer(lib::Ref(m_spotLightProxyVertices), 0u, reinterpret_cast<const Byte*>(spotLightProxyVertices.data()), spotLightProxyVertices.size() * sizeof(math::Vector3f));
 	rdr::UploadDataToBuffer(lib::Ref(m_pointLightProxyVertices), 0u, reinterpret_cast<const Byte*>(pointLightProxyVertices.data()), pointLightProxyVertices.size() * sizeof(math::Vector3f));
+
+	const rhi::BufferDefinition gridCellsDef(lights_grid_constants::cascadesNum * lights_grid_constants::cascadeCellsNum * sizeof(Uint16), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst));
+	m_lightsGridCells = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Lights Grid Cells"), gridCellsDef, rhi::EMemoryUsage::GPUOnly);
+
+	const rhi::BufferDefinition gridNodesDef(lights_grid_constants::nodesCapacity * sizeof(Uint16), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst));
+	m_lightsGridNodes = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Lights Grid Nodes"), gridNodesDef, rhi::EMemoryUsage::GPUOnly);
 }
 
 void LightsRenderSystem::UpdateGPUSceneData(const SceneUpdateContext& context, RenderSceneConstants& sceneData)
@@ -604,6 +623,22 @@ void LightsRenderSystem::UpdateGPUSceneData(const SceneUpdateContext& context, R
 		lightsData.cloudsTransmittanceMap      = atmosphereSystem.GetCloudsTransmittanceTexture();
 	}
 
+	const math::Vector3f gridCenter = context.mainRenderView.GetLocation();
+	const math::Vector3f cascadeRes = math::Vector3f(lights_grid_constants::cascadeResXY, lights_grid_constants::cascadeResXY, lights_grid_constants::cascadeResZ);
+
+	for (Uint32 cascadeIdx = 0u; cascadeIdx < lights_grid_constants::cascadesNum; ++cascadeIdx)
+	{
+		LightsGridCascade& cascade = m_lightsGridCascades[cascadeIdx];
+		cascade.cellSize = lights_grid_constants::baseCellSize * static_cast<Real32>(1u << cascadeIdx);
+		cascade.origin   = (gridCenter / cascade.cellSize).array().floor().matrix() * cascade.cellSize - cascadeRes * cascade.cellSize * 0.5f;
+	}
+
+	m_localLightsNum = static_cast<Uint32>(localLightsNum);
+
+	lightsData.lightsGrid.cascades = m_lightsGridCascades;
+	lightsData.lightsGrid.cells    = m_lightsGridCells->GetFullView();
+	lightsData.lightsGrid.nodes    = m_lightsGridNodes->GetFullView();
+
 	sceneData.lights = lightsData;
 }
 
@@ -628,11 +663,43 @@ void LightsRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, co
 {
 	Super::RenderPerFrame(graphBuilder, rendererInterface, renderScene, viewSpecs, settings);
 
+	BuildLightsGrid(graphBuilder);
+
 	for (ViewRenderingSpec* viewSpec : viewSpecs)
 	{
 		SPT_CHECK(!!viewSpec);
 		RenderPerView(graphBuilder, renderScene, *viewSpec);
 	}
+}
+
+void LightsRenderSystem::BuildLightsGrid(rg::RenderGraphBuilder& graphBuilder)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const rg::RGBufferViewHandle cells        = graphBuilder.AcquireExternalBufferView(m_lightsGridCells->GetFullView());
+	const rg::RGBufferViewHandle nodes        = graphBuilder.AcquireExternalBufferView(m_lightsGridNodes->GetFullView());
+	const rg::RGBufferViewHandle nodesCounter = graphBuilder.CreateStorageBufferView(RG_DEBUG_NAME("Lights Grid Nodes Counter"), sizeof(Uint32));
+
+	// Nodes are allocated with atomics
+	cells->SetNonDeterministic();
+	nodes->SetNonDeterministic();
+
+	// Nodes 0 and 1 are terminators shared by all empty cells
+	graphBuilder.FillBuffer(RG_DEBUG_NAME("Init Lights Grid Empty List"), nodes, 0u, sizeof(Uint32), 0xFFFFFFFFu);
+	graphBuilder.FillBuffer(RG_DEBUG_NAME("Init Lights Grid Nodes Counter"), nodesCounter, 0u, sizeof(Uint32), 2u);
+
+	BuildLightsGridConstants shaderConstants;
+	shaderConstants.localLights    = m_sceneLocalLightsBuffer->GetFullView();
+	shaderConstants.localLightsNum = m_localLightsNum;
+	shaderConstants.cascades       = m_lightsGridCascades;
+	shaderConstants.rwCells        = cells;
+	shaderConstants.rwNodes        = nodes;
+	shaderConstants.rwNodesCounter = nodesCounter;
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Build Lights Grid"),
+						  BuildLightsGridPSO::pso,
+						  math::Vector3u(lights_grid_constants::cascadeResXY, lights_grid_constants::cascadeResXY, lights_grid_constants::cascadeResZ * lights_grid_constants::cascadesNum),
+						  shaderConstants);
 }
 
 void LightsRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)

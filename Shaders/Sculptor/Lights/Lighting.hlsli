@@ -5,6 +5,7 @@
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
 #include "RayTracing/RTScene.hlsli"
 #include "SceneRendering/WSC.hlsli"
+#include "Lights/LightsGrid.hlsli"
 
 #ifdef PARAM_DDGIGPUScene
 #include "DDGI/DDGITypes.hlsli"
@@ -68,10 +69,28 @@ void CalcReflectedLuminance<TLightingAccumulator : ILightingAccumulator>(in Shad
 	const uint2 clusterRange = clusterIdx < PARAM_ViewShadingParams->lightsData->zClustersNum ? PARAM_ViewShadingParams->clustersRanges[clusterIdx] : uint2(0u, 0u);
 	
 	{
+		const float3 waveBoundsMin = WaveActiveMin(geometry.location);
+		const float3 waveBoundsMax = WaveActiveMax(geometry.location);
+
+		const uint activeLanesNum = WaveActiveCountBits(true);
+		const uint laneRank = WavePrefixCountBits(true);
+
 		for(uint i = 0; i < PARAM_ViewShadingParams->lightsData->localLights32Num; ++i)
 		{
-			uint lightsMask = PARAM_ViewShadingParams->tilesLightsMask[tileLightsDataOffset + i];
-			lightsMask = ClusterMaskRange(lightsMask, clusterRange, i << 5u);
+			const uint candidatesMask = WaveActiveBitOr(ClusterMaskRange(PARAM_ViewShadingParams->tilesLightsMask[tileLightsDataOffset + i], clusterRange, i << 5u));
+
+			uint lightsMask = 0u;
+			for (uint bitIdx = laneRank; WaveActiveAnyTrue(bitIdx < 32u); bitIdx += activeLanesNum)
+			{
+				bool isLightVisible = false;
+				if (bitIdx < 32u && (candidatesMask & (1u << bitIdx)) != 0u)
+				{
+					const LocalLightInterface candidateLight = PARAM_ViewShadingParams->localLights[i * 32u + bitIdx];
+					const float3 closestPoint = clamp(candidateLight.location, waveBoundsMin, waveBoundsMax);
+					isLightVisible = candidateLight.ContributesToDI() && Dist2(closestPoint, candidateLight.location) < Pow2(candidateLight.range);
+				}
+				lightsMask |= WaveActiveBitOr(isLightVisible ? (1u << bitIdx) : 0u);
+			}
 
 			while(lightsMask)
 			{
@@ -80,12 +99,6 @@ void CalcReflectedLuminance<TLightingAccumulator : ILightingAccumulator>(in Shad
 				const uint lightIdx = i * 32 + maskBitIdx;
 				const LocalLightInterface localLight = PARAM_ViewShadingParams->localLights[lightIdx];
 
-				if (!localLight.ContributesToDI())
-				{
-					lightsMask &= ~(1u << maskBitIdx);
-					continue;
-				}
-			  
 				const float3 toLight = localLight.location - geometry.location;
 
 				if (dot(toLight, surface.normal) > 0.f)
@@ -325,15 +338,13 @@ float3 CalcReflectedLuminance_Direct(in ShadedSurface surface, in SurfaceGeometr
 	// Local Lights
 
 	{
-		for(uint lightIdx = 0; lightIdx < SCENE->lights.localLightsNum; ++lightIdx)
+		LightsGridCellLights cellLights = LightsGrid().GetCellLights(geometry.location);
+
+		uint lightIdx;
+		while (cellLights.Next(OUT lightIdx))
 		{
 			const LocalLightInterface localLight = SCENE->lights.localLights[lightIdx];
 
-			if (!localLight.ContributesToDI())
-			{
-				continue;
-			}
-			
 			const float3 toLight = localLight.location - geometry.location;
 
 			if (dot(toLight, surface.normal) > 0.f)

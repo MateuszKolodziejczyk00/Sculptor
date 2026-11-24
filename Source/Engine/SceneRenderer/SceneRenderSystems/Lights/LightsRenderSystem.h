@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SceneRenderSystems/SceneRenderSystem.h"
+#include "SceneLightsTypes.h"
 
 
 namespace spt::rdr
@@ -36,12 +37,20 @@ private:
 
 	void BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, SceneRendererInterface& rendererInterface, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context);
 
+	void BuildLightsGrid(rg::RenderGraphBuilder& graphBuilder);
+
 	lib::SharedPtr<rdr::Buffer> m_spotLightProxyVertices;
 	lib::SharedPtr<rdr::Buffer> m_pointLightProxyVertices;
 
 	lib::SharedPtr<rdr::Buffer> m_lightsDrawCommandsBuffer;
 
 	lib::SharedPtr<rdr::Buffer> m_sceneLocalLightsBuffer;
+
+	lib::SharedPtr<rdr::Buffer> m_lightsGridCells;
+	lib::SharedPtr<rdr::Buffer> m_lightsGridNodes;
+
+	Uint32 m_localLightsNum = 0u;
+	LightsGridCascades m_lightsGridCascades;
 };
 
 } // spt::rsc
