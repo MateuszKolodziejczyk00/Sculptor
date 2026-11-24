@@ -121,6 +121,15 @@ details.panel > summary h2 { display: inline; margin: 0; }
 .settings table { width: auto; margin: 0 0 4px 16px; }
 .settings td { padding: 2px 16px 2px 0; border: none; }
 .settings tr { cursor: default; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.card { position: relative; border-radius: 6px; overflow: hidden; background: var(--bg); border: 1px solid var(--border); cursor: pointer; transition: transform .12s, box-shadow .12s; }
+.card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+.card.failed { border-color: var(--fail); box-shadow: inset 0 0 0 1px var(--fail); }
+.card.selected { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.card .thumb { display: grid; place-items: center; aspect-ratio: 16 / 9; background: #000; color: var(--none); font-size: 12px; }
+.card .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.card .badges { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; }
+.card .name { padding: 5px 9px; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hash-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: currentColor; vertical-align: middle; }
 </style>
 </head>
@@ -135,6 +144,11 @@ details.panel > summary h2 { display: inline; margin: 0; }
 		</div>
 		<div class="meta" id="runMeta"></div>
 		<div class="counts" id="runCounts"></div>
+	</section>
+
+	<section class="panel">
+		<h2>Previews</h2>
+		<div class="gallery" id="gallery"></div>
 	</section>
 
 	<section class="panel">
@@ -349,6 +363,22 @@ function renderTestsTable() {
 
 const runFilePath = (runId, name, file) => `Runs/${encodeURIComponent(runId)}/${encodeURIComponent(name)}/${file}`;
 const imagePath = (name, file) => runFilePath(currentRun().Id, name, file);
+
+function renderGallery() {
+	const run = currentRun();
+	$("gallery").innerHTML = Object.keys(run.Tests).sort().map(name => {
+		const r = run.Tests[name];
+		const failed = !["Pass", "NoGolden"].includes(r.ImageStatus) || r.PerfStatus === "Regression";
+		const thumb = r.ImageStatus === "Crashed" || r.ImageStatus === "Timeout" ? esc(r.ImageStatus) : `<img src="${imagePath(name, "Thumbnail.jpg")}" alt="${esc(name)}" loading="lazy">`;
+		return `<div class="card${failed ? " failed" : ""}${name === state.test ? " selected" : ""}" data-test="${esc(name)}" title="${esc(name)}">
+			<div class="thumb">${thumb}</div>
+			<div class="badges">${badge(r.ImageStatus)}${r.PerfStatus === "Regression" ? badge(r.PerfStatus) : ""}</div>
+			<div class="name">${esc(name)}</div></div>`;
+	}).join("");
+	for (const card of $("gallery").querySelectorAll(".card")) {
+		card.onclick = () => { state.test = card.dataset.test; state.scope = "GPU Frame"; render(); $("detail").scrollIntoView({ behavior: "smooth" }); };
+	}
+}
 
 function renderImages() {
 	const name = state.test, r = currentRun().Tests[name];
@@ -811,6 +841,7 @@ function render() {
 	renderRunSelectors();
 	renderRunSummary();
 	if (state.test && !currentRun().Tests[state.test]) state.test = null;
+	renderGallery();
 	renderTestsTable();
 	$("detail").hidden = !state.test;
 	if (state.test) {

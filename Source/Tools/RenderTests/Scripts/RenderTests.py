@@ -45,6 +45,8 @@ HASHES_FILE = "Hashes.json"
 SETTINGS_FILE = "Settings.json"
 SAMPLES_FILE = "Samples.js"
 TRANSIENT_MEMORY_FILE = "TransientMemory.js"
+THUMBNAIL_FILE = "Thumbnail.jpg"
+THUMBNAIL_SIZE = (480, 270)
 GOLDEN_HASHES_SUFFIX = ".hashes.json"
 GOLDEN_PIPELINE_STATISTICS_SUFFIX = ".pipelinestats.json"
 GOLDEN_SETTINGS_SUFFIX = ".settings.json"
@@ -320,7 +322,7 @@ def AggregatePerf(perfData):
         "PeakTransientBytes": max(scope["TransientMemoryUsage"] for scope in scopes.values() if "TransientMemoryUsage" in scope),
     }
 
-    return { "GPUFrame": TimingStats([frame["GPUFrameMs"] for frame in frames]), "FramesNum": len(frames), "Scopes": scopes, "Memory": memory }
+    return { "GPUFrame": TimingStats([frame["GPUFrameMs"] for frame in frames]), "FramesNum": len(frames), "Resolution": perfData["Resolution"], "Scopes": scopes, "Memory": memory }
 
 
 def IsComparableRun(run, runInfo):
@@ -331,10 +333,11 @@ def MedianStats(statsList):
     return { key: statistics.median(stats[key] for stats in statsList) for key in ("MinMs", "Ms", "P90Ms") }
 
 
-def ComputeBaseline(previousRuns, runInfo, testName, baselineRunsNum):
-    # Runs from before min/P90 tracking store only median ("GPUFrameMs")
+def ComputeBaseline(previousRuns, runInfo, testName, resolution, baselineRunsNum):
+    # Runs from before min/P90 tracking store only median ("GPUFrameMs"), runs from before resolution tracking were all rendered in 1920x1080
     candidates = [run for run in previousRuns
-                  if IsComparableRun(run, runInfo) and "GPUFrame" in (run["Tests"].get(testName, {}).get("Perf") or {})]
+                  if IsComparableRun(run, runInfo) and "GPUFrame" in (run["Tests"].get(testName, {}).get("Perf") or {})
+                  and run["Tests"][testName]["Perf"].get("Resolution", [1920, 1080]) == resolution]
     candidates = candidates[-baselineRunsNum:]
     if not candidates:
         return None
@@ -454,7 +457,7 @@ def EvaluateRun(args, runDir, runInfo, testPaths, failures, previousRuns):
             result["ImageStatus"], result["Flip"] = EvaluateImage(testDir, os.path.join(GOLDENS_DIR, name + ".png"), maxFlipMean)
 
             perf = AggregatePerf(LoadJson(os.path.join(testDir, PERF_FILE)))
-            baseline = ComputeBaseline(previousRuns, runInfo, name, args.baseline_runs)
+            baseline = ComputeBaseline(previousRuns, runInfo, name, perf["Resolution"], args.baseline_runs)
             result["Perf"] = perf
             result["PerfStatus"], result["PerfRegressions"] = EvaluatePerf(perf, baseline, args)
             result["MemoryChanges"] = EvaluateMemory(perf, baseline, testDir, name)
@@ -595,12 +598,25 @@ def WriteTransientMemory(runId, testName):
         file.write("transientMemory[{}] = {};".format(json.dumps(runId + "/" + testName), json.dumps(usages)))
 
 
+def WriteThumbnail(runId, testName):
+    testDir = os.path.join(RUNS_DIR, runId, testName)
+    thumbnailPath = os.path.join(testDir, THUMBNAIL_FILE)
+    resultPath = os.path.join(testDir, "Result.png")
+    if os.path.exists(thumbnailPath) or not os.path.exists(resultPath):
+        return
+
+    image = Image.open(resultPath).convert("RGB")
+    image.thumbnail(THUMBNAIL_SIZE, Image.LANCZOS)
+    image.save(thumbnailPath, quality=85)
+
+
 def GenerateReport(runs):
     with open(REPORT_TEMPLATE_PATH, "r", encoding="utf-8") as file:
         template = file.read()
 
     for run in runs:
         for name, result in run["Tests"].items():
+            WriteThumbnail(run["Id"], name)
             if result["Perf"]:
                 WritePerfSamples(run["Id"], name)
                 WriteTransientMemory(run["Id"], name)
