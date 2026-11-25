@@ -1,6 +1,6 @@
 {
 	"Type": "Scene",
-	"Prefab": "RenderTests/Prefabs/TAA.sptasset",
+	"Scene": "RenderTests/Scenes/TAA.sptasset",
 	"Camera": {
 		"Location": [
 			-1.0,
@@ -60,27 +60,6 @@
 		},
 		"upscaler": {
 			"method": 2
-		}
-	},
-	"SceneSettings": {
-		"fog": {
-			"globalDensity": 0.0
-		},
-		"clouds": {
-			"enable": false
-		},
-		"lighting": {
-			"ambientIntensity": 0.0
-		},
-		"localShadows": {
-			"enable": false
-		},
-		"terrain": {
-			"enable": false,
-			"enableGrass": false
-		},
-		"ddgi": {
-			"enable": false
 		}
 	}
 }

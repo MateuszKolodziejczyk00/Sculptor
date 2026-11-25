@@ -76,6 +76,7 @@ public:
 	void Serialize(const char* name, lib::HashedString& value);
 	void Serialize(const char* name, lib::Path& value);
 	void Serialize(const char* name, lib::RuntimeTypeInfo& value);
+	void Serialize(const char* name, JSON& value);
 
 	template<detail::CSerializableStruct TDataType>
 	void SerializeObject(TDataType& value)

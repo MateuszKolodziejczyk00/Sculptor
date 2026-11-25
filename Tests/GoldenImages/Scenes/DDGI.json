@@ -1,6 +1,6 @@
 {
 	"Type": "Scene",
-	"Prefab": "RenderTests/Prefabs/DDGI.sptasset",
+	"Scene": "RenderTests/Scenes/DDGI.sptasset",
 	"Camera": {
 		"Location": [
 			-2.8,
@@ -64,27 +64,6 @@
 			"method": 1,
 			"enableUnifiedDenoising": true,
 			"renderResolutionScale": 1.0
-		}
-	},
-	"SceneSettings": {
-		"fog": {
-			"globalDensity": 0.0
-		},
-		"clouds": {
-			"enable": true
-		},
-		"lighting": {
-			"ambientIntensity": 0.0
-		},
-		"localShadows": {
-			"enable": false
-		},
-		"terrain": {
-			"enable": false,
-			"enableGrass": false
-		},
-		"ddgi": {
-			"enable": true
 		}
 	}
 }

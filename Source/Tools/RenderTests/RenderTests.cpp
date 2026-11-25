@@ -4,7 +4,7 @@
 #include "GPUApi.h"
 #include "JobSystem.h"
 #include "World.h"
-#include "PrefabAsset.h"
+#include "SceneAsset.h"
 #include "RenderScene.h"
 #include "View/RenderView.h"
 #include "SceneRenderer/SceneRenderer.h"
@@ -61,21 +61,6 @@ private:
 };
 
 
-struct SceneTestSpawn
-{
-	void Serialize(srl::Serializer& serializer)
-	{
-		serializer.Serialize("Location", location);
-		serializer.Serialize("Rotation", rotation);
-		serializer.Serialize("Scale", scale);
-	}
-
-	math::Vector3f location = math::Vector3f::Zero();
-	math::Vector3f rotation = math::Vector3f::Zero();
-	math::Vector3f scale    = math::Vector3f::Ones();
-};
-
-
 struct SceneTestCamera
 {
 	void Serialize(srl::Serializer& serializer)
@@ -113,15 +98,13 @@ struct SceneTestDefinition
 	void Serialize(srl::Serializer& serializer)
 	{
 		serializer.Serialize("Type", type);
-		serializer.Serialize("Prefab", prefab);
-		serializer.Serialize("Spawn", spawn);
+		serializer.Serialize("Scene", scene);
 		serializer.Serialize("Camera", camera);
 		serializer.Serialize("Sun", sun);
 		serializer.Serialize("Resolution", resolution);
 		serializer.Serialize("WarmupFrames", warmupFrames);
 		serializer.Serialize("PerfFrames", perfFrames);
 		serializer.Serialize("ViewSettings", viewSettings);
-		serializer.Serialize("SceneSettings", sceneSettings);
 	}
 
 	// Golden frame is rendered last, in render graph test mode (clears and hashes) which affects its timings
@@ -131,8 +114,7 @@ struct SceneTestDefinition
 
 	lib::String type = "Scene";
 
-	lib::String     prefab;
-	SceneTestSpawn  spawn;
+	lib::String     scene;
 	SceneTestCamera camera;
 	SceneTestSun    sun;
 
@@ -144,7 +126,6 @@ struct SceneTestDefinition
 	Uint32 perfFrames   = 32u;
 
 	rsc::RenderViewSettings viewSettings;
-	rsc::RenderSceneSettings sceneSettings;
 };
 
 
@@ -152,7 +133,6 @@ SceneTestDefinition LoadSceneTestDefinition(const lib::Path& path)
 {
 	SceneTestDefinition def;
 	ApplyTestDefaults(def.viewSettings);
-	ApplyTestDefaults(def.sceneSettings);
 	const Bool loaded = srl::SerializationHelper::LoadTextStructFromFile(def, path.generic_string());
 	SPT_CHECK_MSG(loaded, "Failed to load test {}", path.generic_string());
 	SPT_CHECK_MSG(def.perfFrames > 0u, "Test must collect performance from at least one frame ({})", path.generic_string());
@@ -346,14 +326,13 @@ void SceneTest::InitializeScene()
 
 	as::AssetsSystem& assetsSystem = engn::Engine::Get().GetAssetsSystem();
 
-	as::PrefabAssetHandle prefab = assetsSystem.LoadAssetChecked<as::PrefabAsset>(as::ResourcePath(m_definition.prefab));
+	as::SceneAssetHandle scene = assetsSystem.LoadAssetChecked<as::SceneAsset>(as::ResourcePath(m_definition.scene));
+	scene->AwaitInitialization();
 
-	// Volumetric clouds renderer requires cloudscape to be set
-	as::CloudscapeAssetHandle cloudscape = assetsSystem.LoadAssetChecked<as::CloudscapeAsset>(as::ResourcePath("Cloudscape/Cloudscape.sptasset"));
-	cloudscape->AwaitInitialization();
-	m_world->SetCloudscape(cloudscape);
+	SPT_CHECK_MSG(scene->GetCloudscape().IsValid(), "Volumetric clouds renderer requires cloudscape to be set ({})", m_definition.scene);
 
-	m_world->renderSceneSettings = m_definition.sceneSettings;
+	ApplyTestDefaults(m_world->renderSceneSettings);
+	m_world->LoadScene(scene);
 
 	{
 		rsc::DirectionalLightData directionalLightData;
@@ -365,9 +344,6 @@ void SceneTest::InitializeScene()
 		directionalLightData.sunDiskEC              = 13.4f;
 		m_world->GetRenderScene()->lighting.SetDirectionalLight(directionalLightData);
 	}
-
-	prefab->AwaitInitialization();
-	m_world->SpawnPrefab(prefab, gf::SpawnParams{ .location = m_definition.spawn.location, .rotation = m_definition.spawn.rotation, .scale = m_definition.spawn.scale });
 
 	const SceneRendererDLLModuleAPI& sceneRendererAPI = GetSceneRendererAPI();
 

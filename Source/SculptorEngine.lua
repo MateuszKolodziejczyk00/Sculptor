@@ -83,6 +83,7 @@ IncludeProjectFromDirectory("Assets/CloudscapeAsset",      "CloudscapeAsset")
 IncludeProjectFromDirectory("Assets/MeshAsset",            "MeshAsset")
 IncludeProjectFromDirectory("Assets/MeshAssetTests",       "MeshAssetTests")
 IncludeProjectFromDirectory("Assets/PrefabAsset",          "PrefabAsset")
+IncludeProjectFromDirectory("Assets/SceneAsset",           "SceneAsset")
 IncludeProjectFromDirectory("Assets/Assets",               "Assets")
 
 SetProjectsSubgroupName("Engine")

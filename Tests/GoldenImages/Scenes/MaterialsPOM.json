@@ -1,6 +1,6 @@
 {
 	"Type": "Scene",
-	"Prefab": "RenderTests/Prefabs/MaterialsPOM.sptasset",
+	"Scene": "RenderTests/Scenes/MaterialsPOM.sptasset",
 	"Camera": {
 		"Location": [
 			-2.5,
@@ -60,27 +60,6 @@
 		},
 		"upscaler": {
 			"method": 0
-		}
-	},
-	"SceneSettings": {
-		"fog": {
-			"globalDensity": 0.0
-		},
-		"clouds": {
-			"enable": false
-		},
-		"lighting": {
-			"ambientIntensity": 0.0
-		},
-		"localShadows": {
-			"enable": false
-		},
-		"terrain": {
-			"enable": false,
-			"enableGrass": false
-		},
-		"ddgi": {
-			"enable": false
 		}
 	}
 }

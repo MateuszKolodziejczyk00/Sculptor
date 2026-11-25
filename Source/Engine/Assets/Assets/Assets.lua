@@ -8,6 +8,7 @@ function Assets:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("CloudscapeAsset")
     self:AddPublicDependency("MeshAsset")
     self:AddPublicDependency("PrefabAsset")
+    self:AddPublicDependency("SceneAsset")
 end
 
 Assets:SetupProject()

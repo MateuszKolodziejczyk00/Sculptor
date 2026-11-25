@@ -61,6 +61,22 @@ void World::BeginFrame(engn::FrameContext& frame)
 			   js::JobDef().ExecuteBefore(frame.GetStageBeginEvent(engn::EFrameStage::RenderingBegin)));
 }
 
+void World::LoadScene(const as::SceneAssetHandle& scene)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(scene->IsInitialized());
+
+	SetTerrain(scene->GetTerrain());
+	SetCloudscape(scene->GetCloudscape());
+	scene->ApplySceneSettings(renderSceneSettings);
+
+	if (scene->GetPrefab().IsValid())
+	{
+		SpawnPrefab(scene->GetPrefab(), SpawnParams{});
+	}
+}
+
 PrefabInstanceHandle World::SpawnPrefab(const as::PrefabAssetHandle& prefab, const SpawnParams& params)
 {
 	SPT_PROFILER_FUNCTION();

@@ -5,8 +5,7 @@
 #include "SculptorCoreTypes.h"
 #include "EngineFrame.h"
 #include "PlacementSystem/WorldPlacementSystem.h"
-#include "TerrainAsset.h"
-#include "CloudscapeAsset.h"
+#include "SceneAsset.h"
 
 
 namespace spt::rsc
@@ -40,6 +39,8 @@ public:
 	const rsc::RenderScene& GetRenderSceneRef() const { return *m_renderScene; }
 
 	void BeginFrame(engn::FrameContext& frame);
+
+	void LoadScene(const as::SceneAssetHandle& scene);
 
 	PrefabInstanceHandle SpawnPrefab(const as::PrefabAssetHandle& prefab, const SpawnParams& params);
 	void                 DestroyPrefabInstance(PrefabInstanceHandle instanceHandle);

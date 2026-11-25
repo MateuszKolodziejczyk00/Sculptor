@@ -1,7 +1,6 @@
 #include "Renderer/SandboxRenderer.h"
 #include "CloudscapeEditorTypes.h"
 #include "EditorFrame.h"
-#include "TerrainAsset.h"
 #include "TerrainEditorTypes.h"
 #include "Types/Texture.h"
 #include "Types/UIBackend.h"
@@ -30,9 +29,6 @@
 #include "Modules/Module.h"
 #include "Techniques/TemporalAA/DLSSRenderer.h"
 #include "Techniques/TemporalAA/StandardTAARenderer.h"
-#include "IESProfileAsset.h"
-#include "Importers/GLTFPrefabImporter.h"
-#include "PrefabAsset.h"
 #include "Transfers/GPUDeferredCommandsQueue.h"
 
 #if SPT_SHADERS_DEBUG_FEATURES
@@ -96,22 +92,27 @@ SandboxRenderer::SandboxRenderer()
 	InitializeRenderScene();
 
 	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
-
-	const rsc::SceneRendererDefinition sceneRendererDef
+	if (sceneRendererAPI)
 	{
-		.scene         = m_world->GetRenderSceneRef(),
-		.renderSystems = rsc::ESceneRenderSystem::ALL
-	};
-	m_sceneRenderer = sceneRendererAPI->CreateSceneRenderer(sceneRendererDef);
+		const rsc::SceneRendererDefinition sceneRendererDef
+		{
+			.scene         = m_world->GetRenderSceneRef(),
+			.renderSystems = rsc::ESceneRenderSystem::ALL
+		};
+		m_sceneRenderer = sceneRendererAPI->CreateSceneRenderer(sceneRendererDef);
+	}
 }
 
 SandboxRenderer::~SandboxRenderer()
 {
 	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
 
-	// explicit destroy view before scene
-	sceneRendererAPI->DestroyRenderView(m_renderView);
-	sceneRendererAPI->DestroySceneRenderer(m_sceneRenderer);
+	if (sceneRendererAPI)
+	{
+		// explicit destroy view before scene
+		sceneRendererAPI->DestroyRenderView(m_renderView);
+		sceneRendererAPI->DestroySceneRenderer(m_sceneRenderer);
+	}
 }
 
 void SandboxRenderer::Update(engn::FrameContext& frame)
@@ -144,7 +145,7 @@ void SandboxRenderer::Update(engn::FrameContext& frame)
 		LoadCameraConfig(static_cast<Uint32>(cameraConfigSlot));
 	}
 
-	if (m_isViewportFocused && !wantsToSaveCameraConfig && !wantsToLoadCameraConfig)
+	if (m_renderView && m_isViewportFocused && !wantsToSaveCameraConfig && !wantsToLoadCameraConfig)
 	{
 		const Real32 deltaTime = frame.GetDeltaTime();
 
@@ -192,7 +193,10 @@ void SandboxRenderer::Update(engn::FrameContext& frame)
 		}
 	}
 
-	m_world->ProcessPlacements(m_sceneRenderer);
+	if (m_sceneRenderer)
+	{
+		m_world->ProcessPlacements(m_sceneRenderer);
+	}
 }
 
 void SandboxRenderer::UpdatePreRender(engn::FrameContext& frame)
@@ -204,10 +208,13 @@ void SandboxRenderer::UpdatePreRender(engn::FrameContext& frame)
 	const math::Vector3f& cameraDeltaLocation = m_cameraDeltaLocation[frameIdx & 1u];
 	const math::Vector2f& cameraDeltaRotation = m_cameraDeltaRotation[frameIdx & 1u];
 
-	m_renderView->Move(cameraDeltaLocation);
+	if (m_renderView)
+	{
+		m_renderView->Move(cameraDeltaLocation);
 
-	m_renderView->Rotate(math::AngleAxisf(cameraDeltaRotation.x(), math::Vector3f::UnitZ()));
-	m_renderView->Rotate(math::AngleAxisf(cameraDeltaRotation.y(), m_renderView->GetRotation() * math::Vector3f::UnitY()));
+		m_renderView->Rotate(math::AngleAxisf(cameraDeltaRotation.x(), math::Vector3f::UnitZ()));
+		m_renderView->Rotate(math::AngleAxisf(cameraDeltaRotation.y(), m_renderView->GetRotation() * math::Vector3f::UnitY()));
+	}
 
 	if (m_cameraConfigSlotToSave >= 0)
 	{
@@ -291,12 +298,9 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 	m_captureSourceContext->ExecuteOnSetupNewGraphBuilder(graphBuilder);
 
 	js::Launch(SPT_GENERIC_JOB_NAME,
-			   [resolution = m_renderView->GetOutputRes(), gpuStatisticsCollector]
+			   [resolution = output->GetResolution2D(), gpuStatisticsCollector]
 			   {
-				   prf::GPUProfilerStatistics statistics;
-				   statistics.resolution = resolution;
-				   statistics.frameStatistics = gpuStatisticsCollector->CollectStatistics();
-				   prf::Profiler::Get().SetGPUFrameStatistics(std::move(statistics));
+				   prf::Profiler::Get().SetGPUFrameStatistics(resolution, *gpuStatisticsCollector);
 			   },
 			   js::Prerequisites(graphBuilder.GetGPUFinishedEvent()));
 
@@ -338,7 +342,10 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 		}
 	}
 	
-	rendererSettings.placementCommand = m_world->CreatePlacementCommand(frame, m_renderView->GetLocation());
+	if (m_renderView)
+	{
+		rendererSettings.placementCommand = m_world->CreatePlacementCommand(frame, m_renderView->GetLocation());
+	}
 
 	resetAccumulation = false;
 
@@ -533,25 +540,12 @@ void SandboxRenderer::InitializeRenderScene()
 														 return gfx::DLSSRenderer::InitializeDLSS();
 													 });
 
-	as::AssetsSystem& assetsSystem = engn::Engine::Get().GetAssetsSystem();
+	const engn::CommandLineArguments& cmdLineArgs = engn::Engine::Get().GetCmdLineArgs();
+	const lib::String scenePath = cmdLineArgs.Contains("-Scene") ? cmdLineArgs.GetValue("-Scene").ToString() : lib::String("Private/NeonBeach/NeonBeachScene.sptasset");
 
-	as::IESProfileAssetHandle iesProfile0 = assetsSystem.LoadAssetChecked<as::IESProfileAsset>(as::ResourcePath("IESProfiles/IESProfile0.sptasset"));
-	as::IESProfileAssetHandle iesProfile1 = assetsSystem.LoadAssetChecked<as::IESProfileAsset>(as::ResourcePath("IESProfiles/IESProfile1.sptasset"));
-
-	as::PrefabAssetHandle sponzaPrefab = assetsSystem.LoadAssetChecked<as::PrefabAsset>(as::ResourcePath("Sponza/Sponza.sptasset"));
-
-	SPT_CHECK(sponzaPrefab.IsValid());
-
-	as::IESProfileAssetHandle iesProfiles[] = { iesProfile0, iesProfile1 };
-
-	as::TerrainAssetHandle terrain = assetsSystem.LoadAssetChecked<as::TerrainAsset>(as::ResourcePath("Terrain/Terrain.sptasset"));
-	as::CloudscapeAssetHandle cloudscape = assetsSystem.LoadAssetChecked<as::CloudscapeAsset>(as::ResourcePath("Cloudscape/Cloudscape.sptasset"));
-
-	terrain->AwaitInitialization();
-	cloudscape->AwaitInitialization();
-
-	m_world->SetTerrain(terrain);
-	m_world->SetCloudscape(cloudscape);
+	as::SceneAssetHandle scene = engn::Engine::Get().GetAssetsSystem().LoadAssetChecked<as::SceneAsset>(as::ResourcePath(scenePath));
+	scene->AwaitInitialization();
+	m_world->LoadScene(scene);
 
 	const SceneRendererDLLModuleAPI* sceneRendererAPI = engn::Engine::Get().GetModulesManager().GetModuleAPI<SceneRendererDLLModuleAPI>();
 
@@ -564,59 +558,13 @@ void SandboxRenderer::InitializeRenderScene()
 		lib::AddFlags(viewDef.renderStages, rsc::ERenderStage::RayTracingRenderStages);
 	}
 
-	m_renderView = sceneRendererAPI->CreateRenderView(viewDef);
-	m_renderView->SetLocation(math::Vector3f(0.f, 0.f, 1.f));
-	m_renderView->SetOutputRes(math::Vector2u(1920, 1080));
-	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane, m_farPlane);
-	LoadCameraConfig(1u);
-
-	rsc::ShadingRenderViewSettings shadingSettings;
-	shadingSettings.upscalingMethod = rsc::EUpscalingMethod::DLSS;
-	sceneRendererAPI->SetShadingViewSettings(*m_renderView, shadingSettings);
-
-	// {
-	// 	const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
-	// 	rsc::PointLightData pointLightData;
-	// 	pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-	// 	pointLightData.luminousPower = 3200.f;
-	// 	pointLightData.location = math::Vector3f(8.30f, 2.6f, 1.55f);
-	// 	pointLightData.radius = 5.f;
-	// 	pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
-	// 	lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
-	// }
-	//
-	// {
-	// 	const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
-	// 	rsc::PointLightData pointLightData;
-	// 	pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-	// 	pointLightData.luminousPower = 3200.f;
-	// 	pointLightData.location = math::Vector3f(-8.30f, 3.9f, 4.45f);
-	// 	pointLightData.radius = 5.f;
-	// 	pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
-	// 	lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
-	// }
-
+	if (sceneRendererAPI)
 	{
-		rsc::PointLightData pointLightData;
-		pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-		pointLightData.luminousPower = 3200.f;
-		pointLightData.location = math::Vector3f(8.30f, -3.8f, 1.55f);
-		//pointLightData.radius = 5.f;
-		pointLightData.radius = 0.0001f;
-		pointLightData.iesProfileTexture = iesProfile0->GetTextureView();
-		m_world->GetRenderScene()->lighting.pointLights.Add(pointLightData);
-	}
-	
-	{
-		rsc::PointLightData pointLightData;
-		pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-		pointLightData.luminousPower = 3200.f;
-		//pointLightData.location = math::Vector3f(-4.24f, -14.85f, 2.05f);
-		pointLightData.location = math::Vector3f(850.f, -286.f, 189.f);
-		pointLightData.radius = 22.f;
-		//pointLightData.radius = 0.0001f;
-		pointLightData.iesProfileTexture = iesProfile1->GetTextureView();
-		m_world->GetRenderScene()->lighting.pointLights.Add(pointLightData);
+		m_renderView = sceneRendererAPI->CreateRenderView(viewDef);
+		m_renderView->SetLocation(math::Vector3f(0.f, 0.f, 1.f));
+		m_renderView->SetOutputRes(math::Vector2u(1920, 1080));
+		m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane, m_farPlane);
+		LoadCameraConfig(1u);
 	}
 
 	{
@@ -632,13 +580,6 @@ void SandboxRenderer::InitializeRenderScene()
 
 	dirLightTypeDirty = true;
 	sunAngleDirty = true;
-	for (const auto& iesProfile : iesProfiles)
-	{
-		iesProfile->AwaitInitialization();
-	}
-
-	sponzaPrefab->AwaitInitialization();
-	m_world->SpawnPrefab(sponzaPrefab, gf::PrefabSpawnParams{ .location = math::Vector3f(math::Vector3f(950.f, -286.f, 189.f)), .rotation = math::Vector3f(90.f, 0.f, 0.f) });
 
 	lib::MemoryArena tempArena("Sandbox Renderer Temp Arena", 0u, 16u * 1024u * 1024u);
 	gfx::GPUDeferredCommandsQueue& commandsQueue = engn::GetEngine().GetPluginsManager().GetPluginChecked<gfx::GPUDeferredCommandsQueue>();
@@ -651,6 +592,11 @@ void SandboxRenderer::InitializeRenderScene()
 
 void SandboxRenderer::PrepareRenderView(math::Vector2u outputResolution)
 {
+	if (!m_renderView)
+	{
+		return;
+	}
+
 	m_renderView->SetOutputRes(outputResolution);
 
 	const Real32 defaultAspectRatio = 16.f / 9.f;

@@ -1,0 +1,33 @@
+{
+    "Blackboard": {
+        "BlackboardContent": [
+            "spt::as::TerrainMaterialDefinition"
+        ],
+        "spt::as::TerrainMaterialDefinition": {
+            "MaterialEntries": [
+                {
+                    "MaterialAsset": {
+                        "Path": "Materials/Grass.sptasset"
+                    },
+                    "UVTileMeters": 3.0,
+                    "GrassType": 0
+                },
+                {
+                    "MaterialAsset": {
+                        "Path": "Materials/Checker.sptasset"
+                    },
+                    "UVTileMeters": 8.0,
+                    "GrassType": 255
+                },
+                {
+                    "MaterialAsset": {
+                        "Path": "Materials/Tiles.sptasset"
+                    },
+                    "UVTileMeters": 4.0,
+                    "GrassType": 255
+                }
+            ]
+        }
+    },
+    "Type": "spt::as::TerrainMaterialAsset"
+}

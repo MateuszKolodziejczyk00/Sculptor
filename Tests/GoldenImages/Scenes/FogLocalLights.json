@@ -1,6 +1,6 @@
 {
 	"Type": "Scene",
-	"Prefab": "RenderTests/Prefabs/FogLocalLights.sptasset",
+	"Scene": "RenderTests/Scenes/FogLocalLights.sptasset",
 	"Camera": {
 		"Location": [
 			-6.0,
@@ -60,28 +60,6 @@
 		},
 		"upscaler": {
 			"method": 0
-		}
-	},
-	"SceneSettings": {
-		"fog": {
-			"globalDensity": 0.1,
-			"phaseAnisotropy": 0.2
-		},
-		"clouds": {
-			"enable": false
-		},
-		"lighting": {
-			"ambientIntensity": 0.0
-		},
-		"localShadows": {
-			"enable": false
-		},
-		"terrain": {
-			"enable": false,
-			"enableGrass": false
-		},
-		"ddgi": {
-			"enable": false
 		}
 	}
 }

@@ -1,8 +1,6 @@
 #pragma once
 
 #include "EditorSandboxMacros.h"
-#include "PrefabAsset.h"
-#include "TerrainAsset.h"
 #include "RenderScene.h"
 #include "View/RenderView.h"
 #include "SceneRenderer/SceneRenderer.h"

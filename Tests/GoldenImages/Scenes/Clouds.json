@@ -1,6 +1,6 @@
 {
 	"Type": "Scene",
-	"Prefab": "RenderTests/Prefabs/Clouds.sptasset",
+	"Scene": "RenderTests/Scenes/Clouds.sptasset",
 	"Camera": {
 		"Location": [
 			0.0,
@@ -61,27 +61,6 @@
 		},
 		"upscaler": {
 			"method": 0
-		}
-	},
-	"SceneSettings": {
-		"fog": {
-			"globalDensity": 0.0
-		},
-		"clouds": {
-			"enable": true
-		},
-		"lighting": {
-			"ambientIntensity": 0.0
-		},
-		"localShadows": {
-			"enable": false
-		},
-		"terrain": {
-			"enable": false,
-			"enableGrass": false
-		},
-		"ddgi": {
-			"enable": false
 		}
 	}
 }

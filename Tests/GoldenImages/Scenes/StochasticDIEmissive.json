@@ -1,6 +1,6 @@
 {
 	"Type": "Scene",
-	"Prefab": "RenderTests/Prefabs/StochasticDIEmissive.sptasset",
+	"Scene": "RenderTests/Scenes/StochasticDIEmissive.sptasset",
 	"Camera": {
 		"Location": [
 			-4.0,
@@ -62,27 +62,6 @@
 			"method": 1,
 			"enableUnifiedDenoising": true,
 			"renderResolutionScale": 1.0
-		}
-	},
-	"SceneSettings": {
-		"fog": {
-			"globalDensity": 0.0
-		},
-		"clouds": {
-			"enable": false
-		},
-		"lighting": {
-			"ambientIntensity": 0.0
-		},
-		"localShadows": {
-			"enable": false
-		},
-		"terrain": {
-			"enable": false,
-			"enableGrass": false
-		},
-		"ddgi": {
-			"enable": false
 		}
 	}
 }

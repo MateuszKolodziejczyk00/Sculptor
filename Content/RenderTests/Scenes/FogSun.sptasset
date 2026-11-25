@@ -1,0 +1,34 @@
+{
+    "Blackboard": {
+        "BlackboardContent": [
+            "spt::as::SceneDefinition"
+        ],
+        "spt::as::SceneDefinition": {
+            "Prefab": "../Prefabs/FogSun.sptasset",
+            "Cloudscape": "../../Cloudscape/Cloudscape.sptasset",
+            "SceneSettings": {
+                "fog": {
+                    "globalDensity": 0.1,
+                    "heightFalloff": 0.3
+                },
+                "clouds": {
+                    "enable": false
+                },
+                "lighting": {
+                    "ambientIntensity": 0.0
+                },
+                "localShadows": {
+                    "enable": false
+                },
+                "terrain": {
+                    "enable": false,
+                    "enableGrass": false
+                },
+                "ddgi": {
+                    "enable": false
+                }
+            }
+        }
+    },
+    "Type": "spt::as::SceneAsset"
+}

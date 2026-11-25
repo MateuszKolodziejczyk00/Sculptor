@@ -114,4 +114,16 @@ void Serializer::Serialize(const char* name, lib::RuntimeTypeInfo& value)
 	}
 }
 
+void Serializer::Serialize(const char* name, JSON& value)
+{
+	if (IsSaving())
+	{
+		SetImpl(name, value);
+	}
+	else if (const JSON* json = FindJson(name))
+	{
+		value = *json;
+	}
+}
+
 } // spt::srl
