@@ -43,9 +43,11 @@ END_SHADER_STRUCT();
 
 
 BEGIN_SHADER_STRUCT(BuildLightZClustersConstants)
-	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<math::Vector2f>,   localLightsZRanges)
-	SHADER_STRUCT_FIELD(rdr::GPUPtr<LightsRenderingData>,      lightsData)
-	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<math::Vector2u>, rwClusterRanges)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<math::Vector2f>,    localLightsZRanges)
+	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<LocalLightGPUData>, localLights)
+	SHADER_STRUCT_FIELD(rdr::GPUPtr<LightsRenderingData>,       lightsData)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<math::Vector2u>,  rwDIClusterRanges)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<math::Vector2u>,  rwScatteringClusterRanges)
 END_SHADER_STRUCT();
 
 
@@ -69,7 +71,8 @@ BEGIN_SHADER_STRUCT(BuildLightTilesConstants)
 	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<math::Vector3f>,        pointLightProxyVertices)
 	SHADER_STRUCT_FIELD(gfx::TypedBufferRef<math::Vector3f>,        spotLightProxyVertices)
 	SHADER_STRUCT_FIELD(rdr::GPUPtr<LightsRenderingData>,           lightsData)
-	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<Uint32>,              tilesLightsMask)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<Uint32>,              diTilesLightsMask)
+	SHADER_STRUCT_FIELD(gfx::RWTypedBufferRef<Uint32>,              scatteringTilesLightsMask)
 END_SHADER_STRUCT();
 
 
@@ -141,7 +144,7 @@ GRAPHICS_PSO(BuildLightTilesPSO)
 			.primitiveTopology       = rhi::EPrimitiveTopology::TriangleList,
 			.rasterizationDefinition =
 			{
-				.cullMode = rhi::ECullMode::None,
+				.cullMode = rhi::ECullMode::Front,
 				.rasterizationType = rhi::ERasterizationType::ConservativeOverestimate,
 			}
 		};
@@ -172,8 +175,8 @@ static lib::DynamicArray<math::Vector3f> CreateSpotLightProxyVertices(Uint32 bas
 		const math::Vector3f baseVertex1 = baseCenter + math::Vector3f(0.f, std::cos(angle1) * baseRadius, std::sin(angle1) * baseRadius);
 
 		vertices.emplace_back(apex);
-		vertices.emplace_back(baseVertex0);
 		vertices.emplace_back(baseVertex1);
+		vertices.emplace_back(baseVertex0);
 
 		vertices.emplace_back(baseCenter);
 		vertices.emplace_back(baseVertex0);
@@ -320,7 +323,7 @@ static LightsInfo CreateLocalLightsData(rg::RenderGraphBuilder& graphBuilder, co
 
 		const Real32 lightViewSpaceZ = getViewSpaceZ(gpuLightData);
 
-		if (lightViewSpaceZ + gpuLightData.range > 0.f)
+		if (lightViewSpaceZ + gpuLightData.range > 0.f && renderView.IsSphereOverlappingFrustum(gpuLightData.location, gpuLightData.range))
 		{
 			const auto emplaceIt = std::upper_bound(std::cbegin(localLightsViewSpaceZ), std::cend(localLightsViewSpaceZ), lightViewSpaceZ);
 			const SizeType emplaceIdx = std::distance(std::cbegin(localLightsViewSpaceZ), emplaceIt);
@@ -339,8 +342,12 @@ static LightsInfo CreateLocalLightsData(rg::RenderGraphBuilder& graphBuilder, co
 		LocalLightGPUData gpuLightData = GPUDataBuilder::CreateSpotLightGPUData(spotLight);
 		gpuLightData.shadowMapFirstFaceIdx = idxNone<Uint32>;
 
+		// Same bounding sphere as CreateLightBoundingSphere in LightingUtils.hlsli
+		const Real32 boundingSphereOffset = gpuLightData.halfAngleCos > 0.f ? gpuLightData.boundingSphereRadius : gpuLightData.range;
+		const math::Vector3f boundingSphereCenter = gpuLightData.location + gpuLightData.direction * boundingSphereOffset;
+
 		const Real32 lightViewSpaceZ = getViewSpaceZ(gpuLightData);
-		if (lightViewSpaceZ + gpuLightData.range > 0.f)
+		if (lightViewSpaceZ + gpuLightData.range > 0.f && renderView.IsSphereOverlappingFrustum(boundingSphereCenter, gpuLightData.boundingSphereRadius))
 		{
 			const auto emplaceIt = std::upper_bound(std::cbegin(localLightsViewSpaceZ), std::cend(localLightsViewSpaceZ), lightViewSpaceZ);
 			const SizeType emplaceIdx = std::distance(std::cbegin(localLightsViewSpaceZ), emplaceIt);
@@ -460,17 +467,22 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		}
 
 		const rhi::BufferDefinition clustersRangesBufferDefinition(zClustersNum * sizeof(math::Vector2u), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst));
-		const rg::RGBufferViewHandle clustersRanges = graphBuilder.CreateBufferView(RG_DEBUG_NAME("ClustersRanges"), clustersRangesBufferDefinition, rhi::EMemoryUsage::GPUOnly);
+		const rg::RGBufferViewHandle diClustersRanges         = graphBuilder.CreateBufferView(RG_DEBUG_NAME("DIClustersRanges"), clustersRangesBufferDefinition, rhi::EMemoryUsage::GPUOnly);
+		const rg::RGBufferViewHandle scatteringClustersRanges = graphBuilder.CreateBufferView(RG_DEBUG_NAME("ScatteringClustersRanges"), clustersRangesBufferDefinition, rhi::EMemoryUsage::GPUOnly);
 
 		const Uint32 tilesLightsMaskBufferSize = tilesNum.x() * tilesNum.y() * lightsData.localLights32Num * sizeof(Uint32);
 		const rhi::BufferDefinition tilesLightsMaskDefinition(tilesLightsMaskBufferSize, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst));
-		const rg::RGBufferViewHandle tilesLightsMask = graphBuilder.CreateBufferView(RG_DEBUG_NAME("TilesLightsMask"), tilesLightsMaskDefinition, rhi::EMemoryUsage::GPUOnly);
-		graphBuilder.FillBuffer(RG_DEBUG_NAME("InitializeTilesLightsMask"), tilesLightsMask, 0, static_cast<Uint64>(tilesLightsMaskBufferSize), 0);
+		const rg::RGBufferViewHandle diTilesLightsMask         = graphBuilder.CreateBufferView(RG_DEBUG_NAME("DITilesLightsMask"), tilesLightsMaskDefinition, rhi::EMemoryUsage::GPUOnly);
+		const rg::RGBufferViewHandle scatteringTilesLightsMask = graphBuilder.CreateBufferView(RG_DEBUG_NAME("ScatteringTilesLightsMask"), tilesLightsMaskDefinition, rhi::EMemoryUsage::GPUOnly);
+		graphBuilder.FillBuffer(RG_DEBUG_NAME("InitializeDITilesLightsMask"), diTilesLightsMask, 0, static_cast<Uint64>(tilesLightsMaskBufferSize), 0);
+		graphBuilder.FillBuffer(RG_DEBUG_NAME("InitializeScatteringTilesLightsMask"), scatteringTilesLightsMask, 0, static_cast<Uint64>(tilesLightsMaskBufferSize), 0);
 
 		BuildLightZClustersConstants buildClustersConstants;
-		buildClustersConstants.localLightsZRanges = localLightsZRangesBuffer;
-		buildClustersConstants.lightsData         = lightsDataPtr;
-		buildClustersConstants.rwClusterRanges    = clustersRanges;
+		buildClustersConstants.localLightsZRanges        = localLightsZRangesBuffer;
+		buildClustersConstants.localLights               = localLightsBuffer;
+		buildClustersConstants.lightsData                = lightsDataPtr;
+		buildClustersConstants.rwDIClusterRanges         = diClustersRanges;
+		buildClustersConstants.rwScatteringClusterRanges = scatteringClustersRanges;
 
 		const SceneViewCullingData& cullingData	= viewSpec.GetRenderView().GetCullingData();
 
@@ -486,17 +498,20 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		generateLightsDrawCommnadsConstants.spotLightDrawsCount        = spotLightDrawCommandsCount;
 
 		BuildLightTilesConstants buildLightTilesConstants;
-		buildLightTilesConstants.localLights              = localLightsBuffer;
-		buildLightTilesConstants.pointLightDraws          = pointLightDrawCommands;
-		buildLightTilesConstants.spotLightDraws           = spotLightDrawCommands;
-		buildLightTilesConstants.pointLightProxyVertices  = renderingParams.pointLightProxyVerticesBuffer->GetFullView();
-		buildLightTilesConstants.spotLightProxyVertices   = renderingParams.spotLightProxyVerticesBuffer->GetFullView();
-		buildLightTilesConstants.lightsData               = lightsDataPtr;
-		buildLightTilesConstants.tilesLightsMask          = tilesLightsMask;
+		buildLightTilesConstants.localLights               = localLightsBuffer;
+		buildLightTilesConstants.pointLightDraws           = pointLightDrawCommands;
+		buildLightTilesConstants.spotLightDraws            = spotLightDrawCommands;
+		buildLightTilesConstants.pointLightProxyVertices   = renderingParams.pointLightProxyVerticesBuffer->GetFullView();
+		buildLightTilesConstants.spotLightProxyVertices    = renderingParams.spotLightProxyVerticesBuffer->GetFullView();
+		buildLightTilesConstants.lightsData                = lightsDataPtr;
+		buildLightTilesConstants.diTilesLightsMask         = diTilesLightsMask;
+		buildLightTilesConstants.scatteringTilesLightsMask = scatteringTilesLightsMask;
 
-		viewShadingParams.localLights     = localLightsBuffer;
-		viewShadingParams.tilesLightsMask = tilesLightsMask;
-		viewShadingParams.clustersRanges  = clustersRanges;
+		viewShadingParams.localLights               = localLightsBuffer;
+		viewShadingParams.diTilesLightsMask         = diTilesLightsMask;
+		viewShadingParams.scatteringTilesLightsMask = scatteringTilesLightsMask;
+		viewShadingParams.diClustersRanges          = diClustersRanges;
+		viewShadingParams.scatteringClustersRanges  = scatteringClustersRanges;
 
 		lightsRenderingDataPerView.buildZClustersConstants             = graphBuilder.CreateGPUData(buildClustersConstants);
 		lightsRenderingDataPerView.generateLightsDrawCommnadsConstants = graphBuilder.CreateGPUData(generateLightsDrawCommnadsConstants);
@@ -725,7 +740,7 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 
 	if (lightsRenderingData.HasAnyLocalLightsToRender())
 	{
-		const math::Vector3u dispatchZClustersGroupsNum = math::Vector3u(math::Utils::DivideCeil<Uint32>(lightsRenderingData.zClustersNum, 32), 1, 1);
+		const math::Vector3u dispatchZClustersGroupsNum = math::Vector3u(lightsRenderingData.zClustersNum, 1, 1);
 		graphBuilder.Dispatch(RG_DEBUG_NAME("BuildLightsZClusters"),
 							  BuildLightZClustersPSO::pso,
 							  dispatchZClustersGroupsNum,

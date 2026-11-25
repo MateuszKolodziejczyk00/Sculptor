@@ -66,7 +66,7 @@ void CalcReflectedLuminance<TLightingAccumulator : ILightingAccumulator>(in Shad
 	const uint tileLightsDataOffset = GetLightsTileDataOffset(lightsTileCoords, PARAM_ViewShadingParams->lightsData->tilesNum, PARAM_ViewShadingParams->lightsData->localLights32Num);
 	
 	const uint clusterIdx = cluster.linearDepth / PARAM_ViewShadingParams->lightsData->zClusterLength;
-	const uint2 clusterRange = clusterIdx < PARAM_ViewShadingParams->lightsData->zClustersNum ? PARAM_ViewShadingParams->clustersRanges[clusterIdx] : uint2(0u, 0u);
+	const uint2 clusterRange = clusterIdx < PARAM_ViewShadingParams->lightsData->zClustersNum ? PARAM_ViewShadingParams->diClustersRanges[clusterIdx] : uint2(0u, 0u);
 	
 	{
 		const float3 waveBoundsMin = WaveActiveMin(geometry.location);
@@ -75,9 +75,12 @@ void CalcReflectedLuminance<TLightingAccumulator : ILightingAccumulator>(in Shad
 		const uint activeLanesNum = WaveActiveCountBits(true);
 		const uint laneRank = WavePrefixCountBits(true);
 
-		for(uint i = 0; i < PARAM_ViewShadingParams->lightsData->localLights32Num; ++i)
+		const uint firstLights32Idx = WaveActiveMin(clusterRange.x) / 32u;
+		const uint lastLights32Idx  = WaveActiveMax(clusterRange.y) / 32u;
+
+		for(uint i = firstLights32Idx; i <= lastLights32Idx; ++i)
 		{
-			const uint candidatesMask = WaveActiveBitOr(ClusterMaskRange(PARAM_ViewShadingParams->tilesLightsMask[tileLightsDataOffset + i], clusterRange, i << 5u));
+			const uint candidatesMask = WaveActiveBitOr(ClusterMaskRange(PARAM_ViewShadingParams->diTilesLightsMask[tileLightsDataOffset + i], clusterRange, i << 5u));
 
 			uint lightsMask = 0u;
 			for (uint bitIdx = laneRank; WaveActiveAnyTrue(bitIdx < 32u); bitIdx += activeLanesNum)
@@ -87,7 +90,7 @@ void CalcReflectedLuminance<TLightingAccumulator : ILightingAccumulator>(in Shad
 				{
 					const LocalLightInterface candidateLight = PARAM_ViewShadingParams->localLights[i * 32u + bitIdx];
 					const float3 closestPoint = clamp(candidateLight.location, waveBoundsMin, waveBoundsMax);
-					isLightVisible = candidateLight.ContributesToDI() && Dist2(closestPoint, candidateLight.location) < Pow2(candidateLight.range);
+					isLightVisible = Dist2(closestPoint, candidateLight.location) < Pow2(candidateLight.range);
 				}
 				lightsMask |= WaveActiveBitOr(isLightVisible ? (1u << bitIdx) : 0u);
 			}
@@ -141,13 +144,13 @@ void TiledShadingDebug(in uint2 pixelCoords, in ShadedSurface surface, in Surfac
 	const uint tileLightsDataOffset = GetLightsTileDataOffset(lightsTileCoords, PARAM_ViewShadingParams->lightsData->tilesNum, PARAM_ViewShadingParams->lightsData->localLights32Num);
 	
 	const uint clusterIdx = cluster.linearDepth / PARAM_ViewShadingParams->lightsData->zClusterLength;
-	const uint2 clusterRange = clusterIdx < PARAM_ViewShadingParams->lightsData->zClustersNum ? PARAM_ViewShadingParams->clustersRanges[clusterIdx] : uint2(0u, 0u);
+	const uint2 clusterRange = clusterIdx < PARAM_ViewShadingParams->lightsData->zClustersNum ? PARAM_ViewShadingParams->diClustersRanges[clusterIdx] : uint2(0u, 0u);
 
 	uint lightsNum = 0u;
 
-	for(uint i = 0; i < PARAM_ViewShadingParams->lightsData->localLights32Num; ++i)
+	for(uint i = clusterRange.x / 32u; i <= clusterRange.y / 32u; ++i)
 	{
-		uint lightsMask = PARAM_ViewShadingParams->tilesLightsMask[tileLightsDataOffset + i];
+		uint lightsMask = PARAM_ViewShadingParams->diTilesLightsMask[tileLightsDataOffset + i];
 		lightsMask = ClusterMaskRange(lightsMask, clusterRange, i << 5u);
 
 		while(lightsMask != 0u)
@@ -202,7 +205,7 @@ float3 ComputeDirectionalLightsInScattering(in InScatteringParams params)
 
 		if(params.directionalLightShadowTerm > 0.f)
 		{
-			inScattering += params.directionalLightShadowTerm * illuminance * PhaseFunction(params.toViewNormal, directionalLight.direction, params.phaseFunctionAnisotrophy);
+			inScattering += params.directionalLightShadowTerm * PhaseFunction(params.toViewNormal, directionalLight.direction, params.phaseFunctionAnisotrophy) * illuminance;
 		}
 	}
 
@@ -218,7 +221,7 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 	const uint tileLightsDataOffset = GetLightsTileDataOffset(lightsTileCoords, PARAM_ViewShadingParams->lightsData->tilesNum, PARAM_ViewShadingParams->lightsData->localLights32Num);
 	
 	const uint clusterIdx = params.linearDepth / PARAM_ViewShadingParams->lightsData->zClusterLength;
-	const uint2 clusterRange = clusterIdx < PARAM_ViewShadingParams->lightsData->zClustersNum ? PARAM_ViewShadingParams->clustersRanges[clusterIdx] : uint2(0u, 0u);
+	const uint2 clusterRange = clusterIdx < PARAM_ViewShadingParams->lightsData->zClustersNum ? PARAM_ViewShadingParams->scatteringClustersRanges[clusterIdx] : uint2(0u, 0u);
 	
 	// Lights are culled once per wave against the bounds of all lanes' locations, so that the shading loop below is wave-uniform
 	const float3 waveBoundsMin = WaveActiveMin(params.worldLocation);
@@ -227,9 +230,12 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 	const uint activeLanesNum = WaveActiveCountBits(true);
 	const uint laneRank = WavePrefixCountBits(true);
 
-	for(uint i = 0; i < PARAM_ViewShadingParams->lightsData->localLights32Num; ++i)
+	const uint firstLights32Idx = WaveActiveMin(clusterRange.x) / 32u;
+	const uint lastLights32Idx  = WaveActiveMax(clusterRange.y) / 32u;
+
+	for(uint i = firstLights32Idx; i <= lastLights32Idx; ++i)
 	{
-		const uint candidatesMask = WaveActiveBitOr(ClusterMaskRange(PARAM_ViewShadingParams->tilesLightsMask[tileLightsDataOffset + i], clusterRange, i << 5u));
+		const uint candidatesMask = WaveActiveBitOr(ClusterMaskRange(PARAM_ViewShadingParams->scatteringTilesLightsMask[tileLightsDataOffset + i], clusterRange, i << 5u));
 
 		uint lightsMask = 0u;
 		for (uint bitIdx = laneRank; WaveActiveAnyTrue(bitIdx < 32u); bitIdx += activeLanesNum)
@@ -239,7 +245,7 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 			{
 				const LocalLightInterface candidateLight = PARAM_ViewShadingParams->localLights[i * 32u + bitIdx];
 				const float3 closestPoint = clamp(candidateLight.location, waveBoundsMin, waveBoundsMax);
-				isLightVisible = candidateLight.ContributesToScattering() && Dist2(closestPoint, candidateLight.location) < Pow2(candidateLight.range);
+				isLightVisible = Dist2(closestPoint, candidateLight.location) < Pow2(candidateLight.range);
 			}
 			lightsMask |= WaveActiveBitOr(isLightVisible ? (1u << bitIdx) : 0u);
 		}
@@ -252,11 +258,11 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 			const LocalLightInterface localLight = PARAM_ViewShadingParams->localLights[i * 32u + maskBitIdx];
 
 			const float3 toLight = localLight.location - params.worldLocation;
-			const float distToLight = length(toLight);
+			const float dist2 = dot(toLight, toLight);
 
-			if(distToLight < localLight.range)
+			if(dist2 < Pow2(localLight.range))
 			{
-				const float3 lightDir = toLight / distToLight;
+				const float3 lightDir = toLight / sqrt(dist2);
 				const float3 illuminance = GetLightIlluminanceAtLocation(localLight, params.worldLocation);
 
 				if (any(illuminance > 0.f))
@@ -269,7 +275,7 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 			
 					if (visibility > 0.f)
 					{
-						inScattering += illuminance * visibility * PhaseFunction(params.toViewNormal, -lightDir, params.phaseFunctionAnisotrophy);
+						inScattering += visibility * PhaseFunction(params.toViewNormal, -lightDir, params.phaseFunctionAnisotrophy) * illuminance ;
 					}
 				}
 			}

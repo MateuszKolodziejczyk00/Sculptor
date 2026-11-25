@@ -19,9 +19,11 @@ END_SHADER_STRUCT();
 
 BEGIN_SHADER_STRUCT(ViewShadingParams)
 	SHADER_STRUCT_FIELD(rdr::GPUPtr<LightsRenderingData>,    lightsData)
-	SHADER_STRUCT_FIELD(gfx::TypedBuffer<math::Vector2u>,    clustersRanges) // min,max light idx for each z cluster
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<math::Vector2u>,    diClustersRanges) // min,max light idx for each z cluster
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<math::Vector2u>,    scatteringClustersRanges)
 	SHADER_STRUCT_FIELD(gfx::TypedBuffer<LocalLightGPUData>, localLights)
-	SHADER_STRUCT_FIELD(gfx::TypedBuffer<Uint32>,            tilesLightsMask)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<Uint32>,            diTilesLightsMask)
+	SHADER_STRUCT_FIELD(gfx::TypedBuffer<Uint32>,            scatteringTilesLightsMask)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,           shadowMask)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<Real32>,           ambientOcclusionTexture)
 END_SHADER_STRUCT();

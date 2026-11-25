@@ -3,60 +3,64 @@
 
 [[shader_params(BuildLightZClustersConstants, CONSTS)]]
 
+#include "Lights/LightingUtils.hlsli"
+
 
 struct CS_INPUT
 {
-    uint3 globalID  : SV_DispatchThreadID;
-    uint3 groupID   : SV_GroupID;
-    uint3 localID   : SV_GroupThreadID;
+	uint3 groupID   : SV_GroupID;
+	uint3 localID   : SV_GroupThreadID;
 };
+
+
+uint2 ReduceClusterLightsRange(uint lightMinIdx, uint lightMaxIdx)
+{
+	lightMinIdx = WaveActiveMin(lightMinIdx);
+	lightMaxIdx = WaveActiveMax(lightMaxIdx);
+	return lightMinIdx != 0xffffffff ? uint2(lightMinIdx, lightMaxIdx) : uint2(0u, 0u);
+}
 
 
 [numthreads(32, 1, 1)]
 void BuildLightsZClustersCS(CS_INPUT input)
 {
-	const uint clusterIdx = input.globalID.x;
+	const uint clusterIdx = input.groupID.x;
 
-	if (clusterIdx < CONSTS->lightsData->zClustersNum)
+	const float clusterRangeMin = clusterIdx * CONSTS->lightsData->zClusterLength;
+	const float clusterRangeMax = (clusterIdx + 1) * CONSTS->lightsData->zClusterLength;
+
+	uint diLightMinIdx = 0xffffffff;
+	uint diLightMaxIdx = 0u;
+	uint scatteringLightMinIdx = 0xffffffff;
+	uint scatteringLightMaxIdx = 0u;
+
+	for (uint lightIdx = input.localID.x; lightIdx < CONSTS->lightsData->localLightsNum; lightIdx += 32u)
 	{
-		const float clusterRangeMin = clusterIdx * CONSTS->lightsData->zClusterLength;
-		const float clusterRangeMax = (clusterIdx + 1) * CONSTS->lightsData->zClusterLength;
-
-		uint lightMinIdx = 0xffffffff;
-
-		for (uint lightIdx = 0; lightIdx < CONSTS->lightsData->localLightsNum; lightIdx += 1)
+		const float2 lightRange = CONSTS->localLightsZRanges[lightIdx];
+		if (lightRange.x < clusterRangeMax && lightRange.y > clusterRangeMin)
 		{
-			const float2 lightRange = CONSTS->localLightsZRanges[lightIdx];
-			const bool isInRange = lightRange.x < clusterRangeMax && lightRange.y > clusterRangeMin;
-			if (isInRange)
+			const uint flags = CONSTS->localLights[lightIdx].flags;
+
+			if ((flags & LIGHT_FLAG_CONTRIBUTE_TO_DI) != 0u)
 			{
-				lightMinIdx = lightIdx;
-				break;
+				diLightMinIdx = min(diLightMinIdx, lightIdx);
+				diLightMaxIdx = lightIdx;
+			}
+
+			if ((flags & LIGHT_FLAG_CONTRIBUTE_TO_SCATTERING) != 0u)
+			{
+				scatteringLightMinIdx = min(scatteringLightMinIdx, lightIdx);
+				scatteringLightMaxIdx = lightIdx;
 			}
 		}
+	}
 
-		uint lightMaxIdx = 0;
+	const uint2 diRange         = ReduceClusterLightsRange(diLightMinIdx, diLightMaxIdx);
+	const uint2 scatteringRange = ReduceClusterLightsRange(scatteringLightMinIdx, scatteringLightMaxIdx);
 
-		if (lightMinIdx != 0xffffffff)
-		{
-			for (uint idx = 0; idx < CONSTS->lightsData->localLightsNum; idx += 1)
-			{
-				const uint lightIdx = CONSTS->lightsData->localLightsNum - idx - 1;
-				const float2 lightRange = CONSTS->localLightsZRanges[lightIdx];
-				const bool isInRange = lightRange.x < clusterRangeMax && lightRange.y > clusterRangeMin;
-				if (isInRange)
-				{
-					lightMaxIdx = lightIdx;
-					break;
-				}
-			}
-		}
-		else
-		{
-			lightMinIdx = 0;
-			lightMaxIdx = 0;
-		}
-
-		CONSTS->rwClusterRanges.Store(clusterIdx, uint2(lightMinIdx, lightMaxIdx));
+	if (input.localID.x == 0u)
+	{
+		CONSTS->rwDIClusterRanges.Store(clusterIdx, diRange);
+		CONSTS->rwScatteringClusterRanges.Store(clusterIdx, scatteringRange);
 	}
 }
